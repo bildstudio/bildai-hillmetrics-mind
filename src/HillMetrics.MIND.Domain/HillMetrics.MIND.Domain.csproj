@@ -6,4 +6,13 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\HillMetrics.FinancialData\src\HillMetrics.Normalized.Infrastructure.Database\HillMetrics.Normalized.Infrastructure.Database.csproj" />
+    <ProjectReference Include="..\HillMetrics.MIND.Domain.Contracts\HillMetrics.MIND.Domain.Contracts.csproj" />
+  </ItemGroup>
+
 </Project>
