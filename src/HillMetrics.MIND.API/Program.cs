@@ -54,10 +54,12 @@ public class Program
         builder.Services.AddHealthChecks();
 
         builder.Services.AddHillMetricsApiVersioning(new ApiVersion(1), [new UrlSegmentApiVersionReader()]);
-        
+
+        builder.AddHillMetricsRateLimiters();
 
         var app = builder.Build();
 
+        app.UseHillMetricsRateLimiters();
 
         app.UseHillMetricsApiExceptionHandlerMiddleware();
 
