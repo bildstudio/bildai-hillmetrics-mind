@@ -5,9 +5,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace HillMetrics.MIND.API.Controllers;
 
-//[Authorize]
+[Authorize]
 [ApiController]
-[Route($"{InternalRoutes.Prefix}")]
+[Route("api/v{v:apiVersion}")]
 public class BaseHillMetricsController : ControllerBase
 {
     protected readonly IMediator Mediator;

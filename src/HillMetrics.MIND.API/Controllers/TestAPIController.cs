@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.RateLimiting;
 
 namespace HillMetrics.MIND.API.Controllers;
 
-
+[Route("api/v{v:apiVersion}")]
 [EnableRateLimiting("allow5000requestsPerSecond_fixed")]
 public class TestAPIController(IMediator mediator) : BaseHillMetricsController(mediator)
 {

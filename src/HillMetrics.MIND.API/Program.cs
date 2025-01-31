@@ -4,26 +4,26 @@ using Asp.Versioning;
 using HillMetrics.Core;
 using HillMetrics.Core.API;
 using HillMetrics.Core.API.Extensions;
+using HillMetrics.Core.Authentication;
 using HillMetrics.Core.Monitoring.Logging;
 using HillMetrics.MIND.Domain;
 using HillMetrics.Normalized.Infrastructure.Database.Database;
+using HillMetrics.Orchestrator.ServicesNames;
 
 
 namespace HillMetrics.MIND.API;
 
 public class Program
 {
-    private static IWebHostEnvironment _environment;
-
     public static void Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
 
-        _environment = builder.Environment;
+        IWebHostEnvironment  environment = builder.Environment;
         builder.Configuration
-            .SetBasePath(_environment.ContentRootPath)
+            .SetBasePath(environment.ContentRootPath)
             .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-            .AddJsonFile($"appsettings.{_environment.EnvironmentName}.json", optional: true, reloadOnChange: true)
+            .AddJsonFile($"appsettings.{environment.EnvironmentName}.json", optional: true, reloadOnChange: true)
             .AddEnvironmentVariables();
 
         // Add services to the container.
@@ -57,6 +57,9 @@ public class Program
 
         builder.AddHillMetricsRateLimiters();
 
+        //validation for JWT token authentication
+        builder.AddKeycloakBearerAuthenticationValidator(serviceName: Services.Keycloak, authorizationFlowType: Core.Authentication.Objects.AuthorizationType.AzureAd);
+
         var app = builder.Build();
 
         app.UseHillMetricsRateLimiters();
@@ -78,6 +81,7 @@ public class Program
 
         app.UseHttpsRedirection();
 
+        app.UseAuthentication();
         app.UseAuthorization();
 
         app.MapControllers();
