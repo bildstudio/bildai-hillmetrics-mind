@@ -28,7 +28,7 @@ public class Program
 
         // Add services to the container.
         //Core services
-        builder.Services.AddHillMetricsCoreExtension();
+        builder.AddHillMetricsCoreExtension();
         
         //MIND services
         builder.AddHillMetricsMINDServices();
