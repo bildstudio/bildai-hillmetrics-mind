@@ -1,7 +1,7 @@
 ﻿using HillMetrics.Core.API.Extensions;
 using HillMetrics.Core.API.Responses;
+using HillMetrics.Core.Authentication.Contracts;
 using HillMetrics.Core.Authentication.Objects;
-using HillMetrics.Core.Authentication.Services;
 using HillMetrics.MIND.API.Contracts.Requests;
 using HillMetrics.MIND.API.Endpoints;
 using Microsoft.AspNetCore.Authorization;
@@ -15,9 +15,9 @@ namespace HillMetrics.MIND.API.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IAuthenticationService _authenticationService;
-        public AuthController(IAuthenticationServiceFactory authenticationServiceFactory)
+        public AuthController(IAuthenticationService authenticationService)
         {
-            _authenticationService = authenticationServiceFactory.GetAuthenticationService(AuthorizationType.AzureAd);
+            _authenticationService = authenticationService;
         }
 
         [HttpGet(InternalRoutes.Authentication.Login)]

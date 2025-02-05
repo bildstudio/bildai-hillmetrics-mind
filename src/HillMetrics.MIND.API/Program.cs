@@ -7,6 +7,7 @@ using HillMetrics.Core.API.Extensions;
 using HillMetrics.Core.Authentication;
 using HillMetrics.Core.Monitoring.Logging;
 using HillMetrics.MIND.Domain;
+using HillMetrics.MIND.Infrastructure;
 using HillMetrics.Normalized.Infrastructure.Database.Database;
 using HillMetrics.Orchestrator.ServicesNames;
 
@@ -58,7 +59,9 @@ public class Program
         builder.AddHillMetricsRateLimiters();
 
         //validation for JWT token authentication
-        builder.AddKeycloakBearerAuthenticationValidator(serviceName: Services.Keycloak, authorizationFlowType: Core.Authentication.Objects.AuthorizationType.AzureAd);
+        builder.AddKeycloakBearerAuthenticationValidator<KeycloakConfigMind>(serviceName: Services.Keycloak);
+
+        builder.Services.AddMindAuthenticationServices();
 
         var app = builder.Build();
 
