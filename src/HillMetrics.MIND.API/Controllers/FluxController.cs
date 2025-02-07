@@ -1,0 +1,377 @@
+﻿
+using AutoMapper;
+using HillMetrics.Core.API.Extensions;
+using HillMetrics.Core.API.Responses;
+using HillMetrics.Core.Common;
+using HillMetrics.Core.Time.Trigger;
+using HillMetrics.MIND.API.Contracts.Requests.Flux;
+using HillMetrics.MIND.API.Contracts.Responses;
+using HillMetrics.MIND.API.Contracts.Responses.Flux;
+using HillMetrics.Normalized.Domain.Contracts.Providing;
+using HillMetrics.Normalized.Domain.Contracts.Providing.Flux;
+using HillMetrics.Normalized.Domain.Contracts.Providing.Flux.Cqrs.Create;
+using HillMetrics.Normalized.Domain.Contracts.Providing.Flux.Cqrs.DataPointIdentification;
+using HillMetrics.Normalized.Domain.Contracts.Providing.Flux.Cqrs.Get;
+using HillMetrics.Normalized.Domain.UseCase.Providing.Flux;
+using MediatR;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
+namespace HillMetrics.MIND.API.Controllers
+{
+    [Route("api/v{v:apiVersion}/[controller]"), AllowAnonymous]
+    //[EnableRateLimiting("allow5000requestsPerSecond_fixed")]
+    public class FluxController(IMediator mediator, IMapper mapper) : BaseHillMetricsController(mediator)
+    {
+        #region Flux
+        /// <summary>
+        /// Search for fluxes following the given criteria
+        /// </summary>
+        /// <param name="request">Criteria search</param>
+        /// <returns></returns>
+        [HttpGet("search")]
+        public async Task<ActionResult<PagedApiResponseBase<FluxSearchResponse>>> SearchAsync([FromQuery] FluxSearchRequest request)
+        {
+            var result = await Mediator.Send(mapper.Map<SearchFluxQuery>(request));
+
+            if (result.IsFailed)
+                return new ErrorAPIResult(result.Errors.ToApiException());
+
+            return new PagedApiResponseBase<FluxSearchResponse>(mapper.Map<List<FluxSearchResponse>>(result.Value.Results), result.Value.NbTotalRows);
+        }
+
+        /// <summary>
+        /// Get the details of a flux
+        /// </summary>
+        /// <param name="id">The flux identifier</param>
+        /// <returns></returns>
+        [HttpGet("{id}")]
+        public async Task<ActionResult<FluxResponse>> GetAsync(int id)
+        {
+            var result = await Mediator.Send(new FluxQuery() { FluxId = id });
+
+            if (result.IsFailed)
+                return new ErrorAPIResult(result.Errors.ToApiException());
+
+            return mapper.Map<FluxResponse>(result.Value);
+        }
+
+        /// <summary>
+        /// Create a new flux
+        /// </summary>
+        /// <param name="fluxRequest">The flux informations</param>
+        /// <returns>true if success, false otherwise</returns>
+        [HttpPost]
+        public async Task<ActionResult<bool>> CreateFlux(FluxRequest fluxRequest)
+        {
+            var fluxCommand = CreateFluxCommand.Create();
+            fluxCommand = builder(mapper, fluxRequest, fluxCommand);
+
+            var result = await Mediator.Send(fluxCommand);
+
+            if (result.IsFailed)
+                return new ErrorAPIResult(result.Errors.ToApiException());
+
+            return true;
+        }
+
+        /// <summary>
+        /// Update a flux
+        /// </summary>
+        /// <param name="fluxId">The flux identifier</param>
+        /// <param name="fluxRequest">The flux informations</param>
+        /// <returns>true if success, false otherwise</returns>
+        [HttpPut]
+        public async Task<ActionResult<bool>> UpdateFlux(int fluxId, FluxRequest fluxRequest)
+        {
+            var fluxCommand = CreateFluxCommand.Create().WithId(fluxId);
+            fluxCommand = builder(mapper, fluxRequest, fluxCommand);
+
+            var result = await Mediator.Send(fluxCommand);
+
+            if (result.IsFailed)
+                return new ErrorAPIResult(result.Errors.ToApiException());
+
+            return true;
+        }
+
+        /// <summary>
+        /// Delete a flux
+        /// </summary>
+        /// <param name="fluxId">The flux identifier</param>
+        /// <returns>true if success, false otherwise</returns>
+        [HttpDelete]
+        public async Task<ActionResult<bool>> DeleteFlux(int fluxId)
+        {
+            var result = await Mediator.Send(new DeleteFluxCommand(fluxId));
+
+            if (result.IsFailed)
+                return new ErrorAPIResult(result.Errors.ToApiException());
+
+            return true;
+        }
+
+        private static CreateFluxCommand builder(IMapper mapper, FluxRequest fluxRequest, CreateFluxCommand fluxCommand)
+        {
+            if (fluxRequest.FluxName is not null)
+                fluxCommand = fluxCommand.WithName(fluxRequest.FluxName);
+
+            if (fluxRequest.SourceId is not null)
+                fluxCommand = fluxCommand.WithSourceProvider(fluxRequest.SourceId.Value);
+
+            if (fluxRequest.ProcessTriggerPeriod is not null)
+                fluxCommand = fluxCommand.WithProcessTriggerPeriod(mapper.Map<TriggerPeriodDto, TriggerPeriod>(fluxRequest.ProcessTriggerPeriod));
+
+            if (fluxRequest.FetchTriggerPeriod is not null)
+                fluxCommand = fluxCommand.WithFetchTriggerPeriod(mapper.Map<TriggerPeriodDto, TriggerPeriod>(fluxRequest.FetchTriggerPeriod));
+
+            if (fluxRequest.FluxMetadata is not null)
+                fluxCommand = fluxCommand.WithFluxMetadata(mapper.Map<FluxMetadataDto, FluxMetadata>(fluxRequest.FluxMetadata));
+
+            if (fluxRequest.FluxType is not null)
+                fluxCommand = fluxCommand.WithFluxType(fluxRequest.FluxType.Value);
+
+            if (fluxRequest.FluxState is not null)
+                fluxCommand = fluxCommand.WithFluxState(fluxRequest.FluxState.Value);
+
+            if (fluxRequest.CanHaveConcurrencyMultiFetching is not null)
+                fluxCommand = fluxCommand.WithConcurrencyMultiFetching(fluxRequest.CanHaveConcurrencyMultiFetching.Value);
+
+            return fluxCommand;
+        }
+        #endregion
+
+        #region FinancialDataPoint
+
+        /// <summary>
+        /// Identify automatically the list of data points of the flux. By default it choose the last fetching history
+        /// It calls the detectors (with AI) to identify the data points
+        /// </summary>
+        /// <param name="id">The flux identifier</param>
+        /// <returns></returns>
+        [HttpGet("{id}/financial-data-point/identify")]
+        public async Task<ActionResult<FluxIdentificationResponse>> IdentifyDataPointAsync(int id)
+        {
+            var result = await Mediator.Send(new IdentifyFinancialDataPointCommand() { FluxId = id });
+
+            if (result.IsFailed)
+                return new ErrorAPIResult(result.Errors.ToApiException());
+
+            return new FluxIdentificationResponse()
+            {
+                FluxIdentificationHistoryId = result.Value.FluxIdentificationHistory.Id,
+                DetectionResult = result.Value.DetectionResult.Select(x => new IdentificationItemResponse()
+                {
+                    DetectorName = x.DetectorName,
+                    DataPoint = x.DataPoint,
+                    FinancialDataPointId = x.FinancialDataPointId,
+                    IsSuccess = true,
+                    MetadataMapping = x.MetadataMapping,
+                    Score = x.Score
+                }).ToList()
+            };
+        }
+
+        /// <summary>
+        /// Identify automatically the list of data points of a flux fetching history id.
+        /// It calls the detectors (with AI) to identify the data points
+        /// </summary>
+        /// <param name="fluxFetchingId">The flux fetching history identifier</param>
+        /// <returns></returns>
+        [HttpGet("financial-data-point/identify/{fluxFetchingId}")]
+        public async Task<ActionResult<FluxIdentificationResponse>> IdentifyDataPointFromSpecificHistoryAsync(int fluxFetchingId)
+        {
+            var result = await Mediator.Send(new IdentifyFinancialDataPointCommand() { FluxFetchingId = fluxFetchingId });
+
+            if (result.IsFailed)
+                return new ErrorAPIResult(result.Errors.ToApiException());
+
+            return new FluxIdentificationResponse()
+            {
+                FluxIdentificationHistoryId = result.Value.FluxIdentificationHistory.Id,
+                DetectionResult = result.Value.DetectionResult.Select(x => new IdentificationItemResponse()
+                {
+                    DetectorName = x.DetectorName,
+                    DataPoint = x.DataPoint,
+                    FinancialDataPointId = x.FinancialDataPointId,
+                    IsSuccess = true,
+                    MetadataMapping = x.MetadataMapping,
+                    Score = x.Score
+                }).ToList()
+            };
+        }
+
+        /// <summary>
+        /// Validate (or invalidate) a financial data point
+        /// If it is invalidate, the request.HumanMetadataMapping property is mandatory
+        /// </summary>
+        /// <param name="request"></param>
+        /// <returns>true if success, false otherwise</returns>
+        [HttpPost("financial-data-point/validate")]
+        public async Task<ActionResult<bool>> ValidateFinancialDataPointAsync(FluxValidateFinancialDataPointRequest request)
+        {
+            var result = await Mediator.Send(new ManageDataPointIdentificationCommand(request.FinancialDataPointId, request.IsValidated, request.HumanMetadataMapping));
+
+            if (result.IsFailed)
+                return new ErrorAPIResult(result.Errors.ToApiException());
+
+            return true;
+        }
+
+        ///// <summary>
+        ///// Try to identify the list of financial data points from a file upload
+        ///// </summary>
+        ///// <param name="file">The file to check the financial data point</param>
+        ///// <param name="contentType">The content type of the file (for security)</param>
+        ///// <returns>The list of datapoints that has been checked</returns>
+        //[HttpPost("financial-data-point/check")]
+        //public async Task<ActionResult<FluxIdentifyDataPointResponse>> IdentifyFinancialDataPointFromFileUploadAsync([FromForm] IFormFile file, ContentType contentType)
+        //{
+        //    if (file == null || file.Length == 0)
+        //        return BadRequest("No file uploaded or the file is empty.");
+
+        //    // Define the path to save the file (ensure this path exists or create it)
+        //    var savePath = Path.Combine(Directory.GetCurrentDirectory(), "UploadedFiles", file.FileName);
+
+        //    // Save the file
+        //    Stream stream;
+        //    using (stream = new FileStream(savePath, FileMode.Create))
+        //    {
+        //        await file.CopyToAsync(stream);
+        //    }
+
+        //    var result = await Mediator.Send(new CheckFinancialDataPointQuery(file.FileName, stream, contentType));
+
+        //    if (result.IsFailed)
+        //        return new ErrorAPIResult(result.Errors.ToApiException());
+
+        //    return new FluxIdentifyDataPointResponse()
+        //    {
+        //        DetectionResult = result.Value.DetectionResult.Select(x => new FluxIdentifyDataPointItemResponse()
+        //        {
+        //            DetectorName = x.DetectorName,
+        //            DataPoint = x.DataPoint,
+        //            IsSuccess = true,
+        //            MetadataMapping = x.MetadataMapping,
+        //            Score = x.Score
+        //        }).ToList()
+        //    };
+        //}
+        #endregion
+
+        #region Fetching
+        /// <summary>
+        /// Search for flux fetching history following the given criteria
+        /// </summary>
+        /// <param name="request">The search criterias</param>
+        /// <returns>The flux fetching history that matched the requests filters</returns>
+        [HttpGet("fetching-history/search")]
+        public async Task<ActionResult<PagedApiResponseBase<FluxFetchingSearchDto>>> SearchFetchingHistoryAsync([FromQuery] FluxFetchingSearchRequest request)
+        {
+            var result = await Mediator.Send(mapper.Map<SearchFluxFetchingQuery>(request));
+
+            if (result.IsFailed)
+                return new ErrorAPIResult(result.Errors.ToApiException());
+
+            return new PagedApiResponseBase<FluxFetchingSearchDto>(mapper.Map<List<FluxFetchingSearchDto>>(result.Value.Results), result.Value.NbTotalRows);
+        }
+
+        /// <summary>
+        /// Get the details of a specific fetching history
+        /// </summary>
+        /// <param name="fetchingHistoryId">The fetching history identifier</param>
+        /// <returns></returns>
+        [HttpGet("/fetching-history/{fetchingHistoryId}")]
+        public async Task<ActionResult<ApiResponseBase<FluxFetchingResponse>>> GetFetchingHistoryAsync(int fetchingHistoryId)
+        {
+            var result = await Mediator.Send(new FluxFetchingQuery(fetchingHistoryId));
+
+            if (result.IsFailed)
+                return new ErrorAPIResult(result.Errors.ToApiException());
+
+            return new ApiResponseBase<FluxFetchingResponse>(mapper.Map<FluxFetchingResponse>(result.Value));
+        }
+        #endregion
+
+        #region Processing
+        /// <summary>
+        /// Search for flux processing history following the given criteria
+        /// </summary>
+        /// <param name="request">The search criterias</param>
+        /// <returns>The flux processing history that matched the requests filters</returns>
+        [HttpGet("processing-history/search")]
+        public async Task<ActionResult<PagedApiResponseBase<FluxProcessingSearchDto>>> SearchProcessingHistoryAsync([FromQuery] FluxSearchRequest request)
+        {
+            var result = await Mediator.Send(mapper.Map<SearchFluxQuery>(request));
+
+            if (result.IsFailed)
+                return new ErrorAPIResult(result.Errors.ToApiException());
+
+            return new PagedApiResponseBase<FluxProcessingSearchDto>(mapper.Map<List<FluxProcessingSearchDto>>(result.Value.Results), result.Value.NbTotalRows);
+        }
+
+        ///// <summary>
+        ///// 
+        ///// </summary>
+        ///// <param name="file"></param>
+        ///// <param name="nbToLinesToAnalyse"></param>
+        ///// <returns></returns>
+        ///// <exception cref="NotImplementedException"></exception>
+        //[HttpPost("process-data/simulation")]
+        //public async Task<ActionResult<bool>> SimulateProcessFromDataAsync([FromForm] IFormFile file, int nbToLinesToAnalyse)
+        //{
+        //    throw new NotImplementedException();
+        //}
+
+        /// <summary>
+        /// Get the details of a specific processing history
+        /// </summary>
+        /// <param name="processingHistoryId">The processing history identifier</param>
+        /// <returns></returns>
+        [HttpGet("processing-history/{processingHistoryId}")]
+        public async Task<ActionResult<ApiResponseBase<FluxProcessingResponse>>> GetProcessingHistoryAsync(int processingHistoryId)
+        {
+            var result = await Mediator.Send(new FluxProcessingQuery(processingHistoryId));
+
+            if (result.IsFailed)
+                return new ErrorAPIResult(result.Errors.ToApiException());
+
+            return new ApiResponseBase<FluxProcessingResponse>(mapper.Map<FluxProcessingResponse>(result.Value));
+        }
+        #endregion
+
+        #region Flux errors
+        /// <summary>
+        /// Search for flux errors history following the given criteria
+        /// </summary>
+        /// <param name="request">The search criterias</param>
+        /// <returns>The flux errors history that matched the requests filters</returns>
+        [HttpGet("errors/search")]
+        public async Task<ActionResult<PagedApiResponseBase<FluxErrorSearchDto>>> SearchFluxErrorsAsync([FromQuery] FluxErrorSearchRequest request)
+        {
+            var result = await Mediator.Send(mapper.Map<SearchFluxErrorQuery>(request));
+
+            if (result.IsFailed)
+                return new ErrorAPIResult(result.Errors.ToApiException());
+
+            return new PagedApiResponseBase<FluxErrorSearchDto>(mapper.Map<List<FluxErrorSearchDto>>(result.Value.Results), result.Value.NbTotalRows);
+        }
+
+        /// <summary>
+        /// Get the details of a specific error
+        /// </summary>
+        /// <param name="errorId">The error identifier</param>
+        /// <returns></returns>
+        [HttpGet("errors/{errorId}")]
+        public async Task<ActionResult<ApiResponseBase<FluxErrorResponse>>> GetErrorAsync(int errorId)
+        {
+            var result = await Mediator.Send(new FluxErrorQuery(errorId));
+
+            if (result.IsFailed)
+                return new ErrorAPIResult(result.Errors.ToApiException());
+
+            return new ApiResponseBase<FluxErrorResponse>(mapper.Map<FluxErrorResponse>(result.Value));
+        }
+        #endregion
+    }
+}
