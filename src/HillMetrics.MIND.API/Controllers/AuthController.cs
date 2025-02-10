@@ -34,7 +34,7 @@ namespace HillMetrics.MIND.API.Controllers
         {
             var tokenResult = await _authenticationService.ExhangeCodeForTokenAsync(code);
             if (tokenResult.IsFailed)
-                return new ErrorAPIResult(tokenResult.Errors.ToApiException());
+                return new ErrorApiActionResult(tokenResult.Errors.ToApiResult());
 
             tokenResult.Value.SaveTokensInCookies(HttpContext.Response.Cookies);
             //StoreTokenResponseInCookie(tokenResult.Value);
@@ -48,7 +48,7 @@ namespace HillMetrics.MIND.API.Controllers
         {
             var tokenResult = await _authenticationService.RefreshTokenAsync(request.RefreshToken);
             if (tokenResult.IsFailed)
-                return new ErrorAPIResult(tokenResult.Errors.ToApiException());
+                return new ErrorApiActionResult(tokenResult.Errors.ToApiResult());
 
             tokenResult.Value.SaveTokensInCookies(HttpContext.Response.Cookies);
 
