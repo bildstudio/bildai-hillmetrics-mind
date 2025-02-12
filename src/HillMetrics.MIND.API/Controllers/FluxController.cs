@@ -35,7 +35,7 @@ namespace HillMetrics.MIND.API.Controllers
             var result = await Mediator.Send(mapper.Map<SearchFluxQuery>(request));
 
             if (result.IsFailed)
-                return new ErrorAPIResult(result.Errors.ToApiException());
+                return new ErrorApiActionResult(result.Errors.ToApiResult());
 
             return new PagedApiResponseBase<FluxSearchResponse>(mapper.Map<List<FluxSearchResponse>>(result.Value.Results), result.Value.NbTotalRows);
         }
@@ -51,7 +51,7 @@ namespace HillMetrics.MIND.API.Controllers
             var result = await Mediator.Send(new FluxQuery() { FluxId = id });
 
             if (result.IsFailed)
-                return new ErrorAPIResult(result.Errors.ToApiException());
+                return new ErrorApiActionResult(result.Errors.ToApiResult());
 
             return mapper.Map<FluxResponse>(result.Value);
         }
@@ -70,7 +70,7 @@ namespace HillMetrics.MIND.API.Controllers
             var result = await Mediator.Send(fluxCommand);
 
             if (result.IsFailed)
-                return new ErrorAPIResult(result.Errors.ToApiException());
+                return new ErrorApiActionResult(result.Errors.ToApiResult());
 
             return true;
         }
@@ -90,7 +90,7 @@ namespace HillMetrics.MIND.API.Controllers
             var result = await Mediator.Send(fluxCommand);
 
             if (result.IsFailed)
-                return new ErrorAPIResult(result.Errors.ToApiException());
+                return new ErrorApiActionResult(result.Errors.ToApiResult());
 
             return true;
         }
@@ -106,7 +106,7 @@ namespace HillMetrics.MIND.API.Controllers
             var result = await Mediator.Send(new DeleteFluxCommand(fluxId));
 
             if (result.IsFailed)
-                return new ErrorAPIResult(result.Errors.ToApiException());
+                return new ErrorApiActionResult(result.Errors.ToApiResult());
 
             return true;
         }
@@ -155,7 +155,7 @@ namespace HillMetrics.MIND.API.Controllers
             var result = await Mediator.Send(new IdentifyFinancialDataPointCommand() { FluxId = id });
 
             if (result.IsFailed)
-                return new ErrorAPIResult(result.Errors.ToApiException());
+                return new ErrorApiActionResult(result.Errors.ToApiResult());
 
             return new FluxIdentificationResponse()
             {
@@ -184,7 +184,7 @@ namespace HillMetrics.MIND.API.Controllers
             var result = await Mediator.Send(new IdentifyFinancialDataPointCommand() { FluxFetchingId = fluxFetchingId });
 
             if (result.IsFailed)
-                return new ErrorAPIResult(result.Errors.ToApiException());
+                return new ErrorApiActionResult(result.Errors.ToApiResult());
 
             return new FluxIdentificationResponse()
             {
@@ -213,7 +213,7 @@ namespace HillMetrics.MIND.API.Controllers
             var result = await Mediator.Send(new ManageDataPointIdentificationCommand(request.FinancialDataPointId, request.IsValidated, request.HumanMetadataMapping));
 
             if (result.IsFailed)
-                return new ErrorAPIResult(result.Errors.ToApiException());
+                return new ErrorApiActionResult(result.Errors.ToApiResult());
 
             return true;
         }
@@ -271,7 +271,7 @@ namespace HillMetrics.MIND.API.Controllers
             var result = await Mediator.Send(mapper.Map<SearchFluxFetchingQuery>(request));
 
             if (result.IsFailed)
-                return new ErrorAPIResult(result.Errors.ToApiException());
+                return new ErrorApiActionResult(result.Errors.ToApiResult());
 
             return new PagedApiResponseBase<FluxFetchingSearchDto>(mapper.Map<List<FluxFetchingSearchDto>>(result.Value.Results), result.Value.NbTotalRows);
         }
@@ -287,7 +287,7 @@ namespace HillMetrics.MIND.API.Controllers
             var result = await Mediator.Send(new FluxFetchingQuery(fetchingHistoryId));
 
             if (result.IsFailed)
-                return new ErrorAPIResult(result.Errors.ToApiException());
+                return new ErrorApiActionResult(result.Errors.ToApiResult());
 
             return new ApiResponseBase<FluxFetchingResponse>(mapper.Map<FluxFetchingResponse>(result.Value));
         }
@@ -305,7 +305,7 @@ namespace HillMetrics.MIND.API.Controllers
             var result = await Mediator.Send(mapper.Map<SearchFluxQuery>(request));
 
             if (result.IsFailed)
-                return new ErrorAPIResult(result.Errors.ToApiException());
+                return new ErrorApiActionResult(result.Errors.ToApiResult());
 
             return new PagedApiResponseBase<FluxProcessingSearchDto>(mapper.Map<List<FluxProcessingSearchDto>>(result.Value.Results), result.Value.NbTotalRows);
         }
@@ -334,7 +334,7 @@ namespace HillMetrics.MIND.API.Controllers
             var result = await Mediator.Send(new FluxProcessingQuery(processingHistoryId));
 
             if (result.IsFailed)
-                return new ErrorAPIResult(result.Errors.ToApiException());
+                return new ErrorApiActionResult(result.Errors.ToApiResult());
 
             return new ApiResponseBase<FluxProcessingResponse>(mapper.Map<FluxProcessingResponse>(result.Value));
         }
@@ -352,7 +352,7 @@ namespace HillMetrics.MIND.API.Controllers
             var result = await Mediator.Send(mapper.Map<SearchFluxErrorQuery>(request));
 
             if (result.IsFailed)
-                return new ErrorAPIResult(result.Errors.ToApiException());
+                return new ErrorApiActionResult(result.Errors.ToApiResult());
 
             return new PagedApiResponseBase<FluxErrorSearchDto>(mapper.Map<List<FluxErrorSearchDto>>(result.Value.Results), result.Value.NbTotalRows);
         }
@@ -368,7 +368,7 @@ namespace HillMetrics.MIND.API.Controllers
             var result = await Mediator.Send(new FluxErrorQuery(errorId));
 
             if (result.IsFailed)
-                return new ErrorAPIResult(result.Errors.ToApiException());
+                return new ErrorApiActionResult(result.Errors.ToApiResult());
 
             return new ApiResponseBase<FluxErrorResponse>(mapper.Map<FluxErrorResponse>(result.Value));
         }

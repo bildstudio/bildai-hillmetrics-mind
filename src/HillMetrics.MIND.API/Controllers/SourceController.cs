@@ -29,7 +29,7 @@ public class SourceController(IMediator mediator, IMapper mapper) : BaseHillMetr
         var result = await Mediator.Send(mapper.Map<SearchSourceQuery>(request));
 
         if (result.IsFailed)
-            return new ErrorAPIResult(result.Errors.ToApiException());
+            return new ErrorApiActionResult(result.Errors.ToApiResult());
 
         return new SourceSearchResponse(mapper.Map<List<SourceSearchDto>>(result.Value.Results));
     }
@@ -47,7 +47,7 @@ public class SourceController(IMediator mediator, IMapper mapper) : BaseHillMetr
         var result = await Mediator.Send(sourceCommand);
 
         if (result.IsFailed)
-            return new ErrorAPIResult(result.Errors.ToApiException());
+            return new ErrorApiActionResult(result.Errors.ToApiResult());
 
         return new SourceResponse(result.Value);
     }
@@ -60,7 +60,7 @@ public class SourceController(IMediator mediator, IMapper mapper) : BaseHillMetr
         var result = await Mediator.Send(sourceCommand);
 
         if (result.IsFailed)
-            return new ErrorAPIResult(result.Errors.ToApiException());
+            return new ErrorApiActionResult(result.Errors.ToApiResult());
 
         return new SourceResponse(result.Value);
     }
