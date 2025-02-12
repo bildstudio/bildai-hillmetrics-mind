@@ -15,6 +15,7 @@ using HillMetrics.Core.Monitoring.Logging;
 using HillMetrics.Core.Storage.Extensions;
 using HillMetrics.MIND.API.Converter;
 using HillMetrics.MIND.API.Mappers;
+using HillMetrics.MIND.API.Tests;
 using HillMetrics.MIND.Domain;
 using HillMetrics.MIND.Infrastructure;
 using HillMetrics.Normalized.Domain.Contracts.Providing.Flux.Cqrs.Get;
@@ -30,7 +31,7 @@ using static HillMetrics.Normalized.Domain.UseCase.Market.MarketNavValidator;
 
 namespace HillMetrics.MIND.API;
 
-public class Program
+public partial class Program
 {
     public static void Main(string[] args)
     {
@@ -46,7 +47,11 @@ public class Program
         // Add services to the container.
 
         //Core services
-        var logger = builder.ConfigureCommonFluxService("HillMetrics.MIND.API", typeof(SearchFluxHandler), typeof(SearchFluxQuery));
+        var logger = builder.ConfigureCommonFluxService("HillMetrics.MIND.API", typeof(SearchFluxHandler), typeof(SearchFluxQuery), cfg =>
+        {
+            cfg.AddConsumer<TestConsumer>();
+        });
+
         builder.Services.AddDomainServices();
         builder.Services.AddAutoMapper(typeof(FluxMappingProfile));
 
@@ -95,6 +100,8 @@ public class Program
         builder.AddKeycloakBearerAuthenticationValidator<KeycloakConfigMind>(serviceName: Services.Keycloak);
 
         builder.Services.AddMindAuthenticationServices();
+
+        builder.Services.AddTestServices();
 
         var app = builder.Build();
 

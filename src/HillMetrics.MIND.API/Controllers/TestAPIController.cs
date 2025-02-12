@@ -1,6 +1,8 @@
 ﻿using HillMetrics.Core.API.Responses;
 using HillMetrics.MIND.API.Contracts.Responses.Tests;
 using HillMetrics.MIND.API.Endpoints;
+using HillMetrics.MIND.API.Tests;
+using MassTransit;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -10,9 +12,17 @@ namespace HillMetrics.MIND.API.Controllers;
 
 [Route("api/v{v:apiVersion}"), AllowAnonymous]
 //[EnableRateLimiting("allow5000requestsPerSecond_fixed")]
-public class TestAPIController(IMediator mediator) : BaseHillMetricsController(mediator)
+public class TestAPIController: BaseHillMetricsController
 {
-    [AllowAnonymous]
+    private readonly IBus _bus;
+    private readonly IConsumerDataSingleton _consumerDataSingleton;
+
+    public TestAPIController(IMediator mediator, IBus bus, IConsumerDataSingleton consumerDataSingleton) : base(mediator)
+    {
+        _bus = bus;
+        _consumerDataSingleton = consumerDataSingleton;
+    }
+
     [DisableRateLimiting]
     [HttpGet(InternalRoutes.Test.Get)]
     public async Task<ActionResult<TestResponse>> GetAsync()
@@ -20,7 +30,6 @@ public class TestAPIController(IMediator mediator) : BaseHillMetricsController(m
         return new TestResponse(new TestValue() { TestString = "Hello World", DateTime = DateTime.Now });
     }
 
-    [AllowAnonymous]
     [HttpGet(InternalRoutes.Test.Error)]
     public async Task<ActionResult<TestResponse>> GetAsyncResultError()
     {
@@ -34,5 +43,21 @@ public class TestAPIController(IMediator mediator) : BaseHillMetricsController(m
     {
         //in case of failure
         return new TestResponse(new TestValue() { TestString = "Hello World", DateTime = DateTime.Now });
+    }
+
+    [AllowAnonymous]
+    [HttpGet("api/rabbitmq/sendmessage")]
+    public async Task<IActionResult> TestRabbitMq(string message)
+    {
+        //in case of failure
+        await _bus.Publish(new TestConsumerEvent(message));
+        return Ok("Message sent");
+    }
+
+    [AllowAnonymous]
+    [HttpGet("api/rabbitmq/readmessage")]
+    public async Task<IActionResult> ReadRabbitMqMsg()
+    {
+        return Ok(_consumerDataSingleton.Message);
     }
 }
