@@ -2,35 +2,26 @@
 //using Asp.Versioning;
 using Asp.Versioning;
 using HillMetrics.Audit.Infrastructure.Database;
-using HillMetrics.Audit.Infrastructure.Database.Extensions;
-using HillMetrics.Core;
 using HillMetrics.Core.API;
 using HillMetrics.Core.API.Convention;
 using HillMetrics.Core.API.Extensions;
 using HillMetrics.Core.Authentication;
-using HillMetrics.Core.Common.Email;
 using HillMetrics.Core.Flux.Extension;
-using HillMetrics.Core.Mediator.Extensions;
-using HillMetrics.Core.Monitoring.Logging;
-using HillMetrics.Core.Storage.Extensions;
 using HillMetrics.MIND.API.Converter;
 using HillMetrics.MIND.API.Mappers;
-using HillMetrics.MIND.Domain;
 using HillMetrics.MIND.Infrastructure;
 using HillMetrics.Normalized.Domain.Contracts.Providing.Flux.Cqrs.Get;
 using HillMetrics.Normalized.Domain.Extensions;
 using HillMetrics.Normalized.Domain.UseCase.Providing.Flux;
 using HillMetrics.Normalized.Infrastructure.Database.Database;
-using HillMetrics.Normalized.Infrastructure.Database.Extensions;
 using HillMetrics.Orchestrator.ServicesNames;
 using Microsoft.OpenApi.Models;
 using System.Text.Json.Serialization;
-using static HillMetrics.Normalized.Domain.UseCase.Market.MarketNavValidator;
 
 
 namespace HillMetrics.MIND.API;
 
-public class Program
+public partial class Program
 {
     public static void Main(string[] args)
     {
@@ -46,7 +37,8 @@ public class Program
         // Add services to the container.
 
         //Core services
-        var logger = builder.ConfigureCommonFluxService("HillMetrics.MIND.API", typeof(SearchFluxHandler), typeof(SearchFluxQuery));
+        var logger = builder.ConfigureCommonFluxService("HillMetrics.MIND.API", typeof(SearchFluxHandler), typeof(SearchFluxQuery), _ => { });
+
         builder.Services.AddDomainServices();
         builder.Services.AddAutoMapper(typeof(FluxMappingProfile));
 
