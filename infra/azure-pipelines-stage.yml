@@ -16,6 +16,9 @@ resources:
   - repository: Audit
     type: git
     name: HM/HillMetrics.Audit
+  - repository: Batchs
+    type: git
+    name: HM/HillMetrics.Batchs
 
 variables:
   dockerRegistryServiceConnection: 'hillm-stage-acr'
@@ -45,6 +48,8 @@ stages:
     - checkout: Orchestrator
       fetchDepth: 0 
     - checkout: Audit
+      fetchDepth: 0 
+    - checkout: Batchs
       fetchDepth: 0 
 
     - task: SonarCloudPrepare@3
@@ -79,6 +84,7 @@ stages:
     - checkout: FinancialData
     - checkout: Orchestrator
     - checkout: Audit
+    - checkout: Batchs
 
     - task: Docker@2
       displayName: Build and push an image to container registry
