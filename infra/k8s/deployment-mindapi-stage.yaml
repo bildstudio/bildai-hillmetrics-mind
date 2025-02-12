@@ -122,6 +122,9 @@ spec:
           objectName: connectionstrings-auditdb
           objectType: secret
         - |
+          objectName: connectionstrings-rabbitmq
+          objectType: secret
+        - |
           objectName: aspnetcore-environment
           objectType: secret
         - |
