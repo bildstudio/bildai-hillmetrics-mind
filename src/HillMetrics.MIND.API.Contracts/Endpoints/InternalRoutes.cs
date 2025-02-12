@@ -19,5 +19,10 @@
             public const string LogoutCallback = "auth/logoutcallback";
             public const string Refresh = "auth/refresh";
         }
+
+        public static class Flux
+        {
+            public const string Get = "flux";
+        }
     }
 }

@@ -6,4 +6,9 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\HillMetrics.Core\src\HillMetrics.Core.Storage\HillMetrics.Core.Storage.csproj" />
+    <ProjectReference Include="..\..\..\HillMetrics.FinancialData\src\HillMetrics.Normalized.Domain.Contracts\HillMetrics.Normalized.Domain.Contracts.csproj" />
+  </ItemGroup>
+
 </Project>

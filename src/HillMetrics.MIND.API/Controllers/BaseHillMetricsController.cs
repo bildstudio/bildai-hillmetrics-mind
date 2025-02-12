@@ -7,7 +7,7 @@ namespace HillMetrics.MIND.API.Controllers;
 
 [Authorize]
 [ApiController]
-[Route("api/v{v:apiVersion}")]
+[Route("api/v{v:apiVersion}/[controller]")]
 public class BaseHillMetricsController : ControllerBase
 {
     protected readonly IMediator Mediator;
