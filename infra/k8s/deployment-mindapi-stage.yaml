@@ -89,6 +89,8 @@ spec:
       objectName: connectionstrings-financialnormalizeddb
     - key: ConnectionStrings__AuditDb
       objectName: connectionstrings-auditdb
+    - key: ConnectionStrings__RabbitMq
+      objectName: connectionstrings-rabbitmq
     - key: ASPNETCORE_ENVIRONMENT
       objectName: aspnetcore-environment
     - key: Keycloak__Endpoint
