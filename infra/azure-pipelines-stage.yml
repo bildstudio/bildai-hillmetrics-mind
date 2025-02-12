@@ -1,0 +1,115 @@
+trigger:
+- dev
+
+resources:
+  repositories:
+  - repository: self
+  - repository: Core
+    type: git
+    name: HM/HillMetrics.Core
+  - repository: FinancialData
+    type: git
+    name: HM/HillMetrics.FinancialData
+  - repository: Orchestrator
+    type: git
+    name: HM/HillMetrics.Orchestrator
+  - repository: Audit
+    type: git
+    name: HM/HillMetrics.Audit
+  - repository: Batchs
+    type: git
+    name: HM/HillMetrics.Batchs
+
+variables:
+  dockerRegistryServiceConnection: 'hillm-stage-acr'
+  imageRepository: 'hillm-stage/mindapi'
+  containerRegistry: 'crhillmstage.azurecr.io'
+  dockerfilePath: '$(Build.SourcesDirectory)/$(Build.Repository.Name)/infra/Dockerfile'
+  tag: '$(Build.BuildId)'
+
+  # Agent VM image name
+  vmImageName: 'ubuntu-latest'
+
+stages:
+- stage: sonar
+  displayName: Sonar Analysis
+  jobs:
+  - job: sonar
+    displayName: Sonar Analysis
+    pool:
+      vmImage: $(vmImageName)
+    steps:
+    - checkout: self
+      fetchDepth: 0
+    - checkout: Core
+      fetchDepth: 0
+    - checkout: FinancialData
+      fetchDepth: 0
+    - checkout: Orchestrator
+      fetchDepth: 0 
+    - checkout: Audit
+      fetchDepth: 0 
+    - checkout: Batchs
+      fetchDepth: 0 
+
+    - task: SonarCloudPrepare@3
+      inputs:
+        SonarQube: 'SonarCloud'
+        organization: 'hillmetrics'
+        scannerMode: 'dotnet'
+        projectKey: 'HillMetrics_HillMetrics.MIND'
+        projectName: 'HillMetrics.MIND'
+
+    - task: DotNetCoreCLI@2
+      inputs:
+        command: 'build'
+        projects: '$(Build.SourcesDirectory)/$(Build.Repository.Name)/HillMetrics.MIND.sln'
+        arguments: '--configuration=release'
+        
+    - task: SonarCloudAnalyze@3
+
+    - task: SonarCloudPublish@3
+
+- stage: staging
+  displayName: Build and Deploy Staging
+  condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))
+  jobs:
+  - job: staging
+    displayName: Build and Deploy Staging
+    pool:
+      vmImage: $(vmImageName)
+    steps:
+    - checkout: self
+    - checkout: Core
+    - checkout: FinancialData
+    - checkout: Orchestrator
+    - checkout: Audit
+    - checkout: Batchs
+
+    - task: Docker@2
+      displayName: Build and push an image to container registry
+      inputs:
+        command: buildAndPush
+        repository: $(imageRepository)
+        dockerfile: $(dockerfilePath)
+        buildContext: '$(Build.SourcesDirectory)'
+        containerRegistry: $(dockerRegistryServiceConnection)
+        tags: |
+          $(tag)
+          latest
+
+    - task: KubeloginInstaller@0
+      inputs:
+        kubeloginVersion: 'latest'
+
+    - task: KubernetesManifest@1
+      inputs:
+        action: 'deploy'
+        connectionType: 'azureResourceManager'
+        azureSubscriptionConnection: 'hillmstage-cicd'
+        azureResourceGroup: 'rg-hillm-stage'
+        kubernetesCluster: 'aks-hillm-stage'
+        namespace: 'hillm-stage'
+        manifests: '$(Build.SourcesDirectory)/$(Build.Repository.Name)/infra/k8s/deployment-mindapi-stage.yaml'
+        containers: |
+          $(containerRegistry)/$(imageRepository):$(tag)
