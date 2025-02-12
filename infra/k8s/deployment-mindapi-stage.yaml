@@ -91,6 +91,20 @@ spec:
       objectName: connectionstrings-auditdb
     - key: ASPNETCORE_ENVIRONMENT
       objectName: aspnetcore-environment
+    - key: Keycloak__Endpoint
+      objectName: keycloak-endpoint
+    - key: Keycloak__Realm
+      objectName: keycloak-realm
+    - key: Keycloak__Azure__ClientId
+      objectName: keycloak-azure-clientid
+    - key: Keycloak__Azure__ClientSecret
+      objectName: keycloak-azure-clientsecret
+    - key: Keycloak__Azure__PostLoginRedirectUrl
+      objectName: keycloak-azure-postloginredirecturl
+    - key: Keycloak__Azure__PostLogoutRedirectUrl
+      objectName: keycloak-azure-postlogoutredirecturl
+    - key: Keycloak__Azure__ProviderAlias
+      objectName: keycloak-azure-provideralias
     secretName: mindapi-env
     type: Opaque
   parameters:
@@ -107,5 +121,26 @@ spec:
           objectType: secret
         - |
           objectName: aspnetcore-environment
+          objectType: secret
+        - |
+          objectName: keycloak-endpoint
+          objectType: secret
+        - |
+          objectName: keycloak-realm
+          objectType: secret
+        - |
+          objectName: keycloak-azure-clientid
+          objectType: secret
+        - |
+          objectName: keycloak-azure-clientsecret
+          objectType: secret
+        - |
+          objectName: keycloak-azure-postloginredirecturl
+          objectType: secret
+        - |
+          objectName: keycloak-azure-postlogoutredirecturl
+          objectType: secret
+        - |
+          objectName: keycloak-azure-provideralias
           objectType: secret
     tenantId: 47650b84-ae6e-4206-82af-ebe7b3243aa2
