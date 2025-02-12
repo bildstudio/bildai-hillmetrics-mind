@@ -1,4 +1,6 @@
 ﻿using HillMetrics.Core.Mediator.Extensions;
+using HillMetrics.Normalized.Domain.Contracts.Providing.Flux.Cqrs.Get;
+using HillMetrics.Normalized.Domain.UseCase.Providing.Flux;
 using HillMetrics.Normalized.Infrastructure.Database.Extensions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
@@ -15,7 +17,9 @@ public static class DependencyInjection
             connectionString: builder.Configuration.GetConnectionString(connectionStringKey),
             lifetime: Microsoft.Extensions.DependencyInjection.ServiceLifetime.Scoped);
 
-        builder.Services.AddMediatRAndPipelineBehaviors(typeof(DependencyInjection).Assembly);
+        builder.Services.AddMediatRAndPipelineBehaviors([typeof(SearchFluxHandler).Assembly, typeof(SearchFluxQuery).Assembly ]);
+
+        builder.Services.AddMarketRepositories();
 
         return builder;
     }
