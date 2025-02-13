@@ -42,7 +42,7 @@ public class SourceController(IMediator mediator, IMapper mapper) : BaseHillMetr
     [HttpPost]
     public async Task<ActionResult<SourceResponse>> CreateSourceAsync(SourceCreateRequest request)
     {
-        var sourceCommand = new CreateSourceCommand(0, request.Name, request.Reliability, request.IsActive);
+        var sourceCommand = CreateSourceCommand.Create(request.Name, request.Reliability, request.IsActive);
 
         var result = await Mediator.Send(sourceCommand);
 
@@ -55,7 +55,7 @@ public class SourceController(IMediator mediator, IMapper mapper) : BaseHillMetr
     [HttpPut]
     public async Task<ActionResult<SourceResponse>> EditSourceAsync(int sourceId, SourceCreateRequest request)
     {
-        var sourceCommand = new CreateSourceCommand(sourceId, request.Name, request.Reliability, request.IsActive);
+        var sourceCommand = CreateSourceCommand.Edit(sourceId, request.Name, request.Reliability, request.IsActive);
 
         var result = await Mediator.Send(sourceCommand);
 

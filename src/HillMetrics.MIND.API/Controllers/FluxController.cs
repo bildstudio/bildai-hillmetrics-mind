@@ -53,7 +53,7 @@ namespace HillMetrics.MIND.API.Controllers
             if (result.IsFailed)
                 return new ErrorApiActionResult(result.Errors.ToApiResult());
 
-            return mapper.Map<FluxResponse>(result.Value);
+            return mapper.Map<FluxResponse>(result.Value.Flux);
         }
 
         /// <summary>
@@ -118,6 +118,9 @@ namespace HillMetrics.MIND.API.Controllers
 
             if (fluxRequest.SourceId is not null)
                 fluxCommand = fluxCommand.WithSourceProvider(fluxRequest.SourceId.Value);
+
+            if (fluxRequest.FluxFinancialType is not null)
+                fluxCommand = fluxCommand.WithFluxFinancialType(fluxRequest.FluxFinancialType.Value);
 
             if (fluxRequest.ProcessTriggerPeriod is not null)
                 fluxCommand = fluxCommand.WithProcessTriggerPeriod(mapper.Map<TriggerPeriodDto, TriggerPeriod>(fluxRequest.ProcessTriggerPeriod));
@@ -284,7 +287,7 @@ namespace HillMetrics.MIND.API.Controllers
         [HttpGet("/fetching-history/{fetchingHistoryId}")]
         public async Task<ActionResult<ApiResponseBase<FluxFetchingResponse>>> GetFetchingHistoryAsync(int fetchingHistoryId)
         {
-            var result = await Mediator.Send(new FluxFetchingQuery(fetchingHistoryId));
+            var result = await Mediator.Send(new FluxFetchHistoryQuery(fetchingHistoryId));
 
             if (result.IsFailed)
                 return new ErrorApiActionResult(result.Errors.ToApiResult());

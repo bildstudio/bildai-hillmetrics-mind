@@ -17,6 +17,7 @@ using HillMetrics.Normalized.Infrastructure.Database.Database;
 using HillMetrics.Orchestrator.ServicesNames;
 using Microsoft.OpenApi.Models;
 using System.Text.Json.Serialization;
+using static HillMetrics.Normalized.Domain.UseCase.Market.MarketPriceValidator;
 
 
 namespace HillMetrics.MIND.API;
