@@ -8,6 +8,7 @@ using HillMetrics.Core.API.Extensions;
 using HillMetrics.Core.Authentication;
 using HillMetrics.Core.Flux.Extension;
 using HillMetrics.MIND.API.Converter;
+using HillMetrics.MIND.API.Extensions;
 using HillMetrics.MIND.API.Mappers;
 using HillMetrics.MIND.Infrastructure;
 using HillMetrics.Normalized.Domain.Contracts.Providing.Flux.Cqrs.Get;
@@ -15,7 +16,9 @@ using HillMetrics.Normalized.Domain.Extensions;
 using HillMetrics.Normalized.Domain.UseCase.Providing.Flux;
 using HillMetrics.Normalized.Infrastructure.Database.Database;
 using HillMetrics.Orchestrator.ServicesNames;
+using Microsoft.Extensions.Options;
 using Microsoft.OpenApi.Models;
+using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Text.Json.Serialization;
 
 
@@ -47,6 +50,9 @@ public partial class Program
         //ADD Aspire discover/open telemetry
         //builder.AddServiceDefaults();
 
+        //add cors
+        builder.AddHillMetricsCorsSettings();
+
         //Set default binding and responses for datetimes to be UTC
         builder.Services.AddControllers(options =>
         {
@@ -69,15 +75,9 @@ public partial class Program
 
         // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
         builder.Services.AddEndpointsApiExplorer();
-        builder.Services.AddSwaggerGen(c =>
-        {
-            c.SwaggerDoc("v1", new OpenApiInfo { Title = "API", Version = "v1" });
-            c.UseInlineDefinitionsForEnums();
-
-            var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
-            var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
-            c.IncludeXmlComments(xmlPath);
-        });
+        builder.Services.AddSwaggerGen();
+        //configure swagger options to have authentication option in swagger UI, xml comments, etc
+        builder.Services.AddTransient<IConfigureOptions<SwaggerGenOptions>, ConfigureSwaggerOptions>();
 
         builder.Services.AddHillMetricsApiVersioning(new ApiVersion(1), [new UrlSegmentApiVersionReader()]);
 
@@ -87,16 +87,14 @@ public partial class Program
         builder.AddKeycloakBearerAuthenticationValidator<KeycloakConfigMind>(serviceName: Services.Keycloak);
 
         builder.Services.AddMindAuthenticationServices();
-
         var app = builder.Build();
+
+        app.UseHillMetricsCorsSettings();
 
         app.UseHillMetricsRateLimiters();
 
         app.UseHillMetricsApiExceptionHandlerMiddleware();
 
-        // Configure the HTTP request pipeline.
-        //if (app.Environment.IsDevelopment())
-        //{
         app.UseSwagger();
         app.UseSwaggerUI(options =>
         {
@@ -105,7 +103,20 @@ public partial class Program
             {
                 options.SwaggerEndpoint($"/swagger/{description.GroupName}/swagger.json", description.GroupName.ToUpperInvariant());
             }
+
+            KeycloakConfigMind config = app.Services.GetRequiredService<IOptions<KeycloakConfigMind>>().Value;
+            if (config.Azure != null)
+            {
+                options.OAuthClientId(config.Azure.ClientId);
+                options.OAuthAppName("Swagger UI - Azure AD authentication");
+                options.OAuthUsePkce();
+                options.OAuthAdditionalQueryStringParams(new Dictionary<string, string>
+                {
+                    { "kc_idp_hint", config.Azure.ProviderAlias }
+                });
+            }
         });
+
 
         app.UseHttpsRedirection();
 

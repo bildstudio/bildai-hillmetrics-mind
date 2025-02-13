@@ -7,6 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\..\HillMetrics.Core\src\HillMetrics.Core.API\HillMetrics.Core.API.csproj" />
     <ProjectReference Include="..\..\..\HillMetrics.Core\src\HillMetrics.Core.Authentication\HillMetrics.Core.Authentication\HillMetrics.Core.Authentication.csproj" />
   </ItemGroup>
 
