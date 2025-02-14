@@ -43,9 +43,9 @@ namespace HillMetrics.MIND.API.Extensions
         {
             var info = new OpenApiInfo
             {
-                Title = "Hill Metrics BFF API",
+                Title = "HillMetrics MIND API",
                 Version = description.ApiVersion.ToString(),
-                Description = "API for usage only by HillMetrics Frontend application"
+                Description = "API for usage by the BackOffice App"
             };
             return info;
         }
