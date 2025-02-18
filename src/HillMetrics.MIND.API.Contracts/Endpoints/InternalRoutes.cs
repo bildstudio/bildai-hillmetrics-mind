@@ -24,5 +24,10 @@
         {
             public const string Get = "flux";
         }
+
+        public static class Llm
+        {
+            public const string GET = "llm-models";
+        }
     }
 }
