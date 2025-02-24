@@ -1,4 +1,5 @@
-﻿using HillMetrics.MIND.API.Contracts.Responses.Flux;
+﻿using HillMetrics.Core.Financial;
+using HillMetrics.MIND.API.Contracts.Responses.Flux;
 using HillMetrics.Normalized.Domain.Contracts.Providing.Flux;
 using System;
 using System.Collections.Generic;
@@ -19,6 +20,21 @@ namespace HillMetrics.MIND.API.Contracts.Requests.Flux
         /// The flux name
         /// </summary>
         public string? FluxName { get; set; }
+
+        /// <summary>
+        /// The flux description
+        /// </summary>
+        public string? FluxDescription { get; set; }
+
+        /// <summary>
+        /// Some comment
+        /// </summary>
+        public string? FluxComment { get; set; }
+
+        /// <summary>
+        /// The financial type of the flux
+        /// </summary>
+        public FinancialType? FluxFinancialType { get; set; }
 
         /// <summary>
         /// Represents the state of a flux.
