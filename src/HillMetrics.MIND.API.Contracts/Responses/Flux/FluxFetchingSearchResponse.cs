@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace HillMetrics.MIND.API.Contracts.Responses.Flux
 {
-    public class FluxFetchingSearchDto
+    public class FluxFetchingSearchResponse
     {
         public int Id { get; set; }
         public int FluxId { get; set; }

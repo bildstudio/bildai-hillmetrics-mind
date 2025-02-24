@@ -20,6 +20,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Text.Json.Serialization;
+using static HillMetrics.Normalized.Domain.UseCase.Market.Price.PriceCommandValidator;
 
 
 namespace HillMetrics.MIND.API;
@@ -43,7 +44,10 @@ public partial class Program
         var logger = builder.ConfigureCommonFluxService("HillMetrics.MIND.API", typeof(SearchFluxHandler), typeof(SearchFluxQuery), _ => { });
 
         builder.Services.AddDomainServices();
+
         builder.Services.AddAutoMapper(typeof(FluxMappingProfile));
+        builder.Services.AddAutoMapper(typeof(GicsMappingProfile));
+
 
         //var logger = builder.InitAndAddHillMetricsLogger("HillMetrics.MIND.API");
 

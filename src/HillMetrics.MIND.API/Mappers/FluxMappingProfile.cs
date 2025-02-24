@@ -22,23 +22,12 @@ namespace HillMetrics.MIND.API.Mappers
             CreateMap<SourceProvider, SourceProviderDto>().ReverseMap();
             CreateMap<FluxProcessingHistory, FluxProcessingHistoryDto>().ReverseMap();
             CreateMap<FluxProcessingContentHistory, FluxProcessingContentHistoryDto>().ReverseMap();
-            CreateMap<FluxIdentificationHistory, FluxIdentificationHistoryDto>().ReverseMap();
-            CreateMap<FluxIdentificationContentHistory, FluxIdentificationContentHistoryDto>().ReverseMap();
+            CreateMap<FluxFetchingHistory, FluxIdentificationHistoryDto>().ReverseMap();
+            CreateMap<FluxFetchingContentHistory, FluxIdentificationContentHistoryDto>().ReverseMap();
             CreateMap<FluxErrors, FluxErrorsDto>().ReverseMap();
             CreateMap<FluxFinancialDataPoint, FluxFinancialDataPointDto>().ReverseMap();
 
             CreateMap<FluxMetadataDto, FluxMetadata>().IncludeAllDerived();
-            //CreateMap<FluxMetadataDto, FluxMetadata>()
-            //    .Include<FluxMetadataMailDto, FluxMetadataMail>()
-            //    .Include<FluxMetadataDownloadDto, FluxMetadataDownload>()
-            //    .Include<FluxMetadataApiDto, FluxMetadataApi>()
-            //    .Include<FluxMetadataFileLocationDto, FluxMetadataFileLocation>();
-
-            //CreateMap<FluxMetadata, FluxMetadataDto>()
-            //    .Include<FluxMetadataMail, FluxMetadataMailDto>()
-            //    .Include<FluxMetadataDownload, FluxMetadataDownloadDto>()
-            //    .Include<FluxMetadataApi, FluxMetadataApiDto>()
-            //    .Include<FluxMetadataFileLocation, FluxMetadataFileLocationDto>();
 
             CreateMap<FluxMetadata, FluxMetadataDto>().IncludeAllDerived();
             CreateMap<FluxMetadataMail, FluxMetadataMailDto>().ReverseMap();
@@ -54,17 +43,17 @@ namespace HillMetrics.MIND.API.Mappers
             CreateMap<SearchFluxQueryItemResult, FluxSearchResponse>();
             
             CreateMap<FluxFetchingSearchRequest, SearchFluxFetchingQuery>();
-            CreateMap<SearchFluxFetchingQueryItemResult, FluxFetchingSearchDto>();
+            CreateMap<SearchFluxFetchingQueryItemResult, FluxFetchingSearchResponse>();
             
             CreateMap<FluxProcessingSearchRequest, SearchFluxProcessingFluxQuery>();
-            CreateMap<SearchFluxProcessingQueryItemResult, FluxProcessingSearchDto>();
+            CreateMap<SearchFluxProcessingQueryItemResult, FluxProcessingSearchReponse>();
 
             CreateMap<FluxErrorSearchRequest, SearchFluxErrorQuery>();
             CreateMap<SearchFluxErrrorQueryItemResult, FluxErrorSearchDto>();
             
-            CreateMap<FluxFetchingQueryResult, FluxFetchingResponse>();
-            CreateMap<FluxIdentificationHistory, FluxFetchingHistoryResponse>();
-            CreateMap<FluxIdentificationContentHistory, FluxFetchingContentHistoryResponse>();
+            CreateMap<FluxFetchHistoryQueryResult, FluxFetchingResponse>();
+            CreateMap<FluxFetchingHistory, FluxFetchingHistoryResponse>();
+            CreateMap<FluxFetchingContentHistory, FluxFetchingContentHistoryResponse>();
 
             CreateMap<FluxProcessingQueryResult, FluxProcessingResponse>();
             CreateMap<FluxProcessingHistory, FluxProcessingHistoryResponse>();
@@ -72,6 +61,8 @@ namespace HillMetrics.MIND.API.Mappers
 
             CreateMap<FluxErrorQueryResult, FluxErrorResponse>();
             CreateMap<FluxErrors, FluxErrorHistoryResponse>();
+            
+            
         }
     }
 
