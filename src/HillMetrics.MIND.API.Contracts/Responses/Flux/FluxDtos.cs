@@ -16,11 +16,13 @@ namespace HillMetrics.MIND.API.Contracts.Responses.Flux
         public int Id { get; set; }
         public FluxType FluxType { get; set; }
         public string FluxName { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public string? Comment { get; set; }
         public FluxState FluxState { get; set; }
         public TriggerPeriodDto FetchTriggerPeriod { get; set; } = new TriggerPeriodDto();
         public TriggerPeriodDto? ProcessTriggerPeriod { get; set; }
         public bool CanHaveConcurrencyMultiFetching { get; set; }
-        public FluxMetadataDto FluxMetadata { get; set; }
+        public FluxMetadataDto FluxMetadata { get; set; } = null!;
         public SourceProviderDto? Source { get; set; }
         public List<FluxProcessingHistoryDto> FluxProcessingHistory { get; set; } = new();
         public List<FluxIdentificationHistoryDto> FluxIdentificationHistory { get; set; } = new();
@@ -114,6 +116,7 @@ namespace HillMetrics.MIND.API.Contracts.Responses.Flux
     public abstract class FluxMetadataDto
     {
         public int FluxId { get; set; }
+        public Dictionary<string, object> Metadata { get; set; } = new();
     }
 
     public class FluxMetadataMailDto : FluxMetadataDto

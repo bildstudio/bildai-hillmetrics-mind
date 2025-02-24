@@ -22,6 +22,16 @@ namespace HillMetrics.MIND.API.Contracts.Requests.Flux
         public string? FluxName { get; set; }
 
         /// <summary>
+        /// The flux description
+        /// </summary>
+        public string? FluxDescription { get; set; }
+
+        /// <summary>
+        /// Some comment
+        /// </summary>
+        public string? FluxComment { get; set; }
+
+        /// <summary>
         /// The financial type of the flux
         /// </summary>
         public FinancialType? FluxFinancialType { get; set; }
