@@ -11,8 +11,4 @@
     <ProjectReference Include="..\..\..\HillMetrics.FinancialData\src\HillMetrics.Normalized.Domain.Contracts\HillMetrics.Normalized.Domain.Contracts.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Requests\Llm\" />
-  </ItemGroup>
-
 </Project>

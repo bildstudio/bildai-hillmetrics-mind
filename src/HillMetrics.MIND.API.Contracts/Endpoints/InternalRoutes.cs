@@ -27,7 +27,16 @@
 
         public static class Llm
         {
-            public const string GET = "llm-models";
+            public const string Get = "llm/models";
+
+            public static class Prompts
+            {
+                public const string Get = "llm/prompts/{promptId}";
+                public const string Create = "llm/prompts";
+                public const string Update = "llm/prompts/{promptId}";
+                public const string Delete = "llm/prompts/{promptId}";
+                public const string Search = "llm/prompts/search";
+            }
         }
     }
 }

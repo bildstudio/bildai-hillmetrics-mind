@@ -1,4 +1,6 @@
-﻿namespace HillMetrics.MIND.API.Contracts.Responses.Llm
+﻿using System.Text.Json.Serialization;
+
+namespace HillMetrics.MIND.API.Contracts.Responses.Llm
 {
     public class AiLlmHistoryEntityDto
     {
@@ -17,6 +19,8 @@
         /// <summary>
         /// The context in which the LLM was used
         /// </summary>
-        public string? Context { get; set; }
+
+        [JsonConverter(typeof(JsonStringEnumConverter))]
+        public Core.AiLlmContext? Context { get; set; }
     }
 }
