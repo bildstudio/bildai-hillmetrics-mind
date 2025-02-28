@@ -17,6 +17,7 @@ using HillMetrics.Normalized.Domain.UseCase.Market.Price;
 using HillMetrics.Normalized.Domain.UseCase.Providing.Flux;
 using HillMetrics.Normalized.Infrastructure.Database.Database;
 using HillMetrics.Orchestrator.ServicesNames;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Options;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Text.Json.Serialization;
@@ -120,6 +121,7 @@ public partial class Program
             }
         });
 
+        //app.Services.GetKeyedServices<IChatClient>(KeyedService.AnyKey);
 
         app.UseHttpsRedirection();
 
