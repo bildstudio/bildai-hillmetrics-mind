@@ -7,8 +7,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\..\HillMetrics.Core\src\HillMetrics.Core.AI\HillMetrics.Core.AI.csproj" />
     <ProjectReference Include="..\..\..\HillMetrics.Core\src\HillMetrics.Core.API\HillMetrics.Core.API.csproj" />
     <ProjectReference Include="..\..\..\HillMetrics.Core\src\HillMetrics.Core.Authentication\HillMetrics.Core.Authentication\HillMetrics.Core.Authentication.csproj" />
+    <ProjectReference Include="..\..\..\HillMetrics.FinancialData\src\HillMetrics.Normalized.Domain.Contracts\HillMetrics.Normalized.Domain.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\HillMetrics.FinancialData\src\HillMetrics.Normalized.Infrastructure.Database\HillMetrics.Normalized.Infrastructure.Database.csproj" />
   </ItemGroup>
 
 </Project>

@@ -16,6 +16,7 @@ using HillMetrics.Normalized.Domain.Extensions;
 using HillMetrics.Normalized.Domain.UseCase.Providing.Flux;
 using HillMetrics.Normalized.Infrastructure.Database.Database;
 using HillMetrics.Orchestrator.ServicesNames;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Options;
 using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.SwaggerGen;
@@ -121,6 +122,7 @@ public partial class Program
             }
         });
 
+        //app.Services.GetKeyedServices<IChatClient>(KeyedService.AnyKey);
 
         app.UseHttpsRedirection();
 
