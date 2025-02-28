@@ -25,6 +25,13 @@
             public const string Get = "flux";
         }
 
+        public static class Sector
+        {
+            public const string Get = "";
+            public const string GetById = "{id}";
+            public const string Create = "";
+        }
+
         public static class Llm
         {
             public const string Get = "llm/models";
