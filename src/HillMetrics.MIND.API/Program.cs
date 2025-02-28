@@ -13,14 +13,13 @@ using HillMetrics.MIND.API.Mappers;
 using HillMetrics.MIND.Infrastructure;
 using HillMetrics.Normalized.Domain.Contracts.Providing.Flux.Cqrs.Get;
 using HillMetrics.Normalized.Domain.Extensions;
+using HillMetrics.Normalized.Domain.UseCase.Market.Price;
 using HillMetrics.Normalized.Domain.UseCase.Providing.Flux;
 using HillMetrics.Normalized.Infrastructure.Database.Database;
 using HillMetrics.Orchestrator.ServicesNames;
 using Microsoft.Extensions.Options;
-using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Text.Json.Serialization;
-using static HillMetrics.Normalized.Domain.UseCase.Market.Price.PriceCommandValidator;
 
 
 namespace HillMetrics.MIND.API;
@@ -41,7 +40,7 @@ public partial class Program
         // Add services to the container.
 
         //Core services
-        var logger = builder.ConfigureCommonFluxService("HillMetrics.MIND.API", typeof(SearchFluxHandler), typeof(SearchFluxQuery), _ => { });
+        var logger = builder.ConfigureCommonFluxService("HillMetrics.MIND.API", typeof(Program), typeof(PriceBondHandler), _ => { });
 
         builder.Services.AddDomainServices();
 
