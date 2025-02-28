@@ -8,6 +8,8 @@ using HillMetrics.Normalized.Domain.Contracts.Providing.Flux.Cqrs.Get;
 using HillMetrics.MIND.API.Contracts.Requests.Source;
 using HillMetrics.Normalized.Domain.Contracts.Providing.Source.Cqrs.Get;
 using HillMetrics.MIND.API.Contracts.Responses.Source;
+using HillMetrics.Normalized.Domain.Contracts.Providing.Flux.Cqrs.Process;
+using HillMetrics.Normalized.Domain.Contracts.Providing.Flux.Cqrs.Collect;
 
 namespace HillMetrics.MIND.API.Mappers
 {
@@ -26,10 +28,23 @@ namespace HillMetrics.MIND.API.Mappers
             CreateMap<FluxFetchingContentHistory, FluxIdentificationContentHistoryDto>().ReverseMap();
             CreateMap<FluxErrors, FluxErrorsDto>().ReverseMap();
             CreateMap<FluxFinancialDataPoint, FluxFinancialDataPointDto>().ReverseMap();
+            
+            CreateMap<FetchFluxCommandResult, FluxForceFetchResponse>().ReverseMap();
+            CreateMap<ProcessFluxCommandResult, FluxForceProcessResponse>().ReverseMap();
 
-            CreateMap<FluxMetadataDto, FluxMetadata>().IncludeAllDerived();
+            CreateMap<FluxMetadataDto, FluxMetadata>()
+                .Include<FluxMetadataMailDto, FluxMetadataMail>()
+                .Include<FluxMetadataDownloadDto, FluxMetadataDownload>()
+                .Include<FluxMetadataApiDto, FluxMetadataApi>()
+                .Include<FluxMetadataFileLocationDto, FluxMetadataFileLocation>();
 
-            CreateMap<FluxMetadata, FluxMetadataDto>().IncludeAllDerived();
+            //CreateMap<FluxMetadata, FluxMetadataDto>().IncludeAllDerived();
+            CreateMap<FluxMetadata, FluxMetadataDto>()
+                .Include<FluxMetadataMail, FluxMetadataMailDto>()
+                .Include<FluxMetadataDownload, FluxMetadataDownloadDto>()
+                .Include<FluxMetadataApi, FluxMetadataApiDto>()
+                .Include<FluxMetadataFileLocation, FluxMetadataFileLocationDto>();
+
             CreateMap<FluxMetadataMail, FluxMetadataMailDto>().ReverseMap();
             CreateMap<FluxMetadataDownload, FluxMetadataDownloadDto>().ReverseMap();
             CreateMap<FluxMetadataApi, FluxMetadataApiDto>().ReverseMap();

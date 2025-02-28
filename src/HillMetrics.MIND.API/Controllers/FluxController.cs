@@ -1,18 +1,17 @@
 ﻿
 using AutoMapper;
-using HillMetrics.Core.API.Extensions;
 using HillMetrics.Core.API.Responses;
-using HillMetrics.Core.Common;
+using HillMetrics.Core.Common.Email;
 using HillMetrics.Core.Time.Trigger;
 using HillMetrics.MIND.API.Contracts.Requests.Flux;
 using HillMetrics.MIND.API.Contracts.Responses;
 using HillMetrics.MIND.API.Contracts.Responses.Flux;
-using HillMetrics.Normalized.Domain.Contracts.Providing;
 using HillMetrics.Normalized.Domain.Contracts.Providing.Flux;
+using HillMetrics.Normalized.Domain.Contracts.Providing.Flux.Cqrs.Collect;
 using HillMetrics.Normalized.Domain.Contracts.Providing.Flux.Cqrs.Create;
 using HillMetrics.Normalized.Domain.Contracts.Providing.Flux.Cqrs.DataPointIdentification;
 using HillMetrics.Normalized.Domain.Contracts.Providing.Flux.Cqrs.Get;
-using HillMetrics.Normalized.Domain.UseCase.Providing.Flux;
+using HillMetrics.Normalized.Domain.Contracts.Providing.Flux.Cqrs.Process;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -147,6 +146,43 @@ namespace HillMetrics.MIND.API.Controllers
                 fluxCommand = fluxCommand.WithConcurrencyMultiFetching(fluxRequest.CanHaveConcurrencyMultiFetching.Value);
 
             return fluxCommand;
+        }
+
+        /// <summary>
+        /// Force the fetch of a flux
+        /// </summary>
+        /// <param name="id">The flux identifier</param>
+        /// <returns></returns>
+        [HttpGet("{id}/force-fetch")]
+        public async Task<ActionResult<FetchFluxCommandResult>> ForceFetch(int id)
+        {
+            var command = FetchFluxCommand.Create(id, Task.FromResult(new List<Mail>()));
+            command.CalledManually = true;
+            var result = await mediator.Send(command);
+
+            if (result.IsFailed)
+                return new ErrorApiActionResult(result.Errors.ToApiResult());
+
+            return mapper.Map<FetchFluxCommandResult>(result.Value);
+        }
+
+        /// <summary>
+        /// Force the process of a flux
+        /// </summary>
+        /// <param name="id">The flux identifier</param>
+        /// <returns></returns>
+        [HttpGet("{id}/force-process")]
+        public async Task<ActionResult<ProcessFluxCommandResult>> ForceProcess(int id)
+        {
+            var result = await mediator.Send(new ProcessFluxCommand() { 
+                FluxId = id,
+                CalledManually = true
+            });
+
+            if (result.IsFailed)
+                return new ErrorApiActionResult(result.Errors.ToApiResult());
+
+            return mapper.Map<ProcessFluxCommandResult>(result.Value);
         }
         #endregion
 
@@ -290,7 +326,7 @@ namespace HillMetrics.MIND.API.Controllers
         /// </summary>
         /// <param name="fetchingHistoryId">The fetching history identifier</param>
         /// <returns></returns>
-        [HttpGet("/fetching-history/{fetchingHistoryId}")]
+        [HttpGet("fetching-history/{fetchingHistoryId}")]
         public async Task<ActionResult<ApiResponseBase<FluxFetchingResponse>>> GetFetchingHistoryAsync(int fetchingHistoryId)
         {
             var result = await Mediator.Send(new FluxFetchHistoryQuery(fetchingHistoryId));
