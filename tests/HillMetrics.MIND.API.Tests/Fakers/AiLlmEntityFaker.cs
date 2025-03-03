@@ -1,4 +1,5 @@
 ﻿using Bogus;
+using HillMetrics.Core.AI;
 using HillMetrics.Normalized.Domain.Contracts.AI;
 using System;
 using System.Collections.Generic;
@@ -18,6 +19,7 @@ namespace HillMetrics.MIND.API.Tests.Fakers
             .RuleFor(s => s.DocumentationUrl, s => s.Internet.Url())
             .RuleFor(s => s.LogoUrl, s => s.Internet.Url())
             .RuleFor(s => s.Provider, s => s.Company.CompanyName())
+            .RuleFor(s => s.HostProvider, s => s.Random.Enum<AiProvider>())
             .RuleFor(s => s.IsActive, true)
             .RuleFor(s => s.Name, s => s.Name.Random.String())
             .RuleFor(s => s.History, set => new AiLlmHistoryEntityFaker(id + set.IndexFaker).Generate(historyEntities));
