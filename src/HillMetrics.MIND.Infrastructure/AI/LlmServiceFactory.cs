@@ -46,8 +46,8 @@ namespace HillMetrics.MIND.Infrastructure.AI
             await _semaphoreSlim.WaitAsync(cancellationToken);
             try
             {
-                if (_services.ContainsKey(llmId))
-                    return Result.Ok(_services[llmId]);
+                if (_services.TryGetValue(llmId, out ILlmService? value))
+                    return Result.Ok(value);
 
                 //try to build IllmService
 
