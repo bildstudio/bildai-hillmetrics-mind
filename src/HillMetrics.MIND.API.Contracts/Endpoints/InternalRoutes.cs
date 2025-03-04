@@ -35,6 +35,7 @@
         public static class Llm
         {
             public const string Get = "llm/models";
+            public const string ExtractData = "llm/extract-data";
 
             public static class Prompts
             {

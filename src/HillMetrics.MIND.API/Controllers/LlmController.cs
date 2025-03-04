@@ -116,5 +116,11 @@ namespace HillMetrics.MIND.API.Controllers
 
         //add method to get prompt content file data
         //add method to download prompt content data
+        [HttpPost(InternalRoutes.Llm.ExtractData)]
+        public async Task<ActionResult> ExtractDataAsync([FromForm]ExtractDataLlmRequest request)
+        {
+            //mediator call and wait for responses..
+            return Ok();
+        }
     }
 }
