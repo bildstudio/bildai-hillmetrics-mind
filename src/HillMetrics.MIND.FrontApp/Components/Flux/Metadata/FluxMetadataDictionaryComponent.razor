@@ -1,0 +1,166 @@
+@using MudBlazor
+@using System.Collections.Generic
+
+<MudCard Elevation="0" Outlined="true" Class="mb-3">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">Additional Metadata</MudText>
+        </CardHeaderContent>
+        <CardHeaderActions>
+            <MudTooltip Text="Custom key-value metadata for this flux">
+                <MudIcon Icon="@Icons.Material.Filled.Storage" Color="Color.Info" />
+            </MudTooltip>
+        </CardHeaderActions>
+    </MudCardHeader>
+    
+    <MudCardContent>
+        <MudGrid>
+            <MudItem xs="12">
+                @if (MetadataDictionary == null || !MetadataDictionary.Any())
+                {
+                    <MudAlert Severity="Severity.Info" Class="mb-2">No additional metadata defined.</MudAlert>
+                }
+                else
+                {
+                    <MudTable Items="@MetadataDictionary.ToList()" Hover="true" Dense="true" Class="mb-3">
+                        <HeaderContent>
+                            <MudTh>Key</MudTh>
+                            <MudTh>Value</MudTh>
+                            <MudTh Style="width: 80px;"></MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="Key">@context.Key</MudTd>
+                            <MudTd DataLabel="Value">@context.Value</MudTd>
+                            <MudTd>
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                                               Color="Color.Primary" OnClick="@(() => EditItem(context.Key))" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
+                                               Color="Color.Error" OnClick="@(() => RemoveItem(context.Key))" />
+                            </MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                }
+                
+                <MudButton Variant="Variant.Outlined" 
+                           StartIcon="@Icons.Material.Filled.Add" 
+                           Color="Color.Primary" 
+                           OnClick="@AddNewItem"
+                           Class="mt-2">
+                    Add Metadata
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+    </MudCardContent>
+</MudCard>
+
+<MudDialog @bind-IsVisible="dialogVisible" Options="dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(editingExistingItem ? "Edit Metadata" : "Add Metadata")</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudTextField @bind-Value="currentKey" Label="Key" Required="true" 
+                      ReadOnly="@editingExistingItem" Class="mb-3" />
+        <MudTextField @bind-Value="currentValue" Label="Value" Required="true" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" Color="Color.Secondary" OnClick="CancelDialog">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveItem" 
+                   Disabled="@(string.IsNullOrWhiteSpace(currentKey) || string.IsNullOrWhiteSpace(currentValue))">
+            Save
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter]
+    public Dictionary<string, object> MetadataDictionary { get; set; } = new();
+    
+    [Parameter]
+    public EventCallback<Dictionary<string, object>> MetadataDictionaryChanged { get; set; }
+    
+    private bool dialogVisible;
+    private DialogOptions dialogOptions = new() { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small };
+    private string currentKey = string.Empty;
+    private string currentValue = string.Empty;
+    private bool editingExistingItem = false;
+    
+    private void AddNewItem()
+    {
+        currentKey = string.Empty;
+        currentValue = string.Empty;
+        editingExistingItem = false;
+        dialogVisible = true;
+    }
+    
+    private void EditItem(string key)
+    {
+        if (MetadataDictionary.TryGetValue(key, out var value))
+        {
+            currentKey = key;
+            currentValue = value?.ToString() ?? string.Empty;
+            editingExistingItem = true;
+            dialogVisible = true;
+        }
+    }
+    
+    private void RemoveItem(string key)
+    {
+        if (MetadataDictionary.ContainsKey(key))
+        {
+            MetadataDictionary.Remove(key);
+            MetadataDictionaryChanged.InvokeAsync(MetadataDictionary);
+        }
+    }
+    
+    private void SaveItem()
+    {
+        if (string.IsNullOrWhiteSpace(currentKey))
+            return;
+        
+        // Déterminer le type approprié pour la valeur
+        object typedValue = DetermineValueType(currentValue);
+        
+        if (editingExistingItem)
+        {
+            MetadataDictionary[currentKey] = typedValue;
+        }
+        else
+        {
+            if (MetadataDictionary.ContainsKey(currentKey))
+            {
+                MetadataDictionary[currentKey] = typedValue;
+            }
+            else
+            {
+                MetadataDictionary.Add(currentKey, typedValue);
+            }
+        }
+        
+        MetadataDictionaryChanged.InvokeAsync(MetadataDictionary);
+        dialogVisible = false;
+    }
+    
+    private void CancelDialog()
+    {
+        dialogVisible = false;
+    }
+    
+    private object DetermineValueType(string value)
+    {
+        // Essayez de convertir la valeur en différents types courants
+        if (int.TryParse(value, out int intValue))
+            return intValue;
+        
+        if (double.TryParse(value, out double doubleValue))
+            return doubleValue;
+        
+        if (bool.TryParse(value, out bool boolValue))
+            return boolValue;
+        
+        if (DateTime.TryParse(value, out DateTime dateValue))
+            return dateValue;
+        
+        // Si aucune conversion ne fonctionne, retourne la valeur en tant que chaîne
+        return value;
+    }
+} 

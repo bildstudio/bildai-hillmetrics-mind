@@ -1,0 +1,371 @@
+@page "/flux/create"
+@page "/flux/edit/{FluxId:int}"
+@using HillMetrics.MIND.API.Contracts.Requests.Flux
+@using HillMetrics.MIND.API.Contracts.Requests.Source
+@using HillMetrics.MIND.API.Contracts.Responses.Flux
+@using HillMetrics.MIND.API.Contracts.Responses.Source
+@using HillMetrics.MIND.FrontApp.Components.Flux.Metadata
+@using HillMetrics.MIND.FrontApp.Services
+@using HillMetrics.Core.Time.Trigger
+@using HillMetrics.Normalized.Domain.Contracts.Providing.Flux
+@inject IFluxService FluxService
+@inject ISourceService SourceService
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="py-4">
+    <MudPaper Elevation="3" Class="pa-4">
+        <MudText Typo="Typo.h4" Class="mb-4">@(FluxId.HasValue ? "Edit Flux" : "Create New Flux")</MudText>
+
+        @if (loading)
+        {
+            <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+        }
+        else
+        {
+            <MudForm @ref="form" Model="@fluxRequest" @bind-IsValid="@success" Validation="@(validator.ValidateValue)">
+                <MudGrid>
+                    <!-- Basic Information -->
+                    <MudItem xs="12">
+                        <MudCard Elevation="0" Outlined="true">
+                            <MudCardHeader>
+                                <CardHeaderContent>
+                                    <MudText Typo="Typo.h6">Basic Information</MudText>
+                                </CardHeaderContent>
+                            </MudCardHeader>
+                            <MudCardContent>
+                                <MudGrid>
+                                    <MudItem xs="12" md="6">
+                                        <MudTextField @bind-Value="fluxRequest.FluxName"
+                                        Label="Flux Name"
+                                        Required="true"
+                                        RequiredError="Flux name is required"
+                                        Variant="Variant.Outlined" />
+                                    </MudItem>
+                                    <MudItem xs="12" md="6">
+                                        <MudSelect @bind-Value="fluxRequest.SourceId"
+                                        Label="Source"
+                                        Required="true"
+                                        RequiredError="Source is required"
+                                        Variant="Variant.Outlined">
+                                            @foreach (var source in sources)
+                                            {
+                                                <MudSelectItem Value="@source.SourceId">@source.SourceName</MudSelectItem>
+                                            }
+                                        </MudSelect>
+                                    </MudItem>
+                                    <MudItem xs="12">
+                                        <MudTextField @bind-Value="fluxRequest.FluxDescription"
+                                        Label="Description"
+                                        Lines="2"
+                                        Variant="Variant.Outlined" />
+                                    </MudItem>
+                                    <MudItem xs="12">
+                                        <MudTextField @bind-Value="fluxRequest.FluxComment"
+                                        Label="Comment"
+                                        Lines="2"
+                                        Variant="Variant.Outlined" />
+                                    </MudItem>
+                                </MudGrid>
+                            </MudCardContent>
+                        </MudCard>
+                    </MudItem>
+
+                    <!-- Rest of the form remains unchanged -->
+                    <!-- ... existing code ... -->
+                </MudGrid>
+
+                <MudGrid Class="mt-4">
+                    <MudItem xs="12" Class="d-flex justify-end">
+                        <MudButton Variant="Variant.Filled" Color="Color.Secondary" 
+                        OnClick="Cancel" Class="mr-2">
+                            Cancel
+                        </MudButton>
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" 
+                        OnClick="SubmitForm" Disabled="@(!success || processing)">
+                            @(FluxId.HasValue ? "Update" : "Create")
+                            @if (processing)
+                            {
+                                <MudProgressCircular Class="ms-2" Size="Size.Small" Indeterminate="true" />
+                            }
+                        </MudButton>
+                    </MudItem>
+                </MudGrid>
+            </MudForm>
+        }
+    </MudPaper>
+</MudContainer>
+
+@code {
+    [Parameter]
+    public int? FluxId { get; set; }
+
+    private FluxRequest fluxRequest = new();
+    private FluxMetadataMailRequestDto emailMetadata = new();
+    private FluxMetadataApiRequestDto apiMetadata = new();
+    private FluxMetadataDownloadRequestDto downloadMetadata = new();
+    private FluxMetadataFileLocationRequestDto fileLocationMetadata = new();
+
+    private TriggerPeriod fetchTriggerPeriod = TriggerPeriod.CreateDailyTrigger(new TimeSpan(0, 0, 0));
+    private TriggerPeriod processTriggerPeriod = TriggerPeriod.CreateDailyTrigger(new TimeSpan(1, 0, 0));
+
+    private bool success;
+    private bool processing = false;
+    private bool loading = true;
+    private MudForm form;
+    private List<SourceSearchDto> sources = new();
+
+    private FluxValidator validator = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        loading = true;
+        try
+        {
+            // Fetch sources from the API
+            var response = await SourceService.SearchAsync(new SourceSearchRequest());
+            sources = response.Data.ToList();
+
+            // Initialize trigger periods
+            fetchTriggerPeriod = TriggerPeriod.CreateDailyTrigger(new TimeSpan(0, 0, 0));
+            processTriggerPeriod = TriggerPeriod.CreateDailyTrigger(new TimeSpan(1, 0, 0));
+
+            fluxRequest.CanHaveConcurrencyMultiFetching = false;
+
+            // If we're in edit mode, load the existing flux details
+            if (FluxId.HasValue)
+            {
+                await LoadFluxDetails();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading data: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task LoadFluxDetails()
+    {
+        try
+        {
+            var result = await FluxService.GetAsync(FluxId!.Value);
+            if (result != null)
+            {
+                // Map the response to the request model
+                fluxRequest.FluxName = result.FluxName;
+                fluxRequest.FluxDescription = result.Description;
+                fluxRequest.FluxComment = result.Comment;
+                fluxRequest.SourceId = result.Source.Id;
+                fluxRequest.FluxType = result.FluxType;
+                fluxRequest.FluxFinancialType = result.FinancialType;
+                fluxRequest.FluxState = result.FluxState;
+                fluxRequest.CanHaveConcurrencyMultiFetching = result.CanHaveConcurrencyMultiFetching;
+
+                // Map trigger periods
+                if (result.FetchTriggerPeriod != null)
+                {
+                    fetchTriggerPeriod = new TriggerPeriod
+                    {
+                        FrequencyType = result.FetchTriggerPeriod.FrequencyType,
+                        Interval = result.FetchTriggerPeriod.Interval,
+                        StartTime = result.FetchTriggerPeriod.StartTime,
+                        DayOfWeek = result.FetchTriggerPeriod.DayOfWeek,
+                        DayOfMonth = result.FetchTriggerPeriod.DayOfMonth,
+                        IsEnabled = result.FetchTriggerPeriod.IsEnabled
+                    };
+                }
+
+                if (result.ProcessTriggerPeriod != null)
+                {
+                    processTriggerPeriod = new TriggerPeriod
+                    {
+                        FrequencyType = result.ProcessTriggerPeriod.FrequencyType,
+                        Interval = result.ProcessTriggerPeriod.Interval,
+                        StartTime = result.ProcessTriggerPeriod.StartTime,
+                        DayOfWeek = result.ProcessTriggerPeriod.DayOfWeek,
+                        DayOfMonth = result.ProcessTriggerPeriod.DayOfMonth,
+                        IsEnabled = result.ProcessTriggerPeriod.IsEnabled
+                    };
+                }
+
+                // Load type-specific metadata based on the flux type
+                if (result.FluxMetadata != null)
+                {
+                    switch (result.FluxType)
+                    {
+                        case FluxType.Email:
+                            emailMetadata = (FluxMetadataMailRequestDto)result.FluxMetadata;
+                            break;
+                        case FluxType.Api:
+                        case FluxType.Webhook:
+                            apiMetadata =(FluxMetadataApiRequestDto)result.FluxMetadata;
+                            break;
+                        case FluxType.HttpDownload:
+                        case FluxType.Scraping:
+                            downloadMetadata = (FluxMetadataDownloadRequestDto)result.FluxMetadata;
+                            break;
+                        case FluxType.Sftp:
+                            fileLocationMetadata = (FluxMetadataFileLocationRequestDto)result.FluxMetadata;
+                            break;
+                    }
+                }
+            }
+            else
+            {
+                Snackbar.Add("Flux not found", Severity.Error);
+                NavigationManager.NavigateTo("/flux/search");
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading flux: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private TriggerPeriodDto MapToTriggerPeriodDto(TriggerPeriod triggerPeriod)
+    {
+        var dto = new TriggerPeriodDto
+            {
+                // Use direct property mapping
+                FrequencyType = triggerPeriod.FrequencyType,
+                Interval = triggerPeriod.Interval,
+                StartTime = triggerPeriod.StartTime,
+                DayOfWeek = triggerPeriod.DayOfWeek,
+                DayOfMonth = triggerPeriod.DayOfMonth,
+                IsEnabled = triggerPeriod.IsEnabled
+                // Id is not mapped - it will be assigned by the server
+            };
+
+        return dto;
+    }
+
+    private async Task SubmitForm()
+    {
+        processing = true;
+
+        try
+        {
+            // Convert TriggerPeriod to TriggerPeriodDto
+            fluxRequest.FetchTriggerPeriod = MapToTriggerPeriodDto(fetchTriggerPeriod);
+            fluxRequest.ProcessTriggerPeriod = MapToTriggerPeriodDto(processTriggerPeriod);
+
+            // Determine which metadata to use based on flux type
+            switch (fluxRequest.FluxType)
+            {
+                case FluxType.Email:
+                    fluxRequest.FluxMetadata = emailMetadata;
+                    break;
+                case FluxType.Api:
+                case FluxType.Webhook:
+                    fluxRequest.FluxMetadata = apiMetadata;
+                    break;
+                case FluxType.HttpDownload:
+                case FluxType.Scraping:
+                    fluxRequest.FluxMetadata = downloadMetadata;
+                    break;
+                case FluxType.Sftp:
+                    fluxRequest.FluxMetadata = fileLocationMetadata;
+                    break;
+            }
+
+            bool result;
+            if (FluxId.HasValue)
+            {
+                // Update existing flux
+                result = await FluxService.UpdateFluxAsync(FluxId.Value, fluxRequest);
+                if (result)
+                {
+                    Snackbar.Add("Flux updated successfully!", Severity.Success);
+                    NavigationManager.NavigateTo($"/flux/details/{FluxId.Value}");
+                }
+                else
+                {
+                    Snackbar.Add("Failed to update flux.", Severity.Error);
+                }
+            }
+            else
+            {
+                // Create new flux
+                result = await FluxService.CreateFluxAsync(fluxRequest);
+                if (result)
+                {
+                    Snackbar.Add("Flux created successfully!", Severity.Success);
+                    NavigationManager.NavigateTo("/flux/search");
+                }
+                else
+                {
+                    Snackbar.Add("Failed to create flux.", Severity.Error);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error {(FluxId.HasValue ? "updating" : "creating")} flux: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            processing = false;
+        }
+    }
+
+    private void Cancel()
+    {
+        if (FluxId.HasValue)
+        {
+            NavigationManager.NavigateTo($"/flux/details/{FluxId.Value}");
+        }
+        else
+        {
+            NavigationManager.NavigateTo("/flux/search");
+        }
+    }
+
+    // Keep helper classes for other dropdowns
+    private class FinancialTypeDto
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+    }
+
+    private class FluxStateDto
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+    }
+
+    // Form validation
+    public class FluxValidator
+    {
+        public Func<object, string, Task<IEnumerable<string>>> ValidateValue => async (model, propertyName) =>
+        {
+            var fluxRequest = model as FluxRequest;
+            if (fluxRequest == null) return Array.Empty<string>();
+
+            switch (propertyName)
+            {
+                case nameof(FluxRequest.FluxName):
+                    if (string.IsNullOrWhiteSpace(fluxRequest.FluxName))
+                        return new[] { "Flux name is required" };
+                    break;
+                case nameof(FluxRequest.SourceId):
+                    if (fluxRequest.SourceId == null || fluxRequest.SourceId <= 0)
+                        return new[] { "Source is required" };
+                    break;
+                case nameof(FluxRequest.FluxType):
+                    if (fluxRequest.FluxType == null)
+                        return new[] { "Flux type is required" };
+                    break;
+                case nameof(FluxRequest.FluxFinancialType):
+                    if (fluxRequest.FluxFinancialType == null || fluxRequest.FluxFinancialType <= 0)
+                        return new[] { "Financial type is required" };
+                    break;
+            }
+
+            return Array.Empty<string>();
+        };
+    }
+} 

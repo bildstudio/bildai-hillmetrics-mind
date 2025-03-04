@@ -1,0 +1,240 @@
+@using HillMetrics.MIND.API.Contracts.Requests.Flux
+@using HillMetrics.MIND.API.Contracts.Responses.Flux
+@using HillMetrics.Normalized.Domain.Contracts.Providing.Flux
+
+<MudCard Elevation="0" Outlined="true" Class="mt-3">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">SFTP Flux Configuration</MudText>
+        </CardHeaderContent>
+        <CardHeaderActions>
+            <MudTooltip Text="Metadata for SFTP file transfer">
+                <MudIcon Icon="@Icons.Material.Filled.Folder" Color="Color.Info" />
+            </MudTooltip>
+        </CardHeaderActions>
+    </MudCardHeader>
+    <MudCardContent>
+        <MudGrid>
+            <MudItem xs="12" md="8">
+                <MudTextField @bind-Value="Host" 
+                             Label="Host" 
+                             Variant="Variant.Outlined"
+                             Required="true" />
+            </MudItem>
+            
+            <MudItem xs="12" md="4">
+                <MudNumericField @bind-Value="Port" 
+                                Label="Port" 
+                                Variant="Variant.Outlined"
+                                Min="1"
+                                Max="65535" />
+            </MudItem>
+            
+            <MudItem xs="12" md="6">
+                <MudTextField @bind-Value="Username" 
+                             Label="Username" 
+                             Variant="Variant.Outlined"
+                             Required="true" />
+            </MudItem>
+            
+            <MudItem xs="12" md="6">
+                <MudTextField @bind-Value="Password" 
+                             Label="Password" 
+                             Variant="Variant.Outlined"
+                             InputType="InputType.Password" />
+            </MudItem>
+            
+            <MudItem xs="12">
+                <MudTextField @bind-Value="RemoteDirectory" 
+                             Label="Remote Directory"
+                             Placeholder="/path/to/files"
+                             Variant="Variant.Outlined"
+                             Required="true" />
+            </MudItem>
+            
+            <MudItem xs="12" md="6">
+                <MudTextField @bind-Value="FilePattern" 
+                             Label="File Pattern" 
+                             Variant="Variant.Outlined"
+                             HelperText="e.g., *.csv or data_*.xlsx"
+                             Required="true" />
+            </MudItem>
+            
+            <MudItem xs="12" md="6">
+                <MudSelect @bind-Value="Protocol" 
+                          Label="Protocol" 
+                          Variant="Variant.Outlined">
+                    <MudSelectItem Value="@("SFTP")">SFTP</MudSelectItem>
+                    <MudSelectItem Value="@("FTP")">FTP</MudSelectItem>
+                    <MudSelectItem Value="@("FTPS")">FTPS</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            
+            <MudItem xs="12">
+                <MudCheckBox T="bool" @bind-Checked="DeleteAfterDownload" 
+                            Label="Delete file after download" 
+                            Color="Color.Primary" />
+            </MudItem>
+            
+            <MudItem xs="12">
+                <MudCheckBox T="bool" @bind-Checked="UseKeyAuthentication"
+                             Label="Use SSH Key Authentication" 
+                            Color="Color.Primary" />
+            </MudItem>
+            
+            @if (UseKeyAuthentication)
+            {
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="PrivateKeyPath" 
+                                 Label="Private Key Path" 
+                                 Variant="Variant.Outlined" />
+                </MudItem>
+                
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="PrivateKeyPassphrase" 
+                                 Label="Private Key Passphrase" 
+                                 Variant="Variant.Outlined"
+                                 InputType="InputType.Password" />
+                </MudItem>
+            }
+            
+            <MudItem xs="12">
+                <MudText Typo="Typo.subtitle1" Class="my-2">File Rules</MudText>
+                <FluxRuleSettingsComponent RuleSettings="@Metadata.FluxRuleSettings" />
+            </MudItem>
+            
+            <MudItem xs="12">
+                <MudText Typo="Typo.subtitle1" Class="my-2">File Filtering Rules</MudText>
+                <FluxAttachmentRuleComponent AttachmentRule="@Metadata.FluxAttachmentRule" />
+            </MudItem>
+            
+            <MudItem xs="12">
+                <MudDivider Class="my-3" />
+                <FluxMetadataDictionaryComponent @bind-MetadataDictionary="Metadata.Metadata" />
+            </MudItem>
+        </MudGrid>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter]
+    public FluxMetadataFileLocationDto Metadata { get; set; } = new FluxMetadataFileLocationDto();
+
+    [Parameter]
+    public EventCallback<FluxMetadataFileLocationDto> MetadataChanged { get; set; }
+
+    // Helper properties for metadata dictionary
+    private string Host
+    {
+        get => GetMetadataValue("Host", string.Empty);
+        set => SetMetadataValue("Host", value);
+    }
+    
+    private int Port
+    {
+        get => int.TryParse(GetMetadataValue("Port", "22"), out int result) ? result : 22;
+        set => SetMetadataValue("Port", value.ToString());
+    }
+    
+    private string Username
+    {
+        get => GetMetadataValue("Username", string.Empty);
+        set => SetMetadataValue("Username", value);
+    }
+    
+    private string Password
+    {
+        get => GetMetadataValue("Password", string.Empty);
+        set => SetMetadataValue("Password", value);
+    }
+    
+    private string RemoteDirectory
+    {
+        get => GetMetadataValue("RemoteDirectory", string.Empty);
+        set => SetMetadataValue("RemoteDirectory", value);
+    }
+    
+    private string FilePattern
+    {
+        get => GetMetadataValue("FilePattern", "*.*");
+        set => SetMetadataValue("FilePattern", value);
+    }
+    
+    private string Protocol
+    {
+        get => GetMetadataValue("Protocol", "SFTP");
+        set => SetMetadataValue("Protocol", value);
+    }
+    
+    private bool DeleteAfterDownload
+    {
+        get => bool.TryParse(GetMetadataValue("DeleteAfterDownload", "false"), out bool result) && result;
+        set => SetMetadataValue("DeleteAfterDownload", value.ToString());
+    }
+    
+    private bool UseKeyAuthentication
+    {
+        get => bool.TryParse(GetMetadataValue("UseKeyAuthentication", "false"), out bool result) && result;
+        set => SetMetadataValue("UseKeyAuthentication", value.ToString());
+    }
+    
+    private string PrivateKeyPath
+    {
+        get => GetMetadataValue("PrivateKeyPath", string.Empty);
+        set => SetMetadataValue("PrivateKeyPath", value);
+    }
+    
+    private string PrivateKeyPassphrase
+    {
+        get => GetMetadataValue("PrivateKeyPassphrase", string.Empty);
+        set => SetMetadataValue("PrivateKeyPassphrase", value);
+    }
+
+    protected override void OnParametersSet()
+    {
+        // Set default values if null
+        Metadata ??= new FluxMetadataFileLocationDto
+        {
+            FluxRuleSettings = new FluxRuleSettingsDto(),
+            FluxAttachmentRule = new FluxAttachmentRuleDto(),
+            Metadata = new Dictionary<string, object>()
+        };
+
+        if (Metadata.FluxRuleSettings == null)
+            Metadata.FluxRuleSettings = new FluxRuleSettingsDto();
+
+        if (Metadata.FluxAttachmentRule == null)
+            Metadata.FluxAttachmentRule = new FluxAttachmentRuleDto();
+            
+        if (Metadata.Metadata == null)
+            Metadata.Metadata = new Dictionary<string, object>();
+            
+        // Set default values
+        if (!Metadata.Metadata.ContainsKey("Protocol"))
+            Protocol = "SFTP";
+            
+        if (!Metadata.Metadata.ContainsKey("Port"))
+            Port = 22;
+    }
+    
+    private string GetMetadataValue(string key, string defaultValue)
+    {
+        if (Metadata.Metadata != null && Metadata.Metadata.TryGetValue(key, out var value))
+            return value?.ToString() ?? defaultValue;
+            
+        return defaultValue;
+    }
+    
+    private void SetMetadataValue(string key, string value)
+    {
+        if (Metadata.Metadata == null)
+            Metadata.Metadata = new Dictionary<string, object>();
+            
+        if (Metadata.Metadata.ContainsKey(key))
+            Metadata.Metadata[key] = value;
+        else
+            Metadata.Metadata.Add(key, value);
+            
+        MetadataChanged.InvokeAsync(Metadata);
+    }
+} 

@@ -154,7 +154,7 @@ namespace HillMetrics.MIND.API.Controllers
         /// <param name="id">The flux identifier</param>
         /// <returns></returns>
         [HttpGet("{id}/force-fetch")]
-        public async Task<ActionResult<FetchFluxCommandResult>> ForceFetch(int id)
+        public async Task<ActionResult<FluxForceFetchResponse>> ForceFetch(int id)
         {
             var command = FetchFluxCommand.Create(id, Task.FromResult(new List<Mail>()));
             command.CalledManually = true;
@@ -163,7 +163,7 @@ namespace HillMetrics.MIND.API.Controllers
             if (result.IsFailed)
                 return new ErrorApiActionResult(result.Errors.ToApiResult());
 
-            return mapper.Map<FetchFluxCommandResult>(result.Value);
+            return mapper.Map<FluxForceFetchResponse>(result.Value);
         }
 
         /// <summary>
@@ -172,7 +172,7 @@ namespace HillMetrics.MIND.API.Controllers
         /// <param name="id">The flux identifier</param>
         /// <returns></returns>
         [HttpGet("{id}/force-process")]
-        public async Task<ActionResult<ProcessFluxCommandResult>> ForceProcess(int id)
+        public async Task<ActionResult<FluxForceProcessResponse>> ForceProcess(int id)
         {
             var result = await mediator.Send(new ProcessFluxCommand() { 
                 FluxId = id,
@@ -182,7 +182,7 @@ namespace HillMetrics.MIND.API.Controllers
             if (result.IsFailed)
                 return new ErrorApiActionResult(result.Errors.ToApiResult());
 
-            return mapper.Map<ProcessFluxCommandResult>(result.Value);
+            return mapper.Map<FluxForceProcessResponse>(result.Value);
         }
         #endregion
 
@@ -345,7 +345,7 @@ namespace HillMetrics.MIND.API.Controllers
         /// <param name="request">The search criterias</param>
         /// <returns>The flux processing history that matched the requests filters</returns>
         [HttpGet("processing-history/search")]
-        public async Task<ActionResult<PagedApiResponseBase<FluxProcessingSearchReponse>>> SearchProcessingHistoryAsync([FromQuery] FluxSearchRequest request)
+        public async Task<ActionResult<PagedApiResponseBase<FluxProcessingSearchReponse>>> SearchProcessingHistoryAsync([FromQuery] FluxProcessingSearchRequest request)
         {
             var result = await Mediator.Send(mapper.Map<SearchFluxProcessingFluxQuery>(request));
 

@@ -19,10 +19,10 @@ public class FluxMetadataDtoJsonConverter : JsonConverter<FluxMetadataDto>
 
             return typeProperty switch
             {
-                //nameof(FluxMetadataMailDto) => JsonSerializer.Deserialize<FluxMetadataMailDto>(root.GetRawText(), options),
+                nameof(FluxMetadataMailDto) => JsonSerializer.Deserialize<FluxMetadataMailDto>(root.GetRawText(), options),
                 nameof(FluxMetadataDownloadDto) => JsonSerializer.Deserialize<FluxMetadataDownloadDto>(root.GetRawText(), options),
                 nameof(FluxMetadataApiDto) => JsonSerializer.Deserialize<FluxMetadataApiDto>(root.GetRawText(), options),
-                //nameof(FluxMetadataFileLocationDto) => JsonSerializer.Deserialize<FluxMetadataFileLocationDto>(root.GetRawText(), options),
+                nameof(FluxMetadataFileLocationDto) => JsonSerializer.Deserialize<FluxMetadataFileLocationDto>(root.GetRawText(), options),
                 _ => throw new JsonException($"Unknown type: {typeProperty}")
             };
         }

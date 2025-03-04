@@ -1,0 +1,326 @@
+@page "/flux/processing-history"
+@using HillMetrics.MIND.API.Contracts.Requests.Flux
+@using HillMetrics.MIND.API.Contracts.Responses
+@using HillMetrics.MIND.API.Contracts.Responses.Flux
+@using HillMetrics.MIND.FrontApp.Services
+@using HillMetrics.Core.Search
+@using HillMetrics.Core
+@using HillMetrics.Normalized.Domain.Contracts.Providing.Flux
+@using HillMetrics.MIND.FrontApp.Components.Shared
+@inject IFluxService FluxService
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudText Typo="Typo.h4" Class="mb-4">Flux Processing History</MudText>
+
+    <MudCard Class="mb-4">
+        <MudCardContent>
+            <MudForm @ref="form" @bind-IsValid="@isValid">
+                <MudGrid>
+                    <!-- Flux ID -->
+                    <MudItem xs="12" md="6">
+                        <MudExpansionPanel Text="Flux ID" Expanded="false">
+                            <SearchCriteriaComponent T="int"
+                                                     SearchCriteria="@fluxIdSearchCriteria"
+                                                     SearchCriteriaChanged="@((criteria) => fluxIdSearchCriteria = criteria)"
+                                                     Label="Flux ID" />
+                        </MudExpansionPanel>
+                    </MudItem>
+
+                    <!-- Number of Contents -->
+                    <MudItem xs="12" md="6">
+                        <MudExpansionPanel Text="Number of Contents" Expanded="false">
+                            <SearchCriteriaComponent T="int"
+                                                     SearchCriteria="@nbContentSearchCriteria"
+                                                     SearchCriteriaChanged="@((criteria) => nbContentSearchCriteria = criteria)"
+                                                     Label="Number of Contents" />
+                        </MudExpansionPanel>
+                    </MudItem>
+
+                    <!-- Processing Start Date -->
+                    <MudItem xs="12" md="6">
+                        <MudExpansionPanel Text="Processing Start Date" Expanded="false">
+                            <SearchCriteriaComponent T="DateTime"
+                                                     SearchCriteria="@processingDateStartSearchCriteria"
+                                                     SearchCriteriaChanged="@((criteria) => processingDateStartSearchCriteria = criteria)"
+                                                     Label="Processing Start Date" />
+                        </MudExpansionPanel>
+                    </MudItem>
+
+                    <!-- Processing End Date -->
+                    <MudItem xs="12" md="6">
+                        <MudExpansionPanel Text="Processing End Date" Expanded="false">
+                            <SearchCriteriaComponent T="DateTime"
+                                                     SearchCriteria="@processingDateEndSearchCriteria"
+                                                     SearchCriteriaChanged="@((criteria) => processingDateEndSearchCriteria = criteria)"
+                                                     Label="Processing End Date" />
+                        </MudExpansionPanel>
+                    </MudItem>
+
+                    <!-- Processing Status -->
+                    <MudItem xs="12" md="6">
+                        <MudSelect T="StatusProcess?" @bind-Value="searchRequest.Status"
+                                   Label="Processing Status" Variant="Variant.Outlined">
+                            <MudSelectItem Value="@((StatusProcess?)null)">All</MudSelectItem>
+                            @foreach (var status in Enum.GetValues<StatusProcess>())
+                            {
+                                <MudSelectItem Value="@status">@status</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                </MudGrid>
+            </MudForm>
+        </MudCardContent>
+        <MudCardActions>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Search">Search</MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="Reset">Reset</MudButton>
+        </MudCardActions>
+    </MudCard>
+
+    @if (loading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+    }
+    else if (processingHistories != null)
+    {
+        <MudTable Items="@processingHistories" Hover="true" Bordered="true" Striped="true"
+                  Dense="true" Filter="new Func<FluxProcessingSearchReponse, bool>(FilterFunc)"
+                  @bind-SelectedItem="selectedItem" T="FluxProcessingSearchReponse"
+                  Breakpoint="Breakpoint.Sm">
+            <ToolBarContent>
+                <MudText Typo="Typo.h6" Class="ml-2">Processing History</MudText>
+                <MudSpacer />
+                <MudTextField T="string" @bind-Value="searchString" Placeholder="Search" Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium"
+                              Class="mt-0 mb-3"></MudTextField>
+            </ToolBarContent>
+            <HeaderContent>
+                <MudTh>ID</MudTh>
+                <MudTh>Flux ID</MudTh>
+                <MudTh>Start Date</MudTh>
+                <MudTh>End Date</MudTh>
+                <MudTh>Processed Items</MudTh>
+                <MudTh>Status</MudTh>
+                <MudTh>Duration</MudTh>
+                <MudTh>Actions</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="ID">@context.Id</MudTd>
+                <MudTd DataLabel="Flux ID">
+                    <MudLink Href="@($"/flux/details/{context.FluxId}")">@context.FluxId</MudLink>
+                </MudTd>
+                <MudTd DataLabel="Start Date">
+                    <MudTooltip Text="@context.ProcessingDateStart.ToString("yyyy-MM-dd HH:mm:ss")">
+                        <div>@FormatDateTime(context.ProcessingDateStart)</div>
+                    </MudTooltip>
+                </MudTd>
+                <MudTd DataLabel="End Date">
+                    @if (context.ProcessingDateEnd.HasValue)
+                    {
+                        <MudTooltip Text="@context.ProcessingDateEnd.Value.ToString("yyyy-MM-dd HH:mm:ss")">
+                            <div>@FormatDateTime(context.ProcessingDateEnd.Value)</div>
+                        </MudTooltip>
+                    }
+                    else
+                    {
+                        <span>-</span>
+                    }
+                </MudTd>
+                <MudTd DataLabel="Processed Items">
+                    <MudBadge Content="@context.NbContent" Color="Color.Primary" Overlap="true"
+                              Class="d-flex justify-center">
+                        <MudIcon Icon="@Icons.Material.Filled.DataObject" />
+                    </MudBadge>
+                </MudTd>
+                <MudTd DataLabel="Status">
+                    @if (context.Status.HasValue)
+                    {
+                        <MudTooltip Text="@context.Status.Value.ToString()">
+                            <MudIcon Icon="@GetStatusIcon(context.Status.Value)"
+                                     Color="@GetStatusColor(context.Status.Value)" />
+                        </MudTooltip>
+                    }
+                    else
+                    {
+                        <span>-</span>
+                    }
+                </MudTd>
+                <MudTd DataLabel="Duration">
+                    @if (context.ProcessingDateEnd.HasValue)
+                    {
+                        var duration = context.ProcessingDateEnd.Value - context.ProcessingDateStart;
+                        <span>@FormatDuration(duration)</span>
+                    }
+                    else if (context.Status == StatusProcess.Processing)
+                    {
+                        var duration = DateTime.Now - context.ProcessingDateStart;
+                        <MudChip T="TimeSpan" Color="Color.Info" Size="Size.Small">@FormatDuration(duration) (ongoing)</MudChip>
+                    }
+                    else
+                    {
+                        <span>-</span>
+                    }
+                </MudTd>
+                <MudTd DataLabel="Actions">
+                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true">
+                        <MudMenuItem OnClick="@(() => ViewDetails(context.Id))">
+                            <MudIcon Icon="@Icons.Material.Filled.Visibility" Class="mr-2" Size="Size.Small" /> View Details
+                        </MudMenuItem>
+                        <MudMenuItem OnClick="@(() => ViewFluxDetails(context.FluxId))">
+                            <MudIcon Icon="@Icons.Material.Filled.Assignment" Class="mr-2" Size="Size.Small" /> View Flux
+                        </MudMenuItem>
+                    </MudMenu>
+                </MudTd>
+            </RowTemplate>
+            <PagerContent>
+                <MudTablePager PageSizeOptions="new int[] { 10, 25, 50, 100 }" />
+            </PagerContent>
+            <NoRecordsContent>
+                <MudAlert Severity="Severity.Info" Class="my-2">No processing history found matching your search criteria.</MudAlert>
+            </NoRecordsContent>
+        </MudTable>
+    }
+</MudContainer>
+
+@code {
+    private FluxProcessingSearchRequest searchRequest = new();
+    private List<FluxProcessingSearchReponse>? processingHistories;
+    private bool loading = false;
+    private bool isValid = false;
+    private MudForm form;
+    private string searchString = "";
+    private FluxProcessingSearchReponse selectedItem = null;
+
+    // SearchCriteria for each field
+    private SearchCriteria<int> fluxIdSearchCriteria = new();
+    private SearchCriteria<int> nbContentSearchCriteria = new();
+    private SearchCriteria<DateTime> processingDateStartSearchCriteria = new();
+    private SearchCriteria<DateTime> processingDateEndSearchCriteria = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Search();
+    }
+
+    private async Task Search()
+    {
+        try
+        {
+            loading = true;
+
+            // Apply search criteria
+            ApplySearchCriteria();
+
+            var response = await FluxService.SearchProcessingHistoryAsync(searchRequest);
+            processingHistories = response.Data.ToList();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error searching processing history: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private void ApplySearchCriteria()
+    {
+        searchRequest.FluxId = fluxIdSearchCriteria;
+        searchRequest.NbContent = nbContentSearchCriteria;
+        searchRequest.ProcessingDateStart = processingDateStartSearchCriteria;
+        searchRequest.ProcessingDateEnd = processingDateEndSearchCriteria;
+    }
+
+    private void Reset()
+    {
+        searchRequest = new FluxProcessingSearchRequest();
+        fluxIdSearchCriteria = new SearchCriteria<int>();
+        nbContentSearchCriteria = new SearchCriteria<int>();
+        processingDateStartSearchCriteria = new SearchCriteria<DateTime>();
+        processingDateEndSearchCriteria = new SearchCriteria<DateTime>();
+        searchString = "";
+    }
+
+    private void ViewDetails(int id)
+    {
+        NavigationManager.NavigateTo($"/flux/processing-details/{id}");
+    }
+
+    private void ViewFluxDetails(int id)
+    {
+        NavigationManager.NavigateTo($"/flux/details/{id}");
+    }
+
+    // Helper methods for icons and colors
+    private string GetStatusIcon(StatusProcess status)
+    {
+        return status switch
+        {
+            StatusProcess.Success => Icons.Material.Filled.CheckCircle,
+            StatusProcess.Failure => Icons.Material.Filled.Error,
+            StatusProcess.Processing => Icons.Material.Filled.Refresh,
+            StatusProcess.Paused => Icons.Material.Filled.Pending,
+            StatusProcess.Partially => Icons.Material.Filled.Warning,
+            _ => Icons.Material.Filled.HelpOutline
+        };
+    }
+
+    private Color GetStatusColor(StatusProcess status)
+    {
+        return status switch
+        {
+            StatusProcess.Success => Color.Success,
+            StatusProcess.Failure => Color.Error,
+            StatusProcess.Processing => Color.Info,
+            StatusProcess.Paused => Color.Warning,
+            StatusProcess.Partially => Color.Secondary,
+            _ => Color.Default
+        };
+    }
+
+    private string FormatDateTime(DateTime dateTime)
+    {
+        var now = DateTime.Now;
+        var diff = now - dateTime;
+
+        if (diff.TotalMinutes < 1)
+            return "Just now";
+        if (diff.TotalHours < 1)
+            return $"{(int)diff.TotalMinutes}m ago";
+        if (diff.TotalDays < 1)
+            return $"{(int)diff.TotalHours}h ago";
+        if (diff.TotalDays < 7)
+            return $"{(int)diff.TotalDays}d ago";
+
+        return dateTime.ToString("MMM dd, HH:mm");
+    }
+
+    private string FormatDuration(TimeSpan duration)
+    {
+        if (duration.TotalDays >= 1)
+            return $"{duration.Days}d {duration.Hours}h {duration.Minutes}m";
+        if (duration.TotalHours >= 1)
+            return $"{duration.Hours}h {duration.Minutes}m {duration.Seconds}s";
+        if (duration.TotalMinutes >= 1)
+            return $"{duration.Minutes}m {duration.Seconds}s";
+
+        return $"{duration.Seconds}.{duration.Milliseconds}s";
+    }
+
+    // Filter function for MudTable
+    private bool FilterFunc(FluxProcessingSearchReponse item)
+    {
+        if (string.IsNullOrWhiteSpace(searchString))
+            return true;
+
+        return
+            item.Id.ToString().Contains(searchString) ||
+            item.FluxId.ToString().Contains(searchString) ||
+            item.NbContent.ToString().Contains(searchString) ||
+            (item.Status?.ToString().Contains(searchString, StringComparison.OrdinalIgnoreCase) ?? false) ||
+            item.ProcessingDateStart.ToString().Contains(searchString) ||
+            (item.ProcessingDateEnd?.ToString().Contains(searchString) ?? false);
+    }
+} 

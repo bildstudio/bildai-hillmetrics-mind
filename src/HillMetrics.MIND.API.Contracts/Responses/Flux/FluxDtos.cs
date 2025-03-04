@@ -15,6 +15,7 @@ namespace HillMetrics.MIND.API.Contracts.Responses.Flux
     {
         public int Id { get; set; }
         public FluxType FluxType { get; set; }
+        public FinancialType? FinancialType { get; set; }
         public string FluxName { get; set; } = string.Empty;
         public string? Description { get; set; }
         public string? Comment { get; set; }
@@ -83,7 +84,7 @@ namespace HillMetrics.MIND.API.Contracts.Responses.Flux
     {
         public int Id { get; set; }
         public int FluxIdentificationHistoryId { get; set; }
-        public FluxIdentificationContentStatus ContentStatus { get; set; }
+        public StatusProcess ContentStatus { get; set; }
         public string ExternalContentId { get; set; } = string.Empty;
         public string ContentName { get; set; } = string.Empty;
         public string? RawId { get; set; }
@@ -128,8 +129,8 @@ namespace HillMetrics.MIND.API.Contracts.Responses.Flux
 
     public class FluxMetadataDownloadDto : FluxMetadataDto
     {
-        public required string DownloadUrl { get; set; } = string.Empty;
-        public Core.Common.ContentType ContentType { get; set; }
+        public string DownloadUrl { get; set; } = string.Empty;
+        public ContentType ContentType { get; set; }
     }
 
     public class FluxMetadataApiDto : FluxMetadataDto
