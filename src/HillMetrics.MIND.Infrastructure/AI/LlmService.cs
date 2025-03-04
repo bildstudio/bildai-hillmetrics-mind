@@ -48,7 +48,7 @@ namespace HillMetrics.MIND.Infrastructure.AI
                 if (llmResult == null)
                     return Result.Fail("no response");
 
-                LlmProcessResponse response = new LlmProcessResponse(llmResult.Choices.FirstOrDefault()?.Text);
+                LlmProcessResponse response = new LlmProcessResponse(llmResult.Choices?.FirstOrDefault()?.Text);
 
                 return Result.Ok(response);
             }
@@ -100,7 +100,7 @@ namespace HillMetrics.MIND.Infrastructure.AI
             }
         }
 
-        private ChatResponseFormat ParseResponseFormat(AiResponseFormat responseFormat)
+        private static ChatResponseFormat ParseResponseFormat(AiResponseFormat responseFormat)
         {
             switch (responseFormat)
             {
