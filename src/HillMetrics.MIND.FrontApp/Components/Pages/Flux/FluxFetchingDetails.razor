@@ -1,0 +1,250 @@
+@page "/flux/fetching-details/{FetchingHistoryId:int}"
+@using HillMetrics.MIND.API.Contracts.Responses
+@using HillMetrics.MIND.API.Contracts.Responses.Flux
+@using HillMetrics.Core
+@using HillMetrics.Core.Common
+@using System.Text.Json
+@using HillMetrics.MIND.FrontApp.Services
+@inject IFluxService FluxService
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    @if (loading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+        <MudText Typo="Typo.h5" Class="ml-2 mb-4 d-flex justify-center">Loading fetching details...</MudText>
+    }
+    else if (fetchingHistory == null)
+    {
+        <MudAlert Severity="Severity.Error" Class="my-4">Fetching history not found or error loading data.</MudAlert>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => NavigationManager.NavigateTo("/flux/fetching-history"))">
+            Back to Fetching History
+        </MudButton>
+    }
+    else
+    {
+       
+    }
+</MudContainer>
+
+@code {
+    [Parameter]
+    public int FetchingHistoryId { get; set; }
+
+    private FluxFetchingResponse? fetchingHistory;
+    private bool loading = true;
+    private RenderFragment? contentPreview;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadFetchingHistoryData();
+    }
+
+    private async Task LoadFetchingHistoryData()
+    {
+        try
+        {
+            loading = true;
+            var response = await FluxService.GetFetchingHistoryAsync(FetchingHistoryId);
+            fetchingHistory = response;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading fetching history details: {ex.Message}", Severity.Error);
+            fetchingHistory = null;
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task ForceProcess()
+    {
+        try
+        {
+            loading = true;
+            // Cette fonctionnalité dépendra de votre API - pour l'instant c'est un placeholder
+            // var result = await FluxService.ForceProcessFetchingAsync(FetchingHistoryId);
+            Snackbar.Add("Force process initiated", Severity.Success);
+            await LoadFetchingHistoryData();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error during force process: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    // private async Task DownloadContent()
+    // {
+    //     if (fetchingHistory?.Content == null)
+    //         return;
+
+    //     // La logique de téléchargement dépendra de votre framework et devra être implémentée
+    //     Snackbar.Add("Download functionality to be implemented", Severity.Info);
+    // }
+
+    // private bool TryRenderContentPreview()
+    // {
+    //     if (fetchingHistory?.Content == null || fetchingHistory.Content.Length > 100 * 1024) // Limiter aux fichiers < 100KB pour la prévisualisation
+    //         return false;
+
+    //     if (fetchingHistory.ContentType.HasValue)
+    //     {
+    //         var contentType = fetchingHistory.ContentType.Value;
+            
+    //         try
+    //         {
+    //             switch (contentType)
+    //             {
+    //                 case ContentType.Json:
+    //                     var jsonString = System.Text.Encoding.UTF8.GetString(fetchingHistory.Content);
+    //                     contentPreview = builder =>
+    //                     {
+    //                         builder.OpenElement(0, "div");
+    //                         builder.AddAttribute(1, "class", "pa-4");
+    //                         builder.AddAttribute(2, "style", "background-color: #f5f5f5; overflow-x: auto; max-height: 400px;");
+    //                         builder.OpenElement(3, "pre");
+    //                         builder.AddAttribute(4, "style", "margin: 0; white-space: pre-wrap;");
+    //                         builder.AddContent(5, FormatJson(jsonString));
+    //                         builder.CloseElement();
+    //                         builder.CloseElement();
+    //                     };
+    //                     return true;
+
+    //                 case ContentType.Xml:
+    //                 case ContentType.Text:
+    //                     var textString = System.Text.Encoding.UTF8.GetString(fetchingHistory.Content);
+    //                     contentPreview = builder =>
+    //                     {
+    //                         builder.OpenElement(0, "div");
+    //                         builder.AddAttribute(1, "class", "pa-4");
+    //                         builder.AddAttribute(2, "style", "background-color: #f5f5f5; overflow-x: auto; max-height: 400px;");
+    //                         builder.OpenElement(3, "pre");
+    //                         builder.AddAttribute(4, "style", "margin: 0; white-space: pre-wrap;");
+    //                         builder.AddContent(5, textString);
+    //                         builder.CloseElement();
+    //                         builder.CloseElement();
+    //                     };
+    //                     return true;
+
+    //                 case ContentType.Csv:
+    //                     var csvString = System.Text.Encoding.UTF8.GetString(fetchingHistory.Content);
+    //                     var csvLines = csvString.Split('\n');
+    //                     var previewLines = csvLines.Take(20).ToList(); // Limiter à 20 lignes
+                        
+    //                     contentPreview = builder =>
+    //                     {
+    //                         builder.OpenElement(0, "div");
+    //                         builder.AddAttribute(1, "style", "overflow-x: auto; max-height: 400px;");
+    //                         builder.OpenComponent<MudTable<string[]>>(2);
+    //                         builder.AddAttribute(3, "Items", previewLines);
+    //                         builder.AddAttribute(4, "Hover", true);
+    //                         builder.AddAttribute(5, "Dense", true);
+    //                         builder.AddAttribute(6, "Bordered", true);
+                            
+    //                         builder.AddAttribute(7, "RowTemplate", (RenderFragment<string>)((row) =>
+    //                         {
+    //                             return builder2 =>
+    //                             {
+    //                                 var cells = row.Split(',');
+    //                                 foreach (var cell in cells)
+    //                                 {
+    //                                     builder2.OpenComponent<MudTd>(10);
+    //                                     builder2.AddAttribute(11, "DataLabel", "Value");
+    //                                     builder2.AddAttribute(12, "ChildContent", (RenderFragment)((builder3) =>
+    //                                     {
+    //                                         builder3.AddContent(13, cell.Trim('"'));
+    //                                     }));
+    //                                     builder2.CloseComponent();
+    //                                 }
+    //                             };
+    //                         }));
+                            
+    //                         builder.CloseComponent();
+    //                         builder.CloseElement();
+    //                     };
+    //                     return true;
+
+    //                 case ContentType.Html:
+    //                     // Pour HTML, on pourrait utiliser une iframe, mais c'est potentiellement dangereux
+    //                     // Pour l'instant, on affiche juste le code source
+    //                     var htmlString = System.Text.Encoding.UTF8.GetString(fetchingHistory.Content);
+    //                     contentPreview = builder =>
+    //                     {
+    //                         builder.OpenElement(0, "div");
+    //                         builder.AddAttribute(1, "class", "pa-4");
+    //                         builder.AddAttribute(2, "style", "background-color: #f5f5f5; overflow-x: auto; max-height: 400px;");
+    //                         builder.OpenElement(3, "pre");
+    //                         builder.AddAttribute(4, "style", "margin: 0; white-space: pre-wrap;");
+    //                         builder.AddContent(5, htmlString);
+    //                         builder.CloseElement();
+    //                         builder.CloseElement();
+    //                     };
+    //                     return true;
+
+    //                 default:
+    //                     return false;
+    //             }
+    //         }
+    //         catch
+    //         {
+    //             return false;
+    //         }
+    //     }
+
+    //     return false;
+    // }
+
+    private string GetContentTypeDisplay(ContentType contentType)
+    {
+        return contentType switch
+        {
+            ContentType.Json => "JSON (application/json)",
+            ContentType.Xml => "XML (application/xml)",
+            ContentType.Csv => "CSV (text/csv)",
+            ContentType.Text => "Text (text/plain)",
+            ContentType.Html => "HTML (text/html)",
+            ContentType.Pdf => "PDF (application/pdf)",
+            ContentType.Xlsx => "Excel (xlsx)",
+            ContentType.Xls => "Excel (xls)",
+            _ => contentType.ToString()
+        };
+    }
+
+    private string FormatFileSize(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB", "TB" };
+        double len = bytes;
+        int order = 0;
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len = len / 1024;
+        }
+        return $"{len:0.##} {sizes[order]}";
+    }
+
+    private string FormatJson(string json)
+    {
+        try
+        {
+            var options = new JsonSerializerOptions
+            {
+                WriteIndented = true
+            };
+            
+            var jsonElement = JsonSerializer.Deserialize<JsonElement>(json);
+            return JsonSerializer.Serialize(jsonElement, options);
+        }
+        catch
+        {
+            return json;
+        }
+    }
+} 

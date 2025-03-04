@@ -1,0 +1,85 @@
+@using HillMetrics.MIND.API.Contracts.Responses.Flux
+
+<MudCard Elevation="0" Outlined="true" Class="mb-3">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">Attachment Rules</MudText>
+        </CardHeaderContent>
+        <CardHeaderActions>
+            <MudTooltip Text="Configure rules for processing attachments">
+                <MudIcon Icon="@Icons.Material.Filled.AttachFile" Color="Color.Primary" />
+            </MudTooltip>
+        </CardHeaderActions>
+    </MudCardHeader>
+    
+    <MudCardContent>
+        <MudGrid>
+            <MudItem xs="12">
+                <MudCheckBox T="bool" @bind-Checked="AttachmentRule.ProcessAll"
+                            Label="Process all attachments"
+                            Color="Color.Primary" />
+            </MudItem>
+            
+            @if (!AttachmentRule.ProcessAll)
+            {
+                <MudItem xs="12" Class="mt-2">
+                    <MudText Typo="Typo.subtitle1" Class="mb-2">Attachment Criteria</MudText>
+                    
+                    @if (AttachmentRule.Criteria.Count == 0)
+                    {
+                        <MudAlert Severity="Severity.Info" Class="mb-2">
+                            No attachment criteria added. Add at least one criterion to filter attachments.
+                        </MudAlert>
+                    }
+                    
+                    @foreach (var criterion in AttachmentRule.Criteria)
+                    {
+                        <FluxMetadataCriterionComponent Criterion="@criterion" 
+                                                       OnRemove="@RemoveCriterion" />
+                    }
+                    
+                    <MudButton Variant="Variant.Outlined" 
+                               StartIcon="@Icons.Material.Filled.Add" 
+                               Color="Color.Primary" 
+                               OnClick="@AddCriterion"
+                               Class="mt-2">
+                        Add Attachment Criterion
+                    </MudButton>
+                </MudItem>
+            }
+        </MudGrid>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter]
+    public FluxAttachmentRuleDto AttachmentRule { get; set; } = new();
+    
+    [Parameter]
+    public EventCallback<FluxAttachmentRuleDto> AttachmentRuleChanged { get; set; }
+    
+    protected override void OnParametersSet()
+    {
+        // Initialize if null
+        AttachmentRule ??= new FluxAttachmentRuleDto
+        {
+            ProcessAll = true,
+            Criteria = new List<FluxMetadataCriterionDto>()
+        };
+        
+        if (AttachmentRule.Criteria == null)
+            AttachmentRule.Criteria = new List<FluxMetadataCriterionDto>();
+    }
+    
+    private void AddCriterion()
+    {
+        AttachmentRule.Criteria.Add(new FluxMetadataCriterionDto());
+        AttachmentRuleChanged.InvokeAsync(AttachmentRule);
+    }
+    
+    private void RemoveCriterion(FluxMetadataCriterionDto criterion)
+    {
+        AttachmentRule.Criteria.Remove(criterion);
+        AttachmentRuleChanged.InvokeAsync(AttachmentRule);
+    }
+} 

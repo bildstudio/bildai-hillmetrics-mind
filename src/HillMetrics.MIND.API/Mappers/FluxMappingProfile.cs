@@ -76,8 +76,6 @@ namespace HillMetrics.MIND.API.Mappers
 
             CreateMap<FluxErrorQueryResult, FluxErrorResponse>();
             CreateMap<FluxErrors, FluxErrorHistoryResponse>();
-            
-            
         }
     }
 
