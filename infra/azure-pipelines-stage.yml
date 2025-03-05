@@ -69,6 +69,10 @@ stages:
         scannerMode: 'dotnet'
         projectKey: 'HillMetrics_HillMetrics.MIND'
         projectName: 'HillMetrics.MIND'
+        extraProperties: |
+           sonar.projectBaseDir=/home/vsts/work/1/s/HillMetrics.MIND
+           sonar.exclusions=src/HillMetrics.MIND.API/bin/Release/net8.0/.playwright/**/*, src/HillMetrics.MIND.API/bin/Debug/net8.0/.playwright/**/*, tests/HillMetrics.MIND.API.Tests/bin/**/*
+           sonar.cs.vscoveragexml.reportsPaths=**/*coverage.xml
 
     - task: DotNetCoreCLI@2
       inputs:
@@ -76,6 +80,21 @@ stages:
         projects: '$(Build.SourcesDirectory)/$(Build.Repository.Name)/HillMetrics.MIND.sln'
         arguments: '--configuration=release'
         
+    - task: DotNetCoreCLI@2
+      displayName: 'Install dotnet-coverage'
+      inputs:
+        command: 'custom'
+        custom: "tool"
+        arguments: 'install -g dotnet-coverage'
+
+    - task: Bash@3
+      displayName: Test coverage
+      inputs:
+        workingDirectory: '$(Build.SourcesDirectory)/$(Build.Repository.Name)'
+        targetType: 'inline'
+        script: |
+          dotnet-coverage collect "dotnet test" -f xml -o "coverage.xml" || true
+
     - task: SonarCloudAnalyze@3
 
     - task: SonarCloudPublish@3
