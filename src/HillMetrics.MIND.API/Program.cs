@@ -22,6 +22,7 @@ using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Options;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Text.Json.Serialization;
+using HillMetrics.Python.API.SDK;
 
 
 namespace HillMetrics.MIND.API;
@@ -88,6 +89,9 @@ public partial class Program
         builder.AddKeycloakBearerAuthenticationValidator<KeycloakConfigMind>(serviceName: Services.Keycloak);
 
         builder.Services.AddMindAuthenticationServices();
+
+        builder.Services.AddPythonApiServices(builder.Configuration, "mind-api", TimeSpan.FromMinutes(2));
+
         var app = builder.Build();
 
         app.UseHillMetricsCorsSettings();
