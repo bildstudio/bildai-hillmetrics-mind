@@ -32,17 +32,19 @@ public partial class Program
     {
         var builder = WebApplication.CreateBuilder(args);
 
-        IWebHostEnvironment  environment = builder.Environment;
-        builder.Configuration
-            .SetBasePath(environment.ContentRootPath)
-            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-            .AddJsonFile($"appsettings.{environment.EnvironmentName}.json", optional: true, reloadOnChange: true)
-            .AddEnvironmentVariables();
+        //IWebHostEnvironment  environment = builder.Environment;
+        //builder.Configuration
+        //    .SetBasePath(environment.ContentRootPath)
+        //    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+        //    .AddJsonFile($"appsettings.{environment.EnvironmentName}.json", optional: true, reloadOnChange: true)
+        //    .AddEnvironmentVariables();
 
         // Add services to the container.
 
         //Core services
         var logger = builder.ConfigureCommonFluxService("HillMetrics.MIND.API", typeof(Program), typeof(PriceBondHandler), _ => { });
+
+        logger.LogInformation("Starting {applicationName}...", "HillMetrics.MIND.API");
 
         builder.Services.AddDomainServices();
 
