@@ -1,0 +1,30 @@
+@using MudBlazor
+
+<MudDialog>
+    <DialogContent>
+        <MudText>Are you sure you want to delete @ItemName <strong>@ItemValue</strong>?</MudText>
+        <MudText Color="Color.Error" Typo="Typo.body2">This action cannot be undone.</MudText>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Color="Color.Default">Cancel</MudButton>
+        <MudButton OnClick="Submit" Color="Color.Error" Variant="Variant.Filled">Delete</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] 
+    MudDialogInstance MudDialog { get; set; }
+    
+    [Parameter] 
+    public string ItemName { get; set; } = "item";
+    
+    [Parameter] 
+    public string ItemValue { get; set; } = "";
+    
+    private void Submit()
+    {
+        MudDialog.Close(DialogResult.Ok(true));
+    }
+    
+    private void Cancel() => MudDialog.Cancel();
+} 

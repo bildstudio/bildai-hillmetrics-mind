@@ -1,0 +1,362 @@
+@page "/flux/processing-details/{ProcessingHistoryId:int}"
+@using HillMetrics.MIND.API.Contracts.Responses
+@using HillMetrics.MIND.API.Contracts.Responses.Flux
+@using HillMetrics.Core
+@using HillMetrics.Core.Common
+@using System.Text.Json
+@using HillMetrics.MIND.FrontApp.Services
+@using HillMetrics.MIND.API.SDK.V1
+@inject IMindAPI MindApi
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    @if (loading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+        <MudText Typo="Typo.h5" Class="ml-2 mb-4 d-flex justify-center">Loading processing details...</MudText>
+    }
+    else if (processingHistory == null)
+    {
+        <MudAlert Severity="Severity.Error" Class="my-4">Processing history not found or error loading data.</MudAlert>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => NavigationManager.NavigateTo("/flux/processing-history"))">
+            Back to Processing History
+        </MudButton>
+    }
+    else
+    {
+        @* <MudGrid>
+            <MudItem xs="12" Class="d-flex justify-space-between align-center">
+                <div>
+                    <MudText Typo="Typo.h4">Processing History Details</MudText>
+                    <MudText Typo="Typo.subtitle1" Class="mt-1">ID: @processingHistory.FluxProcessingHistory.Id</MudText>
+                </div>
+                <div>
+                    <MudButtonGroup Color="Color.Primary" Variant="Variant.Outlined">
+                        <MudButton OnClick="@(() => NavigationManager.NavigateTo($"/flux/details/{processingHistory.FluxProcessingHistory.FluxId}"))">
+                            <MudIcon Icon="@Icons.Material.Filled.Assignment" Class="mr-2" /> View Flux
+                        </MudButton>
+                        @if (processingHistory.FetchingHistoryId.HasValue)
+                        {
+                            <MudButton OnClick="@(() => NavigationManager.NavigateTo($"/flux/fetching-details/{processingHistory.FluxProcessingHistory.fet.Value}"))">
+                                <MudIcon Icon="@Icons.Material.Filled.FindInPage" Class="mr-2" /> View Fetching Data
+                            </MudButton>
+                        }
+                    </MudButtonGroup>
+                </div>
+            </MudItem>
+
+            <!-- Basic Information -->
+            <MudItem xs="12" md="6">
+                <MudCard Elevation="3" Class="mb-4">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Basic Information</MudText>
+                        </CardHeaderContent>
+                        <CardHeaderActions>
+                            <MudIcon Icon="@Icons.Material.Filled.Info" Color="Color.Primary" />
+                        </CardHeaderActions>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudGrid>
+                            <MudItem xs="12" md="6">
+                                <MudTextField Label="Flux ID" Value="@processingHistory.FluxId.ToString()" ReadOnly="true"
+                                            Variant="Variant.Outlined" FullWidth="true" />
+                            </MudItem>
+                            <MudItem xs="12" md="6">
+                                <MudTextField Label="Processing Date" Value="@processingHistory.ProcessingDate.ToString("yyyy-MM-dd HH:mm:ss")" ReadOnly="true"
+                                            Variant="Variant.Outlined" FullWidth="true" />
+                            </MudItem>
+                            @if (processingHistory.FetchingHistoryId.HasValue)
+                            {
+                                <MudItem xs="12" md="6">
+                                    <MudTextField Label="Fetching History ID" Value="@processingHistory.FetchingHistoryId.ToString()" ReadOnly="true"
+                                                Variant="Variant.Outlined" FullWidth="true" />
+                                </MudItem>
+                            }
+                            <MudItem xs="12" md="6">
+                                <MudTextField Label="Duration" Value="@FormatDuration(processingHistory.DurationMs)" ReadOnly="true"
+                                            Variant="Variant.Outlined" FullWidth="true" />
+                            </MudItem>
+                            @if (!string.IsNullOrEmpty(processingHistory.Comment))
+                            {
+                                <MudItem xs="12">
+                                    <MudTextField Label="Comment" Value="@processingHistory.Comment" ReadOnly="true"
+                                                Variant="Variant.Outlined" FullWidth="true" Lines="2" />
+                                </MudItem>
+                            }
+                        </MudGrid>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+
+            <!-- Status Information -->
+            <MudItem xs="12" md="6">
+                <MudCard Elevation="3" Class="mb-4">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Status Information</MudText>
+                        </CardHeaderContent>
+                        <CardHeaderActions>
+                            <MudIcon Icon="@Icons.Material.Filled.BarChart" Color="Color.Primary" />
+                        </CardHeaderActions>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudGrid>
+                            <MudItem xs="12" md="6">
+                                <MudField Label="Processing Status" Variant="Variant.Outlined">
+                                    @if (processingHistory.Status.HasValue)
+                                    {
+                                        <MudTooltip Text="@processingHistory.Status.Value.ToString()">
+                                            <div class="d-flex align-center">
+                                                <MudIcon Icon="@GetStatusIcon(processingHistory.Status.Value)" 
+                                                        Color="@GetStatusColor(processingHistory.Status.Value)" 
+                                                        Class="mr-2" />
+                                                <MudText>@processingHistory.Status.Value</MudText>
+                                            </div>
+                                        </MudTooltip>
+                                    }
+                                    else
+                                    {
+                                        <span>-</span>
+                                    }
+                                </MudField>
+                            </MudItem>
+                            <MudItem xs="12" md="6">
+                                <MudField Label="Number of Data Points" Variant="Variant.Outlined">
+                                    <MudBadge Content="@(processingHistory.NbDataPoints ?? 0)" Color="Color.Primary" Overlap="true" 
+                                            Class="d-flex align-center gap-2">
+                                        <MudIcon Icon="@Icons.Material.Filled.DataUsage" />
+                                        <MudText>@(processingHistory.NbDataPoints ?? 0)</MudText>
+                                    </MudBadge>
+                                </MudField>
+                            </MudItem>
+                            <MudItem xs="12">
+                                <MudTextField Label="Error Message" Value="@(processingHistory.ErrorMessage ?? "-")" 
+                                            ReadOnly="true" Variant="Variant.Outlined" FullWidth="true" 
+                                            Lines="3" Error="@(!string.IsNullOrEmpty(processingHistory.ErrorMessage))" />
+                            </MudItem>
+                        </MudGrid>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+
+            <!-- Data Points -->
+            @if (processingHistory.DataPoints != null && processingHistory.DataPoints.Any())
+            {
+                <MudItem xs="12">
+                    <MudCard Elevation="3" Class="mb-4">
+                        <MudCardHeader>
+                            <CardHeaderContent>
+                                <MudText Typo="Typo.h6">Processed Data Points</MudText>
+                            </CardHeaderContent>
+                            <CardHeaderActions>
+                                <MudBadge Content="@processingHistory.DataPoints.Count" Color="Color.Primary">
+                                    <MudIcon Icon="@Icons.Material.Filled.DataUsage" Color="Color.Primary" />
+                                </MudBadge>
+                            </CardHeaderActions>
+                        </MudCardHeader>
+                        <MudCardContent Style="padding: 0;">
+                            <MudTable Items="@processingHistory.DataPoints" Dense="true" Hover="true" Bordered="true" Striped="true">
+                                <HeaderContent>
+                                    <MudTh>Data Point ID</MudTh>
+                                    <MudTh>Name</MudTh>
+                                    <MudTh>Type</MudTh>
+                                    <MudTh>Value</MudTh>
+                                    <MudTh>Status</MudTh>
+                                </HeaderContent>
+                                <RowTemplate>
+                                    <MudTd DataLabel="Data Point ID">@context.DataPointId</MudTd>
+                                    <MudTd DataLabel="Name">@context.Name</MudTd>
+                                    <MudTd DataLabel="Type">@context.Type</MudTd>
+                                    <MudTd DataLabel="Value">
+                                        <MudTooltip Text="@context.Value">
+                                            <div style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                @context.Value
+                                            </div>
+                                        </MudTooltip>
+                                    </MudTd>
+                                    <MudTd DataLabel="Status">
+                                        @if (context.Status.HasValue)
+                                        {
+                                            <div class="d-flex align-center">
+                                                <MudIcon Icon="@GetStatusIcon(context.Status.Value)" 
+                                                        Color="@GetStatusColor(context.Status.Value)" 
+                                                        Size="Size.Small"
+                                                        Class="mr-2" />
+                                                <MudText>@context.Status.Value</MudText>
+                                            </div>
+                                        }
+                                    </MudTd>
+                                </RowTemplate>
+                            </MudTable>
+                        </MudCardContent>
+                    </MudCard>
+                </MudItem>
+            }
+
+            <!-- Extraction Metadata -->
+            @if (!string.IsNullOrEmpty(processingHistory.ExtractionMetadata))
+            {
+                <MudItem xs="12">
+                    <MudCard Elevation="3" Class="mb-4">
+                        <MudCardHeader>
+                            <CardHeaderContent>
+                                <MudText Typo="Typo.h6">Extraction Metadata</MudText>
+                            </CardHeaderContent>
+                            <CardHeaderActions>
+                                <MudIcon Icon="@Icons.Material.Filled.Storage" Color="Color.Primary" />
+                            </CardHeaderActions>
+                        </MudCardHeader>
+                        <MudCardContent>
+                            <MudPaper Elevation="0" Class="pa-4" Style="background-color: #f5f5f5; overflow-x: auto; max-height: 400px;">
+                                <pre style="margin: 0; white-space: pre-wrap;">@FormatJson(processingHistory.ExtractionMetadata)</pre>
+                            </MudPaper>
+                        </MudCardContent>
+                    </MudCard>
+                </MudItem>
+            }
+
+            <!-- Quick Links -->
+            <MudItem xs="12">
+                <MudCard Elevation="3" Class="mb-4">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Quick Links</MudText>
+                        </CardHeaderContent>
+                        <CardHeaderActions>
+                            <MudIcon Icon="@Icons.Material.Filled.Link" Color="Color.Primary" />
+                        </CardHeaderActions>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudGrid>
+                            <MudItem xs="12" sm="6" md="3">
+                                <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true"
+                                         OnClick="@(() => NavigationManager.NavigateTo($"/flux/processing-history?fluxId={processingHistory.FluxId}"))">
+                                    <MudIcon Icon="@Icons.Material.Filled.List" Class="mr-2" /> All Processing History
+                                </MudButton>
+                            </MudItem>
+                            @if (processingHistory.FetchingHistoryId.HasValue)
+                            {
+                                <MudItem xs="12" sm="6" md="3">
+                                    <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true"
+                                             OnClick="@(() => NavigationManager.NavigateTo($"/flux/fetching-details/{processingHistory.FetchingHistoryId.Value}"))">
+                                        <MudIcon Icon="@Icons.Material.Filled.FindInPage" Class="mr-2" /> Fetching Details
+                                    </MudButton>
+                                </MudItem>
+                            }
+                            <MudItem xs="12" sm="6" md="3">
+                                <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true"
+                                         OnClick="@(() => NavigationManager.NavigateTo($"/flux/details/{processingHistory.FluxId}"))">
+                                    <MudIcon Icon="@Icons.Material.Filled.Assignment" Class="mr-2" /> Flux Details
+                                </MudButton>
+                            </MudItem>
+                            @if (processingHistory.Status.HasValue && processingHistory.Status.Value == StatusProcess.Failure)
+                            {
+                                <MudItem xs="12" sm="6" md="3">
+                                    <MudButton Variant="Variant.Filled" Color="Color.Error" FullWidth="true"
+                                             OnClick="@(() => NavigationManager.NavigateTo($"/flux/errors?fluxId={processingHistory.FluxId}"))">
+                                        <MudIcon Icon="@Icons.Material.Filled.Error" Class="mr-2" /> View Errors
+                                    </MudButton>
+                                </MudItem>
+                            }
+                        </MudGrid>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+        </MudGrid> *@
+    }
+</MudContainer>
+
+@code {
+    [Parameter]
+    public int ProcessingHistoryId { get; set; }
+
+    private FluxProcessingResponse? processingHistory;
+    private bool loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProcessingHistoryData();
+    }
+
+    private async Task LoadProcessingHistoryData()
+    {
+        try
+        {
+            loading = true;
+            var response = await MindApi.GetProcessingHistoryAsync(ProcessingHistoryId);
+            processingHistory = response.Data;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading processing history details: {ex.Message}", Severity.Error);
+            processingHistory = null;
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private string FormatDuration(long? durationMs)
+    {
+        if (durationMs == null || durationMs <= 0) return "-";
+        
+        TimeSpan timeSpan = TimeSpan.FromMilliseconds(durationMs.Value);
+        
+        if (timeSpan.TotalHours >= 1)
+            return $"{timeSpan.TotalHours:F1} hours";
+        else if (timeSpan.TotalMinutes >= 1)
+            return $"{timeSpan.TotalMinutes:F1} minutes";
+        else if (timeSpan.TotalSeconds >= 1)
+            return $"{timeSpan.TotalSeconds:F1} seconds";
+        else
+            return $"{durationMs.Value} ms";
+    }
+
+    private string FormatJson(string json)
+    {
+        try
+        {
+            var options = new JsonSerializerOptions
+            {
+                WriteIndented = true
+            };
+            
+            var jsonElement = JsonSerializer.Deserialize<JsonElement>(json);
+            return JsonSerializer.Serialize(jsonElement, options);
+        }
+        catch
+        {
+            return json;
+        }
+    }
+
+    // Helper methods for icons and colors
+    private string GetStatusIcon(StatusProcess status)
+    {
+        return status switch
+        {
+            StatusProcess.Success => Icons.Material.Filled.CheckCircle,
+            StatusProcess.Failure => Icons.Material.Filled.Error,
+            StatusProcess.Warning => Icons.Material.Filled.Warning,
+            StatusProcess.Processing => Icons.Material.Filled.Pending,
+            StatusProcess.Paused => Icons.Material.Filled.Block,
+            _ => Icons.Material.Filled.HelpOutline
+        };
+    }
+    
+    private Color GetStatusColor(StatusProcess status)
+    {
+        return status switch
+        {
+            StatusProcess.Success => Color.Success,
+            StatusProcess.Failure => Color.Error,
+            StatusProcess.Warning => Color.Warning,
+            StatusProcess.Processing => Color.Info,
+            StatusProcess.Paused => Color.Default,
+            _ => Color.Default
+        };
+    }
+} 

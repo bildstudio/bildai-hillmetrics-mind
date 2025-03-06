@@ -1,0 +1,221 @@
+﻿@page "/"
+@using HillMetrics.MIND.FrontApp.Services
+@using HillMetrics.MIND.API.SDK.V1
+@inject NavigationManager NavigationManager
+@inject IMindAPI MindApi
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudText Typo="Typo.h4" Class="mb-4">Dashboard</MudText>
+    
+    <MudGrid>
+        <!-- Statistiques rapides -->
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Elevation="2" Class="pa-4" Style="height: 100%;">
+                <MudStack>
+                    <MudText Typo="Typo.h6">Total Flux</MudText>
+                    <MudText Typo="Typo.h3" Color="Color.Primary" Class="mt-2">@(_totalFlux > 0 ? _totalFlux.ToString() : "-")</MudText>
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">Flux configurés dans le système</MudText>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+        
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Elevation="2" Class="pa-4" Style="height: 100%;">
+                <MudStack>
+                    <MudText Typo="Typo.h6">Fetchings aujourd'hui</MudText>
+                    <MudText Typo="Typo.h3" Color="Color.Secondary" Class="mt-2">@(_todayFetchings > 0 ? _todayFetchings.ToString() : "-")</MudText>
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">Récupérations effectuées aujourd'hui</MudText>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+        
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Elevation="2" Class="pa-4" Style="height: 100%;">
+                <MudStack>
+                    <MudText Typo="Typo.h6">Processings aujourd'hui</MudText>
+                    <MudText Typo="Typo.h3" Color="Color.Info" Class="mt-2">@(_todayProcessings > 0 ? _todayProcessings.ToString() : "-")</MudText>
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">Traitements effectués aujourd'hui</MudText>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+        
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Elevation="2" Class="pa-4" Style="height: 100%;">
+                <MudStack>
+                    <MudText Typo="Typo.h6">Erreurs actives</MudText>
+                    <MudText Typo="Typo.h3" Color="Color.Error" Class="mt-2">@(_activeErrors > 0 ? _activeErrors.ToString() : "-")</MudText>
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">Erreurs non résolues</MudText>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+        
+        <!-- Accès rapides -->
+        <MudItem xs="12" md="6">
+            <MudCard Elevation="2">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Accès rapides</MudText>
+                    </CardHeaderContent>
+                    <CardHeaderActions>
+                        <MudIconButton Icon="@Icons.Material.Filled.Refresh" Color="Color.Default" />
+                    </CardHeaderActions>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudGrid>
+                        <MudItem xs="6">
+                            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Search" 
+                                      FullWidth="true" Color="Color.Primary" OnClick="@(() => NavigationManager.NavigateTo("/flux/search"))">
+                                Rechercher un flux
+                            </MudButton>
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Add" 
+                                      FullWidth="true" Color="Color.Primary" OnClick="@(() => NavigationManager.NavigateTo("/flux/create"))">
+                                Créer un flux
+                            </MudButton>
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.CloudDownload" 
+                                      FullWidth="true" Color="Color.Secondary" OnClick="@(() => NavigationManager.NavigateTo("/flux/fetching-history"))">
+                                Historique de fetchings
+                            </MudButton>
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.PlayCircle" 
+                                      FullWidth="true" Color="Color.Secondary" OnClick="@(() => NavigationManager.NavigateTo("/flux/processing-history"))">
+                                Historique de processings
+                            </MudButton>
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Error" 
+                                      FullWidth="true" Color="Color.Error" OnClick="@(() => NavigationManager.NavigateTo("/flux/errors"))">
+                                Erreurs
+                            </MudButton>
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Settings" 
+                                      FullWidth="true" Color="Color.Default" OnClick="@(() => NavigationManager.NavigateTo("/settings"))">
+                                Paramètres
+                            </MudButton>
+                        </MudItem>
+                    </MudGrid>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+        
+        <!-- Dernières activités -->
+        <MudItem xs="12" md="6">
+            <MudCard Elevation="2">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Dernières activités</MudText>
+                    </CardHeaderContent>
+                    <CardHeaderActions>
+                        <MudIconButton Icon="@Icons.Material.Filled.Refresh" Color="Color.Default" />
+                    </CardHeaderActions>
+                </MudCardHeader>
+                <MudCardContent Style="max-height: 300px; overflow-y: auto;">
+                    @if (_activities.Count > 0)
+                    {
+                        <MudList T="ActivityData" Clickable="true">
+                            @foreach (var activity in _activities)
+                            {
+                                <MudListItem>
+                                    <div class="d-flex">
+                                        <MudAvatar Color="@activity.Color" Style="margin-right: 16px;">
+                                            <MudIcon Icon="@activity.Icon" />
+                                        </MudAvatar>
+                                        <div>
+                                            <MudText Typo="Typo.body1">@activity.Description</MudText>
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">@activity.Time.ToString("dd/MM/yyyy HH:mm")</MudText>
+                                        </div>
+                                    </div>
+                                </MudListItem>
+                                <MudDivider />
+                            }
+                        </MudList>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body1" Class="pa-4 text-center">Aucune activité récente</MudText>
+                    }
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+        
+        <!-- État du système -->
+        <MudItem xs="12">
+            <MudCard Elevation="2">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">État du système</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudGrid>
+                        <MudItem xs="12" md="3">
+                            <MudText Typo="Typo.subtitle2">API Backend</MudText>
+                            <MudChip T="Color" Color="Color.Success" Size="Size.Small" Class="my-2">Online</MudChip>
+                            <MudText Typo="Typo.caption">Dernière vérification: @DateTime.Now.ToString("HH:mm:ss")</MudText>
+                        </MudItem>
+                        
+                        <MudItem xs="12" md="3">
+                            <MudText Typo="Typo.subtitle2">Service de Fetching</MudText>
+                            <MudChip T="Color" Color="Color.Success" Size="Size.Small" Class="my-2">Running</MudChip>
+                            <MudText Typo="Typo.caption">Tâches en cours: 2</MudText>
+                        </MudItem>
+                        
+                        <MudItem xs="12" md="3">
+                            <MudText Typo="Typo.subtitle2">Service de Processing</MudText>
+                            <MudChip T="Color" Color="Color.Success" Size="Size.Small" Class="my-2">Running</MudChip>
+                            <MudText Typo="Typo.caption">Tâches en cours: 1</MudText>
+                        </MudItem>
+                        
+                        <MudItem xs="12" md="3">
+                            <MudText Typo="Typo.subtitle2">Base de données</MudText>
+                            <MudChip T="Color" Color="Color.Success" Size="Size.Small" Class="my-2">Connected</MudChip>
+                            <MudText Typo="Typo.caption">Latence: 12ms</MudText>
+                        </MudItem>
+                    </MudGrid>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+</MudContainer>
+
+@code {
+    // Données simulées pour le tableau de bord
+    private int _totalFlux = 42;
+    private int _todayFetchings = 156;
+    private int _todayProcessings = 98;
+    private int _activeErrors = 3;
+    
+    // Activités simulées
+    private List<ActivityData> _activities = new List<ActivityData>
+    {
+        new ActivityData { Description = "Nouveau flux 'Pricing Report' créé", Time = DateTime.Now.AddHours(-1), Icon = Icons.Material.Filled.Add, Color = Color.Primary },
+        new ActivityData { Description = "Erreur de processing pour le flux ID 87", Time = DateTime.Now.AddHours(-3), Icon = Icons.Material.Filled.Error, Color = Color.Error },
+        new ActivityData { Description = "Fetching réussi pour 'Daily Asset Data'", Time = DateTime.Now.AddHours(-5), Icon = Icons.Material.Filled.CloudDownload, Color = Color.Success },
+        new ActivityData { Description = "Processing réussi pour 'Monthly Report'", Time = DateTime.Now.AddHours(-6), Icon = Icons.Material.Filled.PlayCircle, Color = Color.Success },
+        new ActivityData { Description = "Flux 'Legacy Import' supprimé", Time = DateTime.Now.AddDays(-1), Icon = Icons.Material.Filled.Delete, Color = Color.Warning },
+        new ActivityData { Description = "Mise à jour des paramètres système", Time = DateTime.Now.AddDays(-1), Icon = Icons.Material.Filled.Settings, Color = Color.Info }
+    };
+    
+    protected override async Task OnInitializedAsync()
+    {
+        // Dans une application réelle, vous chargeriez ici les données depuis vos services
+        // Par exemple:
+        // var fluxStats = await MindApi.GetDashboardStatsAsync();
+        // _totalFlux = fluxStats.Data.TotalFlux;
+        // etc.
+    }
+    
+    // Classe pour représenter une activité
+    private class ActivityData
+    {
+        public string Description { get; set; }
+        public DateTime Time { get; set; }
+        public string Icon { get; set; }
+        public Color Color { get; set; }
+    }
+}

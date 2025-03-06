@@ -1,0 +1,88 @@
+@using HillMetrics.MIND.API.Contracts.Requests.Flux
+@using HillMetrics.MIND.API.Contracts.Responses.Flux
+@using HillMetrics.Normalized.Domain.Contracts.Providing.Flux
+
+<MudCard Elevation="0" Outlined="true" Class="mt-3">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">API Flux Configuration</MudText>
+        </CardHeaderContent>
+        <CardHeaderActions>
+            <MudTooltip Text="Metadata for API flux">
+                <MudIcon Icon="@Icons.Material.Filled.Api" Color="Color.Info" />
+            </MudTooltip>
+        </CardHeaderActions>
+    </MudCardHeader>
+    <MudCardContent>
+        <MudGrid>
+            <MudItem xs="12">
+                <MudTextField @bind-Value="Metadata.Endpoint" 
+                             Label="API URL" 
+                             Variant="Variant.Outlined"
+                             Required="true"
+                             Validation="@(new Func<string, IEnumerable<string>>(ValidateUrl))" />
+            </MudItem>
+
+            <MudItem xs="12">
+                <MudTextField @bind-Value="Metadata.ApiKey"
+                             Label="API KEY"
+                             Variant="Variant.Outlined"
+                             Required="true" />
+            </MudItem>
+            
+            <MudItem xs="12">
+                <MudDivider Class="my-3" />
+                <FluxMetadataDictionaryComponent @bind-MetadataDictionary="Metadata.Metadata" />
+            </MudItem>
+        </MudGrid>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter]
+    public FluxMetadataApiDto Metadata { get; set; } = new FluxMetadataApiDto();
+
+    [Parameter]
+    public EventCallback<FluxMetadataApiDto> MetadataChanged { get; set; }
+
+    private IEnumerable<string> ValidateUrl(string url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            yield return "API URL is required";
+        else if (!url.StartsWith("http://") && !url.StartsWith("https://"))
+            yield return "URL must start with http:// or https://";
+    }
+
+    protected override void OnParametersSet()
+    {
+        // Set default values if null
+        Metadata ??= new FluxMetadataApiDto
+        {
+            Metadata = new Dictionary<string, object>()
+        };
+            
+        if (Metadata.Metadata == null)
+            Metadata.Metadata = new Dictionary<string, object>();
+    }
+    
+    private string GetMetadataValue(string key, string defaultValue)
+    {
+        if (Metadata.Metadata != null && Metadata.Metadata.TryGetValue(key, out var value))
+            return value?.ToString() ?? defaultValue;
+            
+        return defaultValue;
+    }
+    
+    private void SetMetadataValue(string key, string value)
+    {
+        if (Metadata.Metadata == null)
+            Metadata.Metadata = new Dictionary<string, object>();
+            
+        if (Metadata.Metadata.ContainsKey(key))
+            Metadata.Metadata[key] = value;
+        else
+            Metadata.Metadata.Add(key, value);
+            
+        MetadataChanged.InvokeAsync(Metadata);
+    }
+} 

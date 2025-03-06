@@ -1,0 +1,50 @@
+@using HillMetrics.Core.Search
+@typeparam T where T : IComparable<T>
+
+<MudGrid>
+    <MudItem xs="4">
+        <MudSelect T="Operator" Value="@SearchCriteria.Operator" ValueChanged="@OnOperatorChanged" Label="Operator" Variant="Variant.Outlined">
+            <MudSelectItem Value="@Operator.Equal">Equal</MudSelectItem>
+            <MudSelectItem Value="@Operator.LowerStrict">Less than</MudSelectItem>
+            <MudSelectItem Value="@Operator.LowerOrEqual">Less than or equal</MudSelectItem>
+            <MudSelectItem Value="@Operator.GreaterStrict">Greater than</MudSelectItem>
+            <MudSelectItem Value="@Operator.GreaterOrEqual">Greater than or equal</MudSelectItem>
+            <MudSelectItem Value="@Operator.Between">Between</MudSelectItem>
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="4">
+        <MudTextField T="T" Value="@SearchCriteria.Value" ValueChanged="@OnValueChanged"
+                      Label="@($"{Label}")" Variant="Variant.Outlined" />
+    </MudItem>
+    @if (SearchCriteria.Operator == Operator.Between)
+    {
+        <MudItem xs="4">
+            <MudTextField T="T" Value="@(SearchCriteria.Value2 ?? default!)" ValueChanged="@OnValue2Changed"
+                          Label="@($"{Label} (upper)")" Variant="Variant.Outlined" />
+        </MudItem>
+    }
+</MudGrid>
+
+@code {
+    [Parameter] public SearchCriteria<T> SearchCriteria { get; set; } = new();
+    [Parameter] public EventCallback<SearchCriteria<T>> SearchCriteriaChanged { get; set; }
+    [Parameter] public string Label { get; set; } = "Value";
+
+    private async Task OnOperatorChanged(Operator op)
+    {
+        SearchCriteria.Operator = op;
+        await SearchCriteriaChanged.InvokeAsync(SearchCriteria);
+    }
+
+    private async Task OnValueChanged(T value)
+    {
+        SearchCriteria.Value = value;
+        await SearchCriteriaChanged.InvokeAsync(SearchCriteria);
+    }
+
+    private async Task OnValue2Changed(T value)
+    {
+        SearchCriteria.Value2 = value;
+        await SearchCriteriaChanged.InvokeAsync(SearchCriteria);
+    }
+} 

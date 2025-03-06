@@ -1,0 +1,76 @@
+@using HillMetrics.MIND.API.Contracts.Requests.Flux
+@using HillMetrics.MIND.API.Contracts.Responses.Flux
+@using HillMetrics.Normalized.Domain.Contracts.Providing.Flux
+
+<MudCard Elevation="0" Outlined="true" Class="mt-3">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">Email Flux Configuration</MudText>
+        </CardHeaderContent>
+        <CardHeaderActions>
+            <MudTooltip Text="Metadata for receiving flux data via email">
+                <MudIcon Icon="@Icons.Material.Filled.Email" Color="Color.Info" />
+            </MudTooltip>
+        </CardHeaderActions>
+    </MudCardHeader>
+    <MudCardContent>
+        <MudGrid>
+            <MudItem xs="12">
+                <MudSelect T="FluxMailContentLocation" @bind-Value="Metadata.ContentLocation"
+                          Label="Content Location"
+                          Required="true"
+                          Variant="Variant.Outlined">
+                    <MudSelectItem Value="@FluxMailContentLocation.Attachment">Attachment</MudSelectItem>
+                    <MudSelectItem Value="@FluxMailContentLocation.Body">Email Body</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            
+            <MudItem xs="12">
+                <MudText Typo="Typo.subtitle1" Class="my-2">Email Rules</MudText>
+                <FluxRuleSettingsComponent RuleSettings="@Metadata.FluxRuleSettings" />
+            </MudItem>
+            
+            @if (Metadata.ContentLocation == FluxMailContentLocation.Attachment)
+            {
+                <MudItem xs="12">
+                    <MudText Typo="Typo.subtitle1" Class="my-2">Attachment Rules</MudText>
+                    <FluxAttachmentRuleComponent AttachmentRule="@Metadata.FluxAttachmentRule" />
+                </MudItem>
+            }
+            
+            <MudItem xs="12">
+                <MudDivider Class="my-3" />
+                <FluxMetadataDictionaryComponent @bind-MetadataDictionary="Metadata.Metadata" />
+            </MudItem>
+        </MudGrid>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter]
+    public FluxMetadataMailDto Metadata { get; set; } = new FluxMetadataMailDto();
+
+    [Parameter]
+    public EventCallback<FluxMetadataMailDto> MetadataChanged { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        // Set default values if null
+        Metadata ??= new FluxMetadataMailDto
+        {
+            ContentLocation = FluxMailContentLocation.Attachment,
+            FluxRuleSettings = new FluxRuleSettingsDto(),
+            FluxAttachmentRule = new FluxAttachmentRuleDto(),
+            Metadata = new Dictionary<string, object>()
+        };
+
+        if (Metadata.FluxRuleSettings == null)
+            Metadata.FluxRuleSettings = new FluxRuleSettingsDto();
+
+        if (Metadata.FluxAttachmentRule == null)
+            Metadata.FluxAttachmentRule = new FluxAttachmentRuleDto();
+            
+        if (Metadata.Metadata == null)
+            Metadata.Metadata = new Dictionary<string, object>();
+    }
+} 

@@ -7,6 +7,7 @@ using HillMetrics.Core.API.Convention;
 using HillMetrics.Core.API.Extensions;
 using HillMetrics.Core.Authentication;
 using HillMetrics.Core.Flux.Extension;
+using HillMetrics.Core.Monitoring;
 using HillMetrics.MIND.API.Converter;
 using HillMetrics.MIND.API.Extensions;
 using HillMetrics.MIND.API.Mappers;
@@ -32,28 +33,24 @@ public partial class Program
     {
         var builder = WebApplication.CreateBuilder(args);
 
-        IWebHostEnvironment  environment = builder.Environment;
-        builder.Configuration
-            .SetBasePath(environment.ContentRootPath)
-            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-            .AddJsonFile($"appsettings.{environment.EnvironmentName}.json", optional: true, reloadOnChange: true)
-            .AddEnvironmentVariables();
+        //IWebHostEnvironment  environment = builder.Environment;
+        //builder.Configuration
+        //    .SetBasePath(environment.ContentRootPath)
+        //    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+        //    .AddJsonFile($"appsettings.{environment.EnvironmentName}.json", optional: true, reloadOnChange: true)
+        //    .AddEnvironmentVariables();
 
         // Add services to the container.
 
         //Core services
         var logger = builder.ConfigureCommonFluxService("HillMetrics.MIND.API", typeof(Program), typeof(PriceBondHandler), _ => { });
 
+        logger.LogInformation("Starting {applicationName}...", "HillMetrics.MIND.API");
+
         builder.Services.AddDomainServices();
 
         builder.Services.AddAutoMapper(typeof(FluxMappingProfile));
         builder.Services.AddAutoMapper(typeof(GicsMappingProfile));
-
-
-        //var logger = builder.InitAndAddHillMetricsLogger("HillMetrics.MIND.API");
-
-        //ADD Aspire discover/open telemetry
-        //builder.AddServiceDefaults();
 
         //add cors
         builder.AddHillMetricsCorsSettings();

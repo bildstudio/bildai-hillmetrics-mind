@@ -1,0 +1,504 @@
+@page "/flux/create"
+@page "/flux/edit/{FluxId:int}"
+@using HillMetrics.Core.Financial
+@using HillMetrics.MIND.API.Contracts.Requests.Flux
+@using HillMetrics.MIND.API.Contracts.Requests.Source
+@using HillMetrics.MIND.API.Contracts.Responses.Flux
+@using HillMetrics.MIND.API.Contracts.Responses.Source
+@using HillMetrics.MIND.FrontApp.Components.Flux.Metadata
+@using HillMetrics.MIND.FrontApp.Components.Flux
+@using HillMetrics.MIND.FrontApp.Services
+@using HillMetrics.Core.Time.Trigger
+@using HillMetrics.Normalized.Domain.Contracts.Providing.Flux
+@inject IMindAPI MindApi
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="py-4">
+    <MudPaper Elevation="3" Class="pa-4">
+        <MudText Typo="Typo.h4" Class="mb-4">@(FluxId.HasValue ? "Edit Flux" : "Create New Flux")</MudText>
+
+        @if (loading)
+        {
+            <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+        }
+        else
+        {
+            <MudForm @ref="form" Model="@fluxRequest" @bind-IsValid="@success" Validation="@(validator.ValidateValue)">
+                <MudGrid>
+                    <!-- Basic Information -->
+                    <MudItem xs="12">
+                        <MudCard Elevation="0" Outlined="true">
+                            <MudCardHeader>
+                                <CardHeaderContent>
+                                    <MudText Typo="Typo.h6">Basic Information</MudText>
+                                </CardHeaderContent>
+                            </MudCardHeader>
+                            <MudCardContent>
+                                <MudGrid>
+                                    <MudItem xs="12" md="6">
+                                        <MudTextField @bind-Value="fluxRequest.FluxName"
+                                        Label="Flux Name"
+                                        Required="true"
+                                        RequiredError="Flux name is required"
+                                        Variant="Variant.Outlined" />
+                                    </MudItem>
+                                    <MudItem xs="12" md="6">
+                                        <MudSelect T="int?" @bind-Value="fluxRequest.SourceId"
+                                        Label="Source"
+                                        Required="true"
+                                        RequiredError="Source is required"
+                                        Variant="Variant.Outlined">
+                                            @foreach (var source in sources)
+                                            {
+                                                <MudSelectItem T="int?" Value="@source.SourceId">@source.SourceName</MudSelectItem>
+                                            }
+                                        </MudSelect>
+                                    </MudItem>
+                                    <MudItem xs="12">
+                                        <MudTextField @bind-Value="fluxRequest.FluxDescription"
+                                        Label="Description"
+                                        Lines="2"
+                                        Variant="Variant.Outlined" />
+                                    </MudItem>
+                                    <MudItem xs="12">
+                                        <MudTextField @bind-Value="fluxRequest.FluxComment"
+                                        Label="Comment"
+                                        Lines="2"
+                                        Variant="Variant.Outlined" />
+                                    </MudItem>
+                                </MudGrid>
+                            </MudCardContent>
+                        </MudCard>
+                    </MudItem>
+
+                    <!-- Flux Type and State -->
+                    <MudItem xs="12">
+                        <MudCard Elevation="0" Outlined="true">
+                            <MudCardHeader>
+                                <CardHeaderContent>
+                                    <MudText Typo="Typo.h6">Flux Configuration</MudText>
+                                </CardHeaderContent>
+                            </MudCardHeader>
+                            <MudCardContent>
+                                <MudGrid>
+                                    <MudItem xs="12" md="4">
+                                        <MudSelect T="FluxType?" @bind-Value="fluxRequest.FluxType"
+                                            Label="Flux Type"
+                                            Required="true"
+                                            RequiredError="Flux type is required"
+                                            Variant="Variant.Outlined"
+                                            SelectedValuesChanged="@OnFluxTypeChanged">
+                                            <MudSelectItem T="FluxType?" Value="@FluxType.Email">Email</MudSelectItem>
+                                            <MudSelectItem T="FluxType?" Value="@FluxType.Api">API</MudSelectItem>
+                                            <MudSelectItem T="FluxType?" Value="@FluxType.HttpDownload">HTTP Download</MudSelectItem>
+                                            <MudSelectItem T="FluxType?" Value="@FluxType.Sftp">SFTP</MudSelectItem>
+                                            <MudSelectItem T="FluxType?" Value="@FluxType.Webhook">Webhook</MudSelectItem>
+                                            <MudSelectItem T="FluxType?" Value="@FluxType.Scraping">Scraping</MudSelectItem>
+                                        </MudSelect>
+                                    </MudItem>
+                                    <MudItem xs="12" md="4">
+                                        <MudSelect T="FinancialType?" @bind-Value="fluxRequest.FluxFinancialType"
+                                            Label="Financial Type"
+                                            Required="true"
+                                            RequiredError="Financial type is required"
+                                            Variant="Variant.Outlined">
+                                            @foreach (var type in Enum.GetValues<FinancialType>())
+                                            {
+                                                <MudSelectItem T="FinancialType?" Value="@type">@type.ToString()</MudSelectItem>
+                                            }
+                                        </MudSelect>
+                                    </MudItem>
+                                    <MudItem xs="12" md="4">
+                                        <MudSelect T="FluxState?" @bind-Value="fluxRequest.FluxState"
+                                            Label="Flux State"
+                                            Required="true"
+                                            RequiredError="Flux state is required"
+                                            Variant="Variant.Outlined">
+                                            @foreach (var state in Enum.GetValues<FluxState>())
+                                            {
+                                                <MudSelectItem T="FluxState?" Value="@state">@state.ToString()</MudSelectItem>
+                                            }
+                                        </MudSelect>
+                                    </MudItem>
+                                    <MudItem xs="12">
+                                        <MudSwitch T="bool" @bind-Checked="@canHaveConcurrencyMultiFetching" 
+                                            Label="Allow Concurrent Multi-Fetching" 
+                                            Color="Color.Primary" />
+                                    </MudItem>
+                                </MudGrid>
+                            </MudCardContent>
+                        </MudCard>
+                    </MudItem>
+
+                    <!-- Trigger Periods -->
+                    <MudItem xs="12">
+                        <MudCard Elevation="0" Outlined="true">
+                            <MudCardHeader>
+                                <CardHeaderContent>
+                                    <MudText Typo="Typo.h6">Scheduling</MudText>
+                                </CardHeaderContent>
+                            </MudCardHeader>
+                            <MudCardContent>
+                                <MudGrid>
+                                    <MudItem xs="12" md="6">
+                                        <MudText Typo="Typo.subtitle1" Class="mb-2">Fetch Schedule</MudText>
+                                        <TriggerPeriodEditor TriggerPeriod="@fetchTriggerPeriod" TriggerPeriodChanged="@(tp => { fetchTriggerPeriod = tp; StateHasChanged(); })" />
+                                    </MudItem>
+                                    <MudItem xs="12" md="6">
+                                        <MudText Typo="Typo.subtitle1" Class="mb-2">Process Schedule</MudText>
+                                        <TriggerPeriodEditor TriggerPeriod="@processTriggerPeriod" TriggerPeriodChanged="@(tp => { processTriggerPeriod = tp; StateHasChanged(); })" />
+                                    </MudItem>
+                                </MudGrid>
+                            </MudCardContent>
+                        </MudCard>
+                    </MudItem>
+
+                    <!-- Flux-Specific Metadata -->
+                    @if (fluxRequest.FluxType.HasValue)
+                    {
+                        <MudItem xs="12">
+                            @switch (fluxRequest.FluxType.Value)
+                            {
+                                case FluxType.Email:
+                                    <FluxMetadataMailComponent Metadata="@emailMetadata" MetadataChanged="@(md => { emailMetadata = md; StateHasChanged(); })" />
+                                    break;
+                                case FluxType.Api:
+                                case FluxType.Webhook:
+                                    <FluxMetadataApiComponent Metadata="@apiMetadata" MetadataChanged="@(md => { apiMetadata = md; StateHasChanged(); })" />
+                                    break;
+                                case FluxType.HttpDownload:
+                                case FluxType.Scraping:
+                                    <MudAlert Severity="Severity.Info" Class="mb-2">Downloading Configuration</MudAlert>
+                                    break;
+                                case FluxType.Sftp:
+                                    <MudAlert Severity="Severity.Info" Class="mb-2">SFTP Configuration</MudAlert>
+                                    break;
+                            }
+                        </MudItem>
+                    }
+                </MudGrid>
+
+                <MudGrid Class="mt-4">
+                    <MudItem xs="12" Class="d-flex justify-end">
+                        <MudButton Variant="Variant.Filled" Color="Color.Secondary" 
+                        OnClick="Cancel" Class="mr-2">
+                            Cancel
+                        </MudButton>
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" 
+                        OnClick="SubmitForm" Disabled="@(!success || processing)">
+                            @(FluxId.HasValue ? "Update" : "Create")
+                            @if (processing)
+                            {
+                                <MudProgressCircular Class="ms-2" Size="Size.Small" Indeterminate="true" />
+                            }
+                        </MudButton>
+                    </MudItem>
+                </MudGrid>
+            </MudForm>
+        }
+    </MudPaper>
+</MudContainer>
+
+@code {
+    [Parameter]
+    public int? FluxId { get; set; }
+
+    private FluxRequest fluxRequest = new();
+    private FluxMetadataMailDto emailMetadata = new();
+    private FluxMetadataApiDto apiMetadata = new();
+    private FluxMetadataDownloadDto downloadMetadata = new();
+    private FluxMetadataFileLocationDto fileLocationMetadata = new();
+
+    private TriggerPeriod fetchTriggerPeriod = TriggerPeriod.CreateDailyTrigger(new TimeSpan(0, 0, 0));
+    private TriggerPeriod processTriggerPeriod = TriggerPeriod.CreateDailyTrigger(new TimeSpan(1, 0, 0));
+    private bool canHaveConcurrencyMultiFetching = false;
+
+    private bool success;
+    private bool processing = false;
+    private bool loading = true;
+    private MudForm form;
+    private List<SourceSearchDto> sources = new();
+
+    private FluxValidator validator = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        loading = true;
+        try
+        {
+            // Fetch sources from the API
+            var response = await MindApi.SearchSourcesAsync(new SourceSearchRequest());
+            sources = response.Data;
+
+            // Initialize trigger periods
+            fetchTriggerPeriod = TriggerPeriod.CreateDailyTrigger(new TimeSpan(0, 0, 0));
+            processTriggerPeriod = TriggerPeriod.CreateDailyTrigger(new TimeSpan(1, 0, 0));
+
+            fluxRequest.FluxState = FluxState.Active;
+            canHaveConcurrencyMultiFetching = false;
+
+            // If we're in edit mode, load the existing flux details
+            if (FluxId.HasValue)
+            {
+                await LoadFluxDetails();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading data: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task LoadFluxDetails()
+    {
+        try
+        {
+            var result = await MindApi.GetFluxAsync(FluxId!.Value);
+            if (result != null)
+            {
+                // Map the response to the request model
+                fluxRequest.FluxName = result.FluxName;
+                fluxRequest.FluxDescription = result.Description;
+                fluxRequest.FluxComment = result.Comment;
+                fluxRequest.SourceId = result.Source.Id;
+                fluxRequest.FluxType = result.FluxType;
+                fluxRequest.FluxFinancialType = result.FinancialType;
+                fluxRequest.FluxState = result.FluxState;
+                canHaveConcurrencyMultiFetching = result.CanHaveConcurrencyMultiFetching;
+                fluxRequest.CanHaveConcurrencyMultiFetching = result.CanHaveConcurrencyMultiFetching;
+
+                // Map trigger periods
+                if (result.FetchTriggerPeriod != null)
+                {
+                    fetchTriggerPeriod = new TriggerPeriod
+                    {
+                        FrequencyType = result.FetchTriggerPeriod.FrequencyType,
+                        Interval = result.FetchTriggerPeriod.Interval,
+                        StartTime = result.FetchTriggerPeriod.StartTime,
+                        DayOfWeek = result.FetchTriggerPeriod.DayOfWeek,
+                        DayOfMonth = result.FetchTriggerPeriod.DayOfMonth,
+                        IsEnabled = result.FetchTriggerPeriod.IsEnabled
+                    };
+                }
+
+                if (result.ProcessTriggerPeriod != null)
+                {
+                    processTriggerPeriod = new TriggerPeriod
+                    {
+                        FrequencyType = result.ProcessTriggerPeriod.FrequencyType,
+                        Interval = result.ProcessTriggerPeriod.Interval,
+                        StartTime = result.ProcessTriggerPeriod.StartTime,
+                        DayOfWeek = result.ProcessTriggerPeriod.DayOfWeek,
+                        DayOfMonth = result.ProcessTriggerPeriod.DayOfMonth,
+                        IsEnabled = result.ProcessTriggerPeriod.IsEnabled
+                    };
+                }
+
+                // Load type-specific metadata based on the flux type
+                if (result.FluxMetadata != null)
+                {
+                    switch (result.FluxType)
+                    {
+                        case FluxType.Email:
+                            emailMetadata = (FluxMetadataMailDto)result.FluxMetadata;
+                            break;
+                        case FluxType.Api:
+                        case FluxType.Webhook:
+                            apiMetadata =(FluxMetadataApiDto)result.FluxMetadata;
+                            break;
+                        case FluxType.HttpDownload:
+                        case FluxType.Scraping:
+                            downloadMetadata = (FluxMetadataDownloadDto)result.FluxMetadata;
+                            break;
+                        case FluxType.Sftp:
+                            fileLocationMetadata = (FluxMetadataFileLocationDto)result.FluxMetadata;
+                            break;
+                    }
+                }
+            }
+            else
+            {
+                Snackbar.Add("Flux not found", Severity.Error);
+                NavigationManager.NavigateTo("/flux/search");
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading flux: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void OnFluxTypeChanged(IEnumerable<FluxType?> values)
+    {
+        var selectedType = values.FirstOrDefault();
+        if (!selectedType.HasValue) return;
+
+        // Initialize appropriate metadata based on flux type
+        switch (selectedType.Value)
+        {
+            case FluxType.Email:
+                if (emailMetadata == null)
+                    emailMetadata = new FluxMetadataMailDto();
+                break;
+            case FluxType.Api:
+            case FluxType.Webhook:
+                if (apiMetadata == null)
+                    apiMetadata = new FluxMetadataApiDto();
+                break;
+            case FluxType.HttpDownload:
+            case FluxType.Scraping:
+                if (downloadMetadata == null)
+                    downloadMetadata = new FluxMetadataDownloadDto();
+                break;
+            case FluxType.Sftp:
+                if (fileLocationMetadata == null)
+                    fileLocationMetadata = new FluxMetadataFileLocationDto();
+                break;
+        }
+    }
+
+    private TriggerPeriodDto MapToTriggerPeriodDto(TriggerPeriod triggerPeriod)
+    {
+        var dto = new TriggerPeriodDto
+            {
+                // Use direct property mapping
+                FrequencyType = triggerPeriod.FrequencyType,
+                Interval = triggerPeriod.Interval,
+                StartTime = triggerPeriod.StartTime,
+                DayOfWeek = triggerPeriod.DayOfWeek,
+                DayOfMonth = triggerPeriod.DayOfMonth,
+                IsEnabled = triggerPeriod.IsEnabled
+                // Id is not mapped - it will be assigned by the server
+            };
+
+        return dto;
+    }
+
+    private async Task SubmitForm()
+    {
+        processing = true;
+
+        try
+        {
+            // Set the value from the boolean binding
+            fluxRequest.CanHaveConcurrencyMultiFetching = canHaveConcurrencyMultiFetching;
+            
+            // Convert TriggerPeriod to TriggerPeriodDto
+            fluxRequest.FetchTriggerPeriod = MapToTriggerPeriodDto(fetchTriggerPeriod);
+            fluxRequest.ProcessTriggerPeriod = MapToTriggerPeriodDto(processTriggerPeriod);
+
+            // Determine which metadata to use based on flux type
+            if (fluxRequest.FluxType.HasValue)
+            {
+                switch (fluxRequest.FluxType.Value)
+                {
+                    case FluxType.Email:
+                        fluxRequest.FluxMetadata = emailMetadata;
+                        break;
+                    case FluxType.Api:
+                    case FluxType.Webhook:
+                        fluxRequest.FluxMetadata = apiMetadata;
+                        break;
+                    case FluxType.HttpDownload:
+                    case FluxType.Scraping:
+                        fluxRequest.FluxMetadata = downloadMetadata;
+                        break;
+                    case FluxType.Sftp:
+                        fluxRequest.FluxMetadata = fileLocationMetadata;
+                        break;
+                }
+            }
+
+            bool result;
+            if (FluxId.HasValue)
+            {
+                // Update existing flux
+                result = await MindApi.UpdateFluxAsync(FluxId.Value, fluxRequest);
+                if (result)
+                {
+                    Snackbar.Add("Flux updated successfully!", Severity.Success);
+                    NavigationManager.NavigateTo($"/flux/details/{FluxId.Value}");
+                }
+                else
+                {
+                    Snackbar.Add("Failed to update flux.", Severity.Error);
+                }
+            }
+            else
+            {
+                // Create new flux
+                result = await MindApi.CreateFluxAsync(fluxRequest);
+                if (result)
+                {
+                    Snackbar.Add("Flux created successfully!", Severity.Success);
+                    NavigationManager.NavigateTo("/flux/search");
+                }
+                else
+                {
+                    Snackbar.Add("Failed to create flux.", Severity.Error);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error {(FluxId.HasValue ? "updating" : "creating")} flux: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            processing = false;
+        }
+    }
+
+    private void Cancel()
+    {
+        if (FluxId.HasValue)
+        {
+            NavigationManager.NavigateTo($"/flux/details/{FluxId.Value}");
+        }
+        else
+        {
+            NavigationManager.NavigateTo("/flux/search");
+        }
+    }
+
+    // Form validation
+    public class FluxValidator
+    {
+        public Func<object, string, Task<IEnumerable<string>>> ValidateValue => async (model, propertyName) =>
+        {
+            var fluxRequest = model as FluxRequest;
+            if (fluxRequest == null) return Array.Empty<string>();
+
+            switch (propertyName)
+            {
+                case nameof(FluxRequest.FluxName):
+                    if (string.IsNullOrWhiteSpace(fluxRequest.FluxName))
+                        return new[] { "Flux name is required" };
+                    break;
+                case nameof(FluxRequest.SourceId):
+                    if (fluxRequest.SourceId == null || fluxRequest.SourceId <= 0)
+                        return new[] { "Source is required" };
+                    break;
+                case nameof(FluxRequest.FluxType):
+                    if (fluxRequest.FluxType == null)
+                        return new[] { "Flux type is required" };
+                    break;
+                case nameof(FluxRequest.FluxFinancialType):
+                    if (fluxRequest.FluxFinancialType == null)
+                        return new[] { "Financial type is required" };
+                    break;
+                case nameof(FluxRequest.FluxState):
+                    if (fluxRequest.FluxState == null)
+                        return new[] { "Flux state is required" };
+                    break;
+            }
+
+            return Array.Empty<string>();
+        };
+    }
+} 

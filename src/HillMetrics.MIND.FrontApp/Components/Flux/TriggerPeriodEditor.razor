@@ -1,0 +1,192 @@
+@using HillMetrics.MIND.API.Contracts.Responses.Flux
+@using HillMetrics.Core.Time.Trigger
+
+<MudCard Elevation="0" Outlined="true" Class="mb-3">
+    <MudCardContent>
+        <MudGrid>
+            <MudItem xs="12" md="6">
+                <MudSelect T="FrequencyType" @bind-Value="TriggerPeriod.FrequencyType"
+                           Label="Frequency Type"
+                           Variant="Variant.Outlined"
+                           SelectedValuesChanged="OnFrequencyTypeChanged">
+                    <MudSelectItem Value="@FrequencyType.Never">Never</MudSelectItem>
+                    <MudSelectItem Value="@FrequencyType.Immediately">Immediately</MudSelectItem>
+                    <MudSelectItem Value="@FrequencyType.Minute">Every X Minutes</MudSelectItem>
+                    <MudSelectItem Value="@FrequencyType.Hour">Every X Hours</MudSelectItem>
+                    <MudSelectItem Value="@FrequencyType.Day">Daily</MudSelectItem>
+                    <MudSelectItem Value="@FrequencyType.Month">Monthly</MudSelectItem>
+                    <MudSelectItem Value="@FrequencyType.Specific">Specific</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            
+            <MudItem xs="12" md="6">
+                <MudSwitch T="bool" @bind-Checked="TriggerPeriod.IsEnabled" 
+                           Label="Is Active" 
+                           Color="Color.Primary" />
+            </MudItem>
+
+            @if (TriggerPeriod.FrequencyType == FrequencyType.Minute || 
+                TriggerPeriod.FrequencyType == FrequencyType.Hour || 
+                TriggerPeriod.FrequencyType == FrequencyType.Day)
+            {
+                if (TriggerPeriod.Interval == null)
+                {
+                    TriggerPeriod.Interval = 1;
+                }
+                
+                <MudItem xs="12" md="6">
+                    <MudNumericField @bind-Value="TriggerPeriod.Interval" 
+                                    Label="@GetIntervalLabel()"
+                                    Min="1"
+                                    Variant="Variant.Outlined" />
+                </MudItem>
+            }
+
+            @if (TriggerPeriod.FrequencyType == FrequencyType.Day || 
+                TriggerPeriod.FrequencyType == FrequencyType.Month || 
+                TriggerPeriod.FrequencyType == FrequencyType.Specific)
+            {
+                <MudItem xs="12" md="6">
+                    <MudTimePicker @bind-Time="StartTime" 
+                                  Label="Start Time"
+                                  Variant="Variant.Outlined"
+                                  AmPm="false" />
+                </MudItem>
+            }
+
+           @*  @if (TriggerPeriod.FrequencyType == FrequencyType.Specific)
+            {
+                <MudItem xs="12" md="6">
+                    <MudSelect T="DayOfWeek" @bind-Value="TriggerPeriod.DayOfWeek" 
+                              Label="Day of Week"
+                              Variant="Variant.Outlined">
+                        <MudSelectItem Value="@DayOfWeek.Monday">Monday</MudSelectItem>
+                        <MudSelectItem Value="@DayOfWeek.Tuesday">Tuesday</MudSelectItem>
+                        <MudSelectItem Value="@DayOfWeek.Wednesday">Wednesday</MudSelectItem>
+                        <MudSelectItem Value="@DayOfWeek.Thursday">Thursday</MudSelectItem>
+                        <MudSelectItem Value="@DayOfWeek.Friday">Friday</MudSelectItem>
+                        <MudSelectItem Value="@DayOfWeek.Saturday">Saturday</MudSelectItem>
+                        <MudSelectItem Value="@DayOfWeek.Sunday">Sunday</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+            } *@
+            
+            @if (TriggerPeriod.FrequencyType == FrequencyType.Month)
+            {
+                <MudItem xs="12" md="6">
+                    <MudNumericField @bind-Value="TriggerPeriod.DayOfMonth" 
+                                    Label="Day of Month"
+                                    Min="1"
+                                    Max="31"
+                                    Variant="Variant.Outlined" />
+                </MudItem>
+            }
+            
+            @if (TriggerPeriod.FrequencyType != FrequencyType.Never && 
+                TriggerPeriod.FrequencyType != FrequencyType.Immediately)
+            {
+                <MudItem xs="12">
+                    <MudText Typo="Typo.body2" Class="mt-4">
+                        @GetTriggerDescription()
+                    </MudText>
+                </MudItem>
+            }
+        </MudGrid>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter]
+    public TriggerPeriod TriggerPeriod { get; set; } = new TriggerPeriod();
+
+    [Parameter]
+    public EventCallback<TriggerPeriod> TriggerPeriodChanged { get; set; }
+
+    private TimeSpan? _startTime;
+    private TimeSpan? StartTime
+    {
+        get => TriggerPeriod.StartTime;
+        set 
+        {
+            TriggerPeriod.StartTime = value;
+            TriggerPeriodChanged.InvokeAsync(TriggerPeriod);
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        if (TriggerPeriod == null)
+        {
+            TriggerPeriod = TriggerPeriod.CreateDailyTrigger(new TimeSpan(8, 0, 0));
+        }
+    }
+
+    private void OnFrequencyTypeChanged(IEnumerable<FrequencyType> values)
+    {
+        var frequencyType = values.FirstOrDefault();
+        
+        // Initialize properties based on frequency type
+        switch (frequencyType)
+        {
+            case FrequencyType.Never:
+                TriggerPeriod = TriggerPeriod.CreateNeverTrigger();
+                break;
+            case FrequencyType.Immediately:
+                TriggerPeriod = TriggerPeriod.CreateImmediateTrigger();
+                break;
+            case FrequencyType.Minute:
+            case FrequencyType.Hour:
+            case FrequencyType.Day:
+                if (TriggerPeriod.Interval == null)
+                {
+                    TriggerPeriod.Interval = 1;
+                }
+                if (frequencyType == FrequencyType.Day && TriggerPeriod.StartTime == null)
+                {
+                    TriggerPeriod.StartTime = new TimeSpan(8, 0, 0);
+                }
+                break;
+            case FrequencyType.Month:
+                if (TriggerPeriod.DayOfMonth == null)
+                {
+                    TriggerPeriod.DayOfMonth = 1;
+                }
+                if (TriggerPeriod.StartTime == null)
+                {
+                    TriggerPeriod.StartTime = new TimeSpan(8, 0, 0);
+                }
+                break;
+            case FrequencyType.Specific:
+                if (TriggerPeriod.DayOfWeek == null)
+                {
+                    TriggerPeriod.DayOfWeek = DayOfWeek.Monday;
+                }
+                if (TriggerPeriod.StartTime == null)
+                {
+                    TriggerPeriod.StartTime = new TimeSpan(8, 0, 0);
+                }
+                break;
+        }
+
+        TriggerPeriodChanged.InvokeAsync(TriggerPeriod);
+    }
+
+    private string GetIntervalLabel()
+    {
+        return TriggerPeriod.FrequencyType switch
+        {
+            FrequencyType.Minute => "Interval (minutes)",
+            FrequencyType.Hour => "Interval (hours)",
+            FrequencyType.Day => "Interval (days)",
+            _ => "Interval"
+        };
+    }
+
+    private string GetTriggerDescription()
+    {
+        if (!TriggerPeriod.IsEnabled)
+            return "Trigger is disabled";
+
+        return TriggerPeriod.ToString();
+    }
+} 

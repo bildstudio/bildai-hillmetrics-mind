@@ -1,0 +1,27 @@
+@using MudBlazor
+@using HillMetrics.MIND.API.Contracts.Responses.Flux
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.subtitle2">Flux ID: @Metadata?.FluxId</MudText>
+        <MudText Typo="Typo.subtitle2">Fetching Date: @Metadata?.FetchingDate.ToString("yyyy-MM-dd HH:mm:ss")</MudText>
+        <MudDivider Class="my-2" />
+        <MudText Typo="Typo.subtitle1" Class="mb-2">Metadata:</MudText>
+        <MudPaper Elevation="0" Class="pa-4" Style="background-color: #f5f5f5; overflow-x: auto;">
+            <pre style="margin: 0; white-space: pre-wrap;">@(Metadata?.Metadata ?? "No metadata available")</pre>
+        </MudPaper>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Color="Color.Primary" OnClick="Close">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] 
+    MudDialogInstance MudDialog { get; set; }
+    
+    [Parameter] 
+    public FluxFetchingSearchResponse Metadata { get; set; }
+    
+    private void Close() => MudDialog.Close();
+} 
