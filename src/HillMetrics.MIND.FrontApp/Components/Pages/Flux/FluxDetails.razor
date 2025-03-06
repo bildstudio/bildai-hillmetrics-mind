@@ -5,9 +5,15 @@
 @using HillMetrics.Core
 @using HillMetrics.MIND.FrontApp.Services
 @using HillMetrics.Normalized.Domain.Contracts.Providing.Flux
-@inject IFluxService FluxService
+@using HillMetrics.MIND.API.SDK.V1
+@using HillMetrics.MIND.API.Contracts.Requests
+@using HillMetrics.MIND.API.Contracts.Requests.Flux
+@using HillMetrics.Core.Common
+@using System.Text.Json
+@inject IMindAPI MindApi
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
+@inject IDialogService DialogService
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
     @if (loading)
@@ -42,7 +48,7 @@
                             <MudIcon Icon="@Icons.Material.Filled.PlayArrow" Class="mr-2" /> Force Process
                         </MudButton>
                         <MudButton 
-                            OnClick="@(() => DeleteConfirmOpen = true)" 
+                            OnClick="@(async () => await ShowDeleteConfirmDialog())" 
                             Color="Color.Error">
                             <MudIcon Icon="@Icons.Material.Filled.Delete" Class="mr-2" /> Delete
                         </MudButton>
@@ -514,28 +520,12 @@
     }
 </MudContainer>
 
-<MudDialog @bind-IsVisible="DeleteConfirmOpen" Options="dialogOptions">
-    <TitleContent>
-        <MudText Typo="Typo.h6">Confirm Deletion</MudText>
-    </TitleContent>
-    <DialogContent>
-        <MudText>Are you sure you want to delete flux <strong>@(flux?.FluxName ?? $"#{FluxId}")</strong>?</MudText>
-        <MudText Color="Color.Error" Typo="Typo.body2">This action cannot be undone.</MudText>
-    </DialogContent>
-    <DialogActions>
-        <MudButton OnClick="@(() => DeleteConfirmOpen = false)" Color="Color.Default">Cancel</MudButton>
-        <MudButton OnClick="DeleteFlux" Color="Color.Error" Variant="Variant.Filled">Delete</MudButton>
-    </DialogActions>
-</MudDialog>
-
 @code {
     [Parameter]
     public int FluxId { get; set; }
 
     private FluxResponse? flux;
     private bool loading = true;
-    private bool DeleteConfirmOpen = false;
-    private DialogOptions dialogOptions = new() { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small };
 
     protected override async Task OnInitializedAsync()
     {
@@ -547,7 +537,8 @@
         try
         {
             loading = true;
-            flux = await FluxService.GetAsync(FluxId);
+            var response = await MindApi.GetFluxAsync(FluxId);
+            flux = response;
         }
         catch (Exception ex)
         {
@@ -565,7 +556,7 @@
         try
         {
             loading = true;
-            var result = await FluxService.ForceFetchAsync(FluxId);
+            var result = await MindApi.ForceFetchAsync(FluxId);
             Snackbar.Add("Force fetch completed successfully", Severity.Success);
             await LoadFluxData();
         }
@@ -584,7 +575,7 @@
         try
         {
             loading = true;
-            var result = await FluxService.ForceProcessAsync(FluxId);
+            var result = await MindApi.ForceProcessAsync(FluxId);
             Snackbar.Add("Force process completed successfully", Severity.Success);
             await LoadFluxData();
         }
@@ -598,23 +589,47 @@
         }
     }
 
+    private async Task ShowDeleteConfirmDialog()
+    {
+        var parameters = new DialogParameters();
+        parameters.Add("ItemName", "flux");
+        parameters.Add("ItemValue", flux?.FluxName ?? $"#{FluxId}");
+        
+        var options = new DialogOptions() 
+        {
+            CloseOnEscapeKey = true, 
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true,
+            Position = DialogPosition.Center
+        };
+        
+        var dialog = await DialogService.ShowAsync<ConfirmDeleteDialog>("Confirm Deletion", parameters, options);
+        var result = await dialog.Result;
+        
+        if (!result.Canceled)
+        {
+            await DeleteFlux();
+        }
+    }
+    
     private async Task DeleteFlux()
     {
         try
         {
-            loading = true;
-            DeleteConfirmOpen = false;
-            var result = await FluxService.DeleteFluxAsync(FluxId);
-            Snackbar.Add("Flux deleted successfully", Severity.Success);
-            NavigationManager.NavigateTo("/flux/search");
+            var result = await MindApi.DeleteFluxAsync(FluxId);
+            if (result)
+            {
+                Snackbar.Add($"Flux deleted successfully", Severity.Success);
+                NavigationManager.NavigateTo("/flux/search");
+            }
+            else
+            {
+                Snackbar.Add($"Error deleting flux", Severity.Error);
+            }
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Error deleting flux: {ex.Message}", Severity.Error);
-        }
-        finally
-        {
-            loading = false;
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
         }
     }
 

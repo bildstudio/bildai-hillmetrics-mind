@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Text.Json.Serialization;
 
 namespace HillMetrics.MIND.API.Contracts.Responses.Flux
 {
@@ -116,12 +117,16 @@ namespace HillMetrics.MIND.API.Contracts.Responses.Flux
 
     public abstract class FluxMetadataDto
     {
+        [JsonPropertyName("type")]
+        public abstract string TypeDiscriminator { get; }
         public int FluxId { get; set; }
         public Dictionary<string, object> Metadata { get; set; } = new();
     }
 
     public class FluxMetadataMailDto : FluxMetadataDto
     {
+        public override string TypeDiscriminator => nameof(FluxMetadataMailDto);
+
         public FluxMailContentLocation ContentLocation { get; set; }
         public FluxRuleSettingsDto FluxRuleSettings { get; set; } = new();
         public FluxAttachmentRuleDto FluxAttachmentRule { get; set; } = new();
@@ -129,18 +134,22 @@ namespace HillMetrics.MIND.API.Contracts.Responses.Flux
 
     public class FluxMetadataDownloadDto : FluxMetadataDto
     {
+        public override string TypeDiscriminator => nameof(FluxMetadataDownloadDto);
+
         public string DownloadUrl { get; set; } = string.Empty;
         public ContentType ContentType { get; set; }
     }
 
     public class FluxMetadataApiDto : FluxMetadataDto
     {
+        public override string TypeDiscriminator => nameof(FluxMetadataApiDto);
         public string? ApiKey { get; set; }
         public string? Endpoint { get; set; }
     }
 
     public class FluxMetadataFileLocationDto : FluxMetadataDto
     {
+        public override string TypeDiscriminator => nameof(FluxMetadataFileLocationDto);
         public FluxRuleSettingsDto? FluxRuleSettings { get; set; }
         public FluxAttachmentRuleDto? FluxAttachmentRule { get; set; }
     }

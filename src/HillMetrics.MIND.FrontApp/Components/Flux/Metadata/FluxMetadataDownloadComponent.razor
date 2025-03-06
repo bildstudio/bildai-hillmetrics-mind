@@ -1,5 +1,6 @@
 @using HillMetrics.Core.Common
 @using HillMetrics.MIND.API.Contracts.Requests.Flux
+@using HillMetrics.MIND.API.Contracts.Responses.Flux
 @using HillMetrics.Normalized.Domain.Contracts.Providing.Flux
 
 <MudCard Elevation="0" Outlined="true" Class="mt-3">
@@ -47,10 +48,10 @@
 
 @code {
     [Parameter]
-    public FluxMetadataDownloadRequestDto Metadata { get; set; } = new FluxMetadataDownloadRequestDto();
+    public FluxMetadataDownloadDto Metadata { get; set; } = new FluxMetadataDownloadDto();
 
     [Parameter]
-    public EventCallback<FluxMetadataDownloadRequestDto> MetadataChanged { get; set; }
+    public EventCallback<FluxMetadataDownloadDto> MetadataChanged { get; set; }
 
     private IEnumerable<string> ValidateUrl(string url)
     {
@@ -63,6 +64,6 @@
     protected override void OnParametersSet()
     {
         // Set default values if null
-        Metadata ??= new FluxMetadataDownloadRequestDto();
+        Metadata ??= new FluxMetadataDownloadDto();
     }
 } 

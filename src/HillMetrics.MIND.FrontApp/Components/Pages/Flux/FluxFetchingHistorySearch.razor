@@ -7,9 +7,11 @@
 @using HillMetrics.MIND.FrontApp.Services
 @using HillMetrics.Normalized.Domain.Contracts.Providing.Flux
 @using HillMetrics.MIND.FrontApp.Components.Shared
-@inject IFluxService FluxService
+@using HillMetrics.MIND.API.SDK.V1
+@inject IMindAPI MindApi
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
+@inject IDialogService DialogService
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
     <MudText Typo="Typo.h4" Class="mb-4">Flux Fetching History</MudText>
@@ -213,7 +215,7 @@
                         </MudMenuItem>
                         @if (!string.IsNullOrEmpty(context.Metadata))
                         {
-                            <MudMenuItem OnClick="@(() => ShowMetadata(context))">
+                            <MudMenuItem OnClick="@(async () => await ShowMetadata(context))">
                                 <MudIcon Icon="@Icons.Material.Filled.Info" Class="mr-2" Size="Size.Small" /> Show Metadata
                             </MudMenuItem>
                         }
@@ -232,24 +234,6 @@
         </MudTable>
     }
 </MudContainer>
-
-<MudDialog @bind-IsVisible="metadataDialogVisible" Options="dialogOptions">
-    <TitleContent>
-        <MudText Typo="Typo.h6">Fetching Metadata</MudText>
-    </TitleContent>
-    <DialogContent>
-        <MudText Typo="Typo.subtitle2">Flux ID: @selectedMetadata?.FluxId</MudText>
-        <MudText Typo="Typo.subtitle2">Fetching Date: @selectedMetadata?.FetchingDate.ToString("yyyy-MM-dd HH:mm:ss")</MudText>
-        <MudDivider Class="my-2" />
-        <MudText Typo="Typo.subtitle1" Class="mb-2">Metadata:</MudText>
-        <MudPaper Elevation="0" Class="pa-4" Style="background-color: #f5f5f5; overflow-x: auto;">
-            <pre style="margin: 0; white-space: pre-wrap;">@(selectedMetadata?.Metadata ?? "No metadata available")</pre>
-        </MudPaper>
-    </DialogContent>
-    <DialogActions>
-        <MudButton Color="Color.Primary" OnClick="CloseMetadataDialog">Close</MudButton>
-    </DialogActions>
-</MudDialog>
 
 @code {
     private FluxFetchingSearchRequest searchRequest = new();
@@ -271,8 +255,6 @@
     private SearchCriteria<DateTime> fetchingDateSearchCriteria = new();
 
     // Dialog for metadata
-    private bool metadataDialogVisible = false;
-    private DialogOptions dialogOptions = new() { MaxWidth = MaxWidth.Medium, CloseOnEscapeKey = true };
     private FluxFetchingSearchResponse selectedMetadata = null;
 
     protected override async Task OnInitializedAsync()
@@ -289,7 +271,7 @@
             // Apply search criteria
             ApplySearchCriteria();
 
-            var response = await FluxService.SearchFetchingHistoryAsync(searchRequest);
+            var response = await MindApi.SearchFetchingHistoryAsync(searchRequest);
             fetchingHistories = response.Data.ToList();
         }
         catch (Exception ex)
@@ -304,14 +286,50 @@
 
     private void ApplySearchCriteria()
     {
-        searchRequest.FluxId = fluxIdSearchCriteria;
-        searchRequest.NbContent = nbContentSearchCriteria;
-        searchRequest.NbProcessing = nbProcessingSearchCriteria;
-        searchRequest.ExternalDataId = externalDataIdSearchCriteria.Value;
-        searchRequest.ContentName = contentNameSearchCriteria.Value;
-        searchRequest.RawId = rawIdSearchCriteria.Value;
-        searchRequest.Metadata = metadataSearchCriteria.Value;
-        searchRequest.FetchingDate = fetchingDateSearchCriteria;
+        // Apply numerical SearchCriteria
+        searchRequest.FluxId = fluxIdSearchCriteria.IsSet() ? fluxIdSearchCriteria : null;
+        searchRequest.NbContent = nbContentSearchCriteria.IsSet() ? nbContentSearchCriteria : null;
+        searchRequest.NbProcessing = nbProcessingSearchCriteria.IsSet() ? nbProcessingSearchCriteria : null;
+        
+        // Apply string criteria only if they are set
+        if (externalDataIdSearchCriteria.IsSet())
+        {
+            searchRequest.ExternalDataId = externalDataIdSearchCriteria.Value;
+        }
+        else
+        {
+            searchRequest.ExternalDataId = null;
+        }
+        
+        if (contentNameSearchCriteria.IsSet())
+        {
+            searchRequest.ContentName = contentNameSearchCriteria.Value;
+        }
+        else
+        {
+            searchRequest.ContentName = null;
+        }
+        
+        if (rawIdSearchCriteria.IsSet())
+        {
+            searchRequest.RawId = rawIdSearchCriteria.Value;
+        }
+        else
+        {
+            searchRequest.RawId = null;
+        }
+        
+        if (metadataSearchCriteria.IsSet())
+        {
+            searchRequest.Metadata = metadataSearchCriteria.Value;
+        }
+        else
+        {
+            searchRequest.Metadata = null;
+        }
+        
+        // Apply datetime SearchCriteria
+        searchRequest.FetchingDate = fetchingDateSearchCriteria.IsSet() ? fetchingDateSearchCriteria : null;
     }
 
     private void Reset()
@@ -338,15 +356,20 @@
         NavigationManager.NavigateTo($"/flux/details/{id}");
     }
 
-    private void ShowMetadata(FluxFetchingSearchResponse history)
+    private async Task ShowMetadata(FluxFetchingSearchResponse history)
     {
-        selectedMetadata = history;
-        metadataDialogVisible = true;
-    }
-
-    private void CloseMetadataDialog()
-    {
-        metadataDialogVisible = false;
+        var parameters = new DialogParameters();
+        parameters.Add("Metadata", history);
+        
+        var options = new DialogOptions() 
+        {
+            CloseOnEscapeKey = true, 
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true,
+            Position = DialogPosition.Center
+        };
+        
+        await DialogService.ShowAsync<FetchingMetadataDialog>("Fetching Metadata", parameters, options);
     }
 
     private async Task ForceProcess(int fetchingHistoryId)

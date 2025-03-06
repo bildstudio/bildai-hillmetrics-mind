@@ -7,7 +7,8 @@
 @using HillMetrics.Core
 @using HillMetrics.Normalized.Domain.Contracts.Providing.Flux
 @using HillMetrics.MIND.FrontApp.Components.Shared
-@inject IFluxService FluxService
+@using HillMetrics.MIND.API.SDK.V1
+@inject IMindAPI MindApi
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
 
@@ -212,7 +213,7 @@
             // Apply search criteria
             ApplySearchCriteria();
 
-            var response = await FluxService.SearchProcessingHistoryAsync(searchRequest);
+            var response = await MindApi.SearchProcessingHistoryAsync(searchRequest);
             processingHistories = response.Data.ToList();
         }
         catch (Exception ex)
@@ -227,10 +228,13 @@
 
     private void ApplySearchCriteria()
     {
-        searchRequest.FluxId = fluxIdSearchCriteria;
-        searchRequest.NbContent = nbContentSearchCriteria;
-        searchRequest.ProcessingDateStart = processingDateStartSearchCriteria;
-        searchRequest.ProcessingDateEnd = processingDateEndSearchCriteria;
+        // Apply numerical SearchCriteria
+        searchRequest.FluxId = fluxIdSearchCriteria.IsSet() ? fluxIdSearchCriteria : null;
+        searchRequest.NbContent = nbContentSearchCriteria.IsSet() ? nbContentSearchCriteria : null;
+        
+        // Apply datetime SearchCriteria
+        searchRequest.ProcessingDateStart = processingDateStartSearchCriteria.IsSet() ? processingDateStartSearchCriteria : null;
+        searchRequest.ProcessingDateEnd = processingDateEndSearchCriteria.IsSet() ? processingDateEndSearchCriteria : null;
     }
 
     private void Reset()

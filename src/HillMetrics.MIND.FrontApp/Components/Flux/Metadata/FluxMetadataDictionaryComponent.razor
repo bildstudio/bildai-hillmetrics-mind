@@ -1,5 +1,6 @@
 @using MudBlazor
 @using System.Collections.Generic
+@inject IDialogService DialogService
 
 <MudCard Elevation="0" Outlined="true" Class="mb-3">
     <MudCardHeader>
@@ -12,7 +13,7 @@
             </MudTooltip>
         </CardHeaderActions>
     </MudCardHeader>
-    
+
     <MudCardContent>
         <MudGrid>
             <MudItem xs="12">
@@ -33,19 +34,19 @@
                             <MudTd DataLabel="Value">@context.Value</MudTd>
                             <MudTd>
                                 <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
-                                               Color="Color.Primary" OnClick="@(() => EditItem(context.Key))" />
+                                Color="Color.Primary" OnClick="@(async () => await EditItem(context.Key))" />
                                 <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
-                                               Color="Color.Error" OnClick="@(() => RemoveItem(context.Key))" />
+                                Color="Color.Error" OnClick="@(async () => await RemoveItem(context.Key))" />
                             </MudTd>
                         </RowTemplate>
                     </MudTable>
                 }
-                
+
                 <MudButton Variant="Variant.Outlined" 
-                           StartIcon="@Icons.Material.Filled.Add" 
-                           Color="Color.Primary" 
-                           OnClick="@AddNewItem"
-                           Class="mt-2">
+                StartIcon="@Icons.Material.Filled.Add" 
+                Color="Color.Primary" 
+                OnClick="@(async () => await AddNewItem())"
+                Class="mt-2">
                     Add Metadata
                 </MudButton>
             </MudItem>
@@ -53,96 +54,109 @@
     </MudCardContent>
 </MudCard>
 
-<MudDialog @bind-IsVisible="dialogVisible" Options="dialogOptions">
-    <TitleContent>
-        <MudText Typo="Typo.h6">@(editingExistingItem ? "Edit Metadata" : "Add Metadata")</MudText>
-    </TitleContent>
-    <DialogContent>
-        <MudTextField @bind-Value="currentKey" Label="Key" Required="true" 
-                      ReadOnly="@editingExistingItem" Class="mb-3" />
-        <MudTextField @bind-Value="currentValue" Label="Value" Required="true" />
-    </DialogContent>
-    <DialogActions>
-        <MudButton Variant="Variant.Text" Color="Color.Secondary" OnClick="CancelDialog">Cancel</MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveItem" 
-                   Disabled="@(string.IsNullOrWhiteSpace(currentKey) || string.IsNullOrWhiteSpace(currentValue))">
-            Save
-        </MudButton>
-    </DialogActions>
-</MudDialog>
-
 @code {
     [Parameter]
     public Dictionary<string, object> MetadataDictionary { get; set; } = new();
-    
+
     [Parameter]
     public EventCallback<Dictionary<string, object>> MetadataDictionaryChanged { get; set; }
-    
-    private bool dialogVisible;
-    private DialogOptions dialogOptions = new() { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small };
+
     private string currentKey = string.Empty;
     private string currentValue = string.Empty;
     private bool editingExistingItem = false;
-    
-    private void AddNewItem()
+
+    private async Task AddNewItem()
     {
         currentKey = string.Empty;
         currentValue = string.Empty;
         editingExistingItem = false;
-        dialogVisible = true;
+        
+        var parameters = new DialogParameters();
+        parameters.Add("CurrentKey", currentKey);
+        parameters.Add("CurrentValue", currentValue);
+        parameters.Add("EditingExistingItem", editingExistingItem);
+        
+        var options = new DialogOptions() 
+        { 
+            CloseOnEscapeKey = true, 
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true,
+            Position = DialogPosition.Center
+        };
+        
+        var dialog = await DialogService.ShowAsync<MetadataDialog>("Add Metadata", parameters, options);
+        var result = await dialog.Result;
+        
+        if (!result.Canceled)
+        {
+            var data = (Tuple<string, string>)result.Data;
+            currentKey = data.Item1;
+            currentValue = data.Item2;
+            
+            if (!string.IsNullOrWhiteSpace(currentKey) && !string.IsNullOrWhiteSpace(currentValue))
+            {
+                object typedValue = DetermineValueType(currentValue);
+                
+                if (MetadataDictionary.ContainsKey(currentKey))
+                {
+                    MetadataDictionary[currentKey] = typedValue;
+                }
+                else
+                {
+                    MetadataDictionary.Add(currentKey, typedValue);
+                }
+                
+                await MetadataDictionaryChanged.InvokeAsync(MetadataDictionary);
+            }
+        }
     }
-    
-    private void EditItem(string key)
+
+    private async Task EditItem(string key)
     {
         if (MetadataDictionary.TryGetValue(key, out var value))
         {
             currentKey = key;
             currentValue = value?.ToString() ?? string.Empty;
             editingExistingItem = true;
-            dialogVisible = true;
+            
+            var parameters = new DialogParameters();
+            parameters.Add("CurrentKey", currentKey);
+            parameters.Add("CurrentValue", currentValue);
+            parameters.Add("EditingExistingItem", editingExistingItem);
+            
+            var options = new DialogOptions() 
+            { 
+                CloseOnEscapeKey = true, 
+                MaxWidth = MaxWidth.Small,
+                FullWidth = true,
+                Position = DialogPosition.Center
+            };
+            
+            var dialog = await DialogService.ShowAsync<MetadataDialog>("Edit Metadata", parameters, options);
+            var result = await dialog.Result;
+            
+            if (!result.Canceled)
+            {
+                var data = (Tuple<string, string>)result.Data;
+                currentValue = data.Item2;
+                
+                if (!string.IsNullOrWhiteSpace(currentValue))
+                {
+                    object typedValue = DetermineValueType(currentValue);
+                    MetadataDictionary[currentKey] = typedValue;
+                    await MetadataDictionaryChanged.InvokeAsync(MetadataDictionary);
+                }
+            }
         }
     }
-    
-    private void RemoveItem(string key)
+
+    private async Task RemoveItem(string key)
     {
         if (MetadataDictionary.ContainsKey(key))
         {
             MetadataDictionary.Remove(key);
-            MetadataDictionaryChanged.InvokeAsync(MetadataDictionary);
+            await MetadataDictionaryChanged.InvokeAsync(MetadataDictionary);
         }
-    }
-    
-    private void SaveItem()
-    {
-        if (string.IsNullOrWhiteSpace(currentKey))
-            return;
-        
-        // Déterminer le type approprié pour la valeur
-        object typedValue = DetermineValueType(currentValue);
-        
-        if (editingExistingItem)
-        {
-            MetadataDictionary[currentKey] = typedValue;
-        }
-        else
-        {
-            if (MetadataDictionary.ContainsKey(currentKey))
-            {
-                MetadataDictionary[currentKey] = typedValue;
-            }
-            else
-            {
-                MetadataDictionary.Add(currentKey, typedValue);
-            }
-        }
-        
-        MetadataDictionaryChanged.InvokeAsync(MetadataDictionary);
-        dialogVisible = false;
-    }
-    
-    private void CancelDialog()
-    {
-        dialogVisible = false;
     }
     
     private object DetermineValueType(string value)
