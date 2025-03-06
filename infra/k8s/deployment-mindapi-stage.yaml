@@ -93,6 +93,8 @@ spec:
       objectName: connectionstrings-rabbitmq
     - key: ConnectionStrings__Redis
       objectName: connectionstrings-redis
+    - key: ConnectionStrings__FinancialRawDb
+      objectName: connectionstrings-financialrawdb
     - key: ASPNETCORE_ENVIRONMENT
       objectName: aspnetcore-environment
     - key: Keycloak__Endpoint
@@ -128,6 +130,9 @@ spec:
           objectType: secret
         - |
           objectName: connectionstrings-redis
+          objectType: secret
+        - |
+          objectName: connectionstrings-financialrawdb
           objectType: secret
         - |
           objectName: aspnetcore-environment
