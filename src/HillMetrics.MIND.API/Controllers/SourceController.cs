@@ -16,7 +16,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace HillMetrics.MIND.API.Controllers;
 
 [AllowAnonymous]
-public class SourceController(IMediator mediator, IMapper mapper) : BaseHillMetricsController(mediator)
+public class SourceController(IMediator mediator, IMapper mapper, ILogger<SourceController> logger) : BaseHillMetricsController(mediator)
 {
     /// <summary>
     /// Search for sources following the given criteria
@@ -42,6 +42,7 @@ public class SourceController(IMediator mediator, IMapper mapper) : BaseHillMetr
     [HttpPost]
     public async Task<ActionResult<SourceResponse>> CreateSourceAsync(SourceCreateRequest request)
     {
+        logger.LogInformation("Request for creating a new source");
         var sourceCommand = CreateSourceCommand.Create(request.Name, request.Reliability, request.IsActive);
 
         var result = await Mediator.Send(sourceCommand);
@@ -49,6 +50,7 @@ public class SourceController(IMediator mediator, IMapper mapper) : BaseHillMetr
         if (result.IsFailed)
             return new ErrorApiActionResult(result.Errors.ToApiResult());
 
+        logger.LogInformation("New source created");
         return new SourceResponse(result.Value);
     }
 
