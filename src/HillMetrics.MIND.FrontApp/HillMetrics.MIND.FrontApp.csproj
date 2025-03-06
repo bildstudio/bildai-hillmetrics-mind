@@ -11,8 +11,16 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\..\HillMetrics.Core\src\HillMetrics.Core.Http\HillMetrics.Core.Http.csproj" />
+    <ProjectReference Include="..\..\..\HillMetrics.Core\src\HillMetrics.Core.Monitoring\HillMetrics.Core.Monitoring.csproj" />
     <ProjectReference Include="..\..\..\HillMetrics.Core\src\HillMetrics.Core\HillMetrics.Core.csproj" />
+    <ProjectReference Include="..\..\..\HillMetrics.Orchestrator\HillMetrics.Orchestrator.ServiceDefaults\HillMetrics.Orchestrator.ServiceDefaults.csproj" />
     <ProjectReference Include="..\HillMetrics.MIND.API.Contracts\HillMetrics.MIND.API.Contracts.csproj" />
+    <ProjectReference Include="..\HillMetrics.MIND.API.SDK\HillMetrics.MIND.API.SDK.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Models\" />
   </ItemGroup>
 
 </Project>

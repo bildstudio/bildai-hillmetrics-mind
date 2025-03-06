@@ -5,7 +5,8 @@
 @using HillMetrics.Core
 @using HillMetrics.Core.Common
 @using System.Text.Json
-@inject IFluxService FluxService
+@using HillMetrics.MIND.API.SDK.V1
+@inject IMindAPI MindApi
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
 @inject IJSRuntime JSRuntime
@@ -132,7 +133,7 @@
         try
         {
             loading = true;
-            var response = await FluxService.GetErrorAsync(ErrorId);
+            var response = await MindApi.GetErrorAsync(ErrorId);
             errorDetails = response.Data;
         }
         catch (Exception ex)

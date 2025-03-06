@@ -8,7 +8,8 @@
 @using HillMetrics.MIND.FrontApp.Services
 @using HillMetrics.Normalized.Domain.Contracts.Providing.Flux
 @using HillMetrics.MIND.FrontApp.Components.Shared
-@inject IFluxService FluxService
+@using HillMetrics.MIND.API.SDK.V1
+@inject IMindAPI MindApi
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
 
@@ -86,7 +87,7 @@
                             <MudSelectItem Value="@((FinancialType?)null)">All</MudSelectItem>
                             @foreach (var type in Enum.GetValues<FinancialType>())
                             {
-                                <MudSelectItem Value="@type">@type</MudSelectItem>
+                                <MudSelectItem T="FinancialType?" Value="@type">@type</MudSelectItem>
                             }
                         </MudSelect>
                     </MudItem>
@@ -98,7 +99,7 @@
                             <MudSelectItem Value="@((FluxType?)null)">All</MudSelectItem>
                             @foreach (var type in Enum.GetValues<FluxType>())
                             {
-                                <MudSelectItem Value="@type">@type</MudSelectItem>
+                                <MudSelectItem T="FluxType?" Value="@type">@type</MudSelectItem>
                             }
                         </MudSelect>
                     </MudItem>
@@ -110,7 +111,7 @@
                             <MudSelectItem Value="@((FluxState?)null)">All</MudSelectItem>
                             @foreach (var state in Enum.GetValues<FluxState>())
                             {
-                                <MudSelectItem Value="@state">@state</MudSelectItem>
+                                <MudSelectItem T="FluxState?" Value="@state">@state</MudSelectItem>
                             }
                         </MudSelect>
                     </MudItem>
@@ -122,7 +123,7 @@
                             <MudSelectItem Value="@((StatusProcess?)null)">All</MudSelectItem>
                             @foreach (var status in Enum.GetValues<StatusProcess>())
                             {
-                                <MudSelectItem Value="@status">@status</MudSelectItem>
+                                <MudSelectItem T="StatusProcess?" Value="@status">@status</MudSelectItem>
                             }
                         </MudSelect>
                     </MudItem>
@@ -134,7 +135,7 @@
                             <MudSelectItem Value="@((StatusProcess?)null)">All</MudSelectItem>
                             @foreach (var status in Enum.GetValues<StatusProcess>())
                             {
-                                <MudSelectItem Value="@status">@status</MudSelectItem>
+                                <MudSelectItem T="StatusProcess?" Value="@status">@status</MudSelectItem>
                             }
                         </MudSelect>
                     </MudItem>
@@ -206,8 +207,8 @@
                 <MudTd DataLabel="Last Fetching">
                     @if (context.LastFetching.HasValue)
                     {
-                        <MudTooltip Text="@context.LastFetching.Value.ToString("yyyy-MM-dd HH:mm:ss")">
-                            <div>@FormatDateTime(context.LastFetching.Value)</div>
+                        <MudTooltip Text="@context.LastFetching.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")">
+                            <div>@FormatDateTime(context.LastFetching.Value.ToLocalTime())</div>
                         </MudTooltip>
                     }
                     else
@@ -241,8 +242,8 @@
                 <MudTd DataLabel="Last Processing">
                     @if (context.LastProcessing.HasValue)
                     {
-                        <MudTooltip Text="@context.LastProcessing.Value.ToString("yyyy-MM-dd HH:mm:ss")">
-                            <div>@FormatDateTime(context.LastProcessing.Value)</div>
+                        <MudTooltip Text="@context.LastProcessing.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")">
+                            <div>@FormatDateTime(context.LastProcessing.Value.ToLocalTime())</div>
                         </MudTooltip>
                     }
                     else
@@ -346,7 +347,7 @@
             // Map SearchCriteria to FluxSearchRequest
             ApplySearchCriteria();
 
-            var response = await FluxService.SearchAsync(searchRequest);
+            var response = await MindApi.SearchFluxAsync(searchRequest);
             fluxes = response.Data.ToList();
         }
         catch (Exception ex)
@@ -362,7 +363,7 @@
     private void ApplySearchCriteria()
     {
         // Apply Name SearchCriteria
-        if (nameSearchCriteria.Value is not null)
+        if (nameSearchCriteria.IsSet())
         {
             searchRequest.Name = nameSearchCriteria.Value;
         }
@@ -371,10 +372,10 @@
             searchRequest.Name = null;
         }
 
-        searchRequest.LastFetching = lastFetchingDateSearchCriteria;
-        searchRequest.LastProcessing = lastProcessingDateSearchCriteria;
-        searchRequest.LastFetchingErrorCount = fetchingErrorCountSearchCriteria;
-        searchRequest.LastProcessingErrorCount = processingErrorCountSearchCriteria;
+        searchRequest.LastFetching = lastFetchingDateSearchCriteria.IsSet() ? lastFetchingDateSearchCriteria : null;
+        searchRequest.LastProcessing = lastProcessingDateSearchCriteria.IsSet() ? lastProcessingDateSearchCriteria : null; ;
+        searchRequest.LastFetchingErrorCount = fetchingErrorCountSearchCriteria.IsSet() ? fetchingErrorCountSearchCriteria : null; ;
+        searchRequest.LastProcessingErrorCount = processingErrorCountSearchCriteria.IsSet() ? processingErrorCountSearchCriteria : null; ;
     }
 
     private void Reset()
@@ -399,7 +400,7 @@
         try
         {
             loading = true;
-            var result = await FluxService.ForceFetchAsync(id);
+            var result = await MindApi.ForceFetchAsync(id);
             Snackbar.Add("Force fetch completed successfully", Severity.Success);
             await Search();
         }
@@ -418,7 +419,7 @@
         try
         {
             loading = true;
-            var result = await FluxService.ForceProcessAsync(id);
+            var result = await MindApi.ForceProcessAsync(id);
             Snackbar.Add("Force process completed successfully", Severity.Success);
             await Search();
         }

@@ -5,7 +5,8 @@
 @using HillMetrics.Core.Common
 @using System.Text.Json
 @using HillMetrics.MIND.FrontApp.Services
-@inject IFluxService FluxService
+@using HillMetrics.MIND.API.SDK.V1
+@inject IMindAPI MindApi
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
 
@@ -284,8 +285,8 @@
         try
         {
             loading = true;
-            var response = await FluxService.GetProcessingHistoryAsync(ProcessingHistoryId);
-            processingHistory = response;
+            var response = await MindApi.GetProcessingHistoryAsync(ProcessingHistoryId);
+            processingHistory = response.Data;
         }
         catch (Exception ex)
         {

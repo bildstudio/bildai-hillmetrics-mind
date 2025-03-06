@@ -7,6 +7,7 @@ using HillMetrics.Core.API.Convention;
 using HillMetrics.Core.API.Extensions;
 using HillMetrics.Core.Authentication;
 using HillMetrics.Core.Flux.Extension;
+using HillMetrics.Core.Monitoring;
 using HillMetrics.MIND.API.Converter;
 using HillMetrics.MIND.API.Extensions;
 using HillMetrics.MIND.API.Mappers;
@@ -47,12 +48,6 @@ public partial class Program
 
         builder.Services.AddAutoMapper(typeof(FluxMappingProfile));
         builder.Services.AddAutoMapper(typeof(GicsMappingProfile));
-
-
-        //var logger = builder.InitAndAddHillMetricsLogger("HillMetrics.MIND.API");
-
-        //ADD Aspire discover/open telemetry
-        //builder.AddServiceDefaults();
 
         //add cors
         builder.AddHillMetricsCorsSettings();
