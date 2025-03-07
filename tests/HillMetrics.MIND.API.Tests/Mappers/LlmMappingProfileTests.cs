@@ -9,8 +9,8 @@ using Bogus;
 using HillMetrics.Normalized.Domain.Contracts.AI;
 using HillMetrics.MIND.API.Contracts.Responses.Llm;
 using HillMetrics.MIND.API.Tests.Fakers;
-using HillMetrics.Normalized.Domain.Contracts.AI.Commands;
 using Microsoft.AspNetCore.Http;
+using HillMetrics.Normalized.Domain.Contracts.AI.Models;
 
 namespace HillMetrics.MIND.API.Tests.Mappers
 {

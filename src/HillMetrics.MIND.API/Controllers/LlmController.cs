@@ -8,6 +8,7 @@ using HillMetrics.MIND.API.Endpoints;
 using HillMetrics.MIND.API.Mappers;
 using HillMetrics.Normalized.Domain.Contracts.AI;
 using HillMetrics.Normalized.Domain.Contracts.AI.Commands;
+using HillMetrics.Normalized.Domain.Contracts.AI.Models;
 using HillMetrics.Normalized.Domain.Contracts.AI.Queries;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -114,11 +115,13 @@ namespace HillMetrics.MIND.API.Controllers
             return new ListPromptsResponse(dtos, result.Value.TotalRecords);
         }
 
-        //add method to get prompt content file data
-        //add method to download prompt content data
         [HttpPost(InternalRoutes.Llm.ExtractData)]
-        public async Task<ActionResult> ExtractDataAsync([FromForm]ExtractDataLlmRequest request)
+        public async Task<ActionResult> ExtractDataAsync([FromForm] ExtractDataLlmRequest request)
         {
+
+            ExtractFinancialDataLlmModel model = request.ToExtractFinancialDataLlmModel();
+            ExtractFinancialDataLlmCommand command = new ExtractFinancialDataLlmCommand(model);
+            await Mediator.Send(command);
             //mediator call and wait for responses..
             return Ok();
         }

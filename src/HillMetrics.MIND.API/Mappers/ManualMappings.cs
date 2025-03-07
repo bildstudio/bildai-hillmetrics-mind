@@ -1,6 +1,7 @@
-﻿using AutoMapper;
+﻿using Ardalis.GuardClauses;
+using AutoMapper;
 using HillMetrics.MIND.API.Contracts.Requests.Llm;
-using HillMetrics.Normalized.Domain.Contracts.AI.Commands;
+using HillMetrics.Normalized.Domain.Contracts.AI.Models;
 using HillMetrics.Normalized.Domain.Contracts.Files;
 
 namespace HillMetrics.MIND.API.Mappers
@@ -50,6 +51,18 @@ namespace HillMetrics.MIND.API.Mappers
                 model.PromptFile = new FileStreamModel(memoryStream, request.File.FileName);
             }
 
+
+            return model;
+        }
+
+        public static ExtractFinancialDataLlmModel ToExtractFinancialDataLlmModel(this ExtractDataLlmRequest request)
+        {
+
+            ExtractFinancialDataLlmModel model = new ExtractFinancialDataLlmModel
+            {
+                AiModelsIds = request.AiModelsIds,
+                PromptId = request.PromptId
+            };
 
             return model;
         }
