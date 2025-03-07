@@ -17,4 +17,13 @@ FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
 
+# Playwright deps install
+RUN apt-get update
+RUN apt-get install -y wget
+RUN wget -q https://packages.microsoft.com/config/debian/12/packages-microsoft-prod.deb
+RUN dpkg -i packages-microsoft-prod.deb
+RUN apt-get update
+RUN apt-get install -y powershell
+RUN pwsh ./playwright.ps1 install --with-deps chromium-headless-shell
+
 CMD ["dotnet", "HillMetrics.MIND.API.dll"]
