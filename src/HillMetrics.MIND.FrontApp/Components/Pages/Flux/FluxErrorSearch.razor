@@ -1,0 +1,361 @@
+@page "/flux/errors"
+@using HillMetrics.MIND.API.Contracts.Requests.Flux
+@using HillMetrics.MIND.API.Contracts.Responses
+@using HillMetrics.MIND.API.Contracts.Responses.Flux
+@using HillMetrics.MIND.FrontApp.Components.Shared
+@using HillMetrics.MIND.FrontApp.Services
+@using HillMetrics.Core.Search
+@using HillMetrics.Core
+@using HillMetrics.Normalized.Domain.Contracts.Providing.Flux
+@using HillMetrics.MIND.API.SDK.V1
+@inject IMindAPI MindApi
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudText Typo="Typo.h4" Class="mb-4">Flux Error Search</MudText>
+
+    <MudCard Class="mb-4">
+        <MudCardContent>
+            <MudForm @ref="form" @bind-IsValid="@isValid">
+                <MudGrid>
+                    <!-- Flux ID -->
+                    <MudItem xs="12" md="6">
+                        <MudExpansionPanel Text="Flux ID" Expanded="false">
+                            <SearchCriteriaComponent T="int"
+                                                     SearchCriteria="@fluxIdSearchCriteria"
+                                                     SearchCriteriaChanged="@((criteria) => fluxIdSearchCriteria = criteria)"
+                                                     Label="Flux ID" />
+                        </MudExpansionPanel>
+                    </MudItem>
+
+                    <!-- Error Type -->
+                    <MudItem xs="12" md="6">
+                        <MudExpansionPanel Text="Error Type" Expanded="false">
+                            <SearchCriteriaComponent T="string"
+                                                     SearchCriteria="@errorTypeSearchCriteria"
+                                                     SearchCriteriaChanged="@((criteria) => errorTypeSearchCriteria = criteria)"
+                                                     Label="Error Type" />
+                        </MudExpansionPanel>
+                    </MudItem>
+
+                    <!-- External ID -->
+                    <MudItem xs="12" md="6">
+                        <MudExpansionPanel Text="External ID" Expanded="false">
+                            <SearchCriteriaComponent T="string"
+                                                     SearchCriteria="@externalIdSearchCriteria"
+                                                     SearchCriteriaChanged="@((criteria) => externalIdSearchCriteria = criteria)"
+                                                     Label="External ID" />
+                        </MudExpansionPanel>
+                    </MudItem>
+
+                    <!-- Error Message -->
+                    <MudItem xs="12" md="6">
+                        <MudExpansionPanel Text="Error Message" Expanded="false">
+                            <SearchCriteriaComponent T="string"
+                                                     SearchCriteria="@messageSearchCriteria"
+                                                     SearchCriteriaChanged="@((criteria) => messageSearchCriteria = criteria)"
+                                                     Label="Error Message" />
+                        </MudExpansionPanel>
+                    </MudItem>
+
+                    <!-- Metadata -->
+                    <MudItem xs="12" md="6">
+                        <MudExpansionPanel Text="Metadata" Expanded="false">
+                            <SearchCriteriaComponent T="string"
+                                                     SearchCriteria="@metadataSearchCriteria"
+                                                     SearchCriteriaChanged="@((criteria) => metadataSearchCriteria = criteria)"
+                                                     Label="Metadata" />
+                        </MudExpansionPanel>
+                    </MudItem>
+
+                    <!-- Action Type -->
+                    <MudItem xs="12" md="6">
+                        <MudSelect T="FluxActionType?" @bind-Value="searchRequest.ActionType"
+                                   Label="Action Type" Variant="Variant.Outlined">
+                            <MudSelectItem Value="@((FluxActionType?)null)">All</MudSelectItem>
+                            @foreach (var type in Enum.GetValues<FluxActionType>())
+                            {
+                                <MudSelectItem Value="@type">@type</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+
+                    <!-- Created Date -->
+                    <MudItem xs="12" md="6">
+                        <MudExpansionPanel Text="Created Date" Expanded="false">
+                            <SearchCriteriaComponent T="DateTime"
+                                                     SearchCriteria="@createdAtSearchCriteria"
+                                                     SearchCriteriaChanged="@((criteria) => createdAtSearchCriteria = criteria)"
+                                                     Label="Created Date" />
+                        </MudExpansionPanel>
+                    </MudItem>
+                </MudGrid>
+            </MudForm>
+        </MudCardContent>
+        <MudCardActions>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Search">Search</MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="Reset">Reset</MudButton>
+        </MudCardActions>
+    </MudCard>
+
+    @if (loading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+    }
+    else if (errors != null)
+    {
+        <MudTable Items="@errors" Hover="true" Bordered="true" Striped="true"
+                  Dense="true" Filter="new Func<FluxErrorSearchDto, bool>(FilterFunc)"
+                  @bind-SelectedItem="selectedItem" T="FluxErrorSearchDto"
+                  Breakpoint="Breakpoint.Sm">
+            <ToolBarContent>
+                <MudText Typo="Typo.h6" Class="ml-2">Flux Errors</MudText>
+                <MudSpacer />
+                <MudTextField T="string" @bind-Value="searchString" Placeholder="Search" Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium"
+                              Class="mt-0 mb-3"></MudTextField>
+            </ToolBarContent>
+            <HeaderContent>
+                <MudTh>Flux ID</MudTh>
+                <MudTh>Error Type</MudTh>
+                <MudTh>External ID</MudTh>
+                <MudTh>Action</MudTh>
+                <MudTh>Message</MudTh>
+                <MudTh>Date</MudTh>
+                <MudTh>Actions</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Flux ID">
+                    <MudLink Href="@($"/flux/details/{context.FluxId}")">@context.FluxId</MudLink>
+                </MudTd>
+                <MudTd DataLabel="Error Type">
+                    <MudChip T="string" Color="GetErrorTypeColor(context.FluxErrorType)" Size="Size.Small">
+                        @context.FluxErrorType
+                    </MudChip>
+                </MudTd>
+                <MudTd DataLabel="External ID">@context.ExternalId</MudTd>
+                <MudTd DataLabel="Action">
+                    <MudChip T="FluxActionType" Color="GetActionTypeColor(context.ActionType)" Size="Size.Small">
+                        @context.ActionType
+                    </MudChip>
+                </MudTd>
+                <MudTd DataLabel="Message">
+                    <MudTooltip Text="@context.Message" Placement="Placement.Top">
+                        <div class="mud-text-truncate" style="max-width: 300px;">@context.Message</div>
+                    </MudTooltip>
+                </MudTd>
+                <MudTd DataLabel="Date">
+                    <MudTooltip Text="@context.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")">
+                        <div>@FormatDateTime(context.CreatedAt)</div>
+                    </MudTooltip>
+                </MudTd>
+                <MudTd DataLabel="Actions">
+                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true">
+                        <MudMenuItem OnClick="@(() => ViewFluxDetails(context.FluxId))">
+                            <MudIcon Icon="@Icons.Material.Filled.Visibility" Class="mr-2" Size="Size.Small" /> View Flux
+                        </MudMenuItem>
+                        @if (!string.IsNullOrEmpty(context.Metadata))
+                        {
+                            <MudMenuItem OnClick="@(async () => await ShowMetadata(context))">
+                                <MudIcon Icon="@Icons.Material.Filled.Info" Class="mr-2" Size="Size.Small" /> Show Metadata
+                            </MudMenuItem>
+                        }
+                    </MudMenu>
+                </MudTd>
+            </RowTemplate>
+            <PagerContent>
+                <MudTablePager PageSizeOptions="new int[] { 10, 25, 50, 100 }" />
+            </PagerContent>
+            <NoRecordsContent>
+                <MudAlert Severity="Severity.Info" Class="my-2">No flux errors found matching your search criteria.</MudAlert>
+            </NoRecordsContent>
+        </MudTable>
+    }
+</MudContainer>
+
+@code {
+    private FluxErrorSearchRequest searchRequest = new();
+    private List<FluxErrorSearchDto>? errors;
+    private bool loading = false;
+    private bool isValid = false;
+    private MudForm form;
+    private string searchString = "";
+    private FluxErrorSearchDto selectedItem = null;
+
+    // SearchCriteria for each field
+    private SearchCriteria<int> fluxIdSearchCriteria = new();
+    private SearchCriteria<string> errorTypeSearchCriteria = new();
+    private SearchCriteria<string> externalIdSearchCriteria = new();
+    private SearchCriteria<string> messageSearchCriteria = new();
+    private SearchCriteria<string> metadataSearchCriteria = new();
+    private SearchCriteria<DateTime> createdAtSearchCriteria = new();
+
+    // Dialog for metadata
+    private FluxErrorSearchDto selectedMetadata = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Search();
+    }
+
+    private async Task Search()
+    {
+        try
+        {
+            loading = true;
+
+            // Apply search criteria
+            ApplySearchCriteria();
+
+            var response = await MindApi.SearchFluxErrorsAsync(searchRequest);
+            errors = response.Data.ToList();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error searching flux errors: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private void ApplySearchCriteria()
+    {
+        // Apply FluxId SearchCriteria
+        searchRequest.FluxId = fluxIdSearchCriteria.IsSet() ? fluxIdSearchCriteria : null;
+        
+        // Apply string criteria only if they are set
+        if (errorTypeSearchCriteria.IsSet())
+        {
+            searchRequest.FluxErrorType = errorTypeSearchCriteria.Value;
+        }
+        else
+        {
+            searchRequest.FluxErrorType = null;
+        }
+        
+        if (externalIdSearchCriteria.IsSet())
+        {
+            searchRequest.ExternalId = externalIdSearchCriteria.Value;
+        }
+        else
+        {
+            searchRequest.ExternalId = null;
+        }
+        
+        if (messageSearchCriteria.IsSet())
+        {
+            searchRequest.Message = messageSearchCriteria.Value;
+        }
+        else
+        {
+            searchRequest.Message = null;
+        }
+        
+        if (metadataSearchCriteria.IsSet())
+        {
+            searchRequest.Metadata = metadataSearchCriteria.Value;
+        }
+        else
+        {
+            searchRequest.Metadata = null;
+        }
+        
+        // Apply datetime SearchCriteria
+        searchRequest.CreatedAt = createdAtSearchCriteria.IsSet() ? createdAtSearchCriteria : null;
+    }
+
+    private void Reset()
+    {
+        searchRequest = new FluxErrorSearchRequest();
+        fluxIdSearchCriteria = new SearchCriteria<int>();
+        errorTypeSearchCriteria = new SearchCriteria<string>();
+        externalIdSearchCriteria = new SearchCriteria<string>();
+        messageSearchCriteria = new SearchCriteria<string>();
+        metadataSearchCriteria = new SearchCriteria<string>();
+        createdAtSearchCriteria = new SearchCriteria<DateTime>();
+        searchString = "";
+    }
+
+    private void ViewFluxDetails(int id)
+    {
+        NavigationManager.NavigateTo($"/flux/details/{id}");
+    }
+
+    private async Task ShowMetadata(FluxErrorSearchDto error)
+    {
+        var parameters = new DialogParameters();
+        parameters.Add("Error", error);
+        
+        var options = new DialogOptions() 
+        {
+            CloseOnEscapeKey = true, 
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true,
+            Position = DialogPosition.Center
+        };
+        
+        await DialogService.ShowAsync<ErrorMetadataDialog>("Error Metadata", parameters, options);
+    }
+
+    // Helper methods for icons and colors
+    private Color GetErrorTypeColor(string errorType)
+    {
+        return errorType.ToLowerInvariant() switch
+        {
+            var type when type.Contains("validation") => Color.Warning,
+            var type when type.Contains("connection") => Color.Error,
+            var type when type.Contains("timeout") => Color.Error,
+            var type when type.Contains("parse") => Color.Warning,
+            var type when type.Contains("processing") => Color.Secondary,
+            var type when type.Contains("data") => Color.Info,
+            _ => Color.Default
+        };
+    }
+
+    private Color GetActionTypeColor(FluxActionType actionType)
+    {
+        return actionType switch
+        {
+            FluxActionType.Fetching => Color.Primary,
+            FluxActionType.ProcessFlux => Color.Secondary,
+            FluxActionType.DataPointIdentification => Color.Tertiary,
+            _ => Color.Default
+        };
+    }
+
+    private string FormatDateTime(DateTime dateTime)
+    {
+        var now = DateTime.Now;
+        var diff = now - dateTime;
+
+        if (diff.TotalMinutes < 1)
+            return "Just now";
+        if (diff.TotalHours < 1)
+            return $"{(int)diff.TotalMinutes}m ago";
+        if (diff.TotalDays < 1)
+            return $"{(int)diff.TotalHours}h ago";
+        if (diff.TotalDays < 7)
+            return $"{(int)diff.TotalDays}d ago";
+
+        return dateTime.ToString("MMM dd, HH:mm");
+    }
+
+    // Filter function for MudTable
+    private bool FilterFunc(FluxErrorSearchDto error)
+    {
+        if (string.IsNullOrWhiteSpace(searchString))
+            return true;
+
+        return
+            error.FluxId.ToString().Contains(searchString) ||
+            error.FluxErrorType.Contains(searchString, StringComparison.OrdinalIgnoreCase) ||
+            error.ExternalId.Contains(searchString, StringComparison.OrdinalIgnoreCase) ||
+            error.ActionType.ToString().Contains(searchString, StringComparison.OrdinalIgnoreCase) ||
+            error.Message.Contains(searchString, StringComparison.OrdinalIgnoreCase) ||
+            (error.Metadata?.Contains(searchString, StringComparison.OrdinalIgnoreCase) ?? false);
+    }
+} 

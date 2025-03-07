@@ -1,0 +1,259 @@
+@page "/flux/error-details/{ErrorId:int}"
+@using HillMetrics.MIND.API.Contracts.Responses
+@using HillMetrics.MIND.API.Contracts.Responses.Flux
+@using HillMetrics.MIND.FrontApp.Services
+@using HillMetrics.Core
+@using HillMetrics.Core.Common
+@using System.Text.Json
+@using HillMetrics.MIND.API.SDK.V1
+@inject IMindAPI MindApi
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+@inject IJSRuntime JSRuntime
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    @if (loading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+        <MudText Typo="Typo.h5" Class="ml-2 mb-4 d-flex justify-center">Loading error details...</MudText>
+    }
+    else if (errorDetails == null)
+    {
+        <MudAlert Severity="Severity.Error" Class="my-4">Error not found or problem loading data.</MudAlert>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => NavigationManager.NavigateTo("/flux/errors"))">
+            Back to Errors
+        </MudButton>
+    }
+    else
+    {
+        <MudGrid>
+            <MudItem xs="12" Class="d-flex justify-space-between align-center">
+                <div>
+                    <MudText Typo="Typo.h4">Flux Error Details</MudText>
+                    <MudText Typo="Typo.subtitle1" Class="mt-1">ID: @errorDetails.FluxError.Id</MudText>
+                </div>
+                <div>
+                    <MudButtonGroup Color="Color.Primary" Variant="Variant.Outlined">
+                            <MudButton OnClick="@(() => NavigationManager.NavigateTo($"/flux/details/{errorDetails.FluxError.FluxId}"))">
+                                <MudIcon Icon="@Icons.Material.Filled.Assignment" Class="mr-2" /> View Flux
+                            </MudButton>
+                    </MudButtonGroup>
+                </div>
+            </MudItem>
+
+            <!-- Error Alert Box -->
+            <MudItem xs="12">
+                <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+                    <div class="d-flex align-center">
+                        <MudIcon Icon="@Icons.Material.Filled.Error" Class="mr-3" Size="Size.Large" />
+                        <div>
+                            <MudText Typo="Typo.h6">@errorDetails.FluxError.FluxErrorType</MudText>
+                            <MudText>@errorDetails.FluxError.Message</MudText>
+                        </div>
+                    </div>
+                </MudAlert>
+            </MudItem>
+
+            <!-- Error Message -->
+            <MudItem xs="12">
+                <MudCard Elevation="3" Class="mb-4">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Error Message</MudText>
+                        </CardHeaderContent>
+                        <CardHeaderActions>
+                            <MudTooltip Text="Copy to clipboard">
+                                <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" 
+                                              Color="Color.Primary" 
+                                              OnClick="@(() => CopyToClipboard(errorDetails.FluxError.Message))" />
+                            </MudTooltip>
+                        </CardHeaderActions>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudPaper Elevation="0" Class="pa-4" Style="background-color: #f5f5f5; overflow-x: auto; max-height: 300px;">
+                            <pre style="margin: 0; white-space: pre-wrap; color: #d32f2f;">@errorDetails.FluxError.Message</pre>
+                        </MudPaper>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+
+            <!-- Additional Data -->
+            @if (!string.IsNullOrEmpty(errorDetails.FluxError.Metadata))
+            {
+                <MudItem xs="12">
+                    <MudCard Elevation="3" Class="mb-4">
+                        <MudCardHeader>
+                            <CardHeaderContent>
+                                <MudText Typo="Typo.h6">Additional Data</MudText>
+                            </CardHeaderContent>
+                            <CardHeaderActions>
+                                <MudIcon Icon="@Icons.Material.Filled.Storage" Color="Color.Primary" />
+                            </CardHeaderActions>
+                        </MudCardHeader>
+                        <MudCardContent>
+                            <MudPaper Elevation="0" Class="pa-4" Style="background-color: #f5f5f5; overflow-x: auto; max-height: 300px;">
+                                <pre style="margin: 0; white-space: pre-wrap;">@FormatJson(errorDetails.FluxError.Metadata)</pre>
+                            </MudPaper>
+                        </MudCardContent>
+                    </MudCard>
+                </MudItem>
+            }
+
+            <!-- Quick Links -->
+            <MudItem xs="12">
+                <MudCard Elevation="3" Class="mb-4">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Quick Links</MudText>
+                        </CardHeaderContent>
+                        <CardHeaderActions>
+                            <MudIcon Icon="@Icons.Material.Filled.Link" Color="Color.Primary" />
+                        </CardHeaderActions>
+                    </MudCardHeader>
+                </MudCard>
+            </MudItem>
+        </MudGrid>
+    }
+</MudContainer>
+
+@code {
+    [Parameter]
+    public int ErrorId { get; set; }
+
+    private FluxErrorResponse? errorDetails;
+    private bool loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadErrorData();
+    }
+
+    private async Task LoadErrorData()
+    {
+        try
+        {
+            loading = true;
+            var response = await MindApi.GetErrorAsync(ErrorId);
+            errorDetails = response.Data;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading error details: {ex.Message}", Severity.Error);
+            errorDetails = null;
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task CopyToClipboard(string text)
+    {
+        if (string.IsNullOrEmpty(text)) return;
+        
+        await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", text);
+        Snackbar.Add("Copied to clipboard", Severity.Success);
+    }
+    
+    private string FormatJson(string json)
+    {
+        try
+        {
+            var options = new JsonSerializerOptions
+            {
+                WriteIndented = true
+            };
+            
+            var jsonElement = JsonSerializer.Deserialize<JsonElement>(json);
+            return JsonSerializer.Serialize(jsonElement, options);
+        }
+        catch
+        {
+            return json;
+        }
+    }
+    
+    private string FormatStackTrace(string stackTrace)
+    {
+        if (string.IsNullOrEmpty(stackTrace)) return string.Empty;
+        
+        // Highlight framework methods with a different color
+        // This is a simple formatting - you can enhance it for your needs
+        var lines = stackTrace.Split('\n');
+        var formattedLines = new List<string>();
+        
+        foreach (var line in lines)
+        {
+            var trimmedLine = line.Trim();
+            
+            // You can add more sophisticated formatting if needed
+            formattedLines.Add(trimmedLine);
+        }
+        
+        return string.Join("\n", formattedLines);
+    }
+    
+    private string GetErrorCategory(string errorType)
+    {
+        if (string.IsNullOrEmpty(errorType)) return "Unknown";
+        
+        if (errorType.Contains("Database") || errorType.Contains("SQL") || errorType.Contains("Entity"))
+            return "Database Error";
+        
+        if (errorType.Contains("Http") || errorType.Contains("API") || errorType.Contains("Network") || errorType.Contains("Connection"))
+            return "Network/Connection Error";
+        
+        if (errorType.Contains("Authentication") || errorType.Contains("Authorization") || errorType.Contains("Access"))
+            return "Authentication/Authorization Error";
+        
+        if (errorType.Contains("Format") || errorType.Contains("Parse") || errorType.Contains("Invalid"))
+            return "Data Format/Parsing Error";
+        
+        if (errorType.Contains("NotFound") || errorType.Contains("Missing"))
+            return "Resource Not Found";
+        
+        if (errorType.Contains("Timeout"))
+            return "Timeout Error";
+        
+        if (errorType.Contains("ArgumentNull") || errorType.Contains("ArgumentOutOfRange"))
+            return "Programming Error";
+        
+        return "General Error";
+    }
+    
+    private string GetOperationIcon(string? operationType)
+    {
+        if (string.IsNullOrEmpty(operationType)) return Icons.Material.Filled.QuestionMark;
+        
+        return operationType.ToLower() switch
+        {
+            "fetch" => Icons.Material.Filled.CloudDownload,
+            "process" => Icons.Material.Filled.DataObject,
+            "identification" => Icons.Material.Filled.FindInPage,
+            "webhook" => Icons.Material.Filled.Http,
+            "email" => Icons.Material.Filled.Email,
+            "api" => Icons.Material.Filled.Api,
+            "sftp" => Icons.Material.Filled.Storage,
+            "download" => Icons.Material.Filled.CloudDownload,
+            _ => Icons.Material.Filled.Settings
+        };
+    }
+    
+    private Color GetOperationColor(string? operationType)
+    {
+        if (string.IsNullOrEmpty(operationType)) return Color.Default;
+        
+        return operationType.ToLower() switch
+        {
+            "fetch" => Color.Info,
+            "process" => Color.Success,
+            "identification" => Color.Warning,
+            "webhook" => Color.Secondary,
+            "email" => Color.Primary,
+            "api" => Color.Tertiary,
+            "sftp" => Color.Info,
+            "download" => Color.Info,
+            _ => Color.Default
+        };
+    }
+} 

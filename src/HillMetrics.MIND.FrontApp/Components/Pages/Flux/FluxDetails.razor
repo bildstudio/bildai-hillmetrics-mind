@@ -1,0 +1,730 @@
+@page "/flux/details/{FluxId:int}"
+@using HillMetrics.MIND.API.Contracts.Responses
+@using HillMetrics.MIND.API.Contracts.Responses.Flux
+@using HillMetrics.Core.Financial
+@using HillMetrics.Core
+@using HillMetrics.MIND.FrontApp.Services
+@using HillMetrics.Normalized.Domain.Contracts.Providing.Flux
+@using HillMetrics.MIND.API.SDK.V1
+@using HillMetrics.MIND.API.Contracts.Requests
+@using HillMetrics.MIND.API.Contracts.Requests.Flux
+@using HillMetrics.Core.Common
+@using System.Text.Json
+@inject IMindAPI MindApi
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    @if (loading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+        <MudText Typo="Typo.h5" Class="ml-2 mb-4 d-flex justify-center">Loading flux details...</MudText>
+    }
+    else if (flux == null)
+    {
+        <MudAlert Severity="Severity.Error" Class="my-4">Flux not found or error loading data.</MudAlert>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => NavigationManager.NavigateTo("/flux/search"))">
+            Back to Search
+        </MudButton>
+    }
+    else
+    {
+        <MudGrid>
+            <MudItem xs="12" Class="d-flex justify-space-between align-center">
+                <div>
+                    <MudText Typo="Typo.h4">Flux Details: @flux.FluxName</MudText>
+                    <MudText Typo="Typo.subtitle1" Class="mt-1">ID: @flux.Id</MudText>
+                </div>
+                <div>
+                    <MudButtonGroup Color="Color.Primary" Variant="Variant.Outlined">
+                        <MudButton OnClick="@(() => NavigationManager.NavigateTo($"/flux/edit/{FluxId}"))">
+                            <MudIcon Icon="@Icons.Material.Filled.Edit" Class="mr-2" /> Edit
+                        </MudButton>
+                        <MudButton OnClick="@ForceFetch" Disabled="@(loading || flux.FluxState != FluxState.Active)">
+                            <MudIcon Icon="@Icons.Material.Filled.Download" Class="mr-2" /> Force Fetch
+                        </MudButton>
+                        <MudButton OnClick="@ForceProcess" Disabled="@(loading || flux.FluxState != FluxState.Active)">
+                            <MudIcon Icon="@Icons.Material.Filled.PlayArrow" Class="mr-2" /> Force Process
+                        </MudButton>
+                        <MudButton 
+                            OnClick="@(async () => await ShowDeleteConfirmDialog())" 
+                            Color="Color.Error">
+                            <MudIcon Icon="@Icons.Material.Filled.Delete" Class="mr-2" /> Delete
+                        </MudButton>
+                    </MudButtonGroup>
+                </div>
+            </MudItem>
+
+            <!-- General Information -->
+            <MudItem xs="12" md="6">
+                <MudCard Elevation="3" Class="mb-4">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">General Information</MudText>
+                        </CardHeaderContent>
+                        <CardHeaderActions>
+                            <MudIcon Icon="@Icons.Material.Filled.Info" Color="Color.Primary" />
+                        </CardHeaderActions>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudGrid>
+                            <MudItem xs="12">
+                                <MudTextField Label="Name" Value="@flux.FluxName" ReadOnly="true" 
+                                            Variant="Variant.Outlined" FullWidth="true" />
+                            </MudItem>
+                            <MudItem xs="12">
+                                <MudTextField Label="Description" Value="@(flux.Description ?? "-")" ReadOnly="true" 
+                                            Variant="Variant.Outlined" FullWidth="true" Lines="3" />
+                            </MudItem>
+                            <MudItem xs="12" md="6">
+                                <MudTextField Label="Comment" Value="@(flux.Comment ?? "-")" ReadOnly="true" 
+                                            Variant="Variant.Outlined" FullWidth="true" />
+                            </MudItem>
+                            <MudItem xs="12" md="6">
+                                <MudTextField Label="Source ID" Value="@(flux.Source.Id.ToString() ?? "-")" ReadOnly="true" 
+                                            Variant="Variant.Outlined" FullWidth="true" />
+                            </MudItem>
+                        </MudGrid>
+                    </MudCardContent>
+                </MudCard>
+
+                <!-- Status Information -->
+                <MudCard Elevation="3" Class="mb-4">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Status Information</MudText>
+                        </CardHeaderContent>
+                        <CardHeaderActions>
+                            <MudIcon Icon="@Icons.Material.Filled.BarChart" Color="Color.Primary" />
+                        </CardHeaderActions>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudGrid>
+                            <MudItem xs="6" md="4">
+                                <MudField Label="Financial Type" Variant="Variant.Outlined">
+                                    @if (flux.FinancialType.HasValue)
+                                    {
+                                        <MudChip T="FinancialType" Color="@Color.Primary" Size="Size.Small">
+                                            @flux.FinancialType.Value
+                                        </MudChip>
+                                    }
+                                    else
+                                    {
+                                        <span>-</span>
+                                    }
+                                </MudField>
+                            </MudItem>
+                            <MudItem xs="6" md="4">
+                                <MudField Label="Flux Type" Variant="Variant.Outlined">
+                                    <MudChip T="FluxType" Color="@Color.Primary" Size="Size.Small">
+                                        @flux.FluxType
+                                    </MudChip>
+                                </MudField>
+                            </MudItem>
+                            <MudItem xs="6" md="4">
+                                <MudField Label="Flux State" Variant="Variant.Outlined">
+                                    <MudChip T="FluxState" Color="@GetFluxStateColor(flux.FluxState)" Size="Size.Small">
+                                        @flux.FluxState
+                                    </MudChip>
+                                </MudField>
+                            </MudItem>
+                            <MudItem xs="6" md="4">
+                                <MudField Label="Fetching Status" Variant="Variant.Outlined">
+                                    @if (flux.FluxIdentificationHistory.Count > 0)
+                                    {
+                                        <MudTooltip Text="@flux.FluxIdentificationHistory[^1].IdentificationContentHistories[^1].IdentifiedAt.ToString()">
+                                            <MudIcon Icon="@GetStatusIcon(flux.FluxIdentificationHistory[^1].IdentificationContentHistories[^1].ContentStatus)"
+                                                     Color="@GetStatusColor(flux.FluxIdentificationHistory[^1].IdentificationContentHistories[^1].ContentStatus)" />
+                                        </MudTooltip>
+                                    }
+                                    else
+                                    {
+                                        <span>-</span>
+                                    }
+                                </MudField>
+                            </MudItem>
+                            <MudItem xs="6" md="4">
+                                <MudField Label="Processing Status" Variant="Variant.Outlined">
+                                    @if (flux.FluxProcessingHistory.Count > 0)
+                                    {
+                                        <MudTooltip Text="@flux.FluxProcessingHistory[^1].FluxProcessingContentHistory[^1].EndedAt.ToString()">
+                                            <MudIcon Icon="@GetStatusIcon(@flux.FluxProcessingHistory[^1].FluxProcessingContentHistory[^1].Status)" 
+                                                    Color="@GetStatusColor(@flux.FluxProcessingHistory[^1].FluxProcessingContentHistory[^1].Status)" />
+                                        </MudTooltip>
+                                    }
+                                    else
+                                    {
+                                        <span>-</span>
+                                    }
+                                </MudField>
+                            </MudItem>
+                            @* <MudItem xs="12">
+                                <MudDivider Class="my-3" />
+                            </MudItem>
+                            <MudItem xs="6">
+                                <MudField Label="Last Fetching" Variant="Variant.Outlined">
+                                    @if (flux.LastFetching.HasValue)
+                                    {
+                                        <MudTooltip Text="@flux.LastFetching.Value.ToString("yyyy-MM-dd HH:mm:ss")">
+                                            <div>@FormatDateTime(flux.LastFetching.Value)</div>
+                                        </MudTooltip>
+                                    }
+                                    else
+                                    {
+                                        <span>-</span>
+                                    }
+                                </MudField>
+                            </MudItem>
+                            <MudItem xs="6">
+                                <MudField Label="Last Processing" Variant="Variant.Outlined">
+                                    @if (flux.LastProcessing.HasValue)
+                                    {
+                                        <MudTooltip Text="@flux.LastProcessing.Value.ToString("yyyy-MM-dd HH:mm:ss")">
+                                            <div>@FormatDateTime(flux.LastProcessing.Value)</div>
+                                        </MudTooltip>
+                                    }
+                                    else
+                                    {
+                                        <span>-</span>
+                                    }
+                                </MudField>
+                            </MudItem>
+                            <MudItem xs="6">
+                                <MudField Label="Fetching Errors" Variant="Variant.Outlined">
+                                    @if (flux.LastFetchingErrorCount > 0)
+                                    {
+                                        <MudChip Color="Color.Error" Size="Size.Small">@flux.LastFetchingErrorCount</MudChip>
+                                    }
+                                    else
+                                    {
+                                        <span>@flux.LastFetchingErrorCount</span>
+                                    }
+                                </MudField>
+                            </MudItem>
+                            <MudItem xs="6">
+                                <MudField Label="Processing Errors" Variant="Variant.Outlined">
+                                    @if (flux.LastProcessingErrorCount > 0)
+                                    {
+                                        <MudChip Color="Color.Error" Size="Size.Small">@flux.LastProcessingErrorCount</MudChip>
+                                    }
+                                    else
+                                    {
+                                        <span>@flux.LastProcessingErrorCount</span>
+                                    }
+                                </MudField>
+                            </MudItem> *@
+                        </MudGrid>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+
+            <!-- Scheduling and Configuration -->
+            <MudItem xs="12" md="6">
+                <MudCard Elevation="3" Class="mb-4">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Scheduling</MudText>
+                        </CardHeaderContent>
+                        <CardHeaderActions>
+                            <MudIcon Icon="@Icons.Material.Filled.Schedule" Color="Color.Primary" />
+                        </CardHeaderActions>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        @if (flux.FetchTriggerPeriod != null)
+                        {
+                            <MudPaper Elevation="0" Class="pa-4 mb-4" Outlined="true">
+                                <MudText Typo="Typo.subtitle1">Fetch Schedule</MudText>
+                                <MudGrid>
+                                    <MudItem xs="6">
+                                        <MudField Label="Period Type" Variant="Variant.Outlined">
+                                            @flux.FetchTriggerPeriod.FrequencyType
+                                        </MudField>
+                                    </MudItem>
+                                    <MudItem xs="6">
+                                        <MudField Label="Period Value" Variant="Variant.Outlined">
+                                            @flux.FetchTriggerPeriod.ToString()
+                                        </MudField>
+                                    </MudItem>
+                                    @if (flux.FetchTriggerPeriod.StartTime.HasValue)
+                                    {
+                                        <MudItem xs="6">
+                                            <MudField Label="Start Date" Variant="Variant.Outlined">
+                                                @flux.FetchTriggerPeriod.StartTime.Value.ToString("yyyy-MM-dd")
+                                            </MudField>
+                                        </MudItem>
+                                    }
+                                </MudGrid>
+                            </MudPaper>
+                        }
+                        
+                        @if (flux.ProcessTriggerPeriod != null)
+                        {
+                            <MudPaper Elevation="0" Class="pa-4" Outlined="true">
+                                <MudText Typo="Typo.subtitle1">Process Schedule</MudText>
+                                <MudGrid>
+                                    <MudItem xs="6">
+                                        <MudField Label="Period Type" Variant="Variant.Outlined">
+                                            @flux.ProcessTriggerPeriod.FrequencyType
+                                        </MudField>
+                                    </MudItem>
+                                    <MudItem xs="6">
+                                        <MudField Label="Period Value" Variant="Variant.Outlined">
+                                            @flux.ProcessTriggerPeriod.ToString()
+                                        </MudField>
+                                    </MudItem>
+                                    @if (flux.ProcessTriggerPeriod.StartTime.HasValue)
+                                    {
+                                        <MudItem xs="6">
+                                            <MudField Label="Start Date" Variant="Variant.Outlined">
+                                                @flux.ProcessTriggerPeriod.StartTime.Value.ToString("yyyy-MM-dd")
+                                            </MudField>
+                                        </MudItem>
+                                    }
+                                </MudGrid>
+                            </MudPaper>
+                        }
+                    </MudCardContent>
+                </MudCard>
+
+                <!-- Flux-specific Metadata -->
+                @if (flux.FluxMetadata != null)
+                {
+                    @* <MudCard Elevation="3" Class="mb-4">
+                        <MudCardHeader>
+                            <CardHeaderContent>
+                                <MudText Typo="Typo.h6">Flux Configuration</MudText>
+                            </CardHeaderContent>
+                            <CardHeaderActions>
+                                <MudIcon Icon="@GetFluxTypeIcon(flux.FluxType)" Color="Color.Primary" />
+                            </CardHeaderActions>
+                        </MudCardHeader>
+                        <MudCardContent>
+                            @switch (flux.FluxType)
+                            {
+                                case FluxType.Email:
+                                    @if (flux.FluxMetadata.Mail != null)
+                                    {
+                                        <MudText Typo="Typo.subtitle1">Email Configuration</MudText>
+                                        <MudText Typo="Typo.body2">
+                                            Content Location: @flux.FluxMetadata.Mail.ContentLocation
+                                        </MudText>
+                                        
+                                        @if (flux.FluxMetadata.Mail.FluxRuleSettings != null)
+                                        {
+                                            <MudDivider Class="my-3" />
+                                            <MudText Typo="Typo.subtitle2">Email Rules</MudText>
+                                            <MudText Typo="Typo.body2">
+                                                From: @(string.IsNullOrEmpty(flux.FluxMetadata.Mail.FluxRuleSettings.From) ? "-" : flux.FluxMetadata.Mail.FluxRuleSettings.From)
+                                            </MudText>
+                                            <MudText Typo="Typo.body2">
+                                                Subject: @(string.IsNullOrEmpty(flux.FluxMetadata.Mail.FluxRuleSettings.Subject) ? "-" : flux.FluxMetadata.Mail.FluxRuleSettings.Subject)
+                                            </MudText>
+                                            <MudText Typo="Typo.body2">
+                                                Body Contains: @(string.IsNullOrEmpty(flux.FluxMetadata.Mail.FluxRuleSettings.BodyContains) ? "-" : flux.FluxMetadata.Mail.FluxRuleSettings.BodyContains)
+                                            </MudText>
+                                        }
+                                        
+                                        @if (flux.FluxMetadata.Mail.FluxAttachmentRule != null && flux.FluxMetadata.Mail.ContentLocation == FluxMailContentLocation.Attachment)
+                                        {
+                                            <MudDivider Class="my-3" />
+                                            <MudText Typo="Typo.subtitle2">Attachment Rules</MudText>
+                                            <MudText Typo="Typo.body2">
+                                                File Name Pattern: @(string.IsNullOrEmpty(flux.FluxMetadata.Mail.FluxAttachmentRule.FileName) ? "-" : flux.FluxMetadata.Mail.FluxAttachmentRule.FileName)
+                                            </MudText>
+                                            <MudText Typo="Typo.body2">
+                                                Extension: @(string.IsNullOrEmpty(flux.FluxMetadata.Mail.FluxAttachmentRule.Extension) ? "-" : flux.FluxMetadata.Mail.FluxAttachmentRule.Extension)
+                                            </MudText>
+                                        }
+                                    }
+                                    break;
+                                
+                                case FluxType.FileLocation:
+                                    @if (flux.FluxMetadata.FileLocation != null)
+                                    {
+                                        <MudText Typo="Typo.subtitle1">SFTP Configuration</MudText>
+                                        
+                                        @if (flux.FluxMetadata.FileLocation.Metadata != null && flux.FluxMetadata.FileLocation.Metadata.Count > 0)
+                                        {
+                                            <MudGrid>
+                                                @if (flux.FluxMetadata.FileLocation.Metadata.TryGetValue("Host", out var host))
+                                                {
+                                                    <MudItem xs="12" md="6">
+                                                        <MudField Label="Host" Variant="Variant.Outlined">@host</MudField>
+                                                    </MudItem>
+                                                }
+                                                
+                                                @if (flux.FluxMetadata.FileLocation.Metadata.TryGetValue("Port", out var port))
+                                                {
+                                                    <MudItem xs="12" md="6">
+                                                        <MudField Label="Port" Variant="Variant.Outlined">@port</MudField>
+                                                    </MudItem>
+                                                }
+                                                
+                                                @if (flux.FluxMetadata.FileLocation.Metadata.TryGetValue("Username", out var username))
+                                                {
+                                                    <MudItem xs="12" md="6">
+                                                        <MudField Label="Username" Variant="Variant.Outlined">@username</MudField>
+                                                    </MudItem>
+                                                }
+                                                
+                                                @if (flux.FluxMetadata.FileLocation.Metadata.TryGetValue("RemoteDirectory", out var remoteDir))
+                                                {
+                                                    <MudItem xs="12" md="6">
+                                                        <MudField Label="Remote Directory" Variant="Variant.Outlined">@remoteDir</MudField>
+                                                    </MudItem>
+                                                }
+                                                
+                                                @if (flux.FluxMetadata.FileLocation.Metadata.TryGetValue("FilePattern", out var filePattern))
+                                                {
+                                                    <MudItem xs="12" md="6">
+                                                        <MudField Label="File Pattern" Variant="Variant.Outlined">@filePattern</MudField>
+                                                    </MudItem>
+                                                }
+                                                
+                                                @if (flux.FluxMetadata.FileLocation.Metadata.TryGetValue("Protocol", out var protocol))
+                                                {
+                                                    <MudItem xs="12" md="6">
+                                                        <MudField Label="Protocol" Variant="Variant.Outlined">@protocol</MudField>
+                                                    </MudItem>
+                                                }
+                                            </MudGrid>
+                                            
+                                            @if (flux.FluxMetadata.FileLocation.FluxRuleSettings != null)
+                                            {
+                                                <MudDivider Class="my-3" />
+                                                <MudText Typo="Typo.subtitle2">File Rules</MudText>
+                                                <!-- Add file rules display here -->
+                                            }
+                                        }
+                                    }
+                                    break;
+                                
+                                case FluxType.ApiPull:
+                                case FluxType.ApiPush:
+                                    @if (flux.FluxMetadata.Api != null)
+                                    {
+                                        <MudText Typo="Typo.subtitle1">API Configuration</MudText>
+                                        <MudGrid>
+                                            <MudItem xs="12">
+                                                <MudField Label="Endpoint" Variant="Variant.Outlined">@flux.FluxMetadata.Api.Endpoint</MudField>
+                                            </MudItem>
+                                            
+                                            @if (!string.IsNullOrEmpty(flux.FluxMetadata.Api.ApiKey))
+                                            {
+                                                <MudItem xs="12">
+                                                    <MudField Label="API Key" Variant="Variant.Outlined">
+                                                        <MudText Style="word-break: break-all;">@flux.FluxMetadata.Api.ApiKey</MudText>
+                                                    </MudField>
+                                                </MudItem>
+                                            }
+                                            
+                                            @if (flux.FluxMetadata.Api.Metadata != null && flux.FluxMetadata.Api.Metadata.Count > 0)
+                                            {
+                                                @if (flux.FluxMetadata.Api.Metadata.TryGetValue("ContentType", out var contentType))
+                                                {
+                                                    <MudItem xs="12" md="6">
+                                                        <MudField Label="Content Type" Variant="Variant.Outlined">@contentType</MudField>
+                                                    </MudItem>
+                                                }
+                                                
+                                                @if (flux.FluxMetadata.Api.Metadata.TryGetValue("Method", out var method))
+                                                {
+                                                    <MudItem xs="12" md="6">
+                                                        <MudField Label="HTTP Method" Variant="Variant.Outlined">@method</MudField>
+                                                    </MudItem>
+                                                }
+                                                
+                                                @if (flux.FluxMetadata.Api.Metadata.TryGetValue("RequiresAuthentication", out var requiresAuth) && 
+                                                    requiresAuth.ToString().ToLower() == "true")
+                                                {
+                                                    <MudItem xs="12">
+                                                        <MudField Label="Authentication" Variant="Variant.Outlined">Required</MudField>
+                                                    </MudItem>
+                                                    
+                                                    @if (flux.FluxMetadata.Api.Metadata.TryGetValue("Username", out var apiUsername))
+                                                    {
+                                                        <MudItem xs="12" md="6">
+                                                            <MudField Label="Username" Variant="Variant.Outlined">@apiUsername</MudField>
+                                                        </MudItem>
+                                                    }
+                                                }
+                                            }
+                                        </MudGrid>
+                                    }
+                                    break;
+                                
+                                case FluxType.Download:
+                                    @if (flux.FluxMetadata.Download != null)
+                                    {
+                                        <MudText Typo="Typo.subtitle1">Download Configuration</MudText>
+                                        <MudGrid>
+                                            <MudItem xs="12">
+                                                <MudField Label="Download URL" Variant="Variant.Outlined">@flux.FluxMetadata.Download.DownloadUrl</MudField>
+                                            </MudItem>
+                                            
+                                            <MudItem xs="6">
+                                                <MudField Label="Content Type" Variant="Variant.Outlined">@flux.FluxMetadata.Download.ContentType</MudField>
+                                            </MudItem>
+                                        </MudGrid>
+                                    }
+                                    break;
+                            }
+                        </MudCardContent>
+                    </MudCard> *@
+                }
+            </MudItem>
+
+            <!-- Quick Links and History -->
+            <MudItem xs="12">
+                <MudCard Elevation="3" Class="mb-4">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Quick Links</MudText>
+                        </CardHeaderContent>
+                        <CardHeaderActions>
+                            <MudIcon Icon="@Icons.Material.Filled.Link" Color="Color.Primary" />
+                        </CardHeaderActions>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudGrid>
+                            <MudItem xs="12" sm="6" md="3">
+                                <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true"
+                                         OnClick="@(() => NavigationManager.NavigateTo($"/flux/processing-history?fluxId={FluxId}"))">
+                                    <MudIcon Icon="@Icons.Material.Filled.History" Class="mr-2" /> Processing History
+                                </MudButton>
+                            </MudItem>
+                            <MudItem xs="12" sm="6" md="3">
+                                <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true"
+                                         OnClick="@(() => NavigationManager.NavigateTo($"/flux/fetching-history?fluxId={FluxId}"))">
+                                    <MudIcon Icon="@Icons.Material.Filled.Download" Class="mr-2" /> Fetching History
+                                </MudButton>
+                            </MudItem>
+                            <MudItem xs="12" sm="6" md="3">
+                                <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true"
+                                         OnClick="@(() => NavigationManager.NavigateTo($"/flux/errors?fluxId={FluxId}"))">
+                                    <MudIcon Icon="@Icons.Material.Filled.Error" Class="mr-2" /> Error Log
+                                </MudButton>
+                            </MudItem>
+                            <MudItem xs="12" sm="6" md="3">
+                                <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true"
+                                         OnClick="@(() => NavigationManager.NavigateTo($"/flux/financial-data-points?fluxId={FluxId}"))">
+                                    <MudIcon Icon="@Icons.Material.Filled.DataUsage" Class="mr-2" /> Data Points
+                                </MudButton>
+                            </MudItem>
+                        </MudGrid>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+        </MudGrid>
+    }
+</MudContainer>
+
+@code {
+    [Parameter]
+    public int FluxId { get; set; }
+
+    private FluxResponse? flux;
+    private bool loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadFluxData();
+    }
+
+    private async Task LoadFluxData()
+    {
+        try
+        {
+            loading = true;
+            var response = await MindApi.GetFluxAsync(FluxId);
+            flux = response;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading flux details: {ex.Message}", Severity.Error);
+            flux = null;
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task ForceFetch()
+    {
+        try
+        {
+            loading = true;
+            var result = await MindApi.ForceFetchAsync(FluxId);
+            Snackbar.Add("Force fetch completed successfully", Severity.Success);
+            await LoadFluxData();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error during force fetch: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task ForceProcess()
+    {
+        try
+        {
+            loading = true;
+            var result = await MindApi.ForceProcessAsync(FluxId);
+            Snackbar.Add("Force process completed successfully", Severity.Success);
+            await LoadFluxData();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error during force process: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task ShowDeleteConfirmDialog()
+    {
+        var parameters = new DialogParameters();
+        parameters.Add("ItemName", "flux");
+        parameters.Add("ItemValue", flux?.FluxName ?? $"#{FluxId}");
+        
+        var options = new DialogOptions() 
+        {
+            CloseOnEscapeKey = true, 
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true,
+            Position = DialogPosition.Center
+        };
+        
+        var dialog = await DialogService.ShowAsync<ConfirmDeleteDialog>("Confirm Deletion", parameters, options);
+        var result = await dialog.Result;
+        
+        if (!result.Canceled)
+        {
+            await DeleteFlux();
+        }
+    }
+    
+    private async Task DeleteFlux()
+    {
+        try
+        {
+            var result = await MindApi.DeleteFluxAsync(FluxId);
+            if (result)
+            {
+                Snackbar.Add($"Flux deleted successfully", Severity.Success);
+                NavigationManager.NavigateTo("/flux/search");
+            }
+            else
+            {
+                Snackbar.Add($"Error deleting flux", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+    }
+
+    // Helper methods for icons and colors
+    private string GetStatusIcon(StatusProcess status)
+    {
+        return status switch
+        {
+            StatusProcess.Success => Icons.Material.Filled.CheckCircle,
+            StatusProcess.Failure => Icons.Material.Filled.Error,
+            StatusProcess.Warning => Icons.Material.Filled.Warning,
+            StatusProcess.Processing => Icons.Material.Filled.Pending,
+            StatusProcess.Paused => Icons.Material.Filled.Block,
+            _ => Icons.Material.Filled.HelpOutline
+        };
+    }
+    
+    private Color GetStatusColor(StatusProcess status)
+    {
+        return status switch
+        {
+            StatusProcess.Success => Color.Success,
+            StatusProcess.Failure => Color.Error,
+            StatusProcess.Warning => Color.Warning,
+            StatusProcess.Processing => Color.Info,
+            StatusProcess.Paused => Color.Warning,
+            _ => Color.Default
+        };
+    }
+    
+    // private Color GetFluxTypeColor(FluxType fluxType)
+    // {
+    //     return fluxType switch
+    //     {
+    //         FluxType.ApiPull => Color.Primary,
+    //         FluxType.ApiPush => Color.Secondary,
+    //         FluxType.Email => Color.Info,
+    //         FluxType.FileLocation => Color.Success,
+    //         FluxType.Download => Color.Warning,
+    //         _ => Color.Default
+    //     };
+    // }
+    
+    // private string GetFluxTypeIcon(FluxType fluxType)
+    // {
+    //     return fluxType switch
+    //     {
+    //         FluxType.ApiPull => Icons.Material.Filled.Api,
+    //         FluxType.ApiPush => Icons.Material.Filled.Api,
+    //         FluxType.Email => Icons.Material.Filled.Email,
+    //         FluxType.FileLocation => Icons.Material.Filled.Folder,
+    //         FluxType.Download => Icons.Material.Filled.CloudDownload,
+    //         _ => Icons.Material.Filled.Help
+    //     };
+    // }
+    
+    // private Color GetFinancialTypeColor(FinancialType financialType)
+    // {
+    //     return financialType switch
+    //     {
+    //         FinancialType.Equity => Color.Primary,
+    //         FinancialType.Bond => Color.Secondary,
+    //         FinancialType.Fund => Color.Tertiary,
+    //         FinancialType.Index => Color.Info,
+    //         FinancialType.Derivative => Color.Warning,
+    //         _ => Color.Default
+    //     };
+    // }
+    
+    private Color GetFluxStateColor(FluxState fluxState)
+    {
+        return fluxState switch
+        {
+            FluxState.Active => Color.Success,
+            FluxState.Disabled => Color.Dark,
+            FluxState.BackOfficeOnly => Color.Warning,
+            FluxState.Obsolete => Color.Dark,
+            _ => Color.Default
+        };
+    }
+    
+    private string FormatDateTime(DateTime dateTime)
+    {
+        var now = DateTime.Now;
+        var diff = now - dateTime;
+        
+        if (diff.TotalMinutes < 1)
+            return "Just now";
+        if (diff.TotalHours < 1)
+            return $"{(int)diff.TotalMinutes}m ago";
+        if (diff.TotalDays < 1)
+            return $"{(int)diff.TotalHours}h ago";
+        if (diff.TotalDays < 7)
+            return $"{(int)diff.TotalDays}d ago";
+            
+        return dateTime.ToString("MMM dd, HH:mm");
+    }
+} 

@@ -1,0 +1,31 @@
+@using MudBlazor
+
+<MudDialog>
+    <DialogContent>
+        <MudTextField @bind-Value="CurrentKey" Label="Key" Required="true" 
+                      ReadOnly="@EditingExistingItem" Class="mb-3" />
+        <MudTextField @bind-Value="CurrentValue" Label="Value" Required="true" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" Color="Color.Secondary" OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Submit" 
+                   Disabled="@(string.IsNullOrWhiteSpace(CurrentKey) || string.IsNullOrWhiteSpace(CurrentValue))">
+            Save
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+    
+    [Parameter] public string CurrentKey { get; set; } = string.Empty;
+    [Parameter] public string CurrentValue { get; set; } = string.Empty;
+    [Parameter] public bool EditingExistingItem { get; set; } = false;
+    
+    private void Submit()
+    {
+        MudDialog.Close(DialogResult.Ok(new Tuple<string, string>(CurrentKey, CurrentValue)));
+    }
+    
+    private void Cancel() => MudDialog.Cancel();
+} 

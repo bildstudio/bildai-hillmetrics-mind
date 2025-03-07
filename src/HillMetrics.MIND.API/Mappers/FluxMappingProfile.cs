@@ -10,6 +10,8 @@ using HillMetrics.Normalized.Domain.Contracts.Providing.Source.Cqrs.Get;
 using HillMetrics.MIND.API.Contracts.Responses.Source;
 using HillMetrics.Normalized.Domain.Contracts.Providing.Flux.Cqrs.Process;
 using HillMetrics.Normalized.Domain.Contracts.Providing.Flux.Cqrs.Collect;
+using static HillMetrics.Normalized.Domain.Contracts.Providing.Flux.Cqrs.Process.ProcessFluxCommandResult;
+using static HillMetrics.MIND.API.Contracts.Responses.Flux.FluxForceProcessResponse;
 
 namespace HillMetrics.MIND.API.Mappers
 {
@@ -31,6 +33,7 @@ namespace HillMetrics.MIND.API.Mappers
             
             CreateMap<FetchFluxCommandResult, FluxForceFetchResponse>().ReverseMap();
             CreateMap<ProcessFluxCommandResult, FluxForceProcessResponse>().ReverseMap();
+            CreateMap<ProcessFluxCommandResultItem, ProcessFluxCommandResultItemDto>().ReverseMap();
 
             CreateMap<FluxMetadataDto, FluxMetadata>()
                 .Include<FluxMetadataMailDto, FluxMetadataMail>()
@@ -76,8 +79,6 @@ namespace HillMetrics.MIND.API.Mappers
 
             CreateMap<FluxErrorQueryResult, FluxErrorResponse>();
             CreateMap<FluxErrors, FluxErrorHistoryResponse>();
-            
-            
         }
     }
 

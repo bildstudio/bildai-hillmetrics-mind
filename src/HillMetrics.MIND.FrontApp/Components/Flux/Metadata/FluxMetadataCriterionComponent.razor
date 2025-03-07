@@ -1,0 +1,82 @@
+@using HillMetrics.Core.Common
+@using HillMetrics.MIND.API.Contracts.Responses.Flux
+@using HillMetrics.Normalized.Domain.Contracts.Providing.Flux
+
+<MudPaper Class="pa-3 mb-2">
+    <MudGrid>
+        <MudItem xs="12" md="4">
+            <MudSelect T="KeyCriterion" @bind-Value="Criterion.Key"
+                      Label="Key"
+                      Variant="Variant.Outlined">
+                @foreach (KeyCriterion key in Enum.GetValues(typeof(KeyCriterion)))
+                {
+                    <MudSelectItem Value="@key">@GetKeyDisplayName(key)</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        
+        <MudItem xs="12" md="3">
+            <MudSelect T="MetadataOperator" @bind-Value="Criterion.Operator"
+                      Label="Operator"
+                      Variant="Variant.Outlined">
+                @foreach (MetadataOperator op in Enum.GetValues(typeof(MetadataOperator)))
+                {
+                    <MudSelectItem Value="@op">@GetOperatorDisplayName(op)</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        
+        <MudItem xs="12" md="4">
+            <MudTextField @bind-Value="Criterion.Value"
+                         Label="Value"
+                         Variant="Variant.Outlined" />
+        </MudItem>
+        
+        <MudItem xs="12" md="1" Class="d-flex align-center justify-center">
+            <MudIconButton Icon="@Icons.Material.Filled.Delete" 
+                           Color="Color.Error" 
+                           OnClick="@OnRemoveClicked" />
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+@code {
+    [Parameter]
+    public FluxMetadataCriterionDto Criterion { get; set; } = new();
+    
+    [Parameter]
+    public EventCallback<FluxMetadataCriterionDto> CriterionChanged { get; set; }
+    
+    [Parameter]
+    public EventCallback<FluxMetadataCriterionDto> OnRemove { get; set; }
+    
+    private async Task OnRemoveClicked()
+    {
+        await OnRemove.InvokeAsync(Criterion);
+    }
+    
+    private string GetKeyDisplayName(KeyCriterion key)
+    {
+        return key switch
+        {
+            KeyCriterion.EmailSender => "EmailSender",
+            KeyCriterion.EmailSubject => "EmailSubject",
+            KeyCriterion.EmailAttachmentName => "EmailAttachmentName",
+            KeyCriterion.EmailAttachmentFileType => "EmailAttachmentFileType",
+            _ => key.ToString()
+        };
+    }
+    
+    private string GetOperatorDisplayName(MetadataOperator op)
+    {
+        return op switch
+        {
+            MetadataOperator.Equal => "Equals",
+            MetadataOperator.NotEqual => "Not Equal",
+            MetadataOperator.Contains => "Contains",
+            MetadataOperator.StartsWith => "Starts With",
+            MetadataOperator.EndsWith => "Ends With",
+            _ => op.ToString()
+        };
+    }
+} 

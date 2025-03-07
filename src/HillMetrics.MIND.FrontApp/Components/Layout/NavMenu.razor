@@ -1,0 +1,64 @@
+﻿@using MudBlazor
+@inject NavigationManager NavigationManager
+
+<MudNavMenu Rounded="true" Margin="Margin.Normal" Color="Color.Primary" Class="mt-2">
+    <MudText Typo="Typo.h6" Class="px-4 py-2 d-flex align-center">
+        <MudIcon Icon="@Icons.Material.Filled.Analytics" Class="mr-3" />
+        HillMetrics MIND
+    </MudText>
+    <MudDivider Class="my-2" />
+    
+    <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard">
+        Dashboard
+    </MudNavLink>
+    
+    <MudNavGroup Title="Flux Management" Icon="@Icons.Material.Filled.DataObject" Expanded="true">
+        <MudNavLink Href="/flux/search" Icon="@Icons.Material.Filled.Search">
+            Search Flux
+        </MudNavLink>
+        <MudNavLink Href="/flux/create" Icon="@Icons.Material.Filled.Add">
+            Create Flux
+        </MudNavLink>
+        <MudNavLink Href="/flux/fetching-history" Icon="@Icons.Material.Filled.CloudDownload">
+            Fetching History
+        </MudNavLink>
+        <MudNavLink Href="/flux/processing-history" Icon="@Icons.Material.Filled.PlayCircle">
+            Processing History
+        </MudNavLink>
+        <MudNavLink Href="/flux/errors" Icon="@Icons.Material.Filled.Error">
+            Errors
+        </MudNavLink>
+    </MudNavGroup>
+    
+    <MudNavGroup Title="Administration" Icon="@Icons.Material.Filled.AdminPanelSettings" Expanded="false">
+        <MudNavLink Href="/settings" Icon="@Icons.Material.Filled.Settings">
+            Settings
+        </MudNavLink>
+        <MudNavLink Href="/logs" Icon="@Icons.Material.Filled.Article">
+            System Logs
+        </MudNavLink>
+    </MudNavGroup>
+    
+    <MudDivider Class="my-2" />
+    
+    <MudNavLink Href="/help" Icon="@Icons.Material.Filled.Help">
+        Help & Documentation
+    </MudNavLink>
+</MudNavMenu>
+
+@code {
+    private bool collapseNavMenu = true;
+    
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+    
+    // Méthode pour vérifier si un lien est actif
+    private bool IsActive(string href)
+    {
+        var relativePath = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+        return relativePath.StartsWith(href);
+    }
+}
+

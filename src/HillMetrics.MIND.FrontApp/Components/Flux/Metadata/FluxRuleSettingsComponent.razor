@@ -1,0 +1,155 @@
+@using HillMetrics.Core.Common
+@using HillMetrics.MIND.API.Contracts.Responses.Flux
+@using HillMetrics.Normalized.Domain.Contracts.Providing.Flux
+
+<MudCard Elevation="0" Outlined="true" Class="mb-3">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">Rule Settings</MudText>
+        </CardHeaderContent>
+        <CardHeaderActions>
+            <MudTooltip Text="Configure rules for processing this flux">
+                <MudIcon Icon="@Icons.Material.Filled.RuleFolder" Color="Color.Primary" />
+            </MudTooltip>
+        </CardHeaderActions>
+    </MudCardHeader>
+    
+    <MudCardContent>
+        <MudGrid>
+            <MudItem xs="12">
+                <MudSelect T="LogicalOperator" @bind-Value="RuleSettings.LogicalOperator"
+                          Label="Logical Operator"
+                          Variant="Variant.Outlined">
+                    <MudSelectItem Value="@LogicalOperator.And">AND (All conditions must match)</MudSelectItem>
+                    <MudSelectItem Value="@LogicalOperator.Or">OR (Any condition can match)</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            
+            <MudItem xs="12">
+                <MudText Typo="Typo.subtitle1" Class="mb-2">Criteria</MudText>
+                
+                @if (RuleSettings.Criteria.Count == 0)
+                {
+                    <MudAlert Severity="Severity.Info" Class="mb-2">No criteria added. Add at least one criterion.</MudAlert>
+                }
+                
+                @foreach (var criterion in RuleSettings.Criteria)
+                {
+                    <FluxMetadataCriterionComponent Criterion="@criterion" 
+                                                   OnRemove="@RemoveCriterion" />
+                }
+                
+                <MudButton Variant="Variant.Outlined" 
+                           StartIcon="@Icons.Material.Filled.Add" 
+                           Color="Color.Primary" 
+                           OnClick="@AddCriterion"
+                           Class="mt-2">
+                    Add Criterion
+                </MudButton>
+            </MudItem>
+            
+            @if (ShowChildRules)
+            {
+                <MudItem xs="12" Class="mt-4">
+                    <MudExpansionPanels>
+                        <MudExpansionPanel Text="Child Rules" Expanded="false">
+                            @if (RuleSettings.ChildRules == null || RuleSettings.ChildRules.Count == 0)
+                            {
+                                <MudAlert Severity="Severity.Info" Class="mb-2">No child rules defined.</MudAlert>
+                            }
+                            else
+                            {
+                                @foreach (var childRule in RuleSettings.ChildRules)
+                                {
+                                    <MudPaper Class="pa-3 mb-3" Elevation="0" Outlined="true">
+                                        <FluxRuleSettingsComponent RuleSettings="@childRule" 
+                                                                 ShowChildRules="false" />
+                                        
+                                        <MudButton Variant="Variant.Text" 
+                                                   StartIcon="@Icons.Material.Filled.Delete" 
+                                                   Color="Color.Error"
+                                                   OnClick="@(() => RemoveChildRule(childRule))">
+                                            Remove Child Rule
+                                        </MudButton>
+                                    </MudPaper>
+                                }
+                            }
+                            
+                            <MudButton Variant="Variant.Outlined" 
+                                       StartIcon="@Icons.Material.Filled.AddCircle" 
+                                       Color="Color.Primary" 
+                                       OnClick="@AddChildRule"
+                                       Class="mt-2">
+                                Add Child Rule
+                            </MudButton>
+                        </MudExpansionPanel>
+                    </MudExpansionPanels>
+                </MudItem>
+            }
+        </MudGrid>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter]
+    public FluxRuleSettingsDto RuleSettings { get; set; } = new();
+    
+    [Parameter]
+    public EventCallback<FluxRuleSettingsDto> RuleSettingsChanged { get; set; }
+    
+    [Parameter]
+    public bool ShowChildRules { get; set; } = true;
+    
+    protected override void OnParametersSet()
+    {
+        // Initialize if null
+        RuleSettings ??= new FluxRuleSettingsDto
+        {
+            LogicalOperator = LogicalOperator.And,
+            Criteria = new List<FluxMetadataCriterionDto>()
+        };
+        
+        if (RuleSettings.Criteria == null)
+            RuleSettings.Criteria = new List<FluxMetadataCriterionDto>();
+            
+        if (ShowChildRules && RuleSettings.ChildRules == null)
+            RuleSettings.ChildRules = new List<FluxRuleSettingsDto>();
+    }
+    
+    private void AddCriterion()
+    {
+        RuleSettings.Criteria.Add(new FluxMetadataCriterionDto());
+        RuleSettingsChanged.InvokeAsync(RuleSettings);
+    }
+    
+    private void RemoveCriterion(FluxMetadataCriterionDto criterion)
+    {
+        RuleSettings.Criteria.Remove(criterion);
+        RuleSettingsChanged.InvokeAsync(RuleSettings);
+    }
+    
+    private void AddChildRule()
+    {
+        if (RuleSettings.ChildRules == null)
+            RuleSettings.ChildRules = new List<FluxRuleSettingsDto>();
+            
+        var childRule = new FluxRuleSettingsDto 
+        { 
+            LogicalOperator = LogicalOperator.And,
+            ParentRuleId = RuleSettings.Id,
+            Criteria = new List<FluxMetadataCriterionDto>()
+        };
+        
+        RuleSettings.ChildRules.Add(childRule);
+        RuleSettingsChanged.InvokeAsync(RuleSettings);
+    }
+    
+    private void RemoveChildRule(FluxRuleSettingsDto childRule)
+    {
+        if (RuleSettings.ChildRules != null)
+        {
+            RuleSettings.ChildRules.Remove(childRule);
+            RuleSettingsChanged.InvokeAsync(RuleSettings);
+        }
+    }
+} 
