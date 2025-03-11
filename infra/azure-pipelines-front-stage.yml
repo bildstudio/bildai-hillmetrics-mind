@@ -3,7 +3,7 @@ trigger:
     include:
       - dev
   paths:
-    exclude:
+    include:
       - 'src/HillMetrics.MIND.FrontApp/*'
 
 resources:
@@ -21,64 +21,54 @@ resources:
   - repository: Audit
     type: git
     name: HM/HillMetrics.Audit
-  - repository: Batchs
-    type: git
-    name: HM/HillMetrics.Batchs
-  - repository: PythonApp
-    type: git
-    name: HM/HillMetrics.PythonApp
 
 variables:
   dockerRegistryServiceConnection: 'hillm-stage-acr'
-  imageRepository: 'hillm-stage/mindapi'
+  imageRepository: 'hillm-stage/mindfront'
   containerRegistry: 'crhillmstage.azurecr.io'
-  dockerfilePath: '$(Build.SourcesDirectory)/$(Build.Repository.Name)/infra/Dockerfile'
+  dockerfilePath: '$(Build.SourcesDirectory)/$(Build.Repository.Name)/infra/front.Dockerfile'
   tag: '$(Build.BuildId)'
 
   # Agent VM image name
   vmImageName: 'ubuntu-latest'
 
 stages:
-- stage: sonar
-  displayName: Sonar Analysis
-  jobs:
-  - job: sonar
-    displayName: Sonar Analysis
-    pool:
-      vmImage: $(vmImageName)
-    steps:
-    - checkout: self
-      fetchDepth: 0
-    - checkout: Core
-      fetchDepth: 0
-    - checkout: FinancialData
-      fetchDepth: 0
-    - checkout: Orchestrator
-      fetchDepth: 0 
-    - checkout: Audit
-      fetchDepth: 0 
-    - checkout: Batchs
-      fetchDepth: 0 
-    - checkout: PythonApp
-      fetchDepth: 0 
-
-    - task: SonarCloudPrepare@3
-      inputs:
-        SonarQube: 'SonarCloud'
-        organization: 'hillmetrics'
-        scannerMode: 'dotnet'
-        projectKey: 'HillMetrics_HillMetrics.MIND'
-        projectName: 'HillMetrics.MIND'
-
-    - task: DotNetCoreCLI@2
-      inputs:
-        command: 'build'
-        projects: '$(Build.SourcesDirectory)/$(Build.Repository.Name)/HillMetrics.MIND.sln'
-        arguments: '--configuration=release'
-        
-    - task: SonarCloudAnalyze@3
-
-    - task: SonarCloudPublish@3
+  #- stage: sonar
+  #  displayName: Sonar Analysis
+  #  jobs:
+  #  - job: sonar
+  #    displayName: Sonar Analysis
+  #    pool:
+  #      vmImage: $(vmImageName)
+  #    steps:
+  #    - checkout: self
+  #      fetchDepth: 0
+  #    - checkout: Core
+  #      fetchDepth: 0
+  #    - checkout: FinancialData
+  #      fetchDepth: 0
+  #    - checkout: Orchestrator
+  #      fetchDepth: 0 
+  #    - checkout: Audit
+  #      fetchDepth: 0 
+  #
+  #    - task: SonarCloudPrepare@3
+  #      inputs:
+  #        SonarQube: 'SonarCloud'
+  #        organization: 'hillmetrics'
+  #        scannerMode: 'dotnet'
+  #        projectKey: 'HillMetrics_HillMetrics.MIND'
+  #        projectName: 'HillMetrics.MIND'
+  #
+  #    - task: DotNetCoreCLI@2
+  #      inputs:
+  #        command: 'build'
+  #        projects: '$(Build.SourcesDirectory)/$(Build.Repository.Name)/HillMetrics.MIND.sln'
+  #        arguments: '--configuration=release'
+  #        
+  #    - task: SonarCloudAnalyze@3
+  #
+  #    - task: SonarCloudPublish@3
 
 - stage: staging
   displayName: Build and Deploy Staging
@@ -94,8 +84,6 @@ stages:
     - checkout: FinancialData
     - checkout: Orchestrator
     - checkout: Audit
-    - checkout: Batchs
-    - checkout: PythonApp
 
     - task: Docker@2
       displayName: Build and push an image to container registry
@@ -121,6 +109,6 @@ stages:
         azureResourceGroup: 'rg-hillm-stage'
         kubernetesCluster: 'aks-hillm-stage'
         namespace: 'hillm-stage'
-        manifests: '$(Build.SourcesDirectory)/$(Build.Repository.Name)/infra/k8s/deployment-mindapi-stage.yaml'
+        manifests: '$(Build.SourcesDirectory)/$(Build.Repository.Name)/infra/k8s/deployment-mindfront-stage.yaml'
         containers: |
           $(containerRegistry)/$(imageRepository):$(tag)

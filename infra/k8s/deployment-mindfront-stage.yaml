@@ -1,0 +1,106 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: hillm-stage
+  name: hillm-mindfront
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: hillm-mindfront
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: hillm-mindfront
+    spec:
+      containers:
+      - image: crhillmstage.azurecr.io/hillm-stage/mindfront:latest
+        imagePullPolicy: Always
+        command: ['dotnet',  'HillMetrics.MIND.FrontApp.dll']
+        name: hillm-mindfront
+        ports:
+        - containerPort: 8080
+        envFrom:
+          - secretRef:
+              name: mindfront-env
+        volumeMounts:
+        - name: secrets-store
+          mountPath: "/mnt/secrets-store"
+          readOnly: true
+      volumes:
+        - name: secrets-store
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: "kv-mindfront-stage"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: hillm-stage
+  name: hillm-mindfront
+spec:
+  ports:
+    - port: 80
+      targetPort: 8080
+      protocol: TCP
+  type: NodePort
+  selector:
+    app.kubernetes.io/name: hillm-mindfront
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    cert-manager.io/issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/proxy-body-size: 32m
+  namespace: hillm-stage
+  name: hillm-mindfront
+spec:
+  ingressClassName: webapprouting.kubernetes.azure.com
+  tls:
+  - hosts:
+    - mindfront.hillm.bildhosting.me
+    secretName: mindfront-tls
+  rules:
+  - host: mindfront.hillm.bildhosting.me
+    http:
+      paths:
+      - backend:
+          service:
+            name: hillm-mindfront
+            port:
+              number: 80
+        path: /
+        pathType: Prefix
+---
+apiVersion: secrets-store.csi.x-k8s.io/v1
+kind: SecretProviderClass
+metadata:
+  namespace: hillm-stage
+  name: kv-mindfront-stage
+spec:
+  provider: azure
+  secretObjects:
+  - data:
+    - key: Services__MindApi
+      objectName: services-mindapi
+    - key: ASPNETCORE_ENVIRONMENT
+      objectName: aspnetcore-environment
+    secretName: mindfront-env
+    type: Opaque
+  parameters:
+    useVMManagedIdentity: "true"
+    userAssignedIdentityID: 52e3d568-27df-4b39-8d74-0d2d6144d3ed
+    keyvaultName: kv-mindfront-stage
+    objects:  |
+      array:
+        - |
+          objectName: services-mindapi
+          objectType: secret
+        - |
+          objectName: aspnetcore-environment
+          objectType: secret
+    tenantId: 47650b84-ae6e-4206-82af-ebe7b3243aa2
