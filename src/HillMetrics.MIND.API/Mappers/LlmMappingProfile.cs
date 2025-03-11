@@ -23,7 +23,11 @@ namespace HillMetrics.MIND.API.Mappers
                                         src => src.Sorting != null ? new List<Sorting> { new Sorting(src.Sorting.Field, Enum.Parse<Core.Search.SortDirection>(src.Sorting.Direction.ToString(),true))} : new List<Sorting>()));
 
             CreateMap<PaginationDto, Pagination>(MemberList.Destination);
+
             CreateMap<SortingDto, Sorting>(MemberList.Destination);
+
+            CreateMap<AiModelPromptAnalyzedResult, AiModelPromptAnalyzedResultDto>(MemberList.Destination);
+            CreateMap<AiModelPromptLlmResult, AiModelPromptLlmResultDto>(MemberList.Destination);
         }
     }
 }
