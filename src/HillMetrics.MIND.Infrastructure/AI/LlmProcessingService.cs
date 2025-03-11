@@ -7,12 +7,12 @@ using Microsoft.Extensions.Logging;
 
 namespace HillMetrics.MIND.Infrastructure.AI
 {
-    public class LlmService : ILlmService
+    public class LlmProcessingService : ILlmProcessingService
     {
-        private readonly ILogger<LlmService> _logger;
+        private readonly ILogger<LlmProcessingService> _logger;
         private readonly IChatClient _chatClient;
 
-        public LlmService(ILogger<LlmService> logger, IChatClient chatClient)
+        public LlmProcessingService(ILogger<LlmProcessingService> logger, IChatClient chatClient)
         {
             _logger = logger;
             _chatClient = chatClient;

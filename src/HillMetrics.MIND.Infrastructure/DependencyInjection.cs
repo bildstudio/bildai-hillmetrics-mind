@@ -1,4 +1,5 @@
-﻿using HillMetrics.Core.AI.Contracts;
+﻿using HillMetrics.Core.AI.Configs;
+using HillMetrics.Core.AI.Contracts;
 using HillMetrics.Core.API.Contracts;
 using HillMetrics.Core.Authentication.Contracts;
 using HillMetrics.MIND.Infrastructure.AI;
@@ -26,6 +27,13 @@ namespace HillMetrics.MIND.Infrastructure
         {
             services.TryAddTransient<IAiModelPromptRepository, AiModelPromptRepository>();
             services.TryAddTransient<ILlmServiceFactory, LlmServiceFactory>();
+
+            //AiLlmConfig config = new AiLlmConfig();
+            //configuration.GetSection("AI:Models").Bind(config);
+
+            //configuration.GetSection("AI").Bind(config);
+
+            services.Configure<AiLlmConfig>(configuration.GetSection("AI"));
 
             return services;
         }

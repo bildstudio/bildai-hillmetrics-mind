@@ -86,6 +86,8 @@ public partial class Program
 
         builder.Services.AddMindAuthenticationServices();
 
+        builder.Services.AddMindAiServices(builder.Configuration);
+
         builder.Services.AddPythonApiServices(builder.Configuration, "mind-api", TimeSpan.FromMinutes(2));
 
         var app = builder.Build();

@@ -34,8 +34,18 @@
 
         public static class Llm
         {
-            public const string Get = "llm/models";
-            public const string ExtractData = "llm/extract-data";
+            public const string Get = "llm/models/search";
+            public const string Create = "llm/models";
+            public const string Update = "llm/models/{id}";
+            public const string Delete = "llm/models/{id}";
+
+            public static class DataExtract
+            {
+                public const string Extract = "llm/data/extract";
+                public const string SearchByPrompt = "llm/data/extracted/prompt/{promptId}";
+                public const string SearchByLlm = "llm/data/extracted/llm/{llmId}";
+                public const string Search = "llm/data/extracted/{promptId}/{llmId}";
+            }
 
             public static class Prompts
             {
