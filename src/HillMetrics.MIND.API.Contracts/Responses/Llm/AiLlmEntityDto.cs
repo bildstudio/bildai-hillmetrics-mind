@@ -1,4 +1,5 @@
-﻿using System;
+﻿using HillMetrics.Core.AI;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -25,6 +26,8 @@ namespace HillMetrics.MIND.API.Contracts.Responses.Llm
         /// URL to the LLM model's documentation
         /// </summary>
         public string? DocumentationUrl { get; set; }
+
+        public AiProvider HostProvider { get; set; }
 
         /// <summary>
         /// URL to the logo of the AI model

@@ -7,18 +7,14 @@ using HillMetrics.Core.API.Convention;
 using HillMetrics.Core.API.Extensions;
 using HillMetrics.Core.Authentication;
 using HillMetrics.Core.Flux.Extension;
-using HillMetrics.Core.Monitoring;
 using HillMetrics.MIND.API.Converter;
 using HillMetrics.MIND.API.Extensions;
 using HillMetrics.MIND.API.Mappers;
 using HillMetrics.MIND.Infrastructure;
-using HillMetrics.Normalized.Domain.Contracts.Providing.Flux.Cqrs.Get;
 using HillMetrics.Normalized.Domain.Extensions;
 using HillMetrics.Normalized.Domain.UseCase.Market.Price;
-using HillMetrics.Normalized.Domain.UseCase.Providing.Flux;
 using HillMetrics.Normalized.Infrastructure.Database.Database;
 using HillMetrics.Orchestrator.ServicesNames;
-using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Options;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Text.Json.Serialization;
@@ -89,6 +85,8 @@ public partial class Program
         builder.AddKeycloakBearerAuthenticationValidator<KeycloakConfigMind>(serviceName: Services.Keycloak);
 
         builder.Services.AddMindAuthenticationServices();
+
+        builder.Services.AddMindAiServices(builder.Configuration);
 
         builder.Services.AddPythonApiServices(builder.Configuration, "mind-api", TimeSpan.FromMinutes(2));
 

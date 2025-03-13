@@ -25,7 +25,7 @@ namespace HillMetrics.MIND.Infrastructure.AI
         private readonly ILoggerFactory _loggerFactory;
         private readonly AiLlmConfig _aiLlmConfig;
 
-        private Dictionary<int, ILlmService> _services = new Dictionary<int, ILlmService>();
+        private Dictionary<int, ILlmProcessingService> _services = new Dictionary<int, ILlmProcessingService>();
 
         private static readonly SemaphoreSlim _semaphoreSlim = new SemaphoreSlim(1);
 
@@ -41,12 +41,12 @@ namespace HillMetrics.MIND.Infrastructure.AI
             _aiLlmConfig = options.Value;
         }
 
-        public async Task<Result<ILlmService>> GetServiceAsync(int llmId, CancellationToken cancellationToken)
+        public async Task<Result<ILlmProcessingService>> GetServiceAsync(int llmId, CancellationToken cancellationToken)
         {
             await _semaphoreSlim.WaitAsync(cancellationToken);
             try
             {
-                if (_services.TryGetValue(llmId, out ILlmService? value))
+                if (_services.TryGetValue(llmId, out ILlmProcessingService? value))
                     return Result.Ok(value);
 
                 //try to build IllmService
@@ -55,18 +55,17 @@ namespace HillMetrics.MIND.Infrastructure.AI
                 if (llmModel == null)
                     return Result.Fail(new NotFoundError($"Llm model with id: '{llmId}' not found"));
                 
-                if(!llmModel.Provider.Contains("deep", StringComparison.OrdinalIgnoreCase) && !llmModel.Provider.Contains("mistral", StringComparison.OrdinalIgnoreCase))
-                    return Result.Fail(new NotFoundError($"Llm model for provider : '{llmModel.Provider}' is not supported at the moment"));
+                //if(!llmModel.Provider.Contains("deep", StringComparison.OrdinalIgnoreCase) && !llmModel.Provider.Contains("mistral", StringComparison.OrdinalIgnoreCase))
+                //    return Result.Fail(new NotFoundError($"Llm model for provider : '{llmModel.Provider}' is not supported at the moment"));
 
                 var configModel = _aiLlmConfig.Models.FirstOrDefault(s => s.Provider == llmModel.HostProvider);
                 if(configModel == null)
                     return Result.Fail(new ConflictError($"There is no configuration for HostProvider: {llmModel.HostProvider} in appsettings, for llm with id: '{llmModel.Id}', provider: '{llmModel.Provider}', model: '{llmModel.Name}'"));
 
 
-
                 IChatClient chatClient = GetChatClient(configModel.Provider, configModel.Endpoint, llmModel.Name, configModel.ApiKey);
 
-                ILlmService llmService = new LlmService(_loggerFactory.CreateLogger<LlmService>(), chatClient);
+                ILlmProcessingService llmService = new LlmProcessingService(_loggerFactory.CreateLogger<LlmProcessingService>(), chatClient);
 
                 _services.Add(llmId, llmService);
 

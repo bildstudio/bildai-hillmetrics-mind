@@ -8,8 +8,10 @@ using HillMetrics.MIND.API.Endpoints;
 using HillMetrics.MIND.API.Mappers;
 using HillMetrics.Normalized.Domain.Contracts.AI;
 using HillMetrics.Normalized.Domain.Contracts.AI.Commands;
+using HillMetrics.Normalized.Domain.Contracts.AI.Models;
 using HillMetrics.Normalized.Domain.Contracts.AI.Queries;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace HillMetrics.MIND.API.Controllers
@@ -35,6 +37,52 @@ namespace HillMetrics.MIND.API.Controllers
             List<AiLlmEntityDto> items = _mapper.Map<List<AiLlmEntityDto>>(result.Value);
 
             return new ListLlmsResponse(items, items.Count);
+        }
+
+        [HttpPost(InternalRoutes.Llm.Create)]
+        public async Task<ActionResult<GetLlmResponse>> CreateAsync([FromBody] CreateLlmRequest request)
+        {
+            var model = request.ToSaveAiLlmModel();
+            var command = new CreateAiLlmModelCommand(model);
+            var result = await Mediator.Send(command);
+
+            if (result.IsFailed)
+                return new ErrorApiActionResult(result.Errors.ToApiResult());
+
+            var dto = _mapper.Map<AiLlmEntityDto>(result.Value);
+
+            return new GetLlmResponse(dto);
+        }
+
+        [HttpPut(InternalRoutes.Llm.Update)]
+        public async Task<ActionResult<GetLlmResponse>> UpdateAsync(
+            [FromRoute] int id, 
+            [FromBody] UpdateLlmRequest request
+            )
+        {
+
+            var model = request.ToSaveAiLlmModel(id);
+            var command = new UpdateAiLlmModelCommand(model);
+            var result = await Mediator.Send(command);
+
+            if (result.IsFailed)
+                return new ErrorApiActionResult(result.Errors.ToApiResult());
+
+            var dto = _mapper.Map<AiLlmEntityDto>(result.Value);
+
+            return new GetLlmResponse(dto);
+        }
+
+        [HttpDelete(InternalRoutes.Llm.Delete)]
+        public async Task<ActionResult<DeletedResponse>> DeleteAsync([FromRoute] int id)
+        {
+            var command = new DeleteAiLlmModelCommand(id);
+            var result = await Mediator.Send(command);
+
+            if (result.IsFailed)
+                return new ErrorApiActionResult(result.Errors.ToApiResult());
+
+            return new DeletedResponse($"Llm with id: {id}, deleted");
         }
 
         //PROMPTS
@@ -89,7 +137,7 @@ namespace HillMetrics.MIND.API.Controllers
 
         //delete
         [HttpDelete(InternalRoutes.Llm.Prompts.Delete)]
-        public async Task<ActionResult<DeletedResponse>> DeleteAsync([FromRoute] int promptId)
+        public async Task<ActionResult<DeletedResponse>> DeletePromptAsync([FromRoute] int promptId)
         {
             var command = new DeleteAiModelPromptCommand(promptId);
             var result = await Mediator.Send(command);
@@ -114,7 +162,65 @@ namespace HillMetrics.MIND.API.Controllers
             return new ListPromptsResponse(dtos, result.Value.TotalRecords);
         }
 
-        //add method to get prompt content file data
-        //add method to download prompt content data
+        [HttpPost(InternalRoutes.Llm.DataExtract.Extract)]
+        public async Task<ActionResult<ExtractDataLlmResponse>> ExtractDataAsync([FromForm] ExtractDataLlmRequest request)
+        {
+            ExtractFinancialDataLlmModel model = request.ToExtractFinancialDataLlmModel();
+            ExtractFinancialDataLlmCommand command = new ExtractFinancialDataLlmCommand(model);
+            
+            var result = await Mediator.Send(command);
+            if(result.IsFailed)
+                return new ErrorApiActionResult(result.Errors.ToApiResult());
+
+
+            var dtos = _mapper.Map<List<AiModelPromptAnalyzedResultDto>>(result.Value);
+
+            return new ExtractDataLlmResponse(dtos);
+        }
+
+        [HttpGet(InternalRoutes.Llm.DataExtract.SearchByPrompt)]
+        public async Task<ActionResult<AiModelPromptLlmResultResponse>> SearchByPromptAsync([FromRoute] int promptId)
+        {
+            var query = new SearchAiModelPromptLlmResultQuery(promptId, null);
+            var result = await Mediator.Send(query);
+
+            if (result.IsFailed)
+                return new ErrorApiActionResult(result.Errors.ToApiResult());
+
+
+            var dtos = _mapper.Map<List<AiModelPromptLlmResultDto>>(result.Value);
+
+            return new AiModelPromptLlmResultResponse(dtos);
+        }
+
+        [HttpGet(InternalRoutes.Llm.DataExtract.SearchByLlm)]
+        public async Task<ActionResult<AiModelPromptLlmResultResponse>> SearchByLlmAsync([FromRoute] int llmId)
+        {
+            var query = new SearchAiModelPromptLlmResultQuery(null, llmId);
+            var result = await Mediator.Send(query);
+
+            if (result.IsFailed)
+                return new ErrorApiActionResult(result.Errors.ToApiResult());
+
+
+            var dtos = _mapper.Map<List<AiModelPromptLlmResultDto>>(result.Value);
+
+            return new AiModelPromptLlmResultResponse(dtos);
+        }
+
+        [HttpGet(InternalRoutes.Llm.DataExtract.Search)]
+        public async Task<ActionResult<AiModelPromptLlmResultResponse>> SearchByLlmAsync([FromRoute] int promptId, [FromRoute] int llmId)
+        {
+            var query = new SearchAiModelPromptLlmResultQuery(promptId, llmId);
+            var result = await Mediator.Send(query);
+
+            if (result.IsFailed)
+                return new ErrorApiActionResult(result.Errors.ToApiResult());
+
+
+            var dtos = _mapper.Map<List<AiModelPromptLlmResultDto>>(result.Value);
+
+            return new AiModelPromptLlmResultResponse(dtos);
+        }
     }
 }

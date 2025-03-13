@@ -1,4 +1,5 @@
-﻿using HillMetrics.Core.Financial;
+﻿using HillMetrics.Core.AI;
+using HillMetrics.Core.Financial;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -18,5 +19,17 @@ namespace HillMetrics.MIND.API.Contracts.Responses.Llm
 
         [JsonConverter(typeof(JsonStringEnumConverter))]
         public required FinancialType ProductType { get; set; }
+    }
+
+    public class AiModelPromptLlmResultDto
+    {
+        public int Id { get; set; }
+        public int PromptId { get; set; }
+        public int AiLlmModelId { get; set; }
+        public string? Result { get; set; }
+        public int? ValidityIndex { get; set; }
+
+        [JsonConverter(typeof(JsonStringEnumConverter))]
+        public LlmProcessingStatus Status { get; set; }
     }
 }

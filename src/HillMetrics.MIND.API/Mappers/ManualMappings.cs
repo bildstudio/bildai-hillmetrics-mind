@@ -1,6 +1,7 @@
-﻿using AutoMapper;
+﻿using Ardalis.GuardClauses;
+using AutoMapper;
 using HillMetrics.MIND.API.Contracts.Requests.Llm;
-using HillMetrics.Normalized.Domain.Contracts.AI.Commands;
+using HillMetrics.Normalized.Domain.Contracts.AI.Models;
 using HillMetrics.Normalized.Domain.Contracts.Files;
 
 namespace HillMetrics.MIND.API.Mappers
@@ -22,7 +23,7 @@ namespace HillMetrics.MIND.API.Mappers
             request.File.CopyTo(memoryStream);
             memoryStream.Position = 0;
 
-            model.PromptFile = new FileStreamModel(memoryStream, request.File.FileName);
+            model.PromptFile = request.File.ToFileStreamModel();
 
 
             return model;
@@ -41,15 +42,61 @@ namespace HillMetrics.MIND.API.Mappers
                 Name = request.Name
             };
 
-            if(request.File != null)
+            model.PromptFile = request.File.ToFileStreamModel();
+
+
+            return model;
+        }
+
+        public static ExtractFinancialDataLlmModel ToExtractFinancialDataLlmModel(this ExtractDataLlmRequest request)
+        {
+
+            ExtractFinancialDataLlmModel model = new ExtractFinancialDataLlmModel
             {
-                var memoryStream = new MemoryStream();
-                request.File.CopyTo(memoryStream);
-                memoryStream.Position = 0;
+                AiModelsIds = request.AiModelsIds,
+                PromptId = request.PromptId
+            };
 
-                model.PromptFile = new FileStreamModel(memoryStream, request.File.FileName);
-            }
+            model.PromptFile = request.File.ToFileStreamModel();
 
+            return model;
+        }
+
+        public static SaveAiLlmModel ToSaveAiLlmModel(this CreateLlmRequest request)
+        {
+            return new SaveAiLlmModel
+            {
+                HostProvider = request.HostProvider,
+                Name = request.Name,
+                Provider = request.Provider,
+                DocumentationUrl = request.DocumentationUrl,
+                LogoUrl = request.LogoUrl
+            };
+        }
+
+        public static SaveAiLlmModel ToSaveAiLlmModel(this UpdateLlmRequest request, int id)
+        {
+            return new SaveAiLlmModel
+            {
+                Id = id,
+                HostProvider = request.HostProvider,
+                Name = request.Name,
+                Provider = request.Provider,
+                DocumentationUrl = request.DocumentationUrl,
+                LogoUrl = request.LogoUrl
+            };
+        }
+
+        private static FileStreamModel? ToFileStreamModel(this IFormFile? formFile)
+        {
+            if (formFile == null)
+                return null;
+
+            var memoryStream = new MemoryStream();
+            formFile.CopyTo(memoryStream);
+            memoryStream.Position = 0;
+
+            FileStreamModel model = new FileStreamModel(memoryStream, formFile.FileName);
 
             return model;
         }
