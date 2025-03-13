@@ -1,7 +1,9 @@
 ﻿
 using AutoMapper;
+using FluentResults;
 using HillMetrics.Core.API.Responses;
 using HillMetrics.Core.Common.Email;
+using HillMetrics.Core.Messaging.Notification.Market;
 using HillMetrics.Core.Time.Trigger;
 using HillMetrics.MIND.API.Contracts.Requests.Flux;
 using HillMetrics.MIND.API.Contracts.Responses;
@@ -12,6 +14,7 @@ using HillMetrics.Normalized.Domain.Contracts.Providing.Flux.Cqrs.Create;
 using HillMetrics.Normalized.Domain.Contracts.Providing.Flux.Cqrs.DataPointIdentification;
 using HillMetrics.Normalized.Domain.Contracts.Providing.Flux.Cqrs.Get;
 using HillMetrics.Normalized.Domain.Contracts.Providing.Flux.Cqrs.Process;
+using MassTransit;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -20,7 +23,7 @@ namespace HillMetrics.MIND.API.Controllers
 {
     [Route("api/v{v:apiVersion}/[controller]"), AllowAnonymous]
     //[EnableRateLimiting("allow5000requestsPerSecond_fixed")]
-    public class FluxController(IMediator mediator, IMapper mapper) : BaseHillMetricsController(mediator)
+    public class FluxController(IMediator mediator, IMapper mapper, ILogger<FluxController> logger) : BaseHillMetricsController(mediator)
     {
         #region Flux
         /// <summary>
@@ -184,6 +187,72 @@ namespace HillMetrics.MIND.API.Controllers
 
             return mapper.Map<FluxForceProcessResponse>(result.Value);
         }
+
+        /// <summary>
+        /// Force the processing of normalized financial prices, triggering the same flow as when prices are automatically inserted
+        /// </summary>
+        /// <param name="request">Request parameters including FinancialIds, FluxId, Currency, and Dates</param>
+        /// <returns>Operation status</returns>
+        [HttpPost("force-financial-price-processing")]
+        public async Task<ActionResult<ApiResponseBase<ForceFinancialPriceProcessingResponse>>> ForceFinancialPriceProcessingAsync(ForceFinancialPriceProcessingRequest request)
+        {
+            // Basic validation
+            if (request.FinancialIds == null || !request.FinancialIds.Any())
+                return BadRequest("At least one FinancialId must be provided");
+
+            if (request.FinancialIds.Any(id => id <= 0))
+                return BadRequest("All FinancialIds must be greater than 0");
+
+            if (request.FluxId <= 0)
+                return BadRequest("FluxId must be greater than 0");
+
+            if (string.IsNullOrWhiteSpace(request.Currency))
+                return BadRequest("Currency is required");
+
+            try
+            {
+                // Verify that the flux exists
+                var fluxResult = await Mediator.Send(new FluxQuery() { FluxId = request.FluxId });
+                if (fluxResult.IsFailed)
+                    return new ErrorApiActionResult(fluxResult.Errors.ToApiResult());
+
+                // Get MassTransit publish endpoint
+                var publishEndpoint = HttpContext.RequestServices.GetRequiredService<IPublishEndpoint>();
+
+                // Publish an event for each financial ID
+                foreach (var financialId in request.FinancialIds)
+                {
+                    await publishEndpoint.Publish(
+                        new FinancialNormalizedPriceAdded(
+                            financialId,
+                            request.FluxId,
+                            request.Currency,
+                            request.Dates
+                        )
+                    );
+
+                    logger.LogInformation("Published FinancialNormalizedPriceAdded event for FinancialId: {financialId}, FluxId: {fluxId}, Currency: {currency}, Dates Count: {datesCount}",
+                        financialId, request.FluxId, request.Currency, request.Dates.Count);
+                }
+
+                return new ApiResponseBase<ForceFinancialPriceProcessingResponse>(
+                    new ForceFinancialPriceProcessingResponse
+                    {
+                        Success = true,
+                        FinancialIdCount = request.FinancialIds.Count,
+                        DatesCount = request.Dates.Count
+                    }
+                );
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error while forcing financial price processing");
+                return new ErrorApiActionResult(
+                    new ErrorApiResponse(new Core.API.Exceptions.ApiException($"An error occurred while forcing price processing: {ex.Message}"), System.Net.HttpStatusCode.BadRequest)
+                );
+            }
+        }
+
         #endregion
 
         #region FinancialDataPoint

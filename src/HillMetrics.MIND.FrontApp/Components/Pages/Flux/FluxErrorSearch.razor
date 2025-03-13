@@ -19,90 +19,78 @@
     <MudCard Class="mb-4">
         <MudCardContent>
             <MudForm @ref="form" @bind-IsValid="@isValid">
-                <MudGrid>
+                <MudGrid Spacing="1">
                     <!-- Flux ID -->
                     <MudItem xs="12" md="6">
-                        <MudExpansionPanel Text="Flux ID" Expanded="false">
-                            <SearchCriteriaComponent T="int"
-                                                     SearchCriteria="@fluxIdSearchCriteria"
-                                                     SearchCriteriaChanged="@((criteria) => fluxIdSearchCriteria = criteria)"
-                                                     Label="Flux ID" />
-                        </MudExpansionPanel>
+                        <SearchCriteriaComponent T="int"
+                                                 SearchCriteria="@fluxIdSearchCriteria"
+                                                 SearchCriteriaChanged="@((criteria) => fluxIdSearchCriteria = criteria)"
+                                                 Label="Flux ID" />
                     </MudItem>
 
                     <!-- Error Type -->
                     <MudItem xs="12" md="6">
-                        <MudExpansionPanel Text="Error Type" Expanded="false">
-                            <SearchCriteriaComponent T="string"
-                                                     SearchCriteria="@errorTypeSearchCriteria"
-                                                     SearchCriteriaChanged="@((criteria) => errorTypeSearchCriteria = criteria)"
-                                                     Label="Error Type" />
-                        </MudExpansionPanel>
+                        <SearchCriteriaComponent T="string"
+                                                 SearchCriteria="@errorTypeSearchCriteria"
+                                                 SearchCriteriaChanged="@((criteria) => errorTypeSearchCriteria = criteria)"
+                                                 Label="Error Type" />
                     </MudItem>
 
                     <!-- External ID -->
                     <MudItem xs="12" md="6">
-                        <MudExpansionPanel Text="External ID" Expanded="false">
-                            <SearchCriteriaComponent T="string"
-                                                     SearchCriteria="@externalIdSearchCriteria"
-                                                     SearchCriteriaChanged="@((criteria) => externalIdSearchCriteria = criteria)"
-                                                     Label="External ID" />
-                        </MudExpansionPanel>
+                        <SearchCriteriaComponent T="string"
+                                                 SearchCriteria="@externalIdSearchCriteria"
+                                                 SearchCriteriaChanged="@((criteria) => externalIdSearchCriteria = criteria)"
+                                                 Label="External ID" />
                     </MudItem>
 
                     <!-- Error Message -->
                     <MudItem xs="12" md="6">
-                        <MudExpansionPanel Text="Error Message" Expanded="false">
-                            <SearchCriteriaComponent T="string"
-                                                     SearchCriteria="@messageSearchCriteria"
-                                                     SearchCriteriaChanged="@((criteria) => messageSearchCriteria = criteria)"
-                                                     Label="Error Message" />
-                        </MudExpansionPanel>
+                        <SearchCriteriaComponent T="string"
+                                                 SearchCriteria="@messageSearchCriteria"
+                                                 SearchCriteriaChanged="@((criteria) => messageSearchCriteria = criteria)"
+                                                 Label="Error Message" />
                     </MudItem>
 
                     <!-- Metadata -->
                     <MudItem xs="12" md="6">
-                        <MudExpansionPanel Text="Metadata" Expanded="false">
-                            <SearchCriteriaComponent T="string"
-                                                     SearchCriteria="@metadataSearchCriteria"
-                                                     SearchCriteriaChanged="@((criteria) => metadataSearchCriteria = criteria)"
-                                                     Label="Metadata" />
-                        </MudExpansionPanel>
+                        <SearchCriteriaComponent T="string"
+                                                 SearchCriteria="@metadataSearchCriteria"
+                                                 SearchCriteriaChanged="@((criteria) => metadataSearchCriteria = criteria)"
+                                                 Label="Metadata" />
                     </MudItem>
 
                     <!-- Action Type -->
                     <MudItem xs="12" md="6">
                         <MudSelect T="FluxActionType?" @bind-Value="searchRequest.ActionType"
-                                   Label="Action Type" Variant="Variant.Outlined">
+                                   Label="Action Type" Variant="Variant.Outlined" Dense="true" Margin="Margin.Dense">
                             <MudSelectItem Value="@((FluxActionType?)null)">All</MudSelectItem>
                             @foreach (var type in Enum.GetValues<FluxActionType>())
                             {
-                                <MudSelectItem Value="@type">@type</MudSelectItem>
+                            <MudSelectItem T="FluxActionType?" Value="@type">@type</MudSelectItem>
                             }
                         </MudSelect>
                     </MudItem>
 
                     <!-- Created Date -->
                     <MudItem xs="12" md="6">
-                        <MudExpansionPanel Text="Created Date" Expanded="false">
-                            <SearchCriteriaComponent T="DateTime"
-                                                     SearchCriteria="@createdAtSearchCriteria"
-                                                     SearchCriteriaChanged="@((criteria) => createdAtSearchCriteria = criteria)"
-                                                     Label="Created Date" />
-                        </MudExpansionPanel>
+                        <SearchCriteriaComponent T="DateTime"
+                                                 SearchCriteria="@createdAtSearchCriteria"
+                                                 SearchCriteriaChanged="@((criteria) => createdAtSearchCriteria = criteria)"
+                                                 Label="Created Date" />
                     </MudItem>
                 </MudGrid>
             </MudForm>
         </MudCardContent>
         <MudCardActions>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Search">Search</MudButton>
-            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="Reset">Reset</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Search" Size="Size.Small">Search</MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="Reset" Size="Size.Small">Reset</MudButton>
         </MudCardActions>
     </MudCard>
 
     @if (loading)
     {
-        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-2" />
     }
     else if (errors != null)
     {
@@ -115,7 +103,7 @@
                 <MudSpacer />
                 <MudTextField T="string" @bind-Value="searchString" Placeholder="Search" Adornment="Adornment.Start"
                               AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium"
-                              Class="mt-0 mb-3"></MudTextField>
+                              Class="mt-0 mb-3" Margin="Margin.Dense" Dense="true"></MudTextField>
             </ToolBarContent>
             <HeaderContent>
                 <MudTh>Flux ID</MudTh>

@@ -1,0 +1,226 @@
+@page "/flux/force-price-processing"
+@using HillMetrics.MIND.API.Contracts.Requests.Flux
+@using HillMetrics.MIND.API.Contracts.Responses
+@using HillMetrics.MIND.API.Contracts.Responses.Flux
+@using HillMetrics.MIND.API.SDK.V1
+@inject IMindAPI MindApi
+@inject ISnackbar Snackbar
+@inject NavigationManager NavigationManager
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
+    <MudText Typo="Typo.h4" Class="mb-4">Force Financial Price Processing</MudText>
+
+    <MudCard Elevation="3" Class="pa-4">
+        <MudCardContent>
+            <MudForm @ref="form" @bind-IsValid="@isValid">
+                <MudGrid>
+                    <!-- Flux Selection -->
+                    <MudItem xs="12">
+                        <MudAutocomplete T="FluxOption"
+                        Label="Select Flux"
+                        @bind-Value="selectedFlux"
+                        SearchFunc="@SearchFluxes"
+                        ToStringFunc="@(f => f == null ? "" : $"{f.Name} (ID: {f.Id})")"
+                        Required="true"
+                        RequiredError="Flux is required"
+                        DebounceInterval="300"
+                        ResetValueOnEmptyText="true"
+                        CoerceText="true" />
+                    </MudItem>
+
+                    <!-- Financial IDs Input -->
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="financialIdsText"
+                        Label="Financial IDs (comma separated)"
+                        Required="true"
+                        RequiredError="At least one Financial ID is required"
+                        HelperText="Enter multiple Financial IDs separated by commas"
+                        Variant="Variant.Outlined" />
+                    </MudItem>
+
+                    <!-- Currency Input -->
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="request.Currency"
+                        Label="Currency Code"
+                        Required="true"
+                        RequiredError="Currency is required"
+                        HelperText="E.g. EUR, USD, GBP"
+                        Variant="Variant.Outlined" />
+                    </MudItem>
+
+                    <!-- Date Range Picker -->
+                    <MudItem xs="12">
+                        <MudDateRangePicker @bind-DateRange="dateRange"
+                        Label="Date Range"
+                        Required="true"
+                        RequiredError="Date range is required"
+                        AutoClose="true" />
+                    </MudItem>
+                </MudGrid>
+            </MudForm>
+        </MudCardContent>
+        <MudCardActions>
+            <MudButton Color="Color.Primary"
+            Variant="Variant.Filled"
+            OnClick="SubmitRequest"
+            Disabled="@(!isValid || processing)"
+            StartIcon="@Icons.Material.Filled.Send">
+                Process
+            </MudButton>
+            <MudButton Color="Color.Secondary"
+            Variant="Variant.Outlined"
+            OnClick="Reset"
+            Disabled="@processing">
+                Reset
+            </MudButton>
+        </MudCardActions>
+    </MudCard>
+
+    @if (processing)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+        <MudText Typo="Typo.body1" Align="Align.Center">Processing request...</MudText>
+    }
+
+    @if (result != null)
+    {
+        <MudCard Elevation="2" Class="mt-4">
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h6">Result</MudText>
+                </CardHeaderContent>
+                <CardHeaderActions>
+                    <MudChip T="bool" Color="@(result.Data.Success ? Color.Success : Color.Error)"
+                    Icon="@(result.Data.Success ? Icons.Material.Filled.Check : Icons.Material.Filled.Error)">
+                        @(result.Data.Success ? "Success" : "Failed")
+                    </MudChip>
+                </CardHeaderActions>
+            </MudCardHeader>
+            <MudCardContent>
+                <MudText><strong>Financial IDs processed:</strong> @result.Data.FinancialIdCount</MudText>
+                <MudText><strong>Dates processed:</strong> @result.Data.DatesCount</MudText>
+            </MudCardContent>
+        </MudCard>
+    }
+</MudContainer>
+
+@code {
+    private bool isValid;
+    private MudForm form;
+    private bool processing = false;
+    private ApiResponseBase<ForceFinancialPriceProcessingResponse> result;
+    private ForceFinancialPriceProcessingRequest request = new();
+    private DateRange dateRange = new(DateTime.Now.AddMonths(-1), DateTime.Now);
+    private FluxOption selectedFlux;
+    private string financialIdsText = "";
+
+    private class FluxOption
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
+    }
+
+    private async Task<IEnumerable<FluxOption>> SearchFluxes(string searchText, CancellationToken token)
+    {
+        try
+        {
+            // Default search if no text provided
+            if (string.IsNullOrWhiteSpace(searchText))
+                searchText = "";
+
+            var response = await MindApi.SearchFluxAsync(new FluxSearchRequest
+                {
+                    Name = searchText,
+                    Pagination = Pagination.New(1, 20)
+                });
+
+            return response.Data
+                .Select(f => new FluxOption { Id = f.FluxId, Name = f.Name })
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error searching fluxes: {ex.Message}", Severity.Error);
+            return new List<FluxOption>();
+        }
+    }
+
+    private async Task SubmitRequest()
+    {
+        await form.Validate();
+
+        if (!isValid)
+            return;
+
+        try
+        {
+            processing = true;
+
+            // Parse financial IDs from comma-separated input
+            List<int> financialIds = new();
+            foreach (var idText in financialIdsText.Split(',', StringSplitOptions.RemoveEmptyEntries))
+            {
+                if (int.TryParse(idText.Trim(), out int id) && id > 0)
+                {
+                    financialIds.Add(id);
+                }
+                else
+                {
+                    Snackbar.Add($"Invalid Financial ID: {idText}", Severity.Warning);
+                }
+            }
+
+            if (financialIds.Count == 0)
+            {
+                Snackbar.Add("At least one valid Financial ID is required", Severity.Warning);
+                return;
+            }
+
+            // Generate dates within the selected range
+            List<DateTime> dates = new();
+            DateTime currentDate = dateRange.Start.GetValueOrDefault();
+            DateTime endDate = dateRange.End.GetValueOrDefault();
+
+            while (currentDate <= endDate)
+            {
+                dates.Add(currentDate);
+                currentDate = currentDate.AddDays(1);
+            }
+
+            // Build the request
+            request.FinancialIds = financialIds;
+            request.FluxId = selectedFlux.Id;
+            request.Dates = dates;
+
+            // Call the API
+            result = await MindApi.ForceFinancialPriceProcessingAsync(request);
+
+            if (result.Data.Success)
+            {
+                Snackbar.Add("Price processing triggered successfully!", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add("Failed to trigger price processing", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            processing = false;
+        }
+    }
+
+    private async Task Reset()
+    {
+        request = new ForceFinancialPriceProcessingRequest();
+        selectedFlux = null;
+        financialIdsText = "";
+        dateRange = new(DateTime.Now.AddMonths(-1), DateTime.Now);
+        result = null;
+        await form.ResetAsync();
+    }
+} 

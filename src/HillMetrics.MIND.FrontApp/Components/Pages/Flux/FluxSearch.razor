@@ -1,10 +1,12 @@
 @page "/flux/search"
 @using HillMetrics.MIND.API.Contracts.Requests.Flux
+@using HillMetrics.MIND.API.Contracts.Requests.Source
 @using HillMetrics.MIND.API.Contracts.Responses
 @using HillMetrics.MIND.API.Contracts.Responses.Flux
 @using HillMetrics.Core.Search
 @using HillMetrics.Core
 @using HillMetrics.Core.Financial
+@using HillMetrics.MIND.API.Contracts.Responses.Source
 @using HillMetrics.MIND.FrontApp.Services
 @using HillMetrics.Normalized.Domain.Contracts.Providing.Flux
 @using HillMetrics.MIND.FrontApp.Components.Shared
@@ -19,71 +21,59 @@
     <MudCard Class="mb-4">
         <MudCardContent>
             <MudForm @ref="form" @bind-IsValid="@isValid">
-                <MudGrid>
+                <MudGrid Spacing="1">
                     <!-- Flux Name -->
                     <MudItem xs="12" md="6">
-                        <MudExpansionPanel Text="Flux Name" Expanded="false">
-                            <SearchCriteriaComponent T="string" 
-                            SearchCriteria="@nameSearchCriteria"
-                            SearchCriteriaChanged="@((criteria) => nameSearchCriteria = criteria)"
-                            Label="Flux Name" />
-                        </MudExpansionPanel>
+                        <SearchCriteriaComponent T="string" 
+                        SearchCriteria="@nameSearchCriteria"
+                        SearchCriteriaChanged="@((criteria) => nameSearchCriteria = criteria)"
+                        Label="Flux Name" />
                     </MudItem>
 
                     <!-- Flux ID -->
                     <MudItem xs="12" md="6">
-                        <MudExpansionPanel Text="Flux ID" Expanded="false">
-                            <SearchCriteriaComponent T="int" 
-                            SearchCriteria="@idSearchCriteria"
-                            SearchCriteriaChanged="@((criteria) => idSearchCriteria = criteria)"
-                            Label="Flux ID" />
-                        </MudExpansionPanel>
+                        <SearchCriteriaComponent T="int" 
+                        SearchCriteria="@idSearchCriteria"
+                        SearchCriteriaChanged="@((criteria) => idSearchCriteria = criteria)"
+                        Label="Flux ID" />
                     </MudItem>
 
                     <!-- Last Fetching Date -->
                     <MudItem xs="12" md="6">
-                        <MudExpansionPanel Text="Last Fetching Date" Expanded="false">
-                            <SearchCriteriaComponent T="DateTime" 
-                            SearchCriteria="@lastFetchingDateSearchCriteria"
-                            SearchCriteriaChanged="@((criteria) => lastFetchingDateSearchCriteria = criteria)"
-                            Label="Last Fetching Date" />
-                        </MudExpansionPanel>
+                        <SearchCriteriaComponent T="DateTime" 
+                        SearchCriteria="@lastFetchingDateSearchCriteria"
+                        SearchCriteriaChanged="@((criteria) => lastFetchingDateSearchCriteria = criteria)"
+                        Label="Last Fetching Date" />
                     </MudItem>
 
                     <!-- Last Processing Date -->
                     <MudItem xs="12" md="6">
-                        <MudExpansionPanel Text="Last Processing Date" Expanded="false">
-                            <SearchCriteriaComponent T="DateTime" 
-                            SearchCriteria="@lastProcessingDateSearchCriteria"
-                            SearchCriteriaChanged="@((criteria) => lastProcessingDateSearchCriteria = criteria)"
-                            Label="Last Processing Date" />
-                        </MudExpansionPanel>
+                        <SearchCriteriaComponent T="DateTime" 
+                        SearchCriteria="@lastProcessingDateSearchCriteria"
+                        SearchCriteriaChanged="@((criteria) => lastProcessingDateSearchCriteria = criteria)"
+                        Label="Last Processing Date" />
                     </MudItem>
 
                     <!-- Fetching Error Count -->
                     <MudItem xs="12" md="6">
-                        <MudExpansionPanel Text="Fetching Error Count" Expanded="false">
-                            <SearchCriteriaComponent T="int" 
-                            SearchCriteria="@fetchingErrorCountSearchCriteria"
-                            SearchCriteriaChanged="@((criteria) => fetchingErrorCountSearchCriteria = criteria)"
-                            Label="Fetching Error Count" />
-                        </MudExpansionPanel>
+                        <SearchCriteriaComponent T="int" 
+                        SearchCriteria="@fetchingErrorCountSearchCriteria"
+                        SearchCriteriaChanged="@((criteria) => fetchingErrorCountSearchCriteria = criteria)"
+                        Label="Fetching Error Count" />
                     </MudItem>
 
                     <!-- Processing Error Count -->
                     <MudItem xs="12" md="6">
-                        <MudExpansionPanel Text="Processing Error Count" Expanded="false">
-                            <SearchCriteriaComponent T="int" 
-                            SearchCriteria="@processingErrorCountSearchCriteria"
-                            SearchCriteriaChanged="@((criteria) => processingErrorCountSearchCriteria = criteria)"
-                            Label="Processing Error Count" />
-                        </MudExpansionPanel>
+                        <SearchCriteriaComponent T="int" 
+                        SearchCriteria="@processingErrorCountSearchCriteria"
+                        SearchCriteriaChanged="@((criteria) => processingErrorCountSearchCriteria = criteria)"
+                        Label="Processing Error Count" />
                     </MudItem>
 
                     <!-- Financial Type -->
                     <MudItem xs="12" md="6">
                         <MudSelect T="FinancialType?" @bind-Value="searchRequest.FinancialType" 
-                        Label="Financial Type" Variant="Variant.Outlined">
+                        Label="Financial Type" Variant="Variant.Outlined" Dense="true" Margin="Margin.Dense">
                             <MudSelectItem Value="@((FinancialType?)null)">All</MudSelectItem>
                             @foreach (var type in Enum.GetValues<FinancialType>())
                             {
@@ -95,7 +85,7 @@
                     <!-- Flux Type -->
                     <MudItem xs="12" md="6">
                         <MudSelect T="FluxType?" @bind-Value="searchRequest.FluxType" 
-                        Label="Flux Type" Variant="Variant.Outlined">
+                        Label="Flux Type" Variant="Variant.Outlined" Dense="true" Margin="Margin.Dense">
                             <MudSelectItem Value="@((FluxType?)null)">All</MudSelectItem>
                             @foreach (var type in Enum.GetValues<FluxType>())
                             {
@@ -107,7 +97,7 @@
                     <!-- Flux State -->
                     <MudItem xs="12" md="6">
                         <MudSelect T="FluxState?" @bind-Value="searchRequest.FluxState" 
-                        Label="Flux State" Variant="Variant.Outlined">
+                        Label="Flux State" Variant="Variant.Outlined" Dense="true" Margin="Margin.Dense">
                             <MudSelectItem Value="@((FluxState?)null)">All</MudSelectItem>
                             @foreach (var state in Enum.GetValues<FluxState>())
                             {
@@ -119,7 +109,7 @@
                     <!-- Last Fetching Status -->
                     <MudItem xs="12" md="6">
                         <MudSelect T="StatusProcess?" @bind-Value="searchRequest.LastFetchingStatus" 
-                        Label="Last Fetching Status" Variant="Variant.Outlined">
+                        Label="Last Fetching Status" Variant="Variant.Outlined" Dense="true" Margin="Margin.Dense">
                             <MudSelectItem Value="@((StatusProcess?)null)">All</MudSelectItem>
                             @foreach (var status in Enum.GetValues<StatusProcess>())
                             {
@@ -131,7 +121,7 @@
                     <!-- Last Processing Status -->
                     <MudItem xs="12" md="6">
                         <MudSelect T="StatusProcess?" @bind-Value="searchRequest.LastProcessingStatus" 
-                        Label="Last Processing Status" Variant="Variant.Outlined">
+                        Label="Last Processing Status" Variant="Variant.Outlined" Dense="true" Margin="Margin.Dense">
                             <MudSelectItem Value="@((StatusProcess?)null)">All</MudSelectItem>
                             @foreach (var status in Enum.GetValues<StatusProcess>())
                             {
@@ -143,14 +133,14 @@
             </MudForm>
         </MudCardContent>
         <MudCardActions>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Search">Search</MudButton>
-            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="Reset">Reset</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Search" Size="Size.Small">Search</MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="Reset" Size="Size.Small">Reset</MudButton>
         </MudCardActions>
     </MudCard>
 
     @if (loading)
     {
-        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-2" />
     }
     else if (fluxes != null)
     {
@@ -163,7 +153,7 @@
                 <MudSpacer />
                 <MudTextField @bind-Value="searchString" Placeholder="Search" Adornment="Adornment.Start" 
                 AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" 
-                Class="mt-0 mb-3"></MudTextField>
+                Class="mt-0 mb-3" Margin="Margin.Dense" Dense="true"></MudTextField>
             </ToolBarContent>
             <HeaderContent>
                 <MudTh>ID</MudTh>
@@ -319,23 +309,30 @@
     private string searchString = "";
     private FluxSearchResponse selectedItem = null;
 
-    // For demonstration, normally this would come from an API
-    private List<SourceDto> sources = new()
-    {
-        new SourceDto { Id = 1, Name = "Source 1" },
-        new SourceDto { Id = 2, Name = "Source 2" },
-        new SourceDto { Id = 3, Name = "Source 3" }
-    };
-
-    private class SourceDto
-    {
-        public int Id { get; set; }
-        public string Name { get; set; } = string.Empty;
-    }
+    // Sources from API
+    private List<SourceSearchDto> sources = new();
 
     protected override async Task OnInitializedAsync()
     {
+        await LoadSourcesAsync();
         await Search();
+    }
+
+    private async Task LoadSourcesAsync()
+    {
+        try
+        {
+            var sourceSearchRequest = new SourceSearchRequest();
+            var response = await MindApi.SearchSourcesAsync(sourceSearchRequest);
+            if (response != null && response.Data != null)
+            {
+                sources = response.Data.ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading sources: {ex.Message}", Severity.Error);
+        }
     }
 
     private async Task Search()

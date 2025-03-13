@@ -56,6 +56,12 @@ namespace HillMetrics.MIND.API.SDK.V1
         [Get("/api/v1/flux/{id}/force-process")]
         Task<FluxForceProcessResponse> ForceProcessAsync(int id);
 
+        /// <summary>
+        /// Force the processing of normalized financial prices for multiple financial IDs
+        /// </summary>
+        [Post("/api/v1/flux/force-financial-price-processing")]
+        Task<ApiResponseBase<ForceFinancialPriceProcessingResponse>> ForceFinancialPriceProcessingAsync([Body] ForceFinancialPriceProcessingRequest request);
+
         #endregion
 
         #region Financial Data Point
