@@ -16,7 +16,7 @@ var builder = WebApplication.CreateBuilder(args);
 //builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.Configuration["ApiBaseUrl"] ?? "https://localhost:7098") });
 
 builder.AddHillMetricsCoreExtension();
-var logger = builder.InitAndAddHillMetricsLogger("HillMetrics.MIND.FrontApp");
+var logger = builder.InitAndAddHillMetricsLogger(HillMetrics.Orchestrator.ServicesNames.Services.MindFrontApp);
 
 builder.AddHillMetricsServiceDefaults();
 builder.Services.ConfigureHillMetricsDefaultHttpClient();

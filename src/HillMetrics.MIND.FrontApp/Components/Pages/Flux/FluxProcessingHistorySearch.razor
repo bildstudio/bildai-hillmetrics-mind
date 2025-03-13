@@ -18,55 +18,47 @@
     <MudCard Class="mb-4">
         <MudCardContent>
             <MudForm @ref="form" @bind-IsValid="@isValid">
-                <MudGrid>
+                <MudGrid Spacing="1">
                     <!-- Flux ID -->
                     <MudItem xs="12" md="6">
-                        <MudExpansionPanel Text="Flux ID" Expanded="false">
-                            <SearchCriteriaComponent T="int"
-                                                     SearchCriteria="@fluxIdSearchCriteria"
-                                                     SearchCriteriaChanged="@((criteria) => fluxIdSearchCriteria = criteria)"
-                                                     Label="Flux ID" />
-                        </MudExpansionPanel>
+                        <SearchCriteriaComponent T="int"
+                                                 SearchCriteria="@fluxIdSearchCriteria"
+                                                 SearchCriteriaChanged="@((criteria) => fluxIdSearchCriteria = criteria)"
+                                                 Label="Flux ID" />
                     </MudItem>
 
                     <!-- Number of Contents -->
                     <MudItem xs="12" md="6">
-                        <MudExpansionPanel Text="Number of Contents" Expanded="false">
-                            <SearchCriteriaComponent T="int"
-                                                     SearchCriteria="@nbContentSearchCriteria"
-                                                     SearchCriteriaChanged="@((criteria) => nbContentSearchCriteria = criteria)"
-                                                     Label="Number of Contents" />
-                        </MudExpansionPanel>
+                        <SearchCriteriaComponent T="int"
+                                                 SearchCriteria="@nbContentSearchCriteria"
+                                                 SearchCriteriaChanged="@((criteria) => nbContentSearchCriteria = criteria)"
+                                                 Label="Number of Contents" />
                     </MudItem>
 
                     <!-- Processing Start Date -->
                     <MudItem xs="12" md="6">
-                        <MudExpansionPanel Text="Processing Start Date" Expanded="false">
-                            <SearchCriteriaComponent T="DateTime"
-                                                     SearchCriteria="@processingDateStartSearchCriteria"
-                                                     SearchCriteriaChanged="@((criteria) => processingDateStartSearchCriteria = criteria)"
-                                                     Label="Processing Start Date" />
-                        </MudExpansionPanel>
+                        <SearchCriteriaComponent T="DateTime"
+                                                 SearchCriteria="@processingDateStartSearchCriteria"
+                                                 SearchCriteriaChanged="@((criteria) => processingDateStartSearchCriteria = criteria)"
+                                                 Label="Processing Start Date" />
                     </MudItem>
 
                     <!-- Processing End Date -->
                     <MudItem xs="12" md="6">
-                        <MudExpansionPanel Text="Processing End Date" Expanded="false">
-                            <SearchCriteriaComponent T="DateTime"
-                                                     SearchCriteria="@processingDateEndSearchCriteria"
-                                                     SearchCriteriaChanged="@((criteria) => processingDateEndSearchCriteria = criteria)"
-                                                     Label="Processing End Date" />
-                        </MudExpansionPanel>
+                        <SearchCriteriaComponent T="DateTime"
+                                                 SearchCriteria="@processingDateEndSearchCriteria"
+                                                 SearchCriteriaChanged="@((criteria) => processingDateEndSearchCriteria = criteria)"
+                                                 Label="Processing End Date" />
                     </MudItem>
 
                     <!-- Processing Status -->
                     <MudItem xs="12" md="6">
                         <MudSelect T="StatusProcess?" @bind-Value="searchRequest.Status"
-                                   Label="Processing Status" Variant="Variant.Outlined">
+                                   Label="Processing Status" Variant="Variant.Outlined" Dense="true" Margin="Margin.Dense">
                             <MudSelectItem Value="@((StatusProcess?)null)">All</MudSelectItem>
                             @foreach (var status in Enum.GetValues<StatusProcess>())
                             {
-                                <MudSelectItem Value="@status">@status</MudSelectItem>
+                                <MudSelectItem T="StatusProcess?" Value="@status">@status</MudSelectItem>
                             }
                         </MudSelect>
                     </MudItem>
@@ -74,14 +66,14 @@
             </MudForm>
         </MudCardContent>
         <MudCardActions>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Search">Search</MudButton>
-            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="Reset">Reset</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Search" Size="Size.Small">Search</MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="Reset" Size="Size.Small">Reset</MudButton>
         </MudCardActions>
     </MudCard>
 
     @if (loading)
     {
-        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-2" />
     }
     else if (processingHistories != null)
     {
@@ -94,7 +86,7 @@
                 <MudSpacer />
                 <MudTextField T="string" @bind-Value="searchString" Placeholder="Search" Adornment="Adornment.Start"
                               AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium"
-                              Class="mt-0 mb-3"></MudTextField>
+                              Class="mt-0 mb-3" Margin="Margin.Dense" Dense="true"></MudTextField>
             </ToolBarContent>
             <HeaderContent>
                 <MudTh>ID</MudTh>
