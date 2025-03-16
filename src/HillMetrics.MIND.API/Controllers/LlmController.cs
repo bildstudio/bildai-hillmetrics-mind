@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using FluentResults;
 using HillMetrics.Core.API.Responses;
+using HillMetrics.Core.Contracts;
 using HillMetrics.MIND.API.Contracts.Requests.Llm;
 using HillMetrics.MIND.API.Contracts.Responses.Common;
 using HillMetrics.MIND.API.Contracts.Responses.Llm;
