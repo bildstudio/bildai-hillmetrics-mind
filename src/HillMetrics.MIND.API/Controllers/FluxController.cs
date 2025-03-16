@@ -1,5 +1,4 @@
-﻿
-using AutoMapper;
+﻿using AutoMapper;
 using FluentResults;
 using HillMetrics.Core.API.Responses;
 using HillMetrics.Core.Common.Email;
@@ -18,6 +17,7 @@ using MassTransit;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using HillMetrics.Core.Messaging.Bus;
 
 namespace HillMetrics.MIND.API.Controllers
 {
@@ -177,7 +177,7 @@ namespace HillMetrics.MIND.API.Controllers
         [HttpGet("{id}/force-process")]
         public async Task<ActionResult<FluxForceProcessResponse>> ForceProcess(int id)
         {
-            var result = await mediator.Send(new ProcessFluxCommand() { 
+            var result = await mediator.Send(new ProcessFluxCommand() {
                 FluxId = id,
                 CalledManually = true
             });
@@ -217,12 +217,12 @@ namespace HillMetrics.MIND.API.Controllers
                     return new ErrorApiActionResult(fluxResult.Errors.ToApiResult());
 
                 // Get MassTransit publish endpoint
-                var publishEndpoint = HttpContext.RequestServices.GetRequiredService<IPublishEndpoint>();
+                var busPublisher = HttpContext.RequestServices.GetRequiredService<IBusPublisher>();
 
                 // Publish an event for each financial ID
                 foreach (var financialId in request.FinancialIds)
                 {
-                    await publishEndpoint.Publish(
+                    await busPublisher.PublishAsync(
                         new FinancialNormalizedPriceAdded(
                             financialId,
                             request.FluxId,
@@ -425,7 +425,7 @@ namespace HillMetrics.MIND.API.Controllers
         }
 
         ///// <summary>
-        ///// 
+        /////
         ///// </summary>
         ///// <param name="file"></param>
         ///// <param name="nbToLinesToAnalyse"></param>

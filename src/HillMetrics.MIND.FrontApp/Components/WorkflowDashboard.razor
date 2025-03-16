@@ -1,0 +1,301 @@
+@page "/workflow-dashboard"
+@using System.Net.Http.Json
+@using HillMetrics.Core.Monitoring.Workflow
+@inject HttpClient Http
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>Financial Workflow Dashboard</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudText Typo="Typo.h3" GutterBottom="true">Financial Workflow Dashboard</MudText>
+
+    <MudButton Variant="Variant.Filled"
+               Color="Color.Primary"
+               OnClick="RefreshData"
+               StartIcon="@Icons.Material.Filled.Refresh"
+               Class="mb-4">
+        Refresh
+    </MudButton>
+
+    @if (isLoading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+    }
+    else
+    {
+        <MudGrid>
+            <MudItem xs="12" md="3">
+                <MudPaper Elevation="2" Class="pa-4">
+                    <MudStack>
+                        <MudIcon Icon="@Icons.Material.Filled.HourglassTop" Color="Color.Info" Size="Size.Large" />
+                        <MudText Typo="Typo.h5">Active Fluxes</MudText>
+                        <MudText Typo="Typo.h3" Align="Align.Center">@(summary?.ActiveFluxCount ?? 0)</MudText>
+                    </MudStack>
+                </MudPaper>
+            </MudItem>
+
+            <MudItem xs="12" md="3">
+                <MudPaper Elevation="2" Class="pa-4">
+                    <MudStack>
+                        <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Large" />
+                        <MudText Typo="Typo.h5">Successful</MudText>
+                        <MudText Typo="Typo.h3" Align="Align.Center">@(summary?.SuccessfulCompletions ?? 0)</MudText>
+                    </MudStack>
+                </MudPaper>
+            </MudItem>
+
+            <MudItem xs="12" md="3">
+                <MudPaper Elevation="2" Class="pa-4">
+                    <MudStack>
+                        <MudIcon Icon="@Icons.Material.Filled.Error" Color="Color.Error" Size="Size.Large" />
+                        <MudText Typo="Typo.h5">Failed</MudText>
+                        <MudText Typo="Typo.h3" Align="Align.Center">@(summary?.FailedCompletions ?? 0)</MudText>
+                    </MudStack>
+                </MudPaper>
+            </MudItem>
+
+            <MudItem xs="12" md="3">
+                <MudPaper Elevation="2" Class="pa-4">
+                    <MudStack>
+                        <MudIcon Icon="@Icons.Material.Filled.Timer" Color="Color.Warning" Size="Size.Large" />
+                        <MudText Typo="Typo.h5">Avg. Time (min)</MudText>
+                        <MudText Typo="Typo.h3" Align="Align.Center">@(Math.Round(summary?.AverageCompletionTimeMinutes ?? 0, 1))</MudText>
+                    </MudStack>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+
+        <MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-4" Class="mt-6">
+            <MudTabPanel Text="Active Fluxes">
+                <MudTable Items="@activeFluxes" Hover="true" Striped="true" Elevation="0" Loading="@isLoading" LoadingProgressColor="Color.Info">
+                    <HeaderContent>
+                        <MudTh>ID</MudTh>
+                        <MudTh>Name</MudTh>
+                        <MudTh>Stage</MudTh>
+                        <MudTh>Progress</MudTh>
+                        <MudTh>Start Time</MudTh>
+                        <MudTh>Duration (min)</MudTh>
+                        <MudTh>Actions</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd>@context.FluxId</MudTd>
+                        <MudTd>@context.FluxName</MudTd>
+                        <MudTd>
+                            <MudChip T="Color" Color="Color.Info" Size="Size.Small">@context.Stage</MudChip>
+                        </MudTd>
+                        <MudTd>
+                            <MudProgressLinear Color="Color.Info"
+                                              Value="@context.ProgressPercentage"
+                                              Class="my-0"
+                                              Striped="true">
+                                @context.ProgressPercentage%
+                            </MudProgressLinear>
+                        </MudTd>
+                        <MudTd>@context.StartTime.ToLocalTime().ToString("g")</MudTd>
+                        <MudTd>@Math.Round(context.DurationMinutes, 1)</MudTd>
+                        <MudTd>
+                            <MudButton Variant="Variant.Text"
+                                       Color="Color.Primary"
+                                       OnClick="@(() => ShowFluxDetails(context.FluxId))">
+                                Details
+                            </MudButton>
+                        </MudTd>
+                    </RowTemplate>
+                    <PagerContent>
+                        <MudTablePager PageSizeOptions="new int[] { 5, 10, 25 }" />
+                    </PagerContent>
+                </MudTable>
+            </MudTabPanel>
+
+            <MudTabPanel Text="Completed Fluxes">
+                <MudTable Items="@completedFluxes" Hover="true" Striped="true" Elevation="0" Loading="@isLoading" LoadingProgressColor="Color.Info">
+                    <HeaderContent>
+                        <MudTh>ID</MudTh>
+                        <MudTh>Name</MudTh>
+                        <MudTh>Status</MudTh>
+                        <MudTh>Completed At</MudTh>
+                        <MudTh>Duration (min)</MudTh>
+                        <MudTh>Actions</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd>@context.FluxId</MudTd>
+                        <MudTd>@context.FluxName</MudTd>
+                        <MudTd>
+                            <MudChip T="Color" Color="@(context.Status == "Success" ? Color.Success : Color.Error)"
+                                     Size="Size.Small">
+                                @context.Status
+                            </MudChip>
+                        </MudTd>
+                        <MudTd>@(context.CompletedAt?.ToLocalTime().ToString("g") ?? "-")</MudTd>
+                        <MudTd>@Math.Round(context.DurationMinutes, 1)</MudTd>
+                        <MudTd>
+                            <MudButton Variant="Variant.Text"
+                                       Color="Color.Primary"
+                                       OnClick="@(() => ShowFluxDetails(context.FluxId))">
+                                Details
+                            </MudButton>
+                        </MudTd>
+                    </RowTemplate>
+                    <PagerContent>
+                        <MudTablePager PageSizeOptions="new int[] { 5, 10, 25 }" />
+                    </PagerContent>
+                </MudTable>
+            </MudTabPanel>
+        </MudTabs>
+    }
+</MudContainer>
+
+@code {
+    private bool isLoading = true;
+    private List<ActiveFluxDto> activeFluxes = new();
+    private List<CompletedFluxDto> completedFluxes = new();
+    private WorkflowSummaryDto summary;
+    private System.Threading.Timer refreshTimer;
+
+    private readonly string ApiUrl = "/api/v1/Workflow";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshData();
+
+        // Set up automatic refresh every 30 seconds
+        refreshTimer = new System.Threading.Timer(
+            async _ => await InvokeAsync(RefreshData),
+            null,
+            TimeSpan.FromSeconds(30),
+            TimeSpan.FromSeconds(30));
+    }
+
+    private async Task RefreshData()
+    {
+        isLoading = true;
+        try
+        {
+            var activeTask = Http.GetFromJsonAsync<List<ActiveFluxDto>>($"{ApiUrl}/active");
+            var completedTask = Http.GetFromJsonAsync<List<CompletedFluxDto>>($"{ApiUrl}/completed");
+            var summaryTask = Http.GetFromJsonAsync<WorkflowSummaryDto>($"{ApiUrl}/summary");
+
+            await Task.WhenAll(activeTask, completedTask, summaryTask);
+
+            activeFluxes = await activeTask;
+            completedFluxes = await completedTask;
+            summary = await summaryTask;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading data: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ShowFluxDetails(int fluxId)
+    {
+        try
+        {
+            isLoading = true;
+            var fluxDetails = await Http.GetFromJsonAsync<FluxDetailsDto>($"{ApiUrl}/{fluxId}");
+
+            if (fluxDetails != null)
+            {
+                var parameters = new DialogParameters
+                {
+                    ["FluxDetails"] = fluxDetails
+                };
+
+                var dialog = DialogService.Show<WorkflowDetailsDialog>("Flux Details", parameters,
+                    new DialogOptions
+                    {
+                        MaxWidth = MaxWidth.Large,
+                        FullWidth = true,
+                        CloseButton = true,
+                        BackdropClick = false
+                    });
+
+                await dialog.Result;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading flux details: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    public void Dispose()
+    {
+        refreshTimer?.Dispose();
+    }
+
+    // Data Transfer Objects
+    public class ActiveFluxDto
+    {
+        public int FluxId { get; set; }
+        public string FluxName { get; set; }
+        public string Stage { get; set; }
+        public string Details { get; set; }
+        public DateTime StartTime { get; set; }
+        public DateTime LastUpdateTime { get; set; }
+        public double DurationMinutes { get; set; }
+        public int ProgressPercentage { get; set; }
+    }
+
+    public class CompletedFluxDto
+    {
+        public int FluxId { get; set; }
+        public string FluxName { get; set; }
+        public string Status { get; set; }
+        public string Stage { get; set; }
+        public string Details { get; set; }
+        public DateTime StartTime { get; set; }
+        public DateTime? CompletedAt { get; set; }
+        public double DurationMinutes { get; set; }
+    }
+
+    public class WorkflowSummaryDto
+    {
+        public int ActiveFluxCount { get; set; }
+        public int RecentlyCompletedCount { get; set; }
+        public int SuccessfulCompletions { get; set; }
+        public int FailedCompletions { get; set; }
+        public double AverageCompletionTimeMinutes { get; set; }
+        public List<StageCountDto> ByStage { get; set; } = new();
+    }
+
+    public class StageCountDto
+    {
+        public string Stage { get; set; }
+        public int Count { get; set; }
+    }
+
+    public class FluxDetailsDto
+    {
+        public int FluxId { get; set; }
+        public string FluxName { get; set; }
+        public string CurrentStage { get; set; }
+        public string StageDetails { get; set; }
+        public DateTime StartTime { get; set; }
+        public DateTime LastUpdateTime { get; set; }
+        public DateTime? EndTime { get; set; }
+        public double DurationMinutes { get; set; }
+        public int ProgressPercentage { get; set; }
+        public bool IsCompleted { get; set; }
+        public bool IsSuccessful { get; set; }
+        public List<HistoryEntryDto> History { get; set; } = new();
+    }
+
+    public class HistoryEntryDto
+    {
+        public string Stage { get; set; }
+        public string Details { get; set; }
+        public DateTime Timestamp { get; set; }
+        public double TimeSinceStart { get; set; }
+    }
+}
