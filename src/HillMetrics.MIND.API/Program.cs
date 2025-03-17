@@ -26,6 +26,7 @@ using HillMetrics.Core.Mediator.Processors;
 using MediatR;
 using HillMetrics.Core.Mediator.Extensions;
 using HillMetrics.Core.Monitoring.Audits;
+using HillMetrics.Core.Monitoring;
 
 
 namespace HillMetrics.MIND.API;
@@ -51,6 +52,7 @@ public partial class Program
         logger.LogInformation("Starting {applicationName}...", Services.MindAPI);
 
         builder.Services.AddDomainServices();
+        builder.Services.AddFluxWorkflowTracker();
 
         builder.Services.AddAutoMapper(typeof(FluxMappingProfile));
         builder.Services.AddAutoMapper(typeof(GicsMappingProfile));

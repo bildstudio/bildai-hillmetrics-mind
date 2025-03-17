@@ -18,12 +18,13 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using HillMetrics.Core.Messaging.Bus;
+using HillMetrics.Core.Workflow;
 
 namespace HillMetrics.MIND.API.Controllers
 {
     [Route("api/v{v:apiVersion}/[controller]"), AllowAnonymous]
     //[EnableRateLimiting("allow5000requestsPerSecond_fixed")]
-    public class FluxController(IMediator mediator, IMapper mapper, ILogger<FluxController> logger) : BaseHillMetricsController(mediator)
+    public class FluxController(IMediator mediator, IMapper mapper, IWorkflowTracker workflowTracker, ILogger<FluxController> logger) : BaseHillMetricsController(mediator)
     {
         #region Flux
         /// <summary>
@@ -486,6 +487,171 @@ namespace HillMetrics.MIND.API.Controllers
 
             return new ApiResponseBase<FluxErrorResponse>(mapper.Map<FluxErrorResponse>(result.Value));
         }
+        #endregion
+
+        #region Workflow
+
+        /// <summary>
+        /// Gets the current state of all active workflow fluxes
+        /// </summary>
+        [HttpGet("workflow/active")]
+        public async Task<ActionResult<ApiResponseBase<List<ActiveFluxDto>>>> GetActiveFluxes(CancellationToken cancellationToken)
+        {
+            try
+            {
+                var activeFluxes = await workflowTracker.GetActiveFluxesAsync(cancellationToken);
+
+                var result = activeFluxes.Select(flux => new ActiveFluxDto
+                {
+                    FluxId = flux.FluxId,
+                    FluxName = flux.FluxName,
+                    Stage = flux.CurrentStage.ToString(),
+                    Details = flux.Steps.LastOrDefault()?.Description,
+                    StartTime = flux.StartTime,
+                    LastUpdateTime = flux.LastUpdateTime,
+                    DurationMinutes = flux.Duration.TotalMinutes,
+                    ProgressPercentage = flux.ProgressPercentage
+                }).ToList();
+
+                return new ApiResponseBase<List<ActiveFluxDto>>(result);
+            }
+            catch (Exception ex)
+            {
+                return new ErrorApiActionResult(new ErrorApiResponse(new Core.API.Exceptions.ApiException($"Error retrieving active fluxes (details : {ex.Message})"), System.Net.HttpStatusCode.InternalServerError));
+            }
+        }
+
+        /// <summary>
+        /// Gets the state of recently completed fluxes
+        /// </summary>
+        [HttpGet("workflow/completed")]
+        public async Task<ActionResult<ApiResponseBase<List<CompletedFluxDto>>>> GetCompletedFluxes([FromQuery] int count = 10, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var completedFluxes = await workflowTracker.GetRecentlyCompletedFluxesAsync(count, cancellationToken);
+
+                var result = completedFluxes.Select(flux => new CompletedFluxDto
+                {
+                    FluxId = flux.FluxId,
+                    FluxName = flux.FluxName,
+                    Status = flux.IsSuccessful ? "Success" : "Failed",
+                    Stage = flux.CurrentStage.ToString(),
+                    Details = flux.Steps.LastOrDefault()?.Description,
+                    StartTime = flux.StartTime,
+                    CompletedAt = flux.EndTime,
+                    DurationMinutes = flux.Duration.TotalMinutes
+                }).ToList();
+
+                return new ApiResponseBase<List<CompletedFluxDto>>(result);
+            }
+            catch (Exception ex)
+            {
+                return new ErrorApiActionResult(new ErrorApiResponse(new Core.API.Exceptions.ApiException($"Error retrieving completed fluxes (details : {ex.Message})"), System.Net.HttpStatusCode.InternalServerError));
+            }
+        }
+
+        /// <summary>
+        /// Gets the details of a specific flux workflow
+        /// </summary>
+        [HttpGet("workflow/{fluxId}")]
+        public async Task<ActionResult<ApiResponseBase<FluxWorkflowDetailsDto>>> GetFluxWorkflowDetails(int fluxId, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var fluxState = await workflowTracker.GetFluxStateAsync(fluxId, cancellationToken);
+
+                if (fluxState == null)
+                {
+                    return new ErrorApiActionResult(new ErrorApiResponse(new Core.API.Exceptions.ApiException($"Flux {fluxId} not found"), System.Net.HttpStatusCode.NotFound));
+                }
+
+                var result = new FluxWorkflowDetailsDto
+                {
+                    FluxId = fluxState.FluxId,
+                    FluxName = fluxState.FluxName,
+                    CurrentStage = fluxState.CurrentStage.ToString(),
+                    StageDetails = fluxState.Steps.LastOrDefault()?.Description,
+                    StartTime = fluxState.StartTime,
+                    LastUpdateTime = fluxState.LastUpdateTime,
+                    EndTime = fluxState.EndTime,
+                    DurationMinutes = fluxState.Duration.TotalMinutes,
+                    ProgressPercentage = fluxState.ProgressPercentage,
+                    IsCompleted = fluxState.IsCompleted,
+                    IsSuccessful = fluxState.IsSuccessful,
+                    History = fluxState.Steps.Select(h => new HistoryEntryDto
+                    {
+                        Stage = h.Stage.ToString(),
+                        Description = h.Description,
+                        Timestamp = h.Timestamp,
+                        TimeSinceStart = (h.Timestamp - fluxState.StartTime).TotalMinutes
+                    }).OrderByDescending(h => h.Timestamp).ToList()
+                };
+
+                return new ApiResponseBase<FluxWorkflowDetailsDto>(result);
+            }
+            catch (Exception ex)
+            {
+                return new ErrorApiActionResult(new ErrorApiResponse(new Core.API.Exceptions.ApiException($"Error retrieving details for flux {fluxId} (details : {ex.Message})"), System.Net.HttpStatusCode.InternalServerError));
+            }
+        }
+
+        /// <summary>
+        /// Gets a global summary of flux workflows
+        /// </summary>
+        [HttpGet("workflow/summary")]
+        public async Task<ActionResult<ApiResponseBase<WorkflowSummaryDto>>> GetFluxWorkflowSummary(CancellationToken cancellationToken)
+        {
+            try
+            {
+                var activeFluxes = await workflowTracker.GetActiveFluxesAsync(cancellationToken);
+                var completedFluxes = await workflowTracker.GetRecentlyCompletedFluxesAsync(100, cancellationToken);
+
+                var summary = new WorkflowSummaryDto
+                {
+                    ActiveFluxCount = activeFluxes.Count,
+                    RecentlyCompletedCount = completedFluxes.Count,
+                    SuccessfulCompletions = completedFluxes.Count(f => f.IsSuccessful),
+                    FailedCompletions = completedFluxes.Count(f => !f.IsSuccessful),
+                    AverageCompletionTimeMinutes = completedFluxes.Any()
+                        ? completedFluxes.Average(f => f.Duration.TotalMinutes)
+                        : 0,
+                    ByStage = activeFluxes
+                        .GroupBy(f => f.CurrentStage)
+                        .Select(g => new StageCountDto
+                        {
+                            Stage = g.Key.ToString(),
+                            Count = g.Count()
+                        })
+                        .OrderBy(x => x.Stage)
+                        .ToList()
+                };
+
+                return new ApiResponseBase<WorkflowSummaryDto>(summary);
+            }
+            catch (Exception ex)
+            {
+                return new ErrorApiActionResult(new ErrorApiResponse(new Core.API.Exceptions.ApiException($"Error retrieving flux workflow summary (details : {ex.Message})"), System.Net.HttpStatusCode.InternalServerError));
+            }
+        }
+
+        /// <summary>
+        /// Manually triggers cleanup of historical workflow data
+        /// </summary>
+        [HttpPost("workflow/cleanup")]
+        public async Task<ActionResult<ApiResponseBase<string>>> TriggerWorkflowCleanup([FromQuery] int daysToKeep = 14, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                await workflowTracker.CleanupHistoryAsync(daysToKeep, cancellationToken);
+                return new ApiResponseBase<string>($"Cleanup of data older than {daysToKeep} days completed successfully");
+            }
+            catch (Exception ex)
+            {
+                return new ErrorApiActionResult(new ErrorApiResponse(new Core.API.Exceptions.ApiException($"Error during cleanup of historical workflow data (details : {ex.Message})"), System.Net.HttpStatusCode.InternalServerError));
+            }
+        }
+
         #endregion
     }
 }

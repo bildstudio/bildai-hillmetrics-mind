@@ -1,4 +1,5 @@
 @using HillMetrics.Core.Monitoring.Workflow
+@using HillMetrics.MIND.API.Contracts.Responses.Flux
 
 <MudDialog>
     <DialogContent>
@@ -17,7 +18,7 @@
                             </CardHeaderContent>
                         </MudCardHeader>
                         <MudCardContent>
-                            <MudList T="WorkflowDashboard.FluxDetailsDto" Dense="true">
+                            <MudList T="FluxWorkflowDetailsDto" Dense="true">
                                 <MudListItem>
                                     <MudText><b>Current Stage:</b> @FluxDetails.CurrentStage</MudText>
                                 </MudListItem>
@@ -109,7 +110,7 @@
                                     </CardHeaderContent>
                                 </MudCardHeader>
                                 <MudCardContent>
-                                    <MudText>@item.Details</MudText>
+                                    <MudText>@item.Description</MudText>
                                 </MudCardContent>
                             </MudCard>
                         </ItemContent>
@@ -126,7 +127,7 @@
 @code {
     [CascadingParameter] MudDialogInstance MudDialog { get; set; }
 
-    [Parameter] public WorkflowDashboard.FluxDetailsDto FluxDetails { get; set; }
+    [Parameter] public FluxWorkflowDetailsDto FluxDetails { get; set; }
 
     private void Cancel()
     {
@@ -146,4 +147,4 @@
             _ => Color.Default
         };
     }
-}
+} 

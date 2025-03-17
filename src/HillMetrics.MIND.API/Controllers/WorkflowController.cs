@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using HillMetrics.Core.Monitoring.Workflow;
+using HillMetrics.Core.Workflow;
 using HillMetrics.Normalized.Domain.Workflow;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -14,11 +15,11 @@ namespace HillMetrics.MIND.API.Controllers
     [ApiController]
     public class WorkflowController : ControllerBase
     {
-        private readonly WorkflowTracker _workflowTracker;
+        private readonly IWorkflowTracker _workflowTracker;
         private readonly ILogger<WorkflowController> _logger;
 
         public WorkflowController(
-            WorkflowTracker workflowTracker,
+            IWorkflowTracker workflowTracker,
             ILogger<WorkflowController> logger)
         {
             _workflowTracker = workflowTracker;

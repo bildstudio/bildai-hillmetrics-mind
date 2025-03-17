@@ -16,7 +16,20 @@
 @inject ISnackbar Snackbar
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
-    <MudText Typo="Typo.h4" Class="mb-4">Flux Search</MudText>
+    <MudGrid>
+        <MudItem xs="6">
+            <MudText Typo="Typo.h4" Class="mb-4">Flux Search</MudText>
+        </MudItem>
+        <MudItem xs="6" Class="d-flex justify-end">
+            <MudButton Variant="Variant.Filled" 
+                      Color="Color.Secondary" 
+                      StartIcon="@Icons.Material.Filled.Dashboard"
+                      Href="/flux/workflow-dashboard" 
+                      Class="align-self-start">
+                Workflow Dashboard
+            </MudButton>
+        </MudItem>
+    </MudGrid>
 
     <MudCard Class="mb-4">
         <MudCardContent>
@@ -161,6 +174,7 @@
                 <MudTh>Financial Type</MudTh>
                 <MudTh>Flux Type</MudTh>
                 <MudTh>Status</MudTh>
+                <MudTh>Workflow</MudTh>
                 <MudTh>Last Fetching</MudTh>
                 <MudTh>Fetching Status</MudTh>
                 <MudTh>Fetch Errors</MudTh>
@@ -193,6 +207,23 @@
                     <MudChip T="FluxState" Color="GetFluxStateColor(context.FluxState)" Size="Size.Small">
                         @context.FluxState
                     </MudChip>
+                </MudTd>
+                <MudTd DataLabel="Workflow">
+                    @if (activeWorkflows.TryGetValue(context.FluxId, out var workflow))
+                    {
+                        <MudTooltip Text="@workflow.Details">
+                            <div class="d-flex align-center">
+                                <MudProgressLinear Color="Color.Info" Value="@workflow.ProgressPercentage" Class="flex-grow-1 mr-2" Style="height: 10px;">
+                                    @workflow.ProgressPercentage%
+                                </MudProgressLinear>
+                                <MudChip T="Color" Color="Color.Info" Size="Size.Small">@workflow.Stage</MudChip>
+                            </div>
+                        </MudTooltip>
+                    }
+                    else
+                    {
+                        <span>-</span>
+                    }
                 </MudTd>
                 <MudTd DataLabel="Last Fetching">
                     @if (context.LastFetching.HasValue)
@@ -312,10 +343,34 @@
     // Sources from API
     private List<SourceSearchDto> sources = new();
 
+    // Added for workflow
+    private Dictionary<int, ActiveWorkflowInfo> activeWorkflows = new();
+    private System.Threading.Timer workflowRefreshTimer;
+    
+    // Classe for workflow info
+    private class ActiveWorkflowInfo
+    {
+        public string Stage { get; set; }
+        public string Details { get; set; }
+        public int ProgressPercentage { get; set; }
+    }
+
     protected override async Task OnInitializedAsync()
     {
         await LoadSourcesAsync();
+        await LoadActiveWorkflows();
         await Search();
+        
+        // Configure a timer to refresh workflows every 10 seconds
+        workflowRefreshTimer = new System.Threading.Timer(
+            async _ => await InvokeAsync(async () => 
+            {
+                await LoadActiveWorkflows();
+                StateHasChanged();
+            }),
+            null, 
+            TimeSpan.FromSeconds(10), 
+            TimeSpan.FromSeconds(10));
     }
 
     private async Task LoadSourcesAsync()
@@ -524,5 +579,35 @@
             flux.FluxType.ToString().Contains(searchString, StringComparison.OrdinalIgnoreCase) ||
             flux.FluxState.ToString().Contains(searchString, StringComparison.OrdinalIgnoreCase) ||
             (flux.FinancialType?.ToString().Contains(searchString, StringComparison.OrdinalIgnoreCase) ?? false);
+    }
+
+    private async Task LoadActiveWorkflows()
+    {
+        try
+        {
+            var response = await MindApi.GetActiveFluxesAsync();
+            if (response.Data != null)
+            {
+                activeWorkflows = response.Data.ToDictionary(
+                    f => f.FluxId,
+                    f => new ActiveWorkflowInfo
+                    {
+                        Stage = f.Stage,
+                        Details = f.Details ?? "No details available",
+                        ProgressPercentage = f.ProgressPercentage
+                    });
+            }
+        }
+        catch (Exception ex)
+        {
+            // Log the error but don't show it to the user
+            Console.Error.WriteLine($"Error loading active workflows: {ex.Message}");
+        }
+    }
+
+    // Dispose the timer when the component is removed
+    public void Dispose()
+    {
+        workflowRefreshTimer?.Dispose();
     }
 } 
