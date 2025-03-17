@@ -153,5 +153,39 @@ namespace HillMetrics.MIND.API.SDK.V1
         [Put("/api/v1/source")]
         Task<SourceResponse> UpdateSourceAsync(int sourceId, [Body] SourceCreateRequest request);
         #endregion
+
+        #region Workflow
+
+        /// <summary>
+        /// Gets the current state of all active workflow fluxes
+        /// </summary>
+        [Get("/api/v1/flux/workflow/active")]
+        Task<ApiResponseBase<List<ActiveFluxDto>>> GetActiveFluxesAsync();
+
+        /// <summary>
+        /// Gets the state of recently completed fluxes
+        /// </summary>
+        [Get("/api/v1/flux/workflow/completed")]
+        Task<ApiResponseBase<List<CompletedFluxDto>>> GetCompletedFluxesAsync([Query] int count = 10);
+
+        /// <summary>
+        /// Gets the details of a specific flux workflow
+        /// </summary>
+        [Get("/api/v1/flux/workflow/{fluxId}")]
+        Task<ApiResponseBase<FluxWorkflowDetailsDto>> GetFluxWorkflowDetailsAsync(int fluxId);
+
+        /// <summary>
+        /// Gets a global summary of flux workflows
+        /// </summary>
+        [Get("/api/v1/flux/workflow/summary")]
+        Task<ApiResponseBase<WorkflowSummaryDto>> GetFluxWorkflowSummaryAsync();
+
+        /// <summary>
+        /// Manually triggers cleanup of historical workflow data
+        /// </summary>
+        [Post("/api/v1/flux/workflow/cleanup")]
+        Task<ApiResponseBase<string>> CleanupWorkflowHistoryAsync([Query] int daysToKeep = 14);
+
+        #endregion
     }
 }
