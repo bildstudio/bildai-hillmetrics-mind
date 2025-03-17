@@ -1,0 +1,149 @@
+@using HillMetrics.Core.Monitoring.Workflow
+
+<MudDialog>
+    <DialogContent>
+        @if (FluxDetails == null)
+        {
+            <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+        }
+        else
+        {
+            <MudGrid>
+                <MudItem xs="12" md="6">
+                    <MudCard Elevation="0">
+                        <MudCardHeader>
+                            <CardHeaderContent>
+                                <MudText Typo="Typo.h6">Workflow Information</MudText>
+                            </CardHeaderContent>
+                        </MudCardHeader>
+                        <MudCardContent>
+                            <MudList T="WorkflowDashboard.FluxDetailsDto" Dense="true">
+                                <MudListItem>
+                                    <MudText><b>Current Stage:</b> @FluxDetails.CurrentStage</MudText>
+                                </MudListItem>
+                                <MudListItem>
+                                    <MudText><b>Details:</b> @FluxDetails.StageDetails</MudText>
+                                </MudListItem>
+                                <MudListItem>
+                                    <MudText><b>Progress:</b></MudText>
+                                    <MudProgressLinear Color="Color.Primary" Value="@FluxDetails.ProgressPercentage" Class="my-2">
+                                        @FluxDetails.ProgressPercentage%
+                                    </MudProgressLinear>
+                                </MudListItem>
+                                <MudListItem>
+                                    <MudText><b>Started:</b> @FluxDetails.StartTime.ToLocalTime().ToString("g")</MudText>
+                                </MudListItem>
+                                @if (FluxDetails.EndTime.HasValue)
+                                {
+                                    <MudListItem>
+                                        <MudText><b>Completed:</b> @FluxDetails.EndTime.Value.ToLocalTime().ToString("g")</MudText>
+                                    </MudListItem>
+                                }
+                                <MudListItem>
+                                    <MudText><b>Duration:</b> @Math.Round(FluxDetails.DurationMinutes, 1) minutes</MudText>
+                                </MudListItem>
+                            </MudList>
+                        </MudCardContent>
+                    </MudCard>
+                </MudItem>
+
+                <MudItem xs="12" md="6">
+                    <MudCard Elevation="0">
+                        <MudCardHeader>
+                            <CardHeaderContent>
+                                <MudText Typo="Typo.h6">Status</MudText>
+                            </CardHeaderContent>
+                        </MudCardHeader>
+                        <MudCardContent>
+                            <div class="d-flex flex-column align-center justify-center">
+                                @if (FluxDetails.IsCompleted)
+                                {
+                                    @if (FluxDetails.IsSuccessful)
+                                    {
+                                        <MudIcon Icon="@Icons.Material.Filled.CheckCircle"
+                                                 Color="Color.Success"
+                                                 Size="Size.Large"
+                                                 Style="font-size: 64px;" />
+                                        <MudText Typo="Typo.body1" Class="mt-2">Completed Successfully</MudText>
+                                    }
+                                    else
+                                    {
+                                        <MudIcon Icon="@Icons.Material.Filled.Error"
+                                                 Color="Color.Error"
+                                                 Size="Size.Large"
+                                                 Style="font-size: 64px;" />
+                                        <MudText Typo="Typo.body1" Class="mt-2">Failed</MudText>
+                                    }
+                                }
+                                else
+                                {
+                                    <MudIcon Icon="@Icons.Material.Filled.HourglassBottom"
+                                             Color="Color.Info"
+                                             Size="Size.Large"
+                                             Style="font-size: 64px;" />
+                                    <MudText Typo="Typo.body1" Class="mt-2">In Progress</MudText>
+                                }
+                            </div>
+                        </MudCardContent>
+                    </MudCard>
+                </MudItem>
+            </MudGrid>
+
+            <MudDivider Class="my-6" />
+
+            <MudText Typo="Typo.h6" Class="mb-4">Workflow History</MudText>
+
+            <MudTimeline TimelinePosition="TimelinePosition.Start">
+                @foreach (var item in FluxDetails.History.OrderBy(h => h.Timestamp))
+                {
+                    <MudTimelineItem Color="@GetStageColor(item.Stage)">
+                        <ItemOpposite>
+                            <MudText Typo="Typo.body2">@item.Timestamp.ToLocalTime().ToString("g")</MudText>
+                            <MudText Typo="Typo.caption">@Math.Round(item.TimeSinceStart, 1) min from start</MudText>
+                        </ItemOpposite>
+                        <ItemContent>
+                            <MudCard Elevation="0">
+                                <MudCardHeader>
+                                    <CardHeaderContent>
+                                        <MudText Typo="Typo.h6">@item.Stage</MudText>
+                                    </CardHeaderContent>
+                                </MudCardHeader>
+                                <MudCardContent>
+                                    <MudText>@item.Details</MudText>
+                                </MudCardContent>
+                            </MudCard>
+                        </ItemContent>
+                    </MudTimelineItem>
+                }
+            </MudTimeline>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+
+    [Parameter] public WorkflowDashboard.FluxDetailsDto FluxDetails { get; set; }
+
+    private void Cancel()
+    {
+        MudDialog?.Cancel();
+    }
+
+    private Color GetStageColor(string stage)
+    {
+        return stage.ToLowerInvariant() switch
+        {
+            var s when s.Contains("fail") => Color.Error,
+            var s when s.Contains("completed") => Color.Success,
+            var s when s.Contains("processing") => Color.Warning,
+            var s when s.Contains("fetching") => Color.Info,
+            var s when s.Contains("insert") => Color.Secondary,
+            var s when s.Contains("calculation") => Color.Tertiary,
+            _ => Color.Default
+        };
+    }
+}
