@@ -28,11 +28,6 @@ namespace HillMetrics.MIND.Infrastructure
             services.TryAddTransient<IAiModelPromptRepository, AiModelPromptRepository>();
             services.TryAddTransient<ILlmServiceFactory, LlmServiceFactory>();
 
-            //AiLlmConfig config = new AiLlmConfig();
-            //configuration.GetSection("AI:Models").Bind(config);
-
-            //configuration.GetSection("AI").Bind(config);
-
             services.Configure<AiLlmConfig>(configuration.GetSection("AI"));
 
             return services;

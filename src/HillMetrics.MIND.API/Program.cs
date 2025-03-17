@@ -19,6 +19,13 @@ using Microsoft.Extensions.Options;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Text.Json.Serialization;
 using HillMetrics.Python.API.SDK;
+using HillMetrics.Core.Contracts;
+using HillMetrics.Core.API.Services;
+using MediatR.Pipeline;
+using HillMetrics.Core.Mediator.Processors;
+using MediatR;
+using HillMetrics.Core.Mediator.Extensions;
+using HillMetrics.Core.Monitoring.Audits;
 
 
 namespace HillMetrics.MIND.API;
@@ -89,6 +96,10 @@ public partial class Program
         builder.Services.AddMindAiServices(builder.Configuration);
 
         builder.Services.AddPythonApiServices(builder.Configuration, "mind-api", TimeSpan.FromMinutes(2));
+
+
+        builder.Services.AddHillMetricsAuditedRequestsPreProcessors();
+        builder.Services.AddHillMetricsAuditServices(Core.AuditApplicationName.HillMetrics_Mind);
 
         var app = builder.Build();
 
