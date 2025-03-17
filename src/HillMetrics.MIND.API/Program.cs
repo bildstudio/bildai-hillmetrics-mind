@@ -39,9 +39,9 @@ public partial class Program
         // Add services to the container.
 
         //Core services
-        var logger = builder.ConfigureCommonFluxService("HillMetrics.MIND.API", typeof(Program), typeof(PriceBondHandler), _ => { });
+        var logger = builder.ConfigureCommonFluxService(Services.MindAPI, typeof(Program), typeof(PriceBondHandler), _ => { });
 
-        logger.LogInformation("Starting {applicationName}...", "HillMetrics.MIND.API");
+        logger.LogInformation("Starting {applicationName}...", Services.MindAPI);
 
         builder.Services.AddDomainServices();
 
