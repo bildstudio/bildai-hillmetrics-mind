@@ -1,0 +1,257 @@
+@page "/flux/workflow-live/{FluxId:int}"
+@using HillMetrics.Core.Monitoring.Workflow
+@using HillMetrics.MIND.API.Contracts.Responses.Flux
+@using HillMetrics.MIND.API.SDK.V1
+@inject IMindAPI MindApi
+@inject IJSRuntime JSRuntime
+@inject NavigationManager NavigationManager
+
+<div class="workflow-container">
+    <div class="d-flex align-center mb-4">
+        <MudButton Variant="Variant.Text"
+                  Color="Color.Primary"
+                  StartIcon="@Icons.Material.Filled.ArrowBack"
+                  OnClick="@(() => NavigationManager.NavigateTo("/flux/search"))">
+            Back to Search
+        </MudButton>
+    </div>
+    <div class="workflow-canvas" @ref="canvasRef">
+        @if (WorkflowDetails != null)
+        {
+            @foreach (var step in positionedSteps)
+            {
+                <div class="workflow-step @GetStepStatusClass(step.Entry)"
+                     style="left: @(step.X)px; top: @(step.Y)px; width: 200px;"
+                     @onclick="@(() => SelectStep(step.Entry))">
+                    <div class="step-header">@step.Entry.Stage</div>
+                    <div class="step-content">@step.Entry.Description</div>
+                    <div class="step-timestamp">@step.Entry.Timestamp.ToLocalTime().ToString("g")</div>
+                </div>
+            }
+
+            <svg class="workflow-connections">
+                @for (int i = 0; i < positionedSteps.Count - 1; i++)
+                {
+                    var currentStep = positionedSteps[i];
+                    var nextStep = positionedSteps[i + 1];
+
+                    var fromX = currentStep.X + 200;
+                    var fromY = currentStep.Y + 40;
+                    var toX = nextStep.X;
+                    var toY = nextStep.Y + 40;
+
+                    var controlPoint1X = fromX + 50;
+                    var controlPoint1Y = fromY;
+                    var controlPoint2X = toX - 50;
+                    var controlPoint2Y = toY;
+
+                    <path d="M @fromX,@fromY C @controlPoint1X,@controlPoint1Y @controlPoint2X,@controlPoint2Y @toX,@toY"
+                          fill="none" stroke="#888" stroke-width="2" />
+                    <circle cx="@toX" cy="@toY" r="5" fill="#888" />
+                }
+            </svg>
+        }
+        else
+        {
+            <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+        }
+    </div>
+
+    @if (SelectedStep != null)
+    {
+        <div class="step-details-panel">
+            <MudCard Elevation="0">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Step Details</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudList T="HistoryEntryDto" Dense="true">
+                        <MudListItem>
+                            <MudText><b>Stage:</b> @SelectedStep.Stage</MudText>
+                        </MudListItem>
+                        <MudListItem>
+                            <MudText><b>Description:</b> @SelectedStep.Description</MudText>
+                        </MudListItem>
+                        <MudListItem>
+                            <MudText><b>Timestamp:</b> @SelectedStep.Timestamp.ToLocalTime().ToString("g")</MudText>
+                        </MudListItem>
+                        <MudListItem>
+                            <MudText><b>Time since start:</b> @Math.Round(SelectedStep.TimeSinceStart, 1) min</MudText>
+                        </MudListItem>
+                    </MudList>
+                </MudCardContent>
+            </MudCard>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public int FluxId { get; set; }
+
+    private ElementReference canvasRef;
+    private FluxWorkflowDetailsDto? WorkflowDetails { get; set; }
+    private HistoryEntryDto? SelectedStep { get; set; }
+    private System.Threading.Timer? RefreshTimer { get; set; }
+    private List<WorkflowStepPosition> positionedSteps = new();
+
+    private class WorkflowStepPosition
+    {
+        public HistoryEntryDto Entry { get; set; }
+        public double X { get; set; }
+        public double Y { get; set; }
+
+        public WorkflowStepPosition(HistoryEntryDto entry, double x, double y)
+        {
+            Entry = entry;
+            X = x;
+            Y = y;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshData();
+
+        // Set up automatic refresh every 5 seconds
+        RefreshTimer = new System.Threading.Timer(
+            async _ => await InvokeAsync(RefreshData),
+            null,
+            TimeSpan.FromSeconds(5),
+            TimeSpan.FromSeconds(5));
+    }
+
+    private async Task RefreshData()
+    {
+        try
+        {
+            var response = await MindApi.GetFluxWorkflowDetailsAsync(FluxId);
+            WorkflowDetails = response.Data;
+
+            if (WorkflowDetails != null)
+            {
+                // Calculate positions for each step
+                var horizontalSpacing = 250;
+                var verticalSpacing = 150;
+
+                positionedSteps = WorkflowDetails.History
+                    .OrderBy(h => h.Timestamp)
+                    .Select((step, index) => new WorkflowStepPosition(
+                        step,
+                        index * horizontalSpacing,
+                        (index % 2) * verticalSpacing
+                    ))
+                    .ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            // Log error or handle it appropriately
+            Console.WriteLine($"Error refreshing workflow data: {ex.Message}");
+        }
+    }
+
+    private string GetStepStatusClass(HistoryEntryDto step)
+    {
+        return step.Stage.ToLowerInvariant() switch
+        {
+            var s when s.Contains("fail") => "status-error",
+            var s when s.Contains("completed") => "status-success",
+            var s when s.Contains("processing") => "status-warning",
+            var s when s.Contains("fetching") => "status-info",
+            var s when s.Contains("insert") => "status-secondary",
+            var s when s.Contains("calculation") => "status-tertiary",
+            _ => "status-default"
+        };
+    }
+
+    private void SelectStep(HistoryEntryDto step)
+    {
+        SelectedStep = step;
+    }
+
+    public void Dispose()
+    {
+        RefreshTimer?.Dispose();
+    }
+}
+
+<style>
+    .workflow-container {
+        position: relative;
+        width: 100%;
+        height: 600px;
+        overflow: auto;
+        background-color: #f5f5f5;
+        border-radius: 8px;
+        padding: 20px;
+    }
+
+    .workflow-canvas {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        min-height: 100%;
+    }
+
+    .workflow-step {
+        position: absolute;
+        background-color: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        padding: 12px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .workflow-step:hover {
+        transform: scale(1.02);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+
+    .step-header {
+        font-weight: bold;
+        margin-bottom: 8px;
+        color: #333;
+    }
+
+    .step-content {
+        font-size: 0.9em;
+        color: #666;
+        margin-bottom: 8px;
+    }
+
+    .step-timestamp {
+        font-size: 0.8em;
+        color: #999;
+    }
+
+    .workflow-connections {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+    }
+
+    .step-details-panel {
+        position: fixed;
+        right: 20px;
+        top: 20px;
+        width: 300px;
+        background-color: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        z-index: 1000;
+    }
+
+    .status-default { border-left: 4px solid #ccc; }
+    .status-info { border-left: 4px solid #2196F3; }
+    .status-success { border-left: 4px solid #4CAF50; }
+    .status-warning { border-left: 4px solid #FFC107; }
+    .status-error { border-left: 4px solid #F44336; }
+    .status-secondary { border-left: 4px solid #9C27B0; }
+    .status-tertiary { border-left: 4px solid #FF9800; }
+</style>

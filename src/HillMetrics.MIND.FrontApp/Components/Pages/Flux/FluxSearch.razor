@@ -14,6 +14,7 @@
 @inject IMindAPI MindApi
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
+@inject IDialogService DialogService
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
     <MudGrid>
@@ -21,10 +22,10 @@
             <MudText Typo="Typo.h4" Class="mb-4">Flux Search</MudText>
         </MudItem>
         <MudItem xs="6" Class="d-flex justify-end">
-            <MudButton Variant="Variant.Filled" 
-                      Color="Color.Secondary" 
+            <MudButton Variant="Variant.Filled"
+                      Color="Color.Secondary"
                       StartIcon="@Icons.Material.Filled.Dashboard"
-                      Href="/flux/workflow-dashboard" 
+                      Href="/flux/workflow-dashboard"
                       Class="align-self-start">
                 Workflow Dashboard
             </MudButton>
@@ -37,7 +38,7 @@
                 <MudGrid Spacing="1">
                     <!-- Flux Name -->
                     <MudItem xs="12" md="6">
-                        <SearchCriteriaComponent T="string" 
+                        <SearchCriteriaComponent T="string"
                         SearchCriteria="@nameSearchCriteria"
                         SearchCriteriaChanged="@((criteria) => nameSearchCriteria = criteria)"
                         Label="Flux Name" />
@@ -45,7 +46,7 @@
 
                     <!-- Flux ID -->
                     <MudItem xs="12" md="6">
-                        <SearchCriteriaComponent T="int" 
+                        <SearchCriteriaComponent T="int"
                         SearchCriteria="@idSearchCriteria"
                         SearchCriteriaChanged="@((criteria) => idSearchCriteria = criteria)"
                         Label="Flux ID" />
@@ -53,7 +54,7 @@
 
                     <!-- Last Fetching Date -->
                     <MudItem xs="12" md="6">
-                        <SearchCriteriaComponent T="DateTime" 
+                        <SearchCriteriaComponent T="DateTime"
                         SearchCriteria="@lastFetchingDateSearchCriteria"
                         SearchCriteriaChanged="@((criteria) => lastFetchingDateSearchCriteria = criteria)"
                         Label="Last Fetching Date" />
@@ -61,7 +62,7 @@
 
                     <!-- Last Processing Date -->
                     <MudItem xs="12" md="6">
-                        <SearchCriteriaComponent T="DateTime" 
+                        <SearchCriteriaComponent T="DateTime"
                         SearchCriteria="@lastProcessingDateSearchCriteria"
                         SearchCriteriaChanged="@((criteria) => lastProcessingDateSearchCriteria = criteria)"
                         Label="Last Processing Date" />
@@ -69,7 +70,7 @@
 
                     <!-- Fetching Error Count -->
                     <MudItem xs="12" md="6">
-                        <SearchCriteriaComponent T="int" 
+                        <SearchCriteriaComponent T="int"
                         SearchCriteria="@fetchingErrorCountSearchCriteria"
                         SearchCriteriaChanged="@((criteria) => fetchingErrorCountSearchCriteria = criteria)"
                         Label="Fetching Error Count" />
@@ -77,7 +78,7 @@
 
                     <!-- Processing Error Count -->
                     <MudItem xs="12" md="6">
-                        <SearchCriteriaComponent T="int" 
+                        <SearchCriteriaComponent T="int"
                         SearchCriteria="@processingErrorCountSearchCriteria"
                         SearchCriteriaChanged="@((criteria) => processingErrorCountSearchCriteria = criteria)"
                         Label="Processing Error Count" />
@@ -85,7 +86,7 @@
 
                     <!-- Financial Type -->
                     <MudItem xs="12" md="6">
-                        <MudSelect T="FinancialType?" @bind-Value="searchRequest.FinancialType" 
+                        <MudSelect T="FinancialType?" @bind-Value="searchRequest.FinancialType"
                         Label="Financial Type" Variant="Variant.Outlined" Dense="true" Margin="Margin.Dense">
                             <MudSelectItem Value="@((FinancialType?)null)">All</MudSelectItem>
                             @foreach (var type in Enum.GetValues<FinancialType>())
@@ -97,7 +98,7 @@
 
                     <!-- Flux Type -->
                     <MudItem xs="12" md="6">
-                        <MudSelect T="FluxType?" @bind-Value="searchRequest.FluxType" 
+                        <MudSelect T="FluxType?" @bind-Value="searchRequest.FluxType"
                         Label="Flux Type" Variant="Variant.Outlined" Dense="true" Margin="Margin.Dense">
                             <MudSelectItem Value="@((FluxType?)null)">All</MudSelectItem>
                             @foreach (var type in Enum.GetValues<FluxType>())
@@ -109,7 +110,7 @@
 
                     <!-- Flux State -->
                     <MudItem xs="12" md="6">
-                        <MudSelect T="FluxState?" @bind-Value="searchRequest.FluxState" 
+                        <MudSelect T="FluxState?" @bind-Value="searchRequest.FluxState"
                         Label="Flux State" Variant="Variant.Outlined" Dense="true" Margin="Margin.Dense">
                             <MudSelectItem Value="@((FluxState?)null)">All</MudSelectItem>
                             @foreach (var state in Enum.GetValues<FluxState>())
@@ -121,7 +122,7 @@
 
                     <!-- Last Fetching Status -->
                     <MudItem xs="12" md="6">
-                        <MudSelect T="StatusProcess?" @bind-Value="searchRequest.LastFetchingStatus" 
+                        <MudSelect T="StatusProcess?" @bind-Value="searchRequest.LastFetchingStatus"
                         Label="Last Fetching Status" Variant="Variant.Outlined" Dense="true" Margin="Margin.Dense">
                             <MudSelectItem Value="@((StatusProcess?)null)">All</MudSelectItem>
                             @foreach (var status in Enum.GetValues<StatusProcess>())
@@ -133,7 +134,7 @@
 
                     <!-- Last Processing Status -->
                     <MudItem xs="12" md="6">
-                        <MudSelect T="StatusProcess?" @bind-Value="searchRequest.LastProcessingStatus" 
+                        <MudSelect T="StatusProcess?" @bind-Value="searchRequest.LastProcessingStatus"
                         Label="Last Processing Status" Variant="Variant.Outlined" Dense="true" Margin="Margin.Dense">
                             <MudSelectItem Value="@((StatusProcess?)null)">All</MudSelectItem>
                             @foreach (var status in Enum.GetValues<StatusProcess>())
@@ -157,15 +158,15 @@
     }
     else if (fluxes != null)
     {
-        <MudTable Items="@fluxes" Hover="true" Bordered="true" Striped="true" 
+        <MudTable Items="@fluxes" Hover="true" Bordered="true" Striped="true"
         Dense="true" Filter="new Func<FluxSearchResponse, bool>(FilterFunc)"
         @bind-SelectedItem="selectedItem" T="FluxSearchResponse"
         Breakpoint="Breakpoint.Sm">
             <ToolBarContent>
                 <MudText Typo="Typo.h6" Class="ml-2">Flux List</MudText>
                 <MudSpacer />
-                <MudTextField @bind-Value="searchString" Placeholder="Search" Adornment="Adornment.Start" 
-                AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" 
+                <MudTextField @bind-Value="searchString" Placeholder="Search" Adornment="Adornment.Start"
+                AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium"
                 Class="mt-0 mb-3" Margin="Margin.Dense" Dense="true"></MudTextField>
             </ToolBarContent>
             <HeaderContent>
@@ -211,19 +212,21 @@
                 <MudTd DataLabel="Workflow">
                     @if (activeWorkflows.TryGetValue(context.FluxId, out var workflow))
                     {
-                        <MudTooltip Text="@workflow.Details">
-                            <div class="d-flex align-center">
-                                <MudProgressLinear Color="Color.Info" Value="@workflow.ProgressPercentage" Class="flex-grow-1 mr-2" Style="height: 10px;">
-                                    @workflow.ProgressPercentage%
-                                </MudProgressLinear>
-                                <MudChip T="Color" Color="Color.Info" Size="Size.Small">@workflow.Stage</MudChip>
-                            </div>
-                        </MudTooltip>
+                        <div class="d-flex align-center">
+                            <MudProgressCircular Color="Color.Info"
+                                               Indeterminate="true"
+                                               Size="Size.Small"
+                                               Class="mr-2" />
+                            <MudChip T="Color" Color="Color.Info" Size="Size.Small">@workflow.Stage</MudChip>
+                        </div>
                     }
-                    else
-                    {
-                        <span>-</span>
-                    }
+                    <MudButton Variant="Variant.Text"
+                              Color="Color.Primary"
+                              Href="@($"/flux/workflow-live/{context.FluxId}")"
+                              StartIcon="@Icons.Material.Filled.Timeline"
+                              Class="ml-2">
+                        View Workflow
+                    </MudButton>
                 </MudTd>
                 <MudTd DataLabel="Last Fetching">
                     @if (context.LastFetching.HasValue)
@@ -241,7 +244,7 @@
                     @if (context.LastFetchingStatus.HasValue)
                     {
                         <MudTooltip Text="@context.LastFetchingStatus.Value.ToString()">
-                            <MudIcon Icon="@GetStatusIcon(context.LastFetchingStatus.Value)" 
+                            <MudIcon Icon="@GetStatusIcon(context.LastFetchingStatus.Value)"
                             Color="@GetStatusColor(context.LastFetchingStatus.Value)" />
                         </MudTooltip>
                     }
@@ -276,7 +279,7 @@
                     @if (context.LastProcessingStatus.HasValue)
                     {
                         <MudTooltip Text="@context.LastProcessingStatus.Value.ToString()">
-                            <MudIcon Icon="@GetStatusIcon(context.LastProcessingStatus.Value)" 
+                            <MudIcon Icon="@GetStatusIcon(context.LastProcessingStatus.Value)"
                             Color="@GetStatusColor(context.LastProcessingStatus.Value)" />
                         </MudTooltip>
                     }
@@ -308,6 +311,9 @@
                         </MudMenuItem>
                         <MudMenuItem OnClick="@(() => ForceProcess(context.FluxId))">
                             <MudIcon Icon="@Icons.Material.Filled.PlayArrow" Class="mr-2" Size="Size.Small" /> Force Process
+                        </MudMenuItem>
+                        <MudMenuItem OnClick="@(() => OpenForcePriceProcessing(context.FluxId))">
+                            <MudIcon Icon="@Icons.Material.Filled.AttachMoney" Class="mr-2" Size="Size.Small" /> Force Price Processing
                         </MudMenuItem>
                     </MudMenu>
                 </MudTd>
@@ -346,7 +352,8 @@
     // Added for workflow
     private Dictionary<int, ActiveWorkflowInfo> activeWorkflows = new();
     private System.Threading.Timer workflowRefreshTimer;
-    
+    private IDialogReference dialog;
+
     // Classe for workflow info
     private class ActiveWorkflowInfo
     {
@@ -360,16 +367,16 @@
         await LoadSourcesAsync();
         await LoadActiveWorkflows();
         await Search();
-        
+
         // Configure a timer to refresh workflows every 10 seconds
         workflowRefreshTimer = new System.Threading.Timer(
-            async _ => await InvokeAsync(async () => 
+            async _ => await InvokeAsync(async () =>
             {
                 await LoadActiveWorkflows();
                 StateHasChanged();
             }),
-            null, 
-            TimeSpan.FromSeconds(10), 
+            null,
+            TimeSpan.FromSeconds(10),
             TimeSpan.FromSeconds(10));
     }
 
@@ -484,13 +491,29 @@
             loading = false;
         }
     }
-    
+
+    private async Task OpenForcePriceProcessing(int fluxId)
+    {
+        var parameters = new DialogParameters
+        {
+            { "FluxId", fluxId }
+        };
+
+        dialog = await DialogService.ShowAsync<ForceFinancialPriceProcessing>("Force Price Processing", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await Search();
+        }
+    }
+
     // Helper methods for icons and colors
     private string FormatDateTime(DateTime dateTime)
     {
         var now = DateTime.Now;
         var diff = now - dateTime;
-        
+
         if (diff.TotalMinutes < 1)
             return "Just now";
         if (diff.TotalHours < 1)
@@ -499,10 +522,10 @@
             return $"{(int)diff.TotalHours}h ago";
         if (diff.TotalDays < 7)
             return $"{(int)diff.TotalDays}d ago";
-            
+
         return dateTime.ToString("MMM dd, HH:mm");
     }
-    
+
     // Get appropriate color for status process
     private Color GetStatusColor(StatusProcess status)
     {
@@ -516,7 +539,7 @@
             _ => Color.Default
         };
     }
-    
+
     // Get appropriate icon for status process
     private string GetStatusIcon(StatusProcess status)
     {
@@ -530,7 +553,7 @@
             _ => Icons.Material.Filled.Help
         };
     }
-    
+
     // Get appropriate color for flux type
     private Color GetFluxTypeColor(FluxType type)
     {
@@ -544,7 +567,7 @@
             _ => Color.Default
         };
     }
-    
+
     // Get appropriate color for financial type
     private Color GetFinancialTypeColor(FinancialType type)
     {
@@ -553,7 +576,7 @@
             _ => Color.Default
         };
     }
-    
+
     // Get appropriate color for flux state
     private Color GetFluxStateColor(FluxState state)
     {
@@ -566,14 +589,14 @@
             _ => Color.Default
         };
     }
-    
+
     // Filter function for MudTable
     private bool FilterFunc(FluxSearchResponse flux)
     {
         if (string.IsNullOrWhiteSpace(searchString))
             return true;
-            
-        return 
+
+        return
             flux.Name.Contains(searchString, StringComparison.OrdinalIgnoreCase) ||
             flux.FluxId.ToString().Contains(searchString) ||
             flux.FluxType.ToString().Contains(searchString, StringComparison.OrdinalIgnoreCase) ||
@@ -610,4 +633,4 @@
     {
         workflowRefreshTimer?.Dispose();
     }
-} 
+}

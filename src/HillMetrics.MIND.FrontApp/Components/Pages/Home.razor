@@ -6,7 +6,7 @@
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
     <MudText Typo="Typo.h4" Class="mb-4">Dashboard</MudText>
-    
+
     <MudGrid>
         <!-- Statistiques rapides -->
         <MudItem xs="12" sm="6" md="3">
@@ -18,7 +18,7 @@
                 </MudStack>
             </MudPaper>
         </MudItem>
-        
+
         <MudItem xs="12" sm="6" md="3">
             <MudPaper Elevation="2" Class="pa-4" Style="height: 100%;">
                 <MudStack>
@@ -28,7 +28,7 @@
                 </MudStack>
             </MudPaper>
         </MudItem>
-        
+
         <MudItem xs="12" sm="6" md="3">
             <MudPaper Elevation="2" Class="pa-4" Style="height: 100%;">
                 <MudStack>
@@ -38,7 +38,7 @@
                 </MudStack>
             </MudPaper>
         </MudItem>
-        
+
         <MudItem xs="12" sm="6" md="3">
             <MudPaper Elevation="2" Class="pa-4" Style="height: 100%;">
                 <MudStack>
@@ -48,7 +48,7 @@
                 </MudStack>
             </MudPaper>
         </MudItem>
-        
+
         <!-- Accès rapides -->
         <MudItem xs="12" md="6">
             <MudCard Elevation="2">
@@ -63,37 +63,37 @@
                 <MudCardContent>
                     <MudGrid>
                         <MudItem xs="6">
-                            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Search" 
+                            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Search"
                                       FullWidth="true" Color="Color.Primary" OnClick="@(() => NavigationManager.NavigateTo("/flux/search"))">
                                 Rechercher un flux
                             </MudButton>
                         </MudItem>
                         <MudItem xs="6">
-                            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Add" 
+                            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Add"
                                       FullWidth="true" Color="Color.Primary" OnClick="@(() => NavigationManager.NavigateTo("/flux/create"))">
                                 Créer un flux
                             </MudButton>
                         </MudItem>
                         <MudItem xs="6">
-                            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.CloudDownload" 
+                            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.CloudDownload"
                                       FullWidth="true" Color="Color.Secondary" OnClick="@(() => NavigationManager.NavigateTo("/flux/fetching-history"))">
                                 Historique de fetchings
                             </MudButton>
                         </MudItem>
                         <MudItem xs="6">
-                            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.PlayCircle" 
+                            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.PlayCircle"
                                       FullWidth="true" Color="Color.Secondary" OnClick="@(() => NavigationManager.NavigateTo("/flux/processing-history"))">
                                 Historique de processings
                             </MudButton>
                         </MudItem>
                         <MudItem xs="6">
-                            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Error" 
+                            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Error"
                                       FullWidth="true" Color="Color.Error" OnClick="@(() => NavigationManager.NavigateTo("/flux/errors"))">
                                 Erreurs
                             </MudButton>
                         </MudItem>
                         <MudItem xs="6">
-                            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Settings" 
+                            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Settings"
                                       FullWidth="true" Color="Color.Default" OnClick="@(() => NavigationManager.NavigateTo("/settings"))">
                                 Paramètres
                             </MudButton>
@@ -102,7 +102,7 @@
                 </MudCardContent>
             </MudCard>
         </MudItem>
-        
+
         <!-- Dernières activités -->
         <MudItem xs="12" md="6">
             <MudCard Elevation="2">
@@ -142,7 +142,7 @@
                 </MudCardContent>
             </MudCard>
         </MudItem>
-        
+
         <!-- État du système -->
         <MudItem xs="12">
             <MudCard Elevation="2">
@@ -158,19 +158,19 @@
                             <MudChip T="Color" Color="Color.Success" Size="Size.Small" Class="my-2">Online</MudChip>
                             <MudText Typo="Typo.caption">Dernière vérification: @DateTime.Now.ToString("HH:mm:ss")</MudText>
                         </MudItem>
-                        
+
                         <MudItem xs="12" md="3">
                             <MudText Typo="Typo.subtitle2">Service de Fetching</MudText>
                             <MudChip T="Color" Color="Color.Success" Size="Size.Small" Class="my-2">Running</MudChip>
                             <MudText Typo="Typo.caption">Tâches en cours: 2</MudText>
                         </MudItem>
-                        
+
                         <MudItem xs="12" md="3">
                             <MudText Typo="Typo.subtitle2">Service de Processing</MudText>
                             <MudChip T="Color" Color="Color.Success" Size="Size.Small" Class="my-2">Running</MudChip>
                             <MudText Typo="Typo.caption">Tâches en cours: 1</MudText>
                         </MudItem>
-                        
+
                         <MudItem xs="12" md="3">
                             <MudText Typo="Typo.subtitle2">Base de données</MudText>
                             <MudChip T="Color" Color="Color.Success" Size="Size.Small" Class="my-2">Connected</MudChip>
@@ -189,7 +189,7 @@
     private int _todayFetchings = 156;
     private int _todayProcessings = 98;
     private int _activeErrors = 3;
-    
+
     // Activités simulées
     private List<ActivityData> _activities = new List<ActivityData>
     {
@@ -200,7 +200,7 @@
         new ActivityData { Description = "Flux 'Legacy Import' supprimé", Time = DateTime.Now.AddDays(-1), Icon = Icons.Material.Filled.Delete, Color = Color.Warning },
         new ActivityData { Description = "Mise à jour des paramètres système", Time = DateTime.Now.AddDays(-1), Icon = Icons.Material.Filled.Settings, Color = Color.Info }
     };
-    
+
     protected override async Task OnInitializedAsync()
     {
         // Dans une application réelle, vous chargeriez ici les données depuis vos services
@@ -209,7 +209,7 @@
         // _totalFlux = fluxStats.Data.TotalFlux;
         // etc.
     }
-    
+
     // Classe pour représenter une activité
     private class ActivityData
     {
