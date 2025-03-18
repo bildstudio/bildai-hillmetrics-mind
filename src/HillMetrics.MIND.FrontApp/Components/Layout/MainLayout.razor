@@ -14,11 +14,11 @@
         <MudIconButton Icon="@Icons.Material.Filled.Notifications" Color="Color.Inherit" Edge="Edge.End" />
         <MudIconButton Icon="@Icons.Material.Filled.Person" Color="Color.Inherit" Edge="Edge.End" />
     </MudAppBar>
-    
+
     <MudDrawer @bind-Open="_drawerOpen" Elevation="2" ClipMode="DrawerClipMode.Always">
         <NavMenu />
     </MudDrawer>
-    
+
     <MudMainContent>
         <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-4">
             @Body
@@ -33,7 +33,7 @@
 
 @code {
     private bool _drawerOpen = true;
-    
+
     private MudTheme myCustomTheme = new MudTheme()
     {
         PaletteLight = new PaletteLight()
@@ -73,7 +73,7 @@
             DrawerWidthRight = "300px"
         }
     };
-    
+
     void DrawerToggle()
     {
         _drawerOpen = !_drawerOpen;
