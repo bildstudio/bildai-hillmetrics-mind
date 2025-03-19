@@ -113,6 +113,8 @@ spec:
       objectName: keycloak-azure-provideralias
     - key: OTEL_EXPORTER_OTLP_ENDPOINT
       objectName: otel-exporter-otlp-endpoint
+    - key: Services__PythonApi
+      objectName: services-pythonapi
     secretName: mindapi-env
     type: Opaque
   parameters:
@@ -162,5 +164,8 @@ spec:
           objectType: secret
         - |
           objectName: otel-exporter-otlp-endpoint
+          objectType: secret
+        - |
+          objectName: services-pythonapi
           objectType: secret
     tenantId: 47650b84-ae6e-4206-82af-ebe7b3243aa2
