@@ -111,6 +111,8 @@ spec:
       objectName: keycloak-azure-postlogoutredirecturl
     - key: Keycloak__Azure__ProviderAlias
       objectName: keycloak-azure-provideralias
+    - key: OTEL_EXPORTER_OTLP_ENDPOINT
+      objectName: otel-exporter-otlp-endpoint
     secretName: mindapi-env
     type: Opaque
   parameters:
@@ -157,5 +159,8 @@ spec:
           objectType: secret
         - |
           objectName: keycloak-azure-provideralias
+          objectType: secret
+        - |
+          objectName: otel-exporter-otlp-endpoint
           objectType: secret
     tenantId: 47650b84-ae6e-4206-82af-ebe7b3243aa2

@@ -89,6 +89,8 @@ spec:
       objectName: services-mindapi
     - key: ASPNETCORE_ENVIRONMENT
       objectName: aspnetcore-environment
+    - key: OTEL_EXPORTER_OTLP_ENDPOINT
+      objectName: otel-exporter-otlp-endpoint
     secretName: mindfront-env
     type: Opaque
   parameters:
@@ -102,5 +104,8 @@ spec:
           objectType: secret
         - |
           objectName: aspnetcore-environment
+          objectType: secret
+        - |
+          objectName: otel-exporter-otlp-endpoint
           objectType: secret
     tenantId: 47650b84-ae6e-4206-82af-ebe7b3243aa2
