@@ -55,9 +55,9 @@ namespace HillMetrics.MIND.FrontApp.Services
             return await PostAsync<PagedApiResponseBase<FluxProcessingSearchReponse>, FluxProcessingSearchRequest>("api/flux/processing/search", request);
         }
 
-        public async Task<PagedApiResponseBase<FluxErrorSearchDto>?> SearchErrorsAsync(FluxErrorSearchRequest request)
+        public async Task<PagedApiResponseBase<FluxErrorSearchResponse>?> SearchErrorsAsync(FluxErrorSearchRequest request)
         {
-            return await PostAsync<PagedApiResponseBase<FluxErrorSearchDto>, FluxErrorSearchRequest>("api/flux/errors/search", request);
+            return await PostAsync<PagedApiResponseBase<FluxErrorSearchResponse>, FluxErrorSearchRequest>("api/flux/errors/search", request);
         }
 
         public async Task<FluxFetchingResponse?> GetFetchingHistoryAsync(int id)
@@ -75,9 +75,9 @@ namespace HillMetrics.MIND.FrontApp.Services
             return await PostAsync<PagedApiResponseBase<FluxFetchingSearchResponse>, FluxFetchingSearchRequest>("api/flux/fetching/search", request);
         }
 
-        public async Task<PagedApiResponseBase<FluxErrorSearchDto>> SearchErrorAsync(FluxErrorSearchRequest request)
+        public async Task<PagedApiResponseBase<FluxErrorSearchResponse>> SearchErrorAsync(FluxErrorSearchRequest request)
         {
-            return await PostAsync<PagedApiResponseBase<FluxErrorSearchDto>, FluxErrorSearchRequest>("api/flux/errors/search", request);
+            return await PostAsync<PagedApiResponseBase<FluxErrorSearchResponse>, FluxErrorSearchRequest>("api/flux/errors/search", request);
         }
 
         public async Task<ApiResponseBase<FluxErrorResponse>> GetErrorAsync(int errorId)

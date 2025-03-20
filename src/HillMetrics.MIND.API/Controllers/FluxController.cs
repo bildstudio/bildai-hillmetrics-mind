@@ -19,6 +19,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using HillMetrics.Core.Messaging.Bus;
 using HillMetrics.Core.Workflow;
+using System.Text.Json;
+using HillMetrics.Normalized.Domain.Contracts.Providing.Flux.Cqrs;
 
 namespace HillMetrics.MIND.API.Controllers
 {
@@ -49,14 +51,17 @@ namespace HillMetrics.MIND.API.Controllers
         /// <param name="id">The flux identifier</param>
         /// <returns></returns>
         [HttpGet("{id}")]
-        public async Task<ActionResult<FluxResponse>> GetAsync(int id)
+        public async Task<ActionResult<FluxResponseWrapper>> GetFluxAsync(int id)
         {
             var result = await Mediator.Send(new FluxQuery() { FluxId = id });
-
+            
             if (result.IsFailed)
                 return new ErrorApiActionResult(result.Errors.ToApiResult());
 
-            return mapper.Map<FluxResponse>(result.Value.Flux);
+            // Create a concrete wrapper for the response
+            var wrapper = new FluxResponseWrapper(mapper.Map<FluxResponse>(result.Value.Flux));
+
+            return wrapper;
         }
 
         /// <summary>
@@ -406,6 +411,32 @@ namespace HillMetrics.MIND.API.Controllers
 
             return new ApiResponseBase<FluxFetchingResponse>(mapper.Map<FluxFetchingResponse>(result.Value));
         }
+
+        /// <summary>
+        /// Delete a specific fetching history if it doesn't have any content with Success status
+        /// </summary>
+        /// <param name="fetchingHistoryId">The fetching history identifier to delete</param>
+        /// <returns>True if deleted successfully, error details if it failed</returns>
+        [HttpDelete("fetching-history/{fetchingHistoryId}")]
+        public async Task<ActionResult<ApiResponseBase<bool>>> DeleteFetchingHistoryAsync(int fetchingHistoryId)
+        {
+            try
+            {
+                var result = await Mediator.Send(new DeleteFluxHistoryCommand(fetchingHistoryId));
+
+                if (result.IsFailed)
+                    return new ErrorApiActionResult(result.Errors.ToApiResult());
+
+                return new ApiResponseBase<bool>(true);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error deleting fetching history: {FetchingHistoryId}", fetchingHistoryId);
+                return new ErrorApiActionResult(new ErrorApiResponse(
+                    new Core.API.Exceptions.ApiException($"Error deleting fetching history: {ex.Message}"), 
+                    System.Net.HttpStatusCode.InternalServerError));
+            }
+        }
         #endregion
 
         #region Processing
@@ -462,14 +493,14 @@ namespace HillMetrics.MIND.API.Controllers
         /// <param name="request">The search criterias</param>
         /// <returns>The flux errors history that matched the requests filters</returns>
         [HttpGet("errors/search")]
-        public async Task<ActionResult<PagedApiResponseBase<FluxErrorSearchDto>>> SearchFluxErrorsAsync([FromQuery] FluxErrorSearchRequest request)
+        public async Task<ActionResult<PagedApiResponseBase<FluxErrorSearchResponse>>> SearchFluxErrorsAsync([FromQuery] FluxErrorSearchRequest request)
         {
             var result = await Mediator.Send(mapper.Map<SearchFluxErrorQuery>(request));
 
             if (result.IsFailed)
                 return new ErrorApiActionResult(result.Errors.ToApiResult());
 
-            return new PagedApiResponseBase<FluxErrorSearchDto>(mapper.Map<List<FluxErrorSearchDto>>(result.Value.Results), result.Value.NbTotalRows);
+            return new PagedApiResponseBase<FluxErrorSearchResponse>(mapper.Map<List<FluxErrorSearchResponse>>(result.Value.Results), result.Value.NbTotalRows);
         }
 
         /// <summary>

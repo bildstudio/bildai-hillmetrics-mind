@@ -12,24 +12,39 @@ public class FluxMetadataDtoJsonConverter : JsonConverter<FluxMetadataDto>
         {
             var root = jsonDocument.RootElement;
 
-            // Lire le champ discriminant "type"
-            var typeProperty = root.GetProperty("type").GetString();
-            if (typeProperty == null)
+            // Read the discriminator field "type"
+            if (!root.TryGetProperty("type", out var typeProperty))
                 throw new JsonException("The 'type' property is required for polymorphic deserialization.");
 
-            return typeProperty switch
+            var typeValue = typeProperty.GetString();
+            if (typeValue == null)
+                throw new JsonException("The 'type' property value is null or invalid.");
+
+            return typeValue switch
             {
                 nameof(FluxMetadataMailDto) => JsonSerializer.Deserialize<FluxMetadataMailDto>(root.GetRawText(), options),
                 nameof(FluxMetadataDownloadDto) => JsonSerializer.Deserialize<FluxMetadataDownloadDto>(root.GetRawText(), options),
                 nameof(FluxMetadataApiDto) => JsonSerializer.Deserialize<FluxMetadataApiDto>(root.GetRawText(), options),
                 nameof(FluxMetadataFileLocationDto) => JsonSerializer.Deserialize<FluxMetadataFileLocationDto>(root.GetRawText(), options),
-                _ => throw new JsonException($"Unknown type: {typeProperty}")
+                _ => throw new JsonException($"Unknown flux metadata type: {typeValue}")
             };
         }
     }
 
     public override void Write(Utf8JsonWriter writer, FluxMetadataDto value, JsonSerializerOptions options)
     {
-        JsonSerializer.Serialize(writer, (object)value, value.GetType(), options);
+        // Make sure we include the type discriminator
+        var actualType = value.GetType();
+        var tempOptions = new JsonSerializerOptions(options);
+        
+        // Create a copy without this converter to avoid infinite recursion
+        tempOptions.Converters.Clear();
+        foreach (var converter in options.Converters)
+        {
+            if (converter is not FluxMetadataDtoJsonConverter)
+                tempOptions.Converters.Add(converter);
+        }
+        
+        JsonSerializer.Serialize(writer, (object)value, actualType, tempOptions);
     }
 }

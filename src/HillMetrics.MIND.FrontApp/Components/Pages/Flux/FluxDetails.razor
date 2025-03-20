@@ -288,190 +288,203 @@
                 </MudCard>
 
                 <!-- Flux-specific Metadata -->
-                @if (flux.FluxMetadata != null)
+                @if (flux.EmailMetadata != null && flux.FluxType == FluxType.Email)
                 {
-                    @* <MudCard Elevation="3" Class="mb-4">
+                    <MudCard Elevation="3" Class="mb-4">
                         <MudCardHeader>
                             <CardHeaderContent>
-                                <MudText Typo="Typo.h6">Flux Configuration</MudText>
+                                <MudText Typo="Typo.h6">Email Configuration</MudText>
                             </CardHeaderContent>
                             <CardHeaderActions>
-                                <MudIcon Icon="@GetFluxTypeIcon(flux.FluxType)" Color="Color.Primary" />
+                                <MudIcon Icon="@Icons.Material.Filled.Email" Color="Color.Primary" />
                             </CardHeaderActions>
                         </MudCardHeader>
                         <MudCardContent>
-                            @switch (flux.FluxType)
-                            {
-                                case FluxType.Email:
-                                    @if (flux.FluxMetadata.Mail != null)
-                                    {
-                                        <MudText Typo="Typo.subtitle1">Email Configuration</MudText>
-                                        <MudText Typo="Typo.body2">
-                                            Content Location: @flux.FluxMetadata.Mail.ContentLocation
-                                        </MudText>
-                                        
-                                        @if (flux.FluxMetadata.Mail.FluxRuleSettings != null)
-                                        {
-                                            <MudDivider Class="my-3" />
-                                            <MudText Typo="Typo.subtitle2">Email Rules</MudText>
-                                            <MudText Typo="Typo.body2">
-                                                From: @(string.IsNullOrEmpty(flux.FluxMetadata.Mail.FluxRuleSettings.From) ? "-" : flux.FluxMetadata.Mail.FluxRuleSettings.From)
-                                            </MudText>
-                                            <MudText Typo="Typo.body2">
-                                                Subject: @(string.IsNullOrEmpty(flux.FluxMetadata.Mail.FluxRuleSettings.Subject) ? "-" : flux.FluxMetadata.Mail.FluxRuleSettings.Subject)
-                                            </MudText>
-                                            <MudText Typo="Typo.body2">
-                                                Body Contains: @(string.IsNullOrEmpty(flux.FluxMetadata.Mail.FluxRuleSettings.BodyContains) ? "-" : flux.FluxMetadata.Mail.FluxRuleSettings.BodyContains)
-                                            </MudText>
-                                        }
-                                        
-                                        @if (flux.FluxMetadata.Mail.FluxAttachmentRule != null && flux.FluxMetadata.Mail.ContentLocation == FluxMailContentLocation.Attachment)
-                                        {
-                                            <MudDivider Class="my-3" />
-                                            <MudText Typo="Typo.subtitle2">Attachment Rules</MudText>
-                                            <MudText Typo="Typo.body2">
-                                                File Name Pattern: @(string.IsNullOrEmpty(flux.FluxMetadata.Mail.FluxAttachmentRule.FileName) ? "-" : flux.FluxMetadata.Mail.FluxAttachmentRule.FileName)
-                                            </MudText>
-                                            <MudText Typo="Typo.body2">
-                                                Extension: @(string.IsNullOrEmpty(flux.FluxMetadata.Mail.FluxAttachmentRule.Extension) ? "-" : flux.FluxMetadata.Mail.FluxAttachmentRule.Extension)
-                                            </MudText>
-                                        }
-                                    }
-                                    break;
+                            <MudGrid>
+                                <MudItem xs="12">
+                                    <MudField Label="Content Location" Variant="Variant.Outlined">
+                                        @flux.EmailMetadata.ContentLocation
+                                    </MudField>
+                                </MudItem>
                                 
-                                case FluxType.FileLocation:
-                                    @if (flux.FluxMetadata.FileLocation != null)
-                                    {
-                                        <MudText Typo="Typo.subtitle1">SFTP Configuration</MudText>
-                                        
-                                        @if (flux.FluxMetadata.FileLocation.Metadata != null && flux.FluxMetadata.FileLocation.Metadata.Count > 0)
-                                        {
-                                            <MudGrid>
-                                                @if (flux.FluxMetadata.FileLocation.Metadata.TryGetValue("Host", out var host))
-                                                {
-                                                    <MudItem xs="12" md="6">
-                                                        <MudField Label="Host" Variant="Variant.Outlined">@host</MudField>
-                                                    </MudItem>
-                                                }
-                                                
-                                                @if (flux.FluxMetadata.FileLocation.Metadata.TryGetValue("Port", out var port))
-                                                {
-                                                    <MudItem xs="12" md="6">
-                                                        <MudField Label="Port" Variant="Variant.Outlined">@port</MudField>
-                                                    </MudItem>
-                                                }
-                                                
-                                                @if (flux.FluxMetadata.FileLocation.Metadata.TryGetValue("Username", out var username))
-                                                {
-                                                    <MudItem xs="12" md="6">
-                                                        <MudField Label="Username" Variant="Variant.Outlined">@username</MudField>
-                                                    </MudItem>
-                                                }
-                                                
-                                                @if (flux.FluxMetadata.FileLocation.Metadata.TryGetValue("RemoteDirectory", out var remoteDir))
-                                                {
-                                                    <MudItem xs="12" md="6">
-                                                        <MudField Label="Remote Directory" Variant="Variant.Outlined">@remoteDir</MudField>
-                                                    </MudItem>
-                                                }
-                                                
-                                                @if (flux.FluxMetadata.FileLocation.Metadata.TryGetValue("FilePattern", out var filePattern))
-                                                {
-                                                    <MudItem xs="12" md="6">
-                                                        <MudField Label="File Pattern" Variant="Variant.Outlined">@filePattern</MudField>
-                                                    </MudItem>
-                                                }
-                                                
-                                                @if (flux.FluxMetadata.FileLocation.Metadata.TryGetValue("Protocol", out var protocol))
-                                                {
-                                                    <MudItem xs="12" md="6">
-                                                        <MudField Label="Protocol" Variant="Variant.Outlined">@protocol</MudField>
-                                                    </MudItem>
-                                                }
-                                            </MudGrid>
-                                            
-                                            @if (flux.FluxMetadata.FileLocation.FluxRuleSettings != null)
-                                            {
-                                                <MudDivider Class="my-3" />
-                                                <MudText Typo="Typo.subtitle2">File Rules</MudText>
-                                                <!-- Add file rules display here -->
-                                            }
-                                        }
-                                    }
-                                    break;
+                                @* @if (flux.EmailMetadata.FluxRuleSettings != null)
+                                {
+                                    <MudItem xs="12">
+                                        <MudField Label="From" Variant="Variant.Outlined">
+                                            @flux.EmailMetadata.FluxRuleSettings.From
+                                        </MudField>
+                                    </MudItem>
+                                    <MudItem xs="12">
+                                        <MudField Label="Subject" Variant="Variant.Outlined">
+                                            @flux.EmailMetadata.FluxRuleSettings.Subject
+                                        </MudField>
+                                    </MudItem>
+                                    <MudItem xs="12">
+                                        <MudField Label="Body Contains" Variant="Variant.Outlined">
+                                            @flux.EmailMetadata.FluxRuleSettings.BodyContains
+                                        </MudField>
+                                    </MudItem>
+                                }
                                 
-                                case FluxType.ApiPull:
-                                case FluxType.ApiPush:
-                                    @if (flux.FluxMetadata.Api != null)
-                                    {
-                                        <MudText Typo="Typo.subtitle1">API Configuration</MudText>
-                                        <MudGrid>
-                                            <MudItem xs="12">
-                                                <MudField Label="Endpoint" Variant="Variant.Outlined">@flux.FluxMetadata.Api.Endpoint</MudField>
-                                            </MudItem>
-                                            
-                                            @if (!string.IsNullOrEmpty(flux.FluxMetadata.Api.ApiKey))
-                                            {
-                                                <MudItem xs="12">
-                                                    <MudField Label="API Key" Variant="Variant.Outlined">
-                                                        <MudText Style="word-break: break-all;">@flux.FluxMetadata.Api.ApiKey</MudText>
-                                                    </MudField>
-                                                </MudItem>
-                                            }
-                                            
-                                            @if (flux.FluxMetadata.Api.Metadata != null && flux.FluxMetadata.Api.Metadata.Count > 0)
-                                            {
-                                                @if (flux.FluxMetadata.Api.Metadata.TryGetValue("ContentType", out var contentType))
-                                                {
-                                                    <MudItem xs="12" md="6">
-                                                        <MudField Label="Content Type" Variant="Variant.Outlined">@contentType</MudField>
-                                                    </MudItem>
-                                                }
-                                                
-                                                @if (flux.FluxMetadata.Api.Metadata.TryGetValue("Method", out var method))
-                                                {
-                                                    <MudItem xs="12" md="6">
-                                                        <MudField Label="HTTP Method" Variant="Variant.Outlined">@method</MudField>
-                                                    </MudItem>
-                                                }
-                                                
-                                                @if (flux.FluxMetadata.Api.Metadata.TryGetValue("RequiresAuthentication", out var requiresAuth) && 
-                                                    requiresAuth.ToString().ToLower() == "true")
-                                                {
-                                                    <MudItem xs="12">
-                                                        <MudField Label="Authentication" Variant="Variant.Outlined">Required</MudField>
-                                                    </MudItem>
-                                                    
-                                                    @if (flux.FluxMetadata.Api.Metadata.TryGetValue("Username", out var apiUsername))
-                                                    {
-                                                        <MudItem xs="12" md="6">
-                                                            <MudField Label="Username" Variant="Variant.Outlined">@apiUsername</MudField>
-                                                        </MudItem>
-                                                    }
-                                                }
-                                            }
-                                        </MudGrid>
-                                    }
-                                    break;
-                                
-                                case FluxType.Download:
-                                    @if (flux.FluxMetadata.Download != null)
-                                    {
-                                        <MudText Typo="Typo.subtitle1">Download Configuration</MudText>
-                                        <MudGrid>
-                                            <MudItem xs="12">
-                                                <MudField Label="Download URL" Variant="Variant.Outlined">@flux.FluxMetadata.Download.DownloadUrl</MudField>
-                                            </MudItem>
-                                            
-                                            <MudItem xs="6">
-                                                <MudField Label="Content Type" Variant="Variant.Outlined">@flux.FluxMetadata.Download.ContentType</MudField>
-                                            </MudItem>
-                                        </MudGrid>
-                                    }
-                                    break;
-                            }
+                                @if (flux.EmailMetadata.FluxAttachmentRule != null && flux.EmailMetadata.ContentLocation == FluxMailContentLocation.Attachment)
+                                {
+                                    <MudItem xs="12">
+                                        <MudField Label="File Name Pattern" Variant="Variant.Outlined">
+                                            @flux.EmailMetadata.FluxAttachmentRule.FileName
+                                        </MudField>
+                                    </MudItem>
+                                    <MudItem xs="12">
+                                        <MudField Label="Extension" Variant="Variant.Outlined">
+                                            @flux.EmailMetadata.FluxAttachmentRule.Extension
+                                        </MudField>
+                                    </MudItem>
+                                } *@
+                            </MudGrid>
                         </MudCardContent>
-                    </MudCard> *@
+                    </MudCard>
+                }
+                @if (flux.FileLocationMetadata != null && flux.FluxType == FluxType.Sftp)
+                {
+                    <MudCard Elevation="3" Class="mb-4">
+                        <MudCardHeader>
+                            <CardHeaderContent>
+                                <MudText Typo="Typo.h6">SFTP Configuration</MudText>
+                            </CardHeaderContent>
+                            <CardHeaderActions>
+                                <MudIcon Icon="@Icons.Material.Filled.Folder" Color="Color.Primary" />
+                            </CardHeaderActions>
+                        </MudCardHeader>
+                        <MudCardContent>
+                            <MudGrid>
+                                @if (flux.FileLocationMetadata.Metadata.TryGetValue("Host", out var host))
+                                {
+                                    <MudItem xs="12" md="6">
+                                        <MudField Label="Host" Variant="Variant.Outlined">@host</MudField>
+                                    </MudItem>
+                                }
+                                
+                                @if (flux.FileLocationMetadata.Metadata.TryGetValue("Port", out var port))
+                                {
+                                    <MudItem xs="12" md="6">
+                                        <MudField Label="Port" Variant="Variant.Outlined">@port</MudField>
+                                    </MudItem>
+                                }
+                                
+                                @if (flux.FileLocationMetadata.Metadata.TryGetValue("Username", out var username))
+                                {
+                                    <MudItem xs="12" md="6">
+                                        <MudField Label="Username" Variant="Variant.Outlined">@username</MudField>
+                                    </MudItem>
+                                }
+                                
+                                @if (flux.FileLocationMetadata.Metadata.TryGetValue("RemoteDirectory", out var remoteDir))
+                                {
+                                    <MudItem xs="12" md="6">
+                                        <MudField Label="Remote Directory" Variant="Variant.Outlined">@remoteDir</MudField>
+                                    </MudItem>
+                                }
+                                
+                                @if (flux.FileLocationMetadata.Metadata.TryGetValue("FilePattern", out var filePattern))
+                                {
+                                    <MudItem xs="12" md="6">
+                                        <MudField Label="File Pattern" Variant="Variant.Outlined">@filePattern</MudField>
+                                    </MudItem>
+                                }
+                                
+                                @if (flux.FileLocationMetadata.Metadata.TryGetValue("Protocol", out var protocol))
+                                {
+                                    <MudItem xs="12" md="6">
+                                        <MudField Label="Protocol" Variant="Variant.Outlined">@protocol</MudField>
+                                    </MudItem>
+                                }
+                            </MudGrid>
+                        </MudCardContent>
+                    </MudCard>
+                }
+                @if (flux.ApiMetadata != null && flux.FluxType == FluxType.Api)
+                {
+                    <MudCard Elevation="3" Class="mb-4">
+                        <MudCardHeader>
+                            <CardHeaderContent>
+                                <MudText Typo="Typo.h6">API Configuration</MudText>
+                            </CardHeaderContent>
+                            <CardHeaderActions>
+                                <MudIcon Icon="@Icons.Material.Filled.Api" Color="Color.Primary" />
+                            </CardHeaderActions>
+                        </MudCardHeader>
+                        <MudCardContent>
+                            <MudGrid>
+                                <MudItem xs="12">
+                                    <MudField Label="Endpoint" Variant="Variant.Outlined">@flux.ApiMetadata.Endpoint</MudField>
+                                </MudItem>
+                                
+                                @if (!string.IsNullOrEmpty(flux.ApiMetadata.ApiKey))
+                                {
+                                    <MudItem xs="12">
+                                        <MudField Label="API Key" Variant="Variant.Outlined">
+                                            <MudText Style="word-break: break-all;">@flux.ApiMetadata.ApiKey</MudText>
+                                        </MudField>
+                                    </MudItem>
+                                }
+                                
+                                @if (flux.ApiMetadata.Metadata != null && flux.ApiMetadata.Metadata.Count > 0)
+                                {
+                                    @if (flux.ApiMetadata.Metadata.TryGetValue("ContentType", out var contentType))
+                                    {
+                                        <MudItem xs="12" md="6">
+                                            <MudField Label="Content Type" Variant="Variant.Outlined">@contentType</MudField>
+                                        </MudItem>
+                                    }
+                                    
+                                    @if (flux.ApiMetadata.Metadata.TryGetValue("Method", out var method))
+                                    {
+                                        <MudItem xs="12" md="6">
+                                            <MudField Label="HTTP Method" Variant="Variant.Outlined">@method</MudField>
+                                        </MudItem>
+                                    }
+                                    
+                                    @if (flux.ApiMetadata.Metadata.TryGetValue("RequiresAuthentication", out var requiresAuth) && 
+                                        requiresAuth.ToString().ToLower() == "true")
+                                    {
+                                        <MudItem xs="12">
+                                            <MudField Label="Authentication" Variant="Variant.Outlined">Required</MudField>
+                                        </MudItem>
+                                        
+                                        @if (flux.ApiMetadata.Metadata.TryGetValue("Username", out var apiUsername))
+                                        {
+                                            <MudItem xs="12" md="6">
+                                                <MudField Label="Username" Variant="Variant.Outlined">@apiUsername</MudField>
+                                            </MudItem>
+                                        }
+                                    }
+                                }
+                            </MudGrid>
+                        </MudCardContent>
+                    </MudCard>
+                }
+                @if (flux.DownloadMetadata != null && flux.FluxType == FluxType.HttpDownload)
+                {
+                    <MudCard Elevation="3" Class="mb-4">
+                        <MudCardHeader>
+                            <CardHeaderContent>
+                                <MudText Typo="Typo.h6">Download Configuration</MudText>
+                            </CardHeaderContent>
+                            <CardHeaderActions>
+                                <MudIcon Icon="@Icons.Material.Filled.CloudDownload" Color="Color.Primary" />
+                            </CardHeaderActions>
+                        </MudCardHeader>
+                        <MudCardContent>
+                            <MudGrid>
+                                <MudItem xs="12">
+                                    <MudField Label="Download URL" Variant="Variant.Outlined">@flux.DownloadMetadata.DownloadUrl</MudField>
+                                </MudItem>
+                                
+                                <MudItem xs="6">
+                                    <MudField Label="Content Type" Variant="Variant.Outlined">@flux.DownloadMetadata.ContentType</MudField>
+                                </MudItem>
+                            </MudGrid>
+                        </MudCardContent>
+                    </MudCard>
                 }
             </MudItem>
 
@@ -524,10 +537,10 @@
     [Parameter]
     public int FluxId { get; set; }
 
-    private FluxResponse? flux;
+    private FluxResponseWrapper? flux;
     private bool loading = true;
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnInitializedAsync()  
     {
         await LoadFluxData();
     }

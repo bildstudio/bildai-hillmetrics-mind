@@ -169,10 +169,10 @@
                                     break;
                                 case FluxType.HttpDownload:
                                 case FluxType.Scraping:
-                                    <MudAlert Severity="Severity.Info" Class="mb-2">Downloading Configuration</MudAlert>
+                                    <FluxMetadataDownloadComponent Metadata="@downloadMetadata" MetadataChanged="@(md => { downloadMetadata = md; StateHasChanged(); })" />
                                     break;
                                 case FluxType.Sftp:
-                                    <MudAlert Severity="Severity.Info" Class="mb-2">SFTP Configuration</MudAlert>
+                                    <FluxMetadataFileLocationComponent Metadata="@fileLocationMetadata" MetadataChanged="@(md => { fileLocationMetadata = md; StateHasChanged(); })" />
                                     break;
                             }
                         </MudItem>
@@ -258,67 +258,97 @@
     {
         try
         {
-            var result = await MindApi.GetFluxAsync(FluxId!.Value);
-            if (result != null)
+            var response = await MindApi.GetFluxAsync(FluxId!.Value);
+            if (response != null)
             {
                 // Map the response to the request model
-                fluxRequest.FluxName = result.FluxName;
-                fluxRequest.FluxDescription = result.Description;
-                fluxRequest.FluxComment = result.Comment;
-                fluxRequest.SourceId = result.Source.Id;
-                fluxRequest.FluxType = result.FluxType;
-                fluxRequest.FluxFinancialType = result.FinancialType;
-                fluxRequest.FluxState = result.FluxState;
-                canHaveConcurrencyMultiFetching = result.CanHaveConcurrencyMultiFetching;
-                fluxRequest.CanHaveConcurrencyMultiFetching = result.CanHaveConcurrencyMultiFetching;
+                fluxRequest.FluxName = response.FluxName;
+                fluxRequest.FluxDescription = response.Description;
+                fluxRequest.FluxComment = response.Comment;
+                fluxRequest.SourceId = response.Source.Id;
+                fluxRequest.FluxType = response.FluxType;
+                fluxRequest.FluxFinancialType = response.FinancialType;
+                fluxRequest.FluxState = response.FluxState;
+                canHaveConcurrencyMultiFetching = response.CanHaveConcurrencyMultiFetching;
+                fluxRequest.CanHaveConcurrencyMultiFetching = response.CanHaveConcurrencyMultiFetching;
 
                 // Map trigger periods
-                if (result.FetchTriggerPeriod != null)
+                if (response.FetchTriggerPeriod != null)
                 {
                     fetchTriggerPeriod = new TriggerPeriod
                     {
-                        FrequencyType = result.FetchTriggerPeriod.FrequencyType,
-                        Interval = result.FetchTriggerPeriod.Interval,
-                        StartTime = result.FetchTriggerPeriod.StartTime,
-                        DayOfWeek = result.FetchTriggerPeriod.DayOfWeek,
-                        DayOfMonth = result.FetchTriggerPeriod.DayOfMonth,
-                        IsEnabled = result.FetchTriggerPeriod.IsEnabled
+                        FrequencyType = response.FetchTriggerPeriod.FrequencyType,
+                        Interval = response.FetchTriggerPeriod.Interval,
+                        StartTime = response.FetchTriggerPeriod.StartTime,
+                        DayOfWeek = response.FetchTriggerPeriod.DayOfWeek,
+                        DayOfMonth = response.FetchTriggerPeriod.DayOfMonth,
+                        IsEnabled = response.FetchTriggerPeriod.IsEnabled
                     };
                 }
 
-                if (result.ProcessTriggerPeriod != null)
+                if (response.ProcessTriggerPeriod != null)
                 {
                     processTriggerPeriod = new TriggerPeriod
                     {
-                        FrequencyType = result.ProcessTriggerPeriod.FrequencyType,
-                        Interval = result.ProcessTriggerPeriod.Interval,
-                        StartTime = result.ProcessTriggerPeriod.StartTime,
-                        DayOfWeek = result.ProcessTriggerPeriod.DayOfWeek,
-                        DayOfMonth = result.ProcessTriggerPeriod.DayOfMonth,
-                        IsEnabled = result.ProcessTriggerPeriod.IsEnabled
+                        FrequencyType = response.ProcessTriggerPeriod.FrequencyType,
+                        Interval = response.ProcessTriggerPeriod.Interval,
+                        StartTime = response.ProcessTriggerPeriod.StartTime,
+                        DayOfWeek = response.ProcessTriggerPeriod.DayOfWeek,
+                        DayOfMonth = response.ProcessTriggerPeriod.DayOfMonth,
+                        IsEnabled = response.ProcessTriggerPeriod.IsEnabled
                     };
                 }
 
                 // Load type-specific metadata based on the flux type
-                if (result.FluxMetadata != null)
+                switch (response.FluxType)
                 {
-                    switch (result.FluxType)
-                    {
-                        case FluxType.Email:
-                            emailMetadata = (FluxMetadataMailDto)result.FluxMetadata;
-                            break;
-                        case FluxType.Api:
-                        case FluxType.Webhook:
-                            apiMetadata =(FluxMetadataApiDto)result.FluxMetadata;
-                            break;
-                        case FluxType.HttpDownload:
-                        case FluxType.Scraping:
-                            downloadMetadata = (FluxMetadataDownloadDto)result.FluxMetadata;
-                            break;
-                        case FluxType.Sftp:
-                            fileLocationMetadata = (FluxMetadataFileLocationDto)result.FluxMetadata;
-                            break;
-                    }
+                    case FluxType.Email:
+                        if (response.EmailMetadata != null)
+                        {
+                            emailMetadata = response.EmailMetadata;
+                        }
+                        else
+                        {
+                            emailMetadata = new FluxMetadataMailDto();
+                        }
+                        break;
+                    case FluxType.Api:
+                    case FluxType.Webhook:
+                        if (response.ApiMetadata != null)
+                        {
+                            apiMetadata = response.ApiMetadata;
+                        }
+                        else
+                        {
+                            apiMetadata = new FluxMetadataApiDto();
+                        }
+                        break;
+                    case FluxType.HttpDownload:
+                    case FluxType.Scraping:
+                        if (response.DownloadMetadata != null)
+                        {
+                            downloadMetadata = response.DownloadMetadata;
+                        }
+                        else
+                        {
+                            downloadMetadata = new FluxMetadataDownloadDto();
+                        }
+                        break;
+                    case FluxType.Sftp:
+                        if (response.FileLocationMetadata != null)
+                        {
+                            fileLocationMetadata = response.FileLocationMetadata;
+                        }
+                        else
+                        {
+                            fileLocationMetadata = new FluxMetadataFileLocationDto
+                            {
+                                FluxRuleSettings = new FluxRuleSettingsDto(),
+                                FluxAttachmentRule = new FluxAttachmentRuleDto(),
+                                Metadata = new Dictionary<string, object>()
+                            };
+                        }
+                        break;
                 }
             }
             else
@@ -342,24 +372,27 @@
         switch (selectedType.Value)
         {
             case FluxType.Email:
-                if (emailMetadata == null)
-                    emailMetadata = new FluxMetadataMailDto();
+                emailMetadata = new FluxMetadataMailDto();
                 break;
             case FluxType.Api:
             case FluxType.Webhook:
-                if (apiMetadata == null)
-                    apiMetadata = new FluxMetadataApiDto();
+                apiMetadata = new FluxMetadataApiDto();
                 break;
             case FluxType.HttpDownload:
             case FluxType.Scraping:
-                if (downloadMetadata == null)
-                    downloadMetadata = new FluxMetadataDownloadDto();
+                downloadMetadata = new FluxMetadataDownloadDto();
                 break;
             case FluxType.Sftp:
-                if (fileLocationMetadata == null)
-                    fileLocationMetadata = new FluxMetadataFileLocationDto();
+                fileLocationMetadata = new FluxMetadataFileLocationDto
+                {
+                    FluxRuleSettings = new FluxRuleSettingsDto(),
+                    FluxAttachmentRule = new FluxAttachmentRuleDto(),
+                    Metadata = new Dictionary<string, object>()
+                };
                 break;
         }
+
+        StateHasChanged();
     }
 
     private TriggerPeriodDto MapToTriggerPeriodDto(TriggerPeriod triggerPeriod)

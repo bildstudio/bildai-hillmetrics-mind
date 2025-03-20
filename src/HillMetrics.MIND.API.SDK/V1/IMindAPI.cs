@@ -24,7 +24,7 @@ namespace HillMetrics.MIND.API.SDK.V1
         /// Get the details of a flux
         /// </summary>
         [Get("/api/v1/flux/{id}")]
-        Task<FluxResponse> GetFluxAsync(int id);
+        Task<FluxResponseWrapper> GetFluxAsync(int id);
 
         /// <summary>
         /// Create a new flux
@@ -100,6 +100,14 @@ namespace HillMetrics.MIND.API.SDK.V1
         [Get("/api/v1/flux/fetching-history/{fetchingHistoryId}")]
         Task<ApiResponseBase<FluxFetchingResponse>> GetFetchingHistoryAsync(int fetchingHistoryId);
 
+        /// <summary>
+        /// Delete a specific fetching history
+        /// </summary>
+        /// <param name="fetchingHistoryId">ID of the fetching history to delete</param>
+        /// <returns>API response indicating success or failure</returns>
+        [Delete("/api/v1/flux/fetching-history/{fetchingHistoryId}")]
+        Task<ApiResponseBase<bool>> DeleteFetchingHistoryAsync(int fetchingHistoryId);
+
         #endregion
 
         #region Processing
@@ -124,7 +132,7 @@ namespace HillMetrics.MIND.API.SDK.V1
         /// Search for flux errors history following the given criteria
         /// </summary>
         [Get("/api/v1/flux/errors/search")]
-        Task<PagedApiResponseBase<FluxErrorSearchDto>> SearchFluxErrorsAsync([Query] FluxErrorSearchRequest request);
+        Task<PagedApiResponseBase<FluxErrorSearchResponse>> SearchFluxErrorsAsync([Query] FluxErrorSearchRequest request);
 
         /// <summary>
         /// Get the details of a specific error
@@ -186,6 +194,16 @@ namespace HillMetrics.MIND.API.SDK.V1
         [Post("/api/v1/flux/workflow/cleanup")]
         Task<ApiResponseBase<string>> CleanupWorkflowHistoryAsync([Query] int daysToKeep = 14);
 
+        #endregion
+
+        #region Raw database
+        /// <summary>
+        /// Get raw content file as a stream
+        /// </summary>
+        /// <param name="id">ID of the raw content in MongoDB</param>
+        /// <returns>Stream of the raw content file</returns>
+        [Get("/api/v1/raw/{id}")]
+        Task<Stream> GetFile(string id);
         #endregion
     }
 }
