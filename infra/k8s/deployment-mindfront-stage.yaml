@@ -50,32 +50,6 @@ spec:
   selector:
     app.kubernetes.io/name: hillm-mindfront
 ---
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  annotations:
-    cert-manager.io/issuer: "letsencrypt-prod"
-    nginx.ingress.kubernetes.io/proxy-body-size: 32m
-  namespace: hillm-stage
-  name: hillm-mindfront
-spec:
-  ingressClassName: webapprouting.kubernetes.azure.com
-  tls:
-  - hosts:
-    - mindfront.hillm.bildhosting.me
-    secretName: mindfront-tls
-  rules:
-  - host: mindfront.hillm.bildhosting.me
-    http:
-      paths:
-      - backend:
-          service:
-            name: hillm-mindfront
-            port:
-              number: 80
-        path: /
-        pathType: Prefix
----
 apiVersion: secrets-store.csi.x-k8s.io/v1
 kind: SecretProviderClass
 metadata:
@@ -89,6 +63,8 @@ spec:
       objectName: services-mindapi
     - key: ASPNETCORE_ENVIRONMENT
       objectName: aspnetcore-environment
+    - key: OTEL_EXPORTER_OTLP_ENDPOINT
+      objectName: otel-exporter-otlp-endpoint
     secretName: mindfront-env
     type: Opaque
   parameters:
@@ -102,5 +78,8 @@ spec:
           objectType: secret
         - |
           objectName: aspnetcore-environment
+          objectType: secret
+        - |
+          objectName: otel-exporter-otlp-endpoint
           objectType: secret
     tenantId: 47650b84-ae6e-4206-82af-ebe7b3243aa2
