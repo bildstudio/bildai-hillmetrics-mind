@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace HillMetrics.MIND.API.Contracts.Responses.Flux
 {
-    public class FluxErrorSearchDto
+    public class FluxErrorSearchResponse
     {
         public required int FluxId { get; set; }
         public required string FluxErrorType { get; set; }

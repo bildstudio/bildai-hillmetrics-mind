@@ -1,4 +1,5 @@
 @page "/flux/fetching-details/{FetchingHistoryId:int}"
+@using HillMetrics.MIND.API.Contracts.Requests.Flux
 @using HillMetrics.MIND.API.Contracts.Responses
 @using HillMetrics.MIND.API.Contracts.Responses.Flux
 @using HillMetrics.Core
@@ -6,9 +7,12 @@
 @using System.Text.Json
 @using HillMetrics.MIND.FrontApp.Services
 @using HillMetrics.MIND.API.SDK.V1
+@using Microsoft.JSInterop
 @inject IMindAPI MindApi
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject IJSRuntime JSRuntime
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
     @if (loading)
@@ -25,7 +29,334 @@
     }
     else
     {
-       
+        <MudGrid>
+            <MudItem xs="12" Class="d-flex justify-space-between align-center">
+                <div>
+                    <MudText Typo="Typo.h4">Fetching History Details</MudText>
+                    <MudText Typo="Typo.subtitle1" Class="mt-1">ID: @fetchingHistory.FluxFetching.Id</MudText>
+                </div>
+                <div>
+                    <MudButtonGroup Color="Color.Primary" Variant="Variant.Outlined">
+                        <MudButton OnClick="@(() => NavigationManager.NavigateTo($"/flux/details/{fetchingHistory.FluxFetching.FluxId}"))">
+                            <MudIcon Icon="@Icons.Material.Filled.Assignment" Class="mr-2" /> View Flux
+                        </MudButton>
+                        <MudButton OnClick="@(() => NavigationManager.NavigateTo("/flux/fetching-history"))">
+                            <MudIcon Icon="@Icons.Material.Filled.List" Class="mr-2" /> All Fetching History
+                        </MudButton>
+                    </MudButtonGroup>
+                    <MudButton Color="Color.Error"
+                               Variant="Variant.Outlined"
+                               StartIcon="@Icons.Material.Filled.Delete"
+                               OnClick="@ConfirmDelete"
+                               Class="ml-2">
+                        Delete
+                    </MudButton>
+                </div>
+            </MudItem>
+
+            <!-- Basic Information -->
+            <MudItem xs="12">
+                <MudCard Elevation="3" Class="mb-4">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Basic Information</MudText>
+                        </CardHeaderContent>
+                        <CardHeaderActions>
+                            <MudIcon Icon="@Icons.Material.Filled.Info" Color="Color.Primary" />
+                        </CardHeaderActions>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudGrid>
+                            <MudItem xs="12" md="4">
+                                <MudTextField Label="Flux ID" Value="@fetchingHistory.FluxFetching.FluxId.ToString()" ReadOnly="true"
+                                            Variant="Variant.Outlined" FullWidth="true" />
+                            </MudItem>
+                            <MudItem xs="12" md="4">
+                                <MudTextField Label="Identified At" Value="@fetchingHistory.FluxFetching.IdentifiedAt.ToString("yyyy-MM-dd HH:mm:ss")" ReadOnly="true"
+                                            Variant="Variant.Outlined" FullWidth="true" />
+                            </MudItem>
+                            <MudItem xs="12" md="4">
+                                <MudTextField Label="External Data ID" Value="@(fetchingHistory.FluxFetching.ExternalDataId ?? "-")" ReadOnly="true"
+                                            Variant="Variant.Outlined" FullWidth="true" />
+                            </MudItem>
+                            @if (!string.IsNullOrEmpty(fetchingHistory.FluxFetching.Metadata))
+                            {
+                                <MudItem xs="12">
+                                    <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                                             OnClick="@(() => ShowMetadata(fetchingHistory.FluxFetching.Metadata))">
+                                        <MudIcon Icon="@Icons.Material.Filled.Info" Class="mr-2" /> View Metadata
+                                    </MudButton>
+                                </MudItem>
+                            }
+                        </MudGrid>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+
+            <!-- Content List -->
+            <MudItem xs="12">
+                <MudCard Elevation="3" Class="mb-4">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Fetched Contents (@fetchingHistory.FluxFetching.FluxFetchingContentHistories.Count)</MudText>
+                        </CardHeaderContent>
+                        <CardHeaderActions>
+                            <MudBadge Content="@CountContentsByStatus(StatusProcess.Success)" Color="Color.Success" Overlap="true" Dot="false" Class="mx-1">
+                                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" />
+                            </MudBadge>
+                            <MudBadge Content="@CountContentsByStatus(StatusProcess.Failure)" Color="Color.Error" Overlap="true" Dot="false" Class="mx-1">
+                                <MudIcon Icon="@Icons.Material.Filled.Error" />
+                            </MudBadge>
+                            <MudBadge Content="@CountContentsByStatus(StatusProcess.Processing)" Color="Color.Info" Overlap="true" Dot="false" Class="mx-1">
+                                <MudIcon Icon="@Icons.Material.Filled.Refresh" />
+                            </MudBadge>
+                        </CardHeaderActions>
+                    </MudCardHeader>
+                    <MudCardContent Style="padding: 0;">
+                        <MudTable Items="@fetchingHistory.FluxFetching.FluxFetchingContentHistories" Dense="true" Hover="true"
+                                  Bordered="true" Striped="true" T="FluxFetchingContentHistoryResponse"
+                                  @bind-SelectedItem="selectedContent">
+                            <HeaderContent>
+                                <MudTh>ID</MudTh>
+                                <MudTh>Content Name</MudTh>
+                                <MudTh>Status</MudTh>
+                                <MudTh>External Content ID</MudTh>
+                                <MudTh>Raw ID</MudTh>
+                                <MudTh>Identified At</MudTh>
+                                <MudTh>Actions</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd DataLabel="ID">@context.Id</MudTd>
+                                <MudTd DataLabel="Content Name">
+                                    <MudTooltip Text="@context.ContentName">
+                                        <div class="mud-text-truncate" style="max-width: 200px;">@context.ContentName</div>
+                                    </MudTooltip>
+                                </MudTd>
+                                <MudTd DataLabel="Status">
+                                    <MudTooltip Text="@context.ContentStatus.ToString()">
+                                        <MudIcon Icon="@GetStatusIcon(context.ContentStatus)"
+                                                Color="@GetStatusColor(context.ContentStatus)" />
+                                    </MudTooltip>
+                                </MudTd>
+                                <MudTd DataLabel="External Content ID">
+                                    <MudTooltip Text="@context.ExternalContentId">
+                                        <div class="mud-text-truncate" style="max-width: 150px;">@context.ExternalContentId</div>
+                                    </MudTooltip>
+                                </MudTd>
+                                <MudTd DataLabel="Raw ID">
+                                    @if (!string.IsNullOrEmpty(context.RawId))
+                                    {
+                                        <div class="d-flex align-center">
+                                            <MudTooltip Text="@context.RawId">
+                                                <div class="mud-text-truncate" style="max-width: 120px;">@context.RawId</div>
+                                            </MudTooltip>
+                                            <MudTooltip Text="Download Raw Content">
+                                                <MudIconButton Icon="@Icons.Material.Filled.CloudDownload"
+                                                              Color="Color.Primary"
+                                                              Size="Size.Small"
+                                                              OnClick="@(() => ViewRawContent(context))"
+                                                              Class="ml-2" />
+                                            </MudTooltip>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <span>-</span>
+                                    }
+                                </MudTd>
+                                <MudTd DataLabel="Identified At">
+                                    <MudTooltip Text="@context.IdentifiedAt.ToString("yyyy-MM-dd HH:mm:ss")">
+                                        <div>@FormatDateTime(context.IdentifiedAt)</div>
+                                    </MudTooltip>
+                                </MudTd>
+                                <MudTd DataLabel="Actions">
+                                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true">
+                                        <MudMenuItem OnClick="@(() => ViewContentDetails(context))">
+                                            <MudIcon Icon="@Icons.Material.Filled.Visibility" Class="mr-2" Size="Size.Small" /> View Details
+                                        </MudMenuItem>
+                                        @if (!string.IsNullOrEmpty(context.RawId))
+                                        {
+                                            <MudMenuItem OnClick="@(() => ViewRawContent(context))">
+                                                <MudIcon Icon="@Icons.Material.Filled.CloudDownload" Class="mr-2" Size="Size.Small" /> Download Raw Content
+                                            </MudMenuItem>
+                                        }
+                                        <MudMenuItem OnClick="@(() => ForceProcess(context))">
+                                            <MudIcon Icon="@Icons.Material.Filled.Refresh" Class="mr-2" Size="Size.Small" /> Force Process
+                                        </MudMenuItem>
+                                    </MudMenu>
+                                </MudTd>
+                            </RowTemplate>
+                            <NoRecordsContent>
+                                <MudAlert Severity="Severity.Info" Class="ma-2">No contents found for this fetching history.</MudAlert>
+                            </NoRecordsContent>
+                        </MudTable>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+
+            <!-- Selected Content Details -->
+            @if (selectedContent != null)
+            {
+                <MudItem xs="12">
+                    <MudCard Elevation="3" Class="mb-4">
+                        <MudCardHeader>
+                            <CardHeaderContent>
+                                <MudText Typo="Typo.h6">Content Details: @selectedContent.ContentName</MudText>
+                            </CardHeaderContent>
+                            <CardHeaderActions>
+                                <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => selectedContent = null)">
+                                    <MudIcon Icon="@Icons.Material.Filled.Close" />
+                                </MudButton>
+                            </CardHeaderActions>
+                        </MudCardHeader>
+                        <MudCardContent>
+                            <MudGrid>
+                                <MudItem xs="12" md="6">
+                                    <MudPaper Elevation="0" Class="pa-4">
+                                        <MudList T="FluxFetchingContentHistoryResponse" Dense="true">
+                                            <MudListItem>
+                                                <MudText Typo="Typo.body1"><b>ID:</b> @selectedContent.Id</MudText>
+                                            </MudListItem>
+                                            <MudListItem>
+                                                <MudText Typo="Typo.body1"><b>Content Name:</b> @selectedContent.ContentName</MudText>
+                                            </MudListItem>
+                                            <MudListItem>
+                                                <div class="d-flex align-center">
+                                                    <MudText Typo="Typo.body1" Class="mr-2"><b>Status:</b></MudText>
+                                                    <MudIcon Icon="@GetStatusIcon(selectedContent.ContentStatus)"
+                                                            Color="@GetStatusColor(selectedContent.ContentStatus)"
+                                                            Class="mr-2" />
+                                                    <MudText>@selectedContent.ContentStatus</MudText>
+                                                </div>
+                                            </MudListItem>
+                                            <MudListItem>
+                                                <MudText Typo="Typo.body1"><b>External Content ID:</b> @selectedContent.ExternalContentId</MudText>
+                                            </MudListItem>
+                                        </MudList>
+                                    </MudPaper>
+                                </MudItem>
+                                <MudItem xs="12" md="6">
+                                    <MudPaper Elevation="0" Class="pa-4">
+                                        <MudList T="FluxFetchingContentHistoryResponse" Dense="true">
+                                            <MudListItem>
+                                                <MudText Typo="Typo.body1"><b>Raw ID:</b> @(selectedContent.RawId ?? "-")</MudText>
+                                            </MudListItem>
+                                            <MudListItem>
+                                                <MudText Typo="Typo.body1"><b>Identified At:</b> @selectedContent.IdentifiedAt.ToString("yyyy-MM-dd HH:mm:ss")</MudText>
+                                            </MudListItem>
+                                        </MudList>
+                                    </MudPaper>
+                                </MudItem>
+                                <MudItem xs="12" Class="d-flex justify-center mt-4">
+                                    <MudButtonGroup Color="Color.Primary" Variant="Variant.Outlined">
+                                        @if (!string.IsNullOrEmpty(selectedContent.RawId))
+                                        {
+                                            <MudButton OnClick="@(() => ViewRawContent(selectedContent))">
+                                                <MudIcon Icon="@Icons.Material.Filled.CloudDownload" Class="mr-2" /> Download Raw Content
+                                            </MudButton>
+                                        }
+                                        <MudButton OnClick="@(() => ForceProcess(selectedContent))">
+                                            <MudIcon Icon="@Icons.Material.Filled.Refresh" Class="mr-2" /> Force Process
+                                        </MudButton>
+                                    </MudButtonGroup>
+                                </MudItem>
+                            </MudGrid>
+                        </MudCardContent>
+                    </MudCard>
+                </MudItem>
+            }
+
+            <!-- Processing History -->
+            @if (processingHistories != null && processingHistories.Any())
+            {
+                <MudItem xs="12">
+                    <MudCard Elevation="3" Class="mb-4">
+                        <MudCardHeader>
+                            <CardHeaderContent>
+                                <MudText Typo="Typo.h6">Processing History</MudText>
+                            </CardHeaderContent>
+                            <CardHeaderActions>
+                                <MudBadge Content="@processingHistories.Count" Color="Color.Primary" Overlap="true" Dot="false">
+                                    <MudIcon Icon="@Icons.Material.Filled.History" />
+                                </MudBadge>
+                            </CardHeaderActions>
+                        </MudCardHeader>
+                        <MudCardContent Style="padding: 0;">
+                            <MudTable Items="@processingHistories" Dense="true" Hover="true"
+                                      Bordered="true" Striped="true" T="FluxProcessingSearchReponse">
+                                <HeaderContent>
+                                    <MudTh>ID</MudTh>
+                                    <MudTh>Start Date</MudTh>
+                                    <MudTh>End Date</MudTh>
+                                    <MudTh>Status</MudTh>
+                                    <MudTh>Duration</MudTh>
+                                    <MudTh>Actions</MudTh>
+                                </HeaderContent>
+                                <RowTemplate>
+                                    <MudTd DataLabel="ID">@context.Id</MudTd>
+                                    <MudTd DataLabel="Start Date">
+                                        <MudTooltip Text="@context.ProcessingDateStart.ToString("yyyy-MM-dd HH:mm:ss")">
+                                            <div>@FormatDateTime(context.ProcessingDateStart)</div>
+                                        </MudTooltip>
+                                    </MudTd>
+                                    <MudTd DataLabel="End Date">
+                                        @if (context.ProcessingDateEnd.HasValue)
+                                        {
+                                            <MudTooltip Text="@context.ProcessingDateEnd.Value.ToString("yyyy-MM-dd HH:mm:ss")">
+                                                <div>@FormatDateTime(context.ProcessingDateEnd.Value)</div>
+                                            </MudTooltip>
+                                        }
+                                        else
+                                        {
+                                            <span>-</span>
+                                        }
+                                    </MudTd>
+                                    <MudTd DataLabel="Status">
+                                        @if (context.Status.HasValue)
+                                        {
+                                            <MudTooltip Text="@context.Status.Value.ToString()">
+                                                <MudIcon Icon="@GetStatusIcon(context.Status.Value)"
+                                                        Color="@GetStatusColor(context.Status.Value)" />
+                                            </MudTooltip>
+                                        }
+                                        else
+                                        {
+                                            <span>-</span>
+                                        }
+                                    </MudTd>
+                                    <MudTd DataLabel="Duration">
+                                        @if (context.ProcessingDateEnd.HasValue)
+                                        {
+                                            var duration = context.ProcessingDateEnd.Value - context.ProcessingDateStart;
+                                            <span>@FormatDuration(duration)</span>
+                                        }
+                                        else if (context.Status == StatusProcess.Processing)
+                                        {
+                                            var duration = DateTime.Now - context.ProcessingDateStart;
+                                            <MudChip T="TimeSpan" Color="Color.Info" Size="Size.Small">@FormatDuration(duration) (ongoing)</MudChip>
+                                        }
+                                        else
+                                        {
+                                            <span>-</span>
+                                        }
+                                    </MudTd>
+                                    <MudTd DataLabel="Actions">
+                                        <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true">
+                                            <MudMenuItem OnClick="@(() => ViewProcessingDetails(context.Id))">
+                                                <MudIcon Icon="@Icons.Material.Filled.Visibility" Class="mr-2" Size="Size.Small" /> View Details
+                                            </MudMenuItem>
+                                        </MudMenu>
+                                    </MudTd>
+                                </RowTemplate>
+                                <NoRecordsContent>
+                                    <MudAlert Severity="Severity.Info" Class="ma-2">No processing history found for this content.</MudAlert>
+                                </NoRecordsContent>
+                            </MudTable>
+                        </MudCardContent>
+                    </MudCard>
+                </MudItem>
+            }
+        </MudGrid>
     }
 </MudContainer>
 
@@ -34,8 +365,9 @@
     public int FetchingHistoryId { get; set; }
 
     private FluxFetchingResponse? fetchingHistory;
+    private List<FluxProcessingSearchReponse>? processingHistories;
     private bool loading = true;
-    private RenderFragment? contentPreview;
+    private FluxFetchingContentHistoryResponse? selectedContent;
 
     protected override async Task OnInitializedAsync()
     {
@@ -49,6 +381,9 @@
             loading = true;
             var response = await MindApi.GetFetchingHistoryAsync(FetchingHistoryId);
             fetchingHistory = response.Data;
+
+            // Load the associated processing histories
+            await LoadProcessingHistories();
         }
         catch (Exception ex)
         {
@@ -61,15 +396,59 @@
         }
     }
 
-    private async Task ForceProcess()
+    private async Task LoadProcessingHistories()
+    {
+        if (fetchingHistory?.FluxFetching?.Id > 0)
+        {
+            try
+            {
+                // Create a request to get all processings related to this fetching history
+                var processRequest = new FluxProcessingSearchRequest
+                {
+                    FetchingHistoryId = new SearchCriteria<int>
+                    {
+                        Operator = Operator.Equal,
+                        Value = fetchingHistory.FluxFetching.Id
+                    }
+                };
+
+                var response = await MindApi.SearchProcessingHistoryAsync(processRequest);
+                processingHistories = response.Data.ToList();
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error loading processing histories: {ex.Message}", Severity.Warning);
+                processingHistories = new List<FluxProcessingSearchReponse>();
+            }
+        }
+    }
+
+    private async Task ShowMetadata(string metadata)
+    {
+        var parameters = new DialogParameters
+        {
+            ["Metadata"] = metadata
+        };
+
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true
+        };
+
+        await DialogService.ShowAsync<DisplayMetadataDialog>("Fetching Metadata", parameters, options);
+    }
+
+    private async Task ForceProcess(FluxFetchingContentHistoryResponse content)
     {
         try
         {
             loading = true;
-            // Cette fonctionnalité dépendra de votre API - pour l'instant c'est un placeholder
-            // var result = await FluxService.ForceProcessFetchingAsync(FetchingHistoryId);
-            Snackbar.Add("Force process initiated", Severity.Success);
-            await LoadFetchingHistoryData();
+            // Call the API to force process the content
+            await MindApi.ForceProcessAsync(content.Id);
+            Snackbar.Add($"Force process initiated for content: {content.ContentName}", Severity.Success);
+            await LoadProcessingHistories();
         }
         catch (Exception ex)
         {
@@ -81,155 +460,245 @@
         }
     }
 
-    // private async Task DownloadContent()
-    // {
-    //     if (fetchingHistory?.Content == null)
-    //         return;
-
-    //     // La logique de téléchargement dépendra de votre framework et devra être implémentée
-    //     Snackbar.Add("Download functionality to be implemented", Severity.Info);
-    // }
-
-    // private bool TryRenderContentPreview()
-    // {
-    //     if (fetchingHistory?.Content == null || fetchingHistory.Content.Length > 100 * 1024) // Limiter aux fichiers < 100KB pour la prévisualisation
-    //         return false;
-
-    //     if (fetchingHistory.ContentType.HasValue)
-    //     {
-    //         var contentType = fetchingHistory.ContentType.Value;
-            
-    //         try
-    //         {
-    //             switch (contentType)
-    //             {
-    //                 case ContentType.Json:
-    //                     var jsonString = System.Text.Encoding.UTF8.GetString(fetchingHistory.Content);
-    //                     contentPreview = builder =>
-    //                     {
-    //                         builder.OpenElement(0, "div");
-    //                         builder.AddAttribute(1, "class", "pa-4");
-    //                         builder.AddAttribute(2, "style", "background-color: #f5f5f5; overflow-x: auto; max-height: 400px;");
-    //                         builder.OpenElement(3, "pre");
-    //                         builder.AddAttribute(4, "style", "margin: 0; white-space: pre-wrap;");
-    //                         builder.AddContent(5, FormatJson(jsonString));
-    //                         builder.CloseElement();
-    //                         builder.CloseElement();
-    //                     };
-    //                     return true;
-
-    //                 case ContentType.Xml:
-    //                 case ContentType.Text:
-    //                     var textString = System.Text.Encoding.UTF8.GetString(fetchingHistory.Content);
-    //                     contentPreview = builder =>
-    //                     {
-    //                         builder.OpenElement(0, "div");
-    //                         builder.AddAttribute(1, "class", "pa-4");
-    //                         builder.AddAttribute(2, "style", "background-color: #f5f5f5; overflow-x: auto; max-height: 400px;");
-    //                         builder.OpenElement(3, "pre");
-    //                         builder.AddAttribute(4, "style", "margin: 0; white-space: pre-wrap;");
-    //                         builder.AddContent(5, textString);
-    //                         builder.CloseElement();
-    //                         builder.CloseElement();
-    //                     };
-    //                     return true;
-
-    //                 case ContentType.Csv:
-    //                     var csvString = System.Text.Encoding.UTF8.GetString(fetchingHistory.Content);
-    //                     var csvLines = csvString.Split('\n');
-    //                     var previewLines = csvLines.Take(20).ToList(); // Limiter à 20 lignes
-                        
-    //                     contentPreview = builder =>
-    //                     {
-    //                         builder.OpenElement(0, "div");
-    //                         builder.AddAttribute(1, "style", "overflow-x: auto; max-height: 400px;");
-    //                         builder.OpenComponent<MudTable<string[]>>(2);
-    //                         builder.AddAttribute(3, "Items", previewLines);
-    //                         builder.AddAttribute(4, "Hover", true);
-    //                         builder.AddAttribute(5, "Dense", true);
-    //                         builder.AddAttribute(6, "Bordered", true);
-                            
-    //                         builder.AddAttribute(7, "RowTemplate", (RenderFragment<string>)((row) =>
-    //                         {
-    //                             return builder2 =>
-    //                             {
-    //                                 var cells = row.Split(',');
-    //                                 foreach (var cell in cells)
-    //                                 {
-    //                                     builder2.OpenComponent<MudTd>(10);
-    //                                     builder2.AddAttribute(11, "DataLabel", "Value");
-    //                                     builder2.AddAttribute(12, "ChildContent", (RenderFragment)((builder3) =>
-    //                                     {
-    //                                         builder3.AddContent(13, cell.Trim('"'));
-    //                                     }));
-    //                                     builder2.CloseComponent();
-    //                                 }
-    //                             };
-    //                         }));
-                            
-    //                         builder.CloseComponent();
-    //                         builder.CloseElement();
-    //                     };
-    //                     return true;
-
-    //                 case ContentType.Html:
-    //                     // Pour HTML, on pourrait utiliser une iframe, mais c'est potentiellement dangereux
-    //                     // Pour l'instant, on affiche juste le code source
-    //                     var htmlString = System.Text.Encoding.UTF8.GetString(fetchingHistory.Content);
-    //                     contentPreview = builder =>
-    //                     {
-    //                         builder.OpenElement(0, "div");
-    //                         builder.AddAttribute(1, "class", "pa-4");
-    //                         builder.AddAttribute(2, "style", "background-color: #f5f5f5; overflow-x: auto; max-height: 400px;");
-    //                         builder.OpenElement(3, "pre");
-    //                         builder.AddAttribute(4, "style", "margin: 0; white-space: pre-wrap;");
-    //                         builder.AddContent(5, htmlString);
-    //                         builder.CloseElement();
-    //                         builder.CloseElement();
-    //                     };
-    //                     return true;
-
-    //                 default:
-    //                     return false;
-    //             }
-    //         }
-    //         catch
-    //         {
-    //             return false;
-    //         }
-    //     }
-
-    //     return false;
-    // }
-
-    private string GetContentTypeDisplay(ContentType contentType)
+    private void ViewContentDetails(FluxFetchingContentHistoryResponse content)
     {
-        return contentType switch
+        selectedContent = content;
+    }
+
+    private void ViewProcessingDetails(int processingId)
+    {
+        NavigationManager.NavigateTo($"/flux/processing-details/{processingId}");
+    }
+
+    private async Task ViewRawContent(FluxFetchingContentHistoryResponse content)
+    {
+        if (string.IsNullOrEmpty(content.RawId))
         {
-            ContentType.Json => "JSON (application/json)",
-            ContentType.Xml => "XML (application/xml)",
-            ContentType.Csv => "CSV (text/csv)",
-            ContentType.Text => "Text (text/plain)",
-            ContentType.Html => "HTML (text/html)",
-            ContentType.Pdf => "PDF (application/pdf)",
-            ContentType.Xlsx => "Excel (xlsx)",
-            ContentType.Xls => "Excel (xls)",
-            _ => contentType.ToString()
+            Snackbar.Add("Raw content is not available for this item", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            // Utiliser MindApi.GetFile pour récupérer le contenu comme Stream
+            using var stream = await MindApi.GetFile(content.RawId);
+
+            // Convertir le Stream en byte[]
+            using var memoryStream = new MemoryStream();
+            await stream.CopyToAsync(memoryStream);
+            var fileBytes = memoryStream.ToArray();
+
+            // Utiliser JS pour télécharger le fichier
+            await JSRuntime.InvokeVoidAsync("downloadFileFromBytes",
+                Convert.ToBase64String(fileBytes),
+                content.ContentName);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error downloading raw content: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private int CountContentsByStatus(StatusProcess status)
+    {
+        if (fetchingHistory?.FluxFetching?.FluxFetchingContentHistories == null)
+            return 0;
+
+        return fetchingHistory.FluxFetching.FluxFetchingContentHistories.Count(c => c.ContentStatus == status);
+    }
+
+    // Helper methods for icons and colors
+    private string GetStatusIcon(StatusProcess status)
+    {
+        return status switch
+        {
+            StatusProcess.Success => Icons.Material.Filled.CheckCircle,
+            StatusProcess.Failure => Icons.Material.Filled.Error,
+            StatusProcess.Processing => Icons.Material.Filled.Refresh,
+            StatusProcess.Paused => Icons.Material.Filled.Pending,
+            StatusProcess.Partially => Icons.Material.Filled.Warning,
+            _ => Icons.Material.Filled.HelpOutline
         };
     }
 
-    private string FormatFileSize(long bytes)
+    private Color GetStatusColor(StatusProcess status)
     {
-        string[] sizes = { "B", "KB", "MB", "GB", "TB" };
-        double len = bytes;
-        int order = 0;
-        while (len >= 1024 && order < sizes.Length - 1)
+        return status switch
         {
-            order++;
-            len = len / 1024;
-        }
-        return $"{len:0.##} {sizes[order]}";
+            StatusProcess.Success => Color.Success,
+            StatusProcess.Failure => Color.Error,
+            StatusProcess.Processing => Color.Info,
+            StatusProcess.Paused => Color.Warning,
+            StatusProcess.Partially => Color.Secondary,
+            _ => Color.Default
+        };
     }
+
+    private string FormatDateTime(DateTime dateTime)
+    {
+        var now = DateTime.Now;
+        var diff = now - dateTime;
+
+        if (diff.TotalMinutes < 1)
+            return "Just now";
+        if (diff.TotalHours < 1)
+            return $"{(int)diff.TotalMinutes}m ago";
+        if (diff.TotalDays < 1)
+            return $"{(int)diff.TotalHours}h ago";
+        if (diff.TotalDays < 7)
+            return $"{(int)diff.TotalDays}d ago";
+
+        return dateTime.ToString("MMM dd, HH:mm");
+    }
+
+    private string FormatDuration(TimeSpan duration)
+    {
+        if (duration.TotalDays >= 1)
+            return $"{duration.Days}d {duration.Hours}h {duration.Minutes}m";
+        if (duration.TotalHours >= 1)
+            return $"{duration.Hours}h {duration.Minutes}m {duration.Seconds}s";
+        if (duration.TotalMinutes >= 1)
+            return $"{duration.Minutes}m {duration.Seconds}s";
+
+        return $"{duration.Seconds}.{duration.Milliseconds}s";
+    }
+
+    private async Task ConfirmDelete()
+    {
+        var parameters = new DialogParameters
+        {
+            { "ContentText", "Are you sure you want to delete this fetching history? This action cannot be undone. Note: You cannot delete a history that has content with Success status." },
+            { "ButtonText", "Delete" },
+            { "Color", Color.Error }
+        };
+
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            MaxWidth = MaxWidth.ExtraSmall,
+            FullWidth = true,
+            BackdropClick = true,
+            Position = DialogPosition.Center
+        };
+
+        var dialog = await DialogService.ShowAsync<DeleteConfirmationDialog>("Confirm Delete", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await DeleteFetchingHistory();
+        }
+    }
+
+    private async Task DeleteFetchingHistory()
+    {
+        try
+        {
+            loading = true;
+
+            var response = await MindApi.DeleteFetchingHistoryAsync(FetchingHistoryId);
+
+            if (response.Data)
+            {
+                Snackbar.Add("Fetching history deleted successfully", Severity.Success);
+                // Navigate back to the fetching history list
+                NavigationManager.NavigateTo("/flux/fetching-history");
+            }
+            else
+            {
+                Snackbar.Add("Cannot delete this fetching history. It may have content with Success status.", Severity.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error deleting fetching history: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    // Ajouter cette méthode pour initialiser le JS nécessaire au téléchargement
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Ajouter les fonctions JS nécessaires
+            await JSRuntime.InvokeVoidAsync("eval", @"
+                // Fonction existante pour télécharger depuis une URL
+                window.downloadFile = function(url, fileName) {
+                    fetch(url)
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error('Network response was not ok');
+                            }
+                            return response.blob();
+                        })
+                        .then(blob => {
+                            const link = document.createElement('a');
+                            const blobUrl = URL.createObjectURL(blob);
+                            link.href = blobUrl;
+                            link.download = fileName || 'download';
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                            URL.revokeObjectURL(blobUrl);
+                        })
+                        .catch(error => {
+                            console.error('Error downloading file:', error);
+                        });
+                };
+
+                // Nouvelle fonction pour télécharger depuis des bytes
+                window.downloadFileFromBytes = function(base64, fileName) {
+                    try {
+                        const byteCharacters = atob(base64);
+                        const byteArrays = [];
+
+                        for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+                            const slice = byteCharacters.slice(offset, offset + 512);
+
+                            const byteNumbers = new Array(slice.length);
+                            for (let i = 0; i < slice.length; i++) {
+                                byteNumbers[i] = slice.charCodeAt(i);
+                            }
+
+                            const byteArray = new Uint8Array(byteNumbers);
+                            byteArrays.push(byteArray);
+                        }
+
+                        const blob = new Blob(byteArrays);
+                        const link = document.createElement('a');
+                        const blobUrl = URL.createObjectURL(blob);
+                        link.href = blobUrl;
+                        link.download = fileName || 'download';
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        URL.revokeObjectURL(blobUrl);
+                    } catch (error) {
+                        console.error('Error downloading file from bytes:', error);
+                    }
+                };
+            ");
+        }
+
+        await base.OnAfterRenderAsync(firstRender);
+    }
+}
+
+@code {
+    // Component to display metadata
+    public class DisplayMetadataDialog : ComponentBase
+    {
+        [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+
+        [Parameter] public string Metadata { get; set; }
+
+        private string FormattedMetadata => FormatJson(Metadata);
+
+        private void Close() => MudDialog.Close();
 
     private string FormatJson(string json)
     {
@@ -239,13 +708,159 @@
             {
                 WriteIndented = true
             };
-            
+
             var jsonElement = JsonSerializer.Deserialize<JsonElement>(json);
             return JsonSerializer.Serialize(jsonElement, options);
         }
         catch
         {
             return json;
+            }
+        }
+
+        protected override void OnInitialized()
+        {
+            if (MudDialog == null)
+            {
+                throw new ArgumentNullException(nameof(MudDialog), "MudDialog cannot be null. This component must be used within a MudDialog.");
+            }
+        }
+
+        protected override void BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder)
+        {
+            builder.OpenComponent<MudDialog>(0);
+            builder.AddAttribute(1, "TitleContent", (RenderFragment)((builder2) =>
+            {
+                builder2.OpenElement(10, "div");
+                builder2.AddAttribute(11, "class", "d-flex align-center");
+                builder2.OpenComponent<MudIcon>(12);
+                builder2.AddAttribute(13, "Icon", Icons.Material.Filled.Info);
+                builder2.AddAttribute(14, "Class", "mr-2");
+                builder2.AddAttribute(15, "Color", Color.Primary);
+                builder2.CloseComponent();
+                builder2.OpenComponent<MudText>(16);
+                builder2.AddAttribute(17, "Typo", Typo.h6);
+                builder2.AddAttribute(18, "ChildContent", (RenderFragment)((builder3) =>
+                {
+                    builder3.AddContent(19, "Metadata Viewer");
+                }));
+                builder2.CloseComponent();
+                builder2.CloseElement();
+            }));
+
+            builder.AddAttribute(2, "DialogContent", (RenderFragment)((builder2) =>
+            {
+                builder2.OpenElement(20, "div");
+                builder2.AddAttribute(21, "class", "pa-4");
+                builder2.AddAttribute(22, "style", "background-color: #f5f5f5; overflow-x: auto; max-height: 400px;");
+                builder2.OpenElement(23, "pre");
+                builder2.AddAttribute(24, "style", "margin: 0; white-space: pre-wrap;");
+                builder2.AddContent(25, FormattedMetadata);
+                builder2.CloseElement();
+                builder2.CloseElement();
+            }));
+
+            builder.AddAttribute(3, "DialogActions", (RenderFragment)((builder2) =>
+            {
+                builder2.OpenComponent<MudButton>(30);
+                builder2.AddAttribute(31, "Color", Color.Primary);
+                builder2.AddAttribute(32, "OnClick", EventCallback.Factory.Create<MouseEventArgs>(this, Close));
+                builder2.AddAttribute(33, "ChildContent", (RenderFragment)((builder3) =>
+                {
+                    builder3.AddContent(34, "Close");
+                }));
+                builder2.CloseComponent();
+            }));
+
+            builder.CloseComponent();
         }
     }
-} 
+
+    public class DeleteConfirmationDialog : ComponentBase
+    {
+        [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+
+        [Parameter] public string ContentText { get; set; }
+        [Parameter] public string ButtonText { get; set; }
+        [Parameter] public Color Color { get; set; }
+
+        void Submit() => MudDialog.Close(DialogResult.Ok(true));
+        void Cancel() => MudDialog.Cancel();
+
+        protected override void OnInitialized()
+        {
+            if (MudDialog == null)
+            {
+                throw new ArgumentNullException(nameof(MudDialog), "MudDialog cannot be null. This component must be used within a MudDialog.");
+            }
+        }
+
+        protected override void BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder)
+        {
+            builder.OpenComponent<MudDialog>(0);
+
+            builder.AddAttribute(1, "TitleContent", (RenderFragment)((builder2) =>
+            {
+                builder2.OpenElement(10, "div");
+                builder2.AddAttribute(11, "class", "d-flex align-center");
+                builder2.OpenComponent<MudIcon>(12);
+                builder2.AddAttribute(13, "Icon", Icons.Material.Filled.DeleteForever);
+                builder2.AddAttribute(14, "Class", "mr-2");
+                builder2.AddAttribute(15, "Color", Color.Error);
+                builder2.CloseComponent();
+                builder2.OpenComponent<MudText>(16);
+                builder2.AddAttribute(17, "Typo", Typo.h6);
+                builder2.AddAttribute(18, "ChildContent", (RenderFragment)((builder3) =>
+                {
+                    builder3.AddContent(19, "Confirm Delete");
+                }));
+                builder2.CloseComponent();
+                builder2.CloseElement();
+            }));
+
+            builder.AddAttribute(2, "DialogContent", (RenderFragment)((builder2) =>
+            {
+                builder2.OpenElement(20, "div");
+                builder2.AddAttribute(21, "class", "py-4");
+                builder2.OpenComponent<MudText>(22);
+                builder2.AddAttribute(23, "Typo", Typo.body1);
+                builder2.AddAttribute(24, "ChildContent", (RenderFragment)((builder3) =>
+                {
+                    builder3.AddContent(25, ContentText);
+                }));
+                builder2.CloseComponent();
+                builder2.CloseElement();
+            }));
+
+            builder.AddAttribute(3, "DialogActions", (RenderFragment)((builder2) =>
+            {
+                builder2.OpenElement(30, "div");
+                builder2.AddAttribute(31, "class", "d-flex justify-space-between px-2 py-1");
+
+                builder2.OpenComponent<MudButton>(32);
+                builder2.AddAttribute(33, "OnClick", EventCallback.Factory.Create<MouseEventArgs>(this, Cancel));
+                builder2.AddAttribute(34, "Variant", Variant.Outlined);
+                builder2.AddAttribute(35, "ChildContent", (RenderFragment)((builder3) =>
+                {
+                    builder3.AddContent(36, "Cancel");
+                }));
+                builder2.CloseComponent();
+
+                builder2.OpenComponent<MudButton>(40);
+                builder2.AddAttribute(41, "Color", Color);
+                builder2.AddAttribute(42, "Variant", Variant.Filled);
+                builder2.AddAttribute(43, "OnClick", EventCallback.Factory.Create<MouseEventArgs>(this, Submit));
+                builder2.AddAttribute(44, "StartIcon", Icons.Material.Filled.Delete);
+                builder2.AddAttribute(45, "ChildContent", (RenderFragment)((builder3) =>
+                {
+                    builder3.AddContent(46, ButtonText);
+                }));
+                builder2.CloseComponent();
+
+                builder2.CloseElement();
+            }));
+
+            builder.CloseComponent();
+        }
+    }
+}

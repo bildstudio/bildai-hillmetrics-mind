@@ -67,7 +67,7 @@ namespace HillMetrics.MIND.API.Mappers
             CreateMap<SearchFluxProcessingQueryItemResult, FluxProcessingSearchReponse>();
 
             CreateMap<FluxErrorSearchRequest, SearchFluxErrorQuery>();
-            CreateMap<SearchFluxErrrorQueryItemResult, FluxErrorSearchDto>();
+            CreateMap<SearchFluxErrrorQueryItemResult, FluxErrorSearchResponse>();
             
             CreateMap<FluxFetchHistoryQueryResult, FluxFetchingResponse>();
             CreateMap<FluxFetchingHistory, FluxFetchingHistoryResponse>();

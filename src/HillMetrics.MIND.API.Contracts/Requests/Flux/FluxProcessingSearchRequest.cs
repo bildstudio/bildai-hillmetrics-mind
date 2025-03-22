@@ -14,6 +14,11 @@ namespace HillMetrics.MIND.API.Contracts.Requests.Flux
         /// The id of the flux
         /// </summary>
         public SearchCriteria<int>? FluxId { get; set; }
+        
+        /// <summary>
+        /// Fetching history id
+        /// </summary>
+        public SearchCriteria<int>? FetchingHistoryId { get; set; }
 
         /// <summary>
         /// The date when the flux was fetched

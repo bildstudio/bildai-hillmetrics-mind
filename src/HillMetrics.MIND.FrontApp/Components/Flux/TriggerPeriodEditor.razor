@@ -18,36 +18,37 @@
                     <MudSelectItem Value="@FrequencyType.Specific">Specific</MudSelectItem>
                 </MudSelect>
             </MudItem>
-            
+
             <MudItem xs="12" md="6">
-                <MudSwitch T="bool" @bind-Checked="TriggerPeriod.IsEnabled" 
-                           Label="Is Active" 
-                           Color="Color.Primary" />
+                <MudRadioGroup T="bool" @bind-SelectedOption="IsEnabled">
+                    <MudRadio Value="true" Color="Color.Primary">Active</MudRadio>
+                    <MudRadio Value="false" Color="Color.Secondary">Inactive</MudRadio>
+                </MudRadioGroup>
             </MudItem>
 
-            @if (TriggerPeriod.FrequencyType == FrequencyType.Minute || 
-                TriggerPeriod.FrequencyType == FrequencyType.Hour || 
+            @if (TriggerPeriod.FrequencyType == FrequencyType.Minute ||
+                TriggerPeriod.FrequencyType == FrequencyType.Hour ||
                 TriggerPeriod.FrequencyType == FrequencyType.Day)
             {
                 if (TriggerPeriod.Interval == null)
                 {
                     TriggerPeriod.Interval = 1;
                 }
-                
+
                 <MudItem xs="12" md="6">
-                    <MudNumericField @bind-Value="TriggerPeriod.Interval" 
+                    <MudNumericField @bind-Value="TriggerPeriod.Interval"
                                     Label="@GetIntervalLabel()"
                                     Min="1"
                                     Variant="Variant.Outlined" />
                 </MudItem>
             }
 
-            @if (TriggerPeriod.FrequencyType == FrequencyType.Day || 
-                TriggerPeriod.FrequencyType == FrequencyType.Month || 
+            @if (TriggerPeriod.FrequencyType == FrequencyType.Day ||
+                TriggerPeriod.FrequencyType == FrequencyType.Month ||
                 TriggerPeriod.FrequencyType == FrequencyType.Specific)
             {
                 <MudItem xs="12" md="6">
-                    <MudTimePicker @bind-Time="StartTime" 
+                    <MudTimePicker @bind-Time="StartTime"
                                   Label="Start Time"
                                   Variant="Variant.Outlined"
                                   AmPm="false" />
@@ -57,7 +58,7 @@
            @*  @if (TriggerPeriod.FrequencyType == FrequencyType.Specific)
             {
                 <MudItem xs="12" md="6">
-                    <MudSelect T="DayOfWeek" @bind-Value="TriggerPeriod.DayOfWeek" 
+                    <MudSelect T="DayOfWeek" @bind-Value="TriggerPeriod.DayOfWeek"
                               Label="Day of Week"
                               Variant="Variant.Outlined">
                         <MudSelectItem Value="@DayOfWeek.Monday">Monday</MudSelectItem>
@@ -70,19 +71,19 @@
                     </MudSelect>
                 </MudItem>
             } *@
-            
+
             @if (TriggerPeriod.FrequencyType == FrequencyType.Month)
             {
                 <MudItem xs="12" md="6">
-                    <MudNumericField @bind-Value="TriggerPeriod.DayOfMonth" 
+                    <MudNumericField @bind-Value="TriggerPeriod.DayOfMonth"
                                     Label="Day of Month"
                                     Min="1"
                                     Max="31"
                                     Variant="Variant.Outlined" />
                 </MudItem>
             }
-            
-            @if (TriggerPeriod.FrequencyType != FrequencyType.Never && 
+
+            @if (TriggerPeriod.FrequencyType != FrequencyType.Never &&
                 TriggerPeriod.FrequencyType != FrequencyType.Immediately)
             {
                 <MudItem xs="12">
@@ -102,13 +103,26 @@
     [Parameter]
     public EventCallback<TriggerPeriod> TriggerPeriodChanged { get; set; }
 
+    [Parameter]
+    public bool ReadOnly { get; set; } = false;
+
     private TimeSpan? _startTime;
     private TimeSpan? StartTime
     {
         get => TriggerPeriod.StartTime;
-        set 
+        set
         {
             TriggerPeriod.StartTime = value;
+            TriggerPeriodChanged.InvokeAsync(TriggerPeriod);
+        }
+    }
+
+    private bool IsEnabled
+    {
+        get => TriggerPeriod.IsEnabled;
+        set
+        {
+            TriggerPeriod.IsEnabled = value;
             TriggerPeriodChanged.InvokeAsync(TriggerPeriod);
         }
     }
@@ -124,7 +138,7 @@
     private void OnFrequencyTypeChanged(IEnumerable<FrequencyType> values)
     {
         var frequencyType = values.FirstOrDefault();
-        
+
         // Initialize properties based on frequency type
         switch (frequencyType)
         {
@@ -189,4 +203,4 @@
 
         return TriggerPeriod.ToString();
     }
-} 
+}
