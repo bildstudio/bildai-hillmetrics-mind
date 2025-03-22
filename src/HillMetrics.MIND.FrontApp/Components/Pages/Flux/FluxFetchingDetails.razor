@@ -44,10 +44,10 @@
                             <MudIcon Icon="@Icons.Material.Filled.List" Class="mr-2" /> All Fetching History
                         </MudButton>
                     </MudButtonGroup>
-                    <MudButton Color="Color.Error" 
+                    <MudButton Color="Color.Error"
                                Variant="Variant.Outlined"
                                StartIcon="@Icons.Material.Filled.Delete"
-                               OnClick="@ConfirmDelete" 
+                               OnClick="@ConfirmDelete"
                                Class="ml-2">
                         Delete
                     </MudButton>
@@ -82,7 +82,7 @@
                             @if (!string.IsNullOrEmpty(fetchingHistory.FluxFetching.Metadata))
                             {
                                 <MudItem xs="12">
-                                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" 
+                                    <MudButton Variant="Variant.Outlined" Color="Color.Primary"
                                              OnClick="@(() => ShowMetadata(fetchingHistory.FluxFetching.Metadata))">
                                         <MudIcon Icon="@Icons.Material.Filled.Info" Class="mr-2" /> View Metadata
                                     </MudButton>
@@ -98,7 +98,7 @@
                 <MudCard Elevation="3" Class="mb-4">
                     <MudCardHeader>
                         <CardHeaderContent>
-                            <MudText Typo="Typo.h6">Fetched Contents (@fetchingHistory.FluxFetching.IdentificationContentHistories.Count)</MudText>
+                            <MudText Typo="Typo.h6">Fetched Contents (@fetchingHistory.FluxFetching.FluxFetchingContentHistories.Count)</MudText>
                         </CardHeaderContent>
                         <CardHeaderActions>
                             <MudBadge Content="@CountContentsByStatus(StatusProcess.Success)" Color="Color.Success" Overlap="true" Dot="false" Class="mx-1">
@@ -113,8 +113,8 @@
                         </CardHeaderActions>
                     </MudCardHeader>
                     <MudCardContent Style="padding: 0;">
-                        <MudTable Items="@fetchingHistory.FluxFetching.IdentificationContentHistories" Dense="true" Hover="true" 
-                                  Bordered="true" Striped="true" T="FluxFetchingContentHistoryResponse" 
+                        <MudTable Items="@fetchingHistory.FluxFetching.FluxFetchingContentHistories" Dense="true" Hover="true"
+                                  Bordered="true" Striped="true" T="FluxFetchingContentHistoryResponse"
                                   @bind-SelectedItem="selectedContent">
                             <HeaderContent>
                                 <MudTh>ID</MudTh>
@@ -151,10 +151,10 @@
                                                 <div class="mud-text-truncate" style="max-width: 120px;">@context.RawId</div>
                                             </MudTooltip>
                                             <MudTooltip Text="Download Raw Content">
-                                                <MudIconButton Icon="@Icons.Material.Filled.CloudDownload" 
+                                                <MudIconButton Icon="@Icons.Material.Filled.CloudDownload"
                                                               Color="Color.Primary"
                                                               Size="Size.Small"
-                                                              OnClick="@(() => ViewRawContent(context))" 
+                                                              OnClick="@(() => ViewRawContent(context))"
                                                               Class="ml-2" />
                                             </MudTooltip>
                                         </div>
@@ -282,7 +282,7 @@
                             </CardHeaderActions>
                         </MudCardHeader>
                         <MudCardContent Style="padding: 0;">
-                            <MudTable Items="@processingHistories" Dense="true" Hover="true" 
+                            <MudTable Items="@processingHistories" Dense="true" Hover="true"
                                       Bordered="true" Striped="true" T="FluxProcessingSearchReponse">
                                 <HeaderContent>
                                     <MudTh>ID</MudTh>
@@ -381,7 +381,7 @@
             loading = true;
             var response = await MindApi.GetFetchingHistoryAsync(FetchingHistoryId);
             fetchingHistory = response.Data;
-            
+
             // Load the associated processing histories
             await LoadProcessingHistories();
         }
@@ -411,7 +411,7 @@
                         Value = fetchingHistory.FluxFetching.Id
                     }
                 };
-                
+
                 var response = await MindApi.SearchProcessingHistoryAsync(processRequest);
                 processingHistories = response.Data.ToList();
             }
@@ -430,8 +430,8 @@
             ["Metadata"] = metadata
         };
 
-        var options = new DialogOptions 
-        { 
+        var options = new DialogOptions
+        {
             CloseOnEscapeKey = true,
             MaxWidth = MaxWidth.Medium,
             FullWidth = true
@@ -477,14 +477,21 @@
             Snackbar.Add("Raw content is not available for this item", Severity.Warning);
             return;
         }
-        
+
         try
         {
-            // Construire l'URL pour le téléchargement
-            var rawUrl = $"{NavigationManager.BaseUri}api/v1/Raw/{content.RawId}";
-            
-            // Télécharger le fichier via JS
-            await JSRuntime.InvokeVoidAsync("downloadFile", rawUrl, content.ContentName);
+            // Utiliser MindApi.GetFile pour récupérer le contenu comme Stream
+            using var stream = await MindApi.GetFile(content.RawId);
+
+            // Convertir le Stream en byte[]
+            using var memoryStream = new MemoryStream();
+            await stream.CopyToAsync(memoryStream);
+            var fileBytes = memoryStream.ToArray();
+
+            // Utiliser JS pour télécharger le fichier
+            await JSRuntime.InvokeVoidAsync("downloadFileFromBytes",
+                Convert.ToBase64String(fileBytes),
+                content.ContentName);
         }
         catch (Exception ex)
         {
@@ -494,10 +501,10 @@
 
     private int CountContentsByStatus(StatusProcess status)
     {
-        if (fetchingHistory?.FluxFetching?.IdentificationContentHistories == null)
+        if (fetchingHistory?.FluxFetching?.FluxFetchingContentHistories == null)
             return 0;
-            
-        return fetchingHistory.FluxFetching.IdentificationContentHistories.Count(c => c.ContentStatus == status);
+
+        return fetchingHistory.FluxFetching.FluxFetchingContentHistories.Count(c => c.ContentStatus == status);
     }
 
     // Helper methods for icons and colors
@@ -543,7 +550,7 @@
 
         return dateTime.ToString("MMM dd, HH:mm");
     }
-    
+
     private string FormatDuration(TimeSpan duration)
     {
         if (duration.TotalDays >= 1)
@@ -565,9 +572,9 @@
             { "Color", Color.Error }
         };
 
-        var options = new DialogOptions 
-        { 
-            CloseOnEscapeKey = true, 
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
             MaxWidth = MaxWidth.ExtraSmall,
             FullWidth = true,
             BackdropClick = true,
@@ -588,9 +595,9 @@
         try
         {
             loading = true;
-            
+
             var response = await MindApi.DeleteFetchingHistoryAsync(FetchingHistoryId);
-            
+
             if (response.Data)
             {
                 Snackbar.Add("Fetching history deleted successfully", Severity.Success);
@@ -617,8 +624,9 @@
     {
         if (firstRender)
         {
-            // Ajouter une fonction JS pour gérer le téléchargement de fichier
+            // Ajouter les fonctions JS nécessaires
             await JSRuntime.InvokeVoidAsync("eval", @"
+                // Fonction existante pour télécharger depuis une URL
                 window.downloadFile = function(url, fileName) {
                     fetch(url)
                         .then(response => {
@@ -640,10 +648,42 @@
                         .catch(error => {
                             console.error('Error downloading file:', error);
                         });
-                }
+                };
+
+                // Nouvelle fonction pour télécharger depuis des bytes
+                window.downloadFileFromBytes = function(base64, fileName) {
+                    try {
+                        const byteCharacters = atob(base64);
+                        const byteArrays = [];
+
+                        for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+                            const slice = byteCharacters.slice(offset, offset + 512);
+
+                            const byteNumbers = new Array(slice.length);
+                            for (let i = 0; i < slice.length; i++) {
+                                byteNumbers[i] = slice.charCodeAt(i);
+                            }
+
+                            const byteArray = new Uint8Array(byteNumbers);
+                            byteArrays.push(byteArray);
+                        }
+
+                        const blob = new Blob(byteArrays);
+                        const link = document.createElement('a');
+                        const blobUrl = URL.createObjectURL(blob);
+                        link.href = blobUrl;
+                        link.download = fileName || 'download';
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        URL.revokeObjectURL(blobUrl);
+                    } catch (error) {
+                        console.error('Error downloading file from bytes:', error);
+                    }
+                };
             ");
         }
-        
+
         await base.OnAfterRenderAsync(firstRender);
     }
 }
@@ -653,11 +693,11 @@
     public class DisplayMetadataDialog : ComponentBase
     {
         [CascadingParameter] MudDialogInstance MudDialog { get; set; }
-        
+
         [Parameter] public string Metadata { get; set; }
-        
+
         private string FormattedMetadata => FormatJson(Metadata);
-        
+
         private void Close() => MudDialog.Close();
 
     private string FormatJson(string json)
@@ -668,7 +708,7 @@
             {
                 WriteIndented = true
             };
-            
+
             var jsonElement = JsonSerializer.Deserialize<JsonElement>(json);
             return JsonSerializer.Serialize(jsonElement, options);
         }
@@ -677,7 +717,7 @@
             return json;
             }
         }
-        
+
         protected override void OnInitialized()
         {
             if (MudDialog == null)
@@ -685,7 +725,7 @@
                 throw new ArgumentNullException(nameof(MudDialog), "MudDialog cannot be null. This component must be used within a MudDialog.");
             }
         }
-        
+
         protected override void BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder)
         {
             builder.OpenComponent<MudDialog>(0);
@@ -707,7 +747,7 @@
                 builder2.CloseComponent();
                 builder2.CloseElement();
             }));
-            
+
             builder.AddAttribute(2, "DialogContent", (RenderFragment)((builder2) =>
             {
                 builder2.OpenElement(20, "div");
@@ -719,7 +759,7 @@
                 builder2.CloseElement();
                 builder2.CloseElement();
             }));
-            
+
             builder.AddAttribute(3, "DialogActions", (RenderFragment)((builder2) =>
             {
                 builder2.OpenComponent<MudButton>(30);
@@ -731,7 +771,7 @@
                 }));
                 builder2.CloseComponent();
             }));
-            
+
             builder.CloseComponent();
         }
     }
@@ -739,7 +779,7 @@
     public class DeleteConfirmationDialog : ComponentBase
     {
         [CascadingParameter] MudDialogInstance MudDialog { get; set; }
-        
+
         [Parameter] public string ContentText { get; set; }
         [Parameter] public string ButtonText { get; set; }
         [Parameter] public Color Color { get; set; }
@@ -758,7 +798,7 @@
         protected override void BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder)
         {
             builder.OpenComponent<MudDialog>(0);
-            
+
             builder.AddAttribute(1, "TitleContent", (RenderFragment)((builder2) =>
             {
                 builder2.OpenElement(10, "div");
@@ -777,7 +817,7 @@
                 builder2.CloseComponent();
                 builder2.CloseElement();
             }));
-            
+
             builder.AddAttribute(2, "DialogContent", (RenderFragment)((builder2) =>
             {
                 builder2.OpenElement(20, "div");
@@ -791,12 +831,12 @@
                 builder2.CloseComponent();
                 builder2.CloseElement();
             }));
-            
+
             builder.AddAttribute(3, "DialogActions", (RenderFragment)((builder2) =>
             {
                 builder2.OpenElement(30, "div");
                 builder2.AddAttribute(31, "class", "d-flex justify-space-between px-2 py-1");
-                
+
                 builder2.OpenComponent<MudButton>(32);
                 builder2.AddAttribute(33, "OnClick", EventCallback.Factory.Create<MouseEventArgs>(this, Cancel));
                 builder2.AddAttribute(34, "Variant", Variant.Outlined);
@@ -805,7 +845,7 @@
                     builder3.AddContent(36, "Cancel");
                 }));
                 builder2.CloseComponent();
-                
+
                 builder2.OpenComponent<MudButton>(40);
                 builder2.AddAttribute(41, "Color", Color);
                 builder2.AddAttribute(42, "Variant", Variant.Filled);
@@ -816,11 +856,11 @@
                     builder3.AddContent(46, ButtonText);
                 }));
                 builder2.CloseComponent();
-                
+
                 builder2.CloseElement();
             }));
-            
+
             builder.CloseComponent();
         }
     }
-} 
+}

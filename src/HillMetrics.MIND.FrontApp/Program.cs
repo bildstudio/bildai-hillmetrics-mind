@@ -24,6 +24,12 @@ builder.Services.ConfigureHillMetricsDefaultHttpClient();
 var mindApi = builder.Configuration.GetValue<string>("Services:MindApi", $"https+http://{HillMetrics.Orchestrator.ServicesNames.Services.MindAPI}");
 builder.Services.AddMindApiSDK(mindApi);
 
+builder.Services.AddHillMetricsHttpClient("MindAPI", client =>
+{
+    client.BaseAddress = new Uri(mindApi);
+    client.Timeout = TimeSpan.FromMinutes(5);
+});
+
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();

@@ -2,7 +2,7 @@
 using System.Text.Json.Serialization;
 using System.Text.Json;
 
-namespace HillMetrics.MIND.API.Converter;
+namespace HillMetrics.MIND.API.Contracts.Converter;
 
 public class FluxMetadataDtoJsonConverter : JsonConverter<FluxMetadataDto>
 {

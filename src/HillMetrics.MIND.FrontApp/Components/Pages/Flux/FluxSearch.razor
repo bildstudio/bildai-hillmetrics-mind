@@ -175,7 +175,7 @@
                 <MudTh>Financial Type</MudTh>
                 <MudTh>Flux Type</MudTh>
                 <MudTh>Status</MudTh>
-                <MudTh>Workflow</MudTh>
+                @* <MudTh>Workflow</MudTh> *@
                 <MudTh>Last Fetching</MudTh>
                 <MudTh>Fetching Status</MudTh>
                 <MudTh>Fetch Errors</MudTh>
@@ -209,7 +209,7 @@
                         @context.FluxState
                     </MudChip>
                 </MudTd>
-                <MudTd DataLabel="Workflow">
+                @* <MudTd DataLabel="Workflow">
                     @if (activeWorkflows.TryGetValue(context.FluxId, out var workflow))
                     {
                         <div class="d-flex align-center">
@@ -227,7 +227,7 @@
                               Class="ml-2">
                         View Workflow
                     </MudButton>
-                </MudTd>
+                </MudTd> *@
                 <MudTd DataLabel="Last Fetching">
                     @if (context.LastFetching.HasValue)
                     {
@@ -392,15 +392,15 @@
         await LoadActiveWorkflows();
         
         // Configure a timer to refresh workflows every 10 seconds
-        workflowRefreshTimer = new System.Threading.Timer(
-            async _ => await InvokeAsync(async () =>
-            {
-                await LoadActiveWorkflows();
-                StateHasChanged();
-            }),
-            null,
-            TimeSpan.FromSeconds(10),
-            TimeSpan.FromSeconds(10));
+        // workflowRefreshTimer = new System.Threading.Timer(
+        //     async _ => await InvokeAsync(async () =>
+        //     {
+        //         await LoadActiveWorkflows();
+        //         StateHasChanged();
+        //     }),
+        //     null,
+        //     TimeSpan.FromSeconds(10),
+        //     TimeSpan.FromSeconds(10));
     }
 
     private async Task LoadSourcesAsync()

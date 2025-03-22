@@ -1,6 +1,7 @@
 @page "/flux/create"
 @page "/flux/edit/{FluxId:int}"
 @using HillMetrics.Core.Financial
+@using HillMetrics.MIND.API.Contracts.Converter
 @using HillMetrics.MIND.API.Contracts.Requests.Flux
 @using HillMetrics.MIND.API.Contracts.Requests.Source
 @using HillMetrics.MIND.API.Contracts.Responses.Flux
@@ -10,9 +11,11 @@
 @using HillMetrics.MIND.FrontApp.Services
 @using HillMetrics.Core.Time.Trigger
 @using HillMetrics.Normalized.Domain.Contracts.Providing.Flux
+@using System.Text.Json
 @inject IMindAPI MindApi
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
+@inject IHttpClientFactory HttpClientFactory;
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="py-4">
     <MudPaper Elevation="3" Class="pa-4">
@@ -122,9 +125,10 @@
                                         </MudSelect>
                                     </MudItem>
                                     <MudItem xs="12">
-                                        <MudSwitch T="bool" @bind-Checked="@canHaveConcurrencyMultiFetching" 
-                                            Label="Allow Concurrent Multi-Fetching" 
-                                            Color="Color.Primary" />
+                                        <MudSwitch T="bool"
+                                            Label="Allow Concurrent Multi-Fetching"
+                                            Color="Color.Primary"
+                                            @bind-Value="canHaveConcurrencyMultiFetching" />
                                     </MudItem>
                                 </MudGrid>
                             </MudCardContent>
@@ -181,11 +185,11 @@
 
                 <MudGrid Class="mt-4">
                     <MudItem xs="12" Class="d-flex justify-end">
-                        <MudButton Variant="Variant.Filled" Color="Color.Secondary" 
+                        <MudButton Variant="Variant.Filled" Color="Color.Secondary"
                         OnClick="Cancel" Class="mr-2">
                             Cancel
                         </MudButton>
-                        <MudButton Variant="Variant.Filled" Color="Color.Primary" 
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary"
                         OnClick="SubmitForm" Disabled="@(!success || processing)">
                             @(FluxId.HasValue ? "Update" : "Create")
                             @if (processing)
@@ -420,7 +424,7 @@
         {
             // Set the value from the boolean binding
             fluxRequest.CanHaveConcurrencyMultiFetching = canHaveConcurrencyMultiFetching;
-            
+
             // Convert TriggerPeriod to TriggerPeriodDto
             fluxRequest.FetchTriggerPeriod = MapToTriggerPeriodDto(fetchTriggerPeriod);
             fluxRequest.ProcessTriggerPeriod = MapToTriggerPeriodDto(processTriggerPeriod);
@@ -450,8 +454,26 @@
             bool result;
             if (FluxId.HasValue)
             {
-                // Update existing flux
-                result = await MindApi.UpdateFluxAsync(FluxId.Value, fluxRequest);
+                var httpClient = HttpClientFactory.CreateClient("MindAPI");
+
+                var jsonOptions = new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true,
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                    WriteIndented = true
+                };
+                jsonOptions.Converters.Add(new FluxMetadataDtoJsonConverter());
+
+                // Serialiser manuellement la requête
+                var jsonContent = JsonSerializer.Serialize(fluxRequest, jsonOptions);
+                var content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json");
+
+                // Envoyer la requête PUT
+                var response = await httpClient.PutAsync($"api/v1/flux?fluxId={FluxId.Value}", content);
+
+                // Analyser la réponse
+                result = response.IsSuccessStatusCode;
+
                 if (result)
                 {
                     Snackbar.Add("Flux updated successfully!", Severity.Success);
@@ -459,12 +481,13 @@
                 }
                 else
                 {
-                    Snackbar.Add("Failed to update flux.", Severity.Error);
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    Snackbar.Add($"Failed to update flux. Error: {errorContent}", Severity.Error);
                 }
             }
             else
             {
-                // Create new flux
+                // Create new flux (conserve l'appel Refit pour la création)
                 result = await MindApi.CreateFluxAsync(fluxRequest);
                 if (result)
                 {
@@ -534,4 +557,63 @@
             return Array.Empty<string>();
         };
     }
-} 
+
+    private string GetStatusIcon(StatusProcess? status)
+    {
+        if (status == null)
+            return Icons.Material.Filled.HelpOutline;
+
+        return status.Value switch
+        {
+            StatusProcess.Success => Icons.Material.Filled.CheckCircle,
+            StatusProcess.Failure => Icons.Material.Filled.Error,
+            StatusProcess.Warning => Icons.Material.Filled.Warning,
+            StatusProcess.Processing => Icons.Material.Filled.Pending,
+            StatusProcess.Paused => Icons.Material.Filled.Block,
+            _ => Icons.Material.Filled.HelpOutline
+        };
+    }
+
+    private Color GetStatusColor(StatusProcess? status)
+    {
+        if (status == null)
+            return Color.Default;
+
+        return status.Value switch
+        {
+            StatusProcess.Success => Color.Success,
+            StatusProcess.Failure => Color.Error,
+            StatusProcess.Warning => Color.Warning,
+            StatusProcess.Processing => Color.Info,
+            StatusProcess.Paused => Color.Warning,
+            _ => Color.Default
+        };
+    }
+
+    private string FormatDateTime(DateTime? dateTime)
+    {
+        if (!dateTime.HasValue)
+            return "-";
+
+        try
+        {
+            var now = DateTime.Now;
+            var diff = now - dateTime.Value;
+
+            if (diff.TotalMinutes < 1)
+                return "Just now";
+            if (diff.TotalHours < 1)
+                return $"{(int)diff.TotalMinutes}m ago";
+            if (diff.TotalDays < 1)
+                return $"{(int)diff.TotalHours}h ago";
+            if (diff.TotalDays < 7)
+                return $"{(int)diff.TotalDays}d ago";
+
+            return dateTime.Value.ToString(); //.ToString("MMM dd, HH:mm");
+        }
+        catch
+        {
+            return dateTime.Value.ToString() ?? "-";
+        }
+    }
+}

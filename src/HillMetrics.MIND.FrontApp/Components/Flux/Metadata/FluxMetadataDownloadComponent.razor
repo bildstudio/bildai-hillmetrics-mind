@@ -17,31 +17,30 @@
     <MudCardContent>
         <MudGrid>
             <MudItem xs="12">
-                <MudTextField @bind-Value="Metadata.DownloadUrl" 
-                Label="URL" 
+                <MudTextField @bind-Value="Metadata.DownloadUrl"
+                Label="URL"
                 Variant="Variant.Outlined"
                 Required="true"
                 Validation="@(new Func<string, IEnumerable<string>>(ValidateUrl))" />
             </MudItem>
 
             <MudItem xs="12">
-                <MudTextField @bind-Value="Metadata.ContentType"
-                Label="Content "
-                Variant="Variant.Outlined"
-                Required="true"
-                Validation="@(new Func<string, IEnumerable<string>>(ValidateUrl))" />
+                <MudSelect @bind-Value="Metadata.ContentType" Label="Content Type" Variant="Variant.Outlined" Required="true">
+                    <MudSelectItem Value="ContentType.Xlsx">Xlxs</MudSelectItem>
+                    <MudSelectItem Value="ContentType.Xls">Xlx</MudSelectItem>
+                    <MudSelectItem Value="ContentType.Csv">CSV</MudSelectItem>
+                    <MudSelectItem Value="ContentType.Json">Json</MudSelectItem>
+                    <MudSelectItem Value="ContentType.Pdf">Pdf</MudSelectItem>
+                    <MudSelectItem Value="ContentType.Html">Html</MudSelectItem>
+                    <MudSelectItem Value="ContentType.Text">Text</MudSelectItem>
+                    <MudSelectItem Value="ContentType.Xml">Xml</MudSelectItem>
+                </MudSelect>
             </MudItem>
 
-            <MudSelect @bind-Value="Metadata.ContentType" Label="Content Type" Variant="Variant.Outlined" Required="true">
-                <MudSelectItem Value="ContentType.Xlsx">Xlxs</MudSelectItem>
-                <MudSelectItem Value="ContentType.Xls">Xlx</MudSelectItem>
-                <MudSelectItem Value="ContentType.Csv">CSV</MudSelectItem>
-                <MudSelectItem Value="ContentType.Json">Json</MudSelectItem>
-                <MudSelectItem Value="ContentType.Pdf">Pdf</MudSelectItem>
-                <MudSelectItem Value="ContentType.Html">Html</MudSelectItem>
-                <MudSelectItem Value="ContentType.Text">Text</MudSelectItem>
-                <MudSelectItem Value="ContentType.Xml">Xml</MudSelectItem>
-            </MudSelect>
+            <MudItem xs="12">
+                <MudDivider Class="my-3" />
+                <FluxMetadataDictionaryComponent @bind-MetadataDictionary="Metadata.Metadata" />
+            </MudItem>
         </MudGrid>
     </MudCardContent>
 </MudCard>
@@ -64,6 +63,33 @@
     protected override void OnParametersSet()
     {
         // Set default values if null
-        Metadata ??= new FluxMetadataDownloadDto();
+        Metadata ??= new FluxMetadataDownloadDto
+        {
+            Metadata = new Dictionary<string, object>()
+        };
+
+        if (Metadata.Metadata == null)
+            Metadata.Metadata = new Dictionary<string, object>();
     }
-} 
+
+    private string GetMetadataValue(string key, string defaultValue)
+    {
+        if (Metadata.Metadata != null && Metadata.Metadata.TryGetValue(key, out var value))
+            return value?.ToString() ?? defaultValue;
+
+        return defaultValue;
+    }
+
+    private void SetMetadataValue(string key, string value)
+    {
+        if (Metadata.Metadata == null)
+            Metadata.Metadata = new Dictionary<string, object>();
+
+        if (Metadata.Metadata.ContainsKey(key))
+            Metadata.Metadata[key] = value;
+        else
+            Metadata.Metadata.Add(key, value);
+
+        MetadataChanged.InvokeAsync(Metadata);
+    }
+}
