@@ -1,3 +1,4 @@
+using HillMetrics.MIND.API.Contracts.Converter;
 using HillMetrics.MIND.API.SDK.V1;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -31,13 +32,13 @@ namespace HillMetrics.MIND.API.SDK
             httpClientTimeout ??= TimeSpan.FromSeconds(30);
 
             IHttpClientBuilder httpClientBuilder = services.AddRefitClient<IMindAPI>(settings: new RefitSettings
+            {
+                ContentSerializer = new SystemTextJsonContentSerializer(new JsonSerializerOptions
                 {
-                    ContentSerializer = new SystemTextJsonContentSerializer(new JsonSerializerOptions
-                    {
-                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                        DictionaryKeyPolicy = JsonNamingPolicy.CamelCase,
-                    })
-                })
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                    DictionaryKeyPolicy = JsonNamingPolicy.CamelCase,
+                }),
+            })
                 .ConfigureHttpClient(s =>
                 {
                     s.BaseAddress = new(baseAddress);
@@ -78,6 +79,14 @@ namespace HillMetrics.MIND.API.SDK
             string baseAddress
             )
         {
+            var refitSettings = new RefitSettings
+            {
+                ContentSerializer = new SystemTextJsonContentSerializer(new JsonSerializerOptions
+                {
+                    Converters = { new FluxMetadataDtoJsonConverter() },
+                }),
+            };
+
             services.AddRefitClient<IMindAPI>()
                 .ConfigureHttpClient(s =>
                 {
@@ -88,4 +97,4 @@ namespace HillMetrics.MIND.API.SDK
             return services;
         }
     }
-} 
+}

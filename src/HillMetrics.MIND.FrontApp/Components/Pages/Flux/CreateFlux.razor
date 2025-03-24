@@ -1,6 +1,7 @@
 @page "/flux/create"
 @page "/flux/edit/{FluxId:int}"
 @using HillMetrics.Core.Financial
+@using HillMetrics.MIND.API.Contracts.Converter
 @using HillMetrics.MIND.API.Contracts.Requests.Flux
 @using HillMetrics.MIND.API.Contracts.Requests.Source
 @using HillMetrics.MIND.API.Contracts.Responses.Flux
@@ -10,9 +11,11 @@
 @using HillMetrics.MIND.FrontApp.Services
 @using HillMetrics.Core.Time.Trigger
 @using HillMetrics.Normalized.Domain.Contracts.Providing.Flux
+@using System.Text.Json
 @inject IMindAPI MindApi
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
+@inject IHttpClientFactory HttpClientFactory;
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="py-4">
     <MudPaper Elevation="3" Class="pa-4">
@@ -122,9 +125,10 @@
                                         </MudSelect>
                                     </MudItem>
                                     <MudItem xs="12">
-                                        <MudSwitch T="bool" @bind-Checked="@canHaveConcurrencyMultiFetching" 
-                                            Label="Allow Concurrent Multi-Fetching" 
-                                            Color="Color.Primary" />
+                                        <MudSwitch T="bool"
+                                            Label="Allow Concurrent Multi-Fetching"
+                                            Color="Color.Primary"
+                                            @bind-Value="canHaveConcurrencyMultiFetching" />
                                     </MudItem>
                                 </MudGrid>
                             </MudCardContent>
@@ -169,10 +173,10 @@
                                     break;
                                 case FluxType.HttpDownload:
                                 case FluxType.Scraping:
-                                    <MudAlert Severity="Severity.Info" Class="mb-2">Downloading Configuration</MudAlert>
+                                    <FluxMetadataDownloadComponent Metadata="@downloadMetadata" MetadataChanged="@(md => { downloadMetadata = md; StateHasChanged(); })" />
                                     break;
                                 case FluxType.Sftp:
-                                    <MudAlert Severity="Severity.Info" Class="mb-2">SFTP Configuration</MudAlert>
+                                    <FluxMetadataFileLocationComponent Metadata="@fileLocationMetadata" MetadataChanged="@(md => { fileLocationMetadata = md; StateHasChanged(); })" />
                                     break;
                             }
                         </MudItem>
@@ -181,11 +185,11 @@
 
                 <MudGrid Class="mt-4">
                     <MudItem xs="12" Class="d-flex justify-end">
-                        <MudButton Variant="Variant.Filled" Color="Color.Secondary" 
+                        <MudButton Variant="Variant.Filled" Color="Color.Secondary"
                         OnClick="Cancel" Class="mr-2">
                             Cancel
                         </MudButton>
-                        <MudButton Variant="Variant.Filled" Color="Color.Primary" 
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary"
                         OnClick="SubmitForm" Disabled="@(!success || processing)">
                             @(FluxId.HasValue ? "Update" : "Create")
                             @if (processing)
@@ -258,67 +262,97 @@
     {
         try
         {
-            var result = await MindApi.GetFluxAsync(FluxId!.Value);
-            if (result != null)
+            var response = await MindApi.GetFluxAsync(FluxId!.Value);
+            if (response != null)
             {
                 // Map the response to the request model
-                fluxRequest.FluxName = result.FluxName;
-                fluxRequest.FluxDescription = result.Description;
-                fluxRequest.FluxComment = result.Comment;
-                fluxRequest.SourceId = result.Source.Id;
-                fluxRequest.FluxType = result.FluxType;
-                fluxRequest.FluxFinancialType = result.FinancialType;
-                fluxRequest.FluxState = result.FluxState;
-                canHaveConcurrencyMultiFetching = result.CanHaveConcurrencyMultiFetching;
-                fluxRequest.CanHaveConcurrencyMultiFetching = result.CanHaveConcurrencyMultiFetching;
+                fluxRequest.FluxName = response.FluxName;
+                fluxRequest.FluxDescription = response.Description;
+                fluxRequest.FluxComment = response.Comment;
+                fluxRequest.SourceId = response.Source.Id;
+                fluxRequest.FluxType = response.FluxType;
+                fluxRequest.FluxFinancialType = response.FinancialType;
+                fluxRequest.FluxState = response.FluxState;
+                canHaveConcurrencyMultiFetching = response.CanHaveConcurrencyMultiFetching;
+                fluxRequest.CanHaveConcurrencyMultiFetching = response.CanHaveConcurrencyMultiFetching;
 
                 // Map trigger periods
-                if (result.FetchTriggerPeriod != null)
+                if (response.FetchTriggerPeriod != null)
                 {
                     fetchTriggerPeriod = new TriggerPeriod
                     {
-                        FrequencyType = result.FetchTriggerPeriod.FrequencyType,
-                        Interval = result.FetchTriggerPeriod.Interval,
-                        StartTime = result.FetchTriggerPeriod.StartTime,
-                        DayOfWeek = result.FetchTriggerPeriod.DayOfWeek,
-                        DayOfMonth = result.FetchTriggerPeriod.DayOfMonth,
-                        IsEnabled = result.FetchTriggerPeriod.IsEnabled
+                        FrequencyType = response.FetchTriggerPeriod.FrequencyType,
+                        Interval = response.FetchTriggerPeriod.Interval,
+                        StartTime = response.FetchTriggerPeriod.StartTime,
+                        DayOfWeek = response.FetchTriggerPeriod.DayOfWeek,
+                        DayOfMonth = response.FetchTriggerPeriod.DayOfMonth,
+                        IsEnabled = response.FetchTriggerPeriod.IsEnabled
                     };
                 }
 
-                if (result.ProcessTriggerPeriod != null)
+                if (response.ProcessTriggerPeriod != null)
                 {
                     processTriggerPeriod = new TriggerPeriod
                     {
-                        FrequencyType = result.ProcessTriggerPeriod.FrequencyType,
-                        Interval = result.ProcessTriggerPeriod.Interval,
-                        StartTime = result.ProcessTriggerPeriod.StartTime,
-                        DayOfWeek = result.ProcessTriggerPeriod.DayOfWeek,
-                        DayOfMonth = result.ProcessTriggerPeriod.DayOfMonth,
-                        IsEnabled = result.ProcessTriggerPeriod.IsEnabled
+                        FrequencyType = response.ProcessTriggerPeriod.FrequencyType,
+                        Interval = response.ProcessTriggerPeriod.Interval,
+                        StartTime = response.ProcessTriggerPeriod.StartTime,
+                        DayOfWeek = response.ProcessTriggerPeriod.DayOfWeek,
+                        DayOfMonth = response.ProcessTriggerPeriod.DayOfMonth,
+                        IsEnabled = response.ProcessTriggerPeriod.IsEnabled
                     };
                 }
 
                 // Load type-specific metadata based on the flux type
-                if (result.FluxMetadata != null)
+                switch (response.FluxType)
                 {
-                    switch (result.FluxType)
-                    {
-                        case FluxType.Email:
-                            emailMetadata = (FluxMetadataMailDto)result.FluxMetadata;
-                            break;
-                        case FluxType.Api:
-                        case FluxType.Webhook:
-                            apiMetadata =(FluxMetadataApiDto)result.FluxMetadata;
-                            break;
-                        case FluxType.HttpDownload:
-                        case FluxType.Scraping:
-                            downloadMetadata = (FluxMetadataDownloadDto)result.FluxMetadata;
-                            break;
-                        case FluxType.Sftp:
-                            fileLocationMetadata = (FluxMetadataFileLocationDto)result.FluxMetadata;
-                            break;
-                    }
+                    case FluxType.Email:
+                        if (response.EmailMetadata != null)
+                        {
+                            emailMetadata = response.EmailMetadata;
+                        }
+                        else
+                        {
+                            emailMetadata = new FluxMetadataMailDto();
+                        }
+                        break;
+                    case FluxType.Api:
+                    case FluxType.Webhook:
+                        if (response.ApiMetadata != null)
+                        {
+                            apiMetadata = response.ApiMetadata;
+                        }
+                        else
+                        {
+                            apiMetadata = new FluxMetadataApiDto();
+                        }
+                        break;
+                    case FluxType.HttpDownload:
+                    case FluxType.Scraping:
+                        if (response.DownloadMetadata != null)
+                        {
+                            downloadMetadata = response.DownloadMetadata;
+                        }
+                        else
+                        {
+                            downloadMetadata = new FluxMetadataDownloadDto();
+                        }
+                        break;
+                    case FluxType.Sftp:
+                        if (response.FileLocationMetadata != null)
+                        {
+                            fileLocationMetadata = response.FileLocationMetadata;
+                        }
+                        else
+                        {
+                            fileLocationMetadata = new FluxMetadataFileLocationDto
+                            {
+                                FluxRuleSettings = new FluxRuleSettingsDto(),
+                                FluxAttachmentRule = new FluxAttachmentRuleDto(),
+                                Metadata = new Dictionary<string, object>()
+                            };
+                        }
+                        break;
                 }
             }
             else
@@ -342,24 +376,27 @@
         switch (selectedType.Value)
         {
             case FluxType.Email:
-                if (emailMetadata == null)
-                    emailMetadata = new FluxMetadataMailDto();
+                emailMetadata = new FluxMetadataMailDto();
                 break;
             case FluxType.Api:
             case FluxType.Webhook:
-                if (apiMetadata == null)
-                    apiMetadata = new FluxMetadataApiDto();
+                apiMetadata = new FluxMetadataApiDto();
                 break;
             case FluxType.HttpDownload:
             case FluxType.Scraping:
-                if (downloadMetadata == null)
-                    downloadMetadata = new FluxMetadataDownloadDto();
+                downloadMetadata = new FluxMetadataDownloadDto();
                 break;
             case FluxType.Sftp:
-                if (fileLocationMetadata == null)
-                    fileLocationMetadata = new FluxMetadataFileLocationDto();
+                fileLocationMetadata = new FluxMetadataFileLocationDto
+                {
+                    FluxRuleSettings = new FluxRuleSettingsDto(),
+                    FluxAttachmentRule = new FluxAttachmentRuleDto(),
+                    Metadata = new Dictionary<string, object>()
+                };
                 break;
         }
+
+        StateHasChanged();
     }
 
     private TriggerPeriodDto MapToTriggerPeriodDto(TriggerPeriod triggerPeriod)
@@ -387,7 +424,7 @@
         {
             // Set the value from the boolean binding
             fluxRequest.CanHaveConcurrencyMultiFetching = canHaveConcurrencyMultiFetching;
-            
+
             // Convert TriggerPeriod to TriggerPeriodDto
             fluxRequest.FetchTriggerPeriod = MapToTriggerPeriodDto(fetchTriggerPeriod);
             fluxRequest.ProcessTriggerPeriod = MapToTriggerPeriodDto(processTriggerPeriod);
@@ -417,8 +454,26 @@
             bool result;
             if (FluxId.HasValue)
             {
-                // Update existing flux
-                result = await MindApi.UpdateFluxAsync(FluxId.Value, fluxRequest);
+                var httpClient = HttpClientFactory.CreateClient("MindAPI");
+
+                var jsonOptions = new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true,
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                    WriteIndented = true
+                };
+                jsonOptions.Converters.Add(new FluxMetadataDtoJsonConverter());
+
+                // Serialiser manuellement la requête
+                var jsonContent = JsonSerializer.Serialize(fluxRequest, jsonOptions);
+                var content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json");
+
+                // Envoyer la requête PUT
+                var response = await httpClient.PutAsync($"api/v1/flux?fluxId={FluxId.Value}", content);
+
+                // Analyser la réponse
+                result = response.IsSuccessStatusCode;
+
                 if (result)
                 {
                     Snackbar.Add("Flux updated successfully!", Severity.Success);
@@ -426,12 +481,13 @@
                 }
                 else
                 {
-                    Snackbar.Add("Failed to update flux.", Severity.Error);
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    Snackbar.Add($"Failed to update flux. Error: {errorContent}", Severity.Error);
                 }
             }
             else
             {
-                // Create new flux
+                // Create new flux (conserve l'appel Refit pour la création)
                 result = await MindApi.CreateFluxAsync(fluxRequest);
                 if (result)
                 {
@@ -501,4 +557,63 @@
             return Array.Empty<string>();
         };
     }
-} 
+
+    private string GetStatusIcon(StatusProcess? status)
+    {
+        if (status == null)
+            return Icons.Material.Filled.HelpOutline;
+
+        return status.Value switch
+        {
+            StatusProcess.Success => Icons.Material.Filled.CheckCircle,
+            StatusProcess.Failure => Icons.Material.Filled.Error,
+            StatusProcess.Warning => Icons.Material.Filled.Warning,
+            StatusProcess.Processing => Icons.Material.Filled.Pending,
+            StatusProcess.Paused => Icons.Material.Filled.Block,
+            _ => Icons.Material.Filled.HelpOutline
+        };
+    }
+
+    private Color GetStatusColor(StatusProcess? status)
+    {
+        if (status == null)
+            return Color.Default;
+
+        return status.Value switch
+        {
+            StatusProcess.Success => Color.Success,
+            StatusProcess.Failure => Color.Error,
+            StatusProcess.Warning => Color.Warning,
+            StatusProcess.Processing => Color.Info,
+            StatusProcess.Paused => Color.Warning,
+            _ => Color.Default
+        };
+    }
+
+    private string FormatDateTime(DateTime? dateTime)
+    {
+        if (!dateTime.HasValue)
+            return "-";
+
+        try
+        {
+            var now = DateTime.Now;
+            var diff = now - dateTime.Value;
+
+            if (diff.TotalMinutes < 1)
+                return "Just now";
+            if (diff.TotalHours < 1)
+                return $"{(int)diff.TotalMinutes}m ago";
+            if (diff.TotalDays < 1)
+                return $"{(int)diff.TotalHours}h ago";
+            if (diff.TotalDays < 7)
+                return $"{(int)diff.TotalDays}d ago";
+
+            return dateTime.Value.ToString(); //.ToString("MMM dd, HH:mm");
+        }
+        catch
+        {
+            return dateTime.Value.ToString() ?? "-";
+        }
+    }
+}

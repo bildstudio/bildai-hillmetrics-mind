@@ -156,12 +156,12 @@
     {
         <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-2" />
     }
-    else if (fluxes != null)
+    else
     {
-        <MudTable Items="@fluxes" Hover="true" Bordered="true" Striped="true"
-        Dense="true" Filter="new Func<FluxSearchResponse, bool>(FilterFunc)"
-        @bind-SelectedItem="selectedItem" T="FluxSearchResponse"
-        Breakpoint="Breakpoint.Sm">
+        <MudTable ServerData="@ServerReload"
+                Hover="true" Bordered="true" Striped="true"
+                Dense="true" @bind-SelectedItem="selectedItem" T="FluxSearchResponse"
+                Breakpoint="Breakpoint.Sm">
             <ToolBarContent>
                 <MudText Typo="Typo.h6" Class="ml-2">Flux List</MudText>
                 <MudSpacer />
@@ -175,7 +175,7 @@
                 <MudTh>Financial Type</MudTh>
                 <MudTh>Flux Type</MudTh>
                 <MudTh>Status</MudTh>
-                <MudTh>Workflow</MudTh>
+                @* <MudTh>Workflow</MudTh> *@
                 <MudTh>Last Fetching</MudTh>
                 <MudTh>Fetching Status</MudTh>
                 <MudTh>Fetch Errors</MudTh>
@@ -209,7 +209,7 @@
                         @context.FluxState
                     </MudChip>
                 </MudTd>
-                <MudTd DataLabel="Workflow">
+                @* <MudTd DataLabel="Workflow">
                     @if (activeWorkflows.TryGetValue(context.FluxId, out var workflow))
                     {
                         <div class="d-flex align-center">
@@ -227,12 +227,15 @@
                               Class="ml-2">
                         View Workflow
                     </MudButton>
-                </MudTd>
+                </MudTd> *@
                 <MudTd DataLabel="Last Fetching">
                     @if (context.LastFetching.HasValue)
                     {
                         <MudTooltip Text="@context.LastFetching.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")">
-                            <div>@FormatDateTime(context.LastFetching.Value.ToLocalTime())</div>
+                            <div style="cursor: pointer;" 
+                                 @onclick="@(() => NavigateToFetchingHistoryPage(context.FluxId))">
+                                @FormatDateTime(context.LastFetching.Value.ToLocalTime())
+                            </div>
                         </MudTooltip>
                     }
                     else
@@ -243,9 +246,11 @@
                 <MudTd DataLabel="Fetching Status">
                     @if (context.LastFetchingStatus.HasValue)
                     {
-                        <MudTooltip Text="@context.LastFetchingStatus.Value.ToString()">
-                            <MudIcon Icon="@GetStatusIcon(context.LastFetchingStatus.Value)"
-                            Color="@GetStatusColor(context.LastFetchingStatus.Value)" />
+                        <MudTooltip Text="@($"{context.LastFetchingStatus.Value} - Click to view fetching history")">
+                            <div style="cursor: pointer;" @onclick="@(() => NavigateToFetchingHistoryPage(context.FluxId))">
+                                <MudIcon Icon="@GetStatusIcon(context.LastFetchingStatus.Value)"
+                                        Color="@GetStatusColor(context.LastFetchingStatus.Value)" />
+                            </div>
                         </MudTooltip>
                     }
                     else
@@ -256,7 +261,13 @@
                 <MudTd DataLabel="Fetch Errors">
                     @if (context.LastFetchingErrorCount > 0)
                     {
-                        <MudChip T="int" Color="Color.Error" Size="Size.Small">@context.LastFetchingErrorCount</MudChip>
+                        <MudChip T="int" 
+                                Color="Color.Error" 
+                                Size="Size.Small" 
+                                OnClick="@(() => NavigateToErrorsPage(context.FluxId, FluxActionType.Fetching))" 
+                                Style="cursor: pointer;">
+                            @context.LastFetchingErrorCount
+                        </MudChip>
                     }
                     else
                     {
@@ -267,7 +278,10 @@
                     @if (context.LastProcessing.HasValue)
                     {
                         <MudTooltip Text="@context.LastProcessing.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")">
-                            <div>@FormatDateTime(context.LastProcessing.Value.ToLocalTime())</div>
+                            <div style="cursor: pointer;" 
+                                 @onclick="@(() => NavigateToProcessingHistoryPage(context.FluxId))">
+                                @FormatDateTime(context.LastProcessing.Value.ToLocalTime())
+                            </div>
                         </MudTooltip>
                     }
                     else
@@ -278,9 +292,11 @@
                 <MudTd DataLabel="Processing Status">
                     @if (context.LastProcessingStatus.HasValue)
                     {
-                        <MudTooltip Text="@context.LastProcessingStatus.Value.ToString()">
-                            <MudIcon Icon="@GetStatusIcon(context.LastProcessingStatus.Value)"
-                            Color="@GetStatusColor(context.LastProcessingStatus.Value)" />
+                        <MudTooltip Text="@($"{context.LastProcessingStatus.Value} - Click to view processing history")">
+                            <div style="cursor: pointer;" @onclick="@(() => NavigateToProcessingHistoryPage(context.FluxId))">
+                                <MudIcon Icon="@GetStatusIcon(context.LastProcessingStatus.Value)"
+                                        Color="@GetStatusColor(context.LastProcessingStatus.Value)" />
+                            </div>
                         </MudTooltip>
                     }
                     else
@@ -291,7 +307,13 @@
                 <MudTd DataLabel="Process Errors">
                     @if (context.LastProcessingErrorCount > 0)
                     {
-                        <MudChip T="int" Color="Color.Error" Size="Size.Small">@context.LastProcessingErrorCount</MudChip>
+                        <MudChip T="int" 
+                                Color="Color.Error" 
+                                Size="Size.Small" 
+                                OnClick="@(() => NavigateToErrorsPage(context.FluxId, FluxActionType.ProcessFlux))" 
+                                Style="cursor: pointer;">
+                            @context.LastProcessingErrorCount
+                        </MudChip>
                     }
                     else
                     {
@@ -362,22 +384,23 @@
         public int ProgressPercentage { get; set; }
     }
 
+    private TableState tableState;
+
     protected override async Task OnInitializedAsync()
     {
         await LoadSourcesAsync();
         await LoadActiveWorkflows();
-        await Search();
-
+        
         // Configure a timer to refresh workflows every 10 seconds
-        workflowRefreshTimer = new System.Threading.Timer(
-            async _ => await InvokeAsync(async () =>
-            {
-                await LoadActiveWorkflows();
-                StateHasChanged();
-            }),
-            null,
-            TimeSpan.FromSeconds(10),
-            TimeSpan.FromSeconds(10));
+        // workflowRefreshTimer = new System.Threading.Timer(
+        //     async _ => await InvokeAsync(async () =>
+        //     {
+        //         await LoadActiveWorkflows();
+        //         StateHasChanged();
+        //     }),
+        //     null,
+        //     TimeSpan.FromSeconds(10),
+        //     TimeSpan.FromSeconds(10));
     }
 
     private async Task LoadSourcesAsync()
@@ -397,25 +420,41 @@
         }
     }
 
-    private async Task Search()
+    private async Task<TableData<FluxSearchResponse>> ServerReload(TableState state, CancellationToken token)
     {
+        tableState = state;
+        loading = true;
+
         try
         {
-            loading = true;
-
-            // Map SearchCriteria to FluxSearchRequest
+            // Apply search criteria
             ApplySearchCriteria();
+
+            // Configurer la pagination
+            searchRequest.Pagination = new Pagination(state.PageSize, state.Page + 1);
 
             var response = await MindApi.SearchFluxAsync(searchRequest);
             fluxes = response.Data.ToList();
+
+            return new TableData<FluxSearchResponse>
+            {
+                Items = fluxes,
+                TotalItems = (int)response.TotalRecords
+            };
         }
         catch (Exception ex)
         {
             Snackbar.Add($"Error searching fluxes: {ex.Message}", Severity.Error);
+            return new TableData<FluxSearchResponse>
+            {
+                Items = new List<FluxSearchResponse>(),
+                TotalItems = 0
+            };
         }
         finally
         {
             loading = false;
+            StateHasChanged();
         }
     }
 
@@ -432,12 +471,24 @@
         }
 
         searchRequest.LastFetching = lastFetchingDateSearchCriteria.IsSet() ? lastFetchingDateSearchCriteria : null;
-        searchRequest.LastProcessing = lastProcessingDateSearchCriteria.IsSet() ? lastProcessingDateSearchCriteria : null; ;
-        searchRequest.LastFetchingErrorCount = fetchingErrorCountSearchCriteria.IsSet() ? fetchingErrorCountSearchCriteria : null; ;
-        searchRequest.LastProcessingErrorCount = processingErrorCountSearchCriteria.IsSet() ? processingErrorCountSearchCriteria : null; ;
+        searchRequest.LastProcessing = lastProcessingDateSearchCriteria.IsSet() ? lastProcessingDateSearchCriteria : null;
+        searchRequest.LastFetchingErrorCount = fetchingErrorCountSearchCriteria.IsSet() ? fetchingErrorCountSearchCriteria : null;
+        searchRequest.LastProcessingErrorCount = processingErrorCountSearchCriteria.IsSet() ? processingErrorCountSearchCriteria : null;
+
+        // La pagination est configurée dans ServerReload
     }
 
-    private void Reset()
+    private async Task Search()
+    {
+        // Utiliser le state actuel pour recharger les données
+        await ServerReload(tableState ?? new TableState
+        {
+            Page = 0,
+            PageSize = 10
+        }, CancellationToken.None);
+    }
+
+    private async Task Reset()
     {
         searchRequest = new FluxSearchRequest();
         nameSearchCriteria = new SearchCriteria<string>();
@@ -447,6 +498,12 @@
         fetchingErrorCountSearchCriteria = new SearchCriteria<int>();
         processingErrorCountSearchCriteria = new SearchCriteria<int>();
         searchString = "";
+        
+        if (tableState != null)
+        {
+            tableState.Page = 0;
+            await ServerReload(tableState, CancellationToken.None);
+        }
     }
 
     private void ViewDetails(int id)
@@ -632,5 +689,29 @@
     public void Dispose()
     {
         workflowRefreshTimer?.Dispose();
+    }
+
+    private void NavigateToErrorsPage(int fluxId, FluxActionType? actionType = null)
+    {
+        // Construction d'une chaîne de requête pour passer les paramètres
+        var query = $"?fluxId={fluxId}";
+        
+        if (actionType.HasValue)
+        {
+            query += $"&actionType={actionType.Value}";
+        }
+        
+        // Naviguer vers la page de recherche d'erreurs avec les paramètres
+        NavigationManager.NavigateTo($"/flux/errors{query}");
+    }
+
+    private void NavigateToFetchingHistoryPage(int fluxId)
+    {
+        NavigationManager.NavigateTo($"/flux/fetching-history?fluxId={fluxId}");
+    }
+
+    private void NavigateToProcessingHistoryPage(int fluxId)
+    {
+        NavigationManager.NavigateTo($"/flux/processing-history?fluxId={fluxId}");
     }
 }

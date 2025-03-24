@@ -7,7 +7,6 @@ using HillMetrics.Core.API.Convention;
 using HillMetrics.Core.API.Extensions;
 using HillMetrics.Core.Authentication;
 using HillMetrics.Core.Flux.Extension;
-using HillMetrics.MIND.API.Converter;
 using HillMetrics.MIND.API.Extensions;
 using HillMetrics.MIND.API.Mappers;
 using HillMetrics.MIND.Infrastructure;
@@ -27,6 +26,7 @@ using MediatR;
 using HillMetrics.Core.Mediator.Extensions;
 using HillMetrics.Core.Monitoring.Audits;
 using HillMetrics.Core.Monitoring;
+using HillMetrics.MIND.API.Contracts.Converter;
 using HillMetrics.Core.Messaging.Notification.Services;
 using HillMetrics.MIND.API.Consumers;
 

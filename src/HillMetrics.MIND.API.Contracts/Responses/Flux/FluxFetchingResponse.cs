@@ -37,7 +37,7 @@ namespace HillMetrics.MIND.API.Contracts.Responses.Flux
         /// <summary>
         /// The list of content identified for this instance
         /// </summary>
-        public List<FluxFetchingContentHistoryResponse> IdentificationContentHistories { get; set; } = [];
+        public List<FluxFetchingContentHistoryResponse> FluxFetchingContentHistories { get; set; } = [];
     }
 
     public class FluxFetchingContentHistoryResponse

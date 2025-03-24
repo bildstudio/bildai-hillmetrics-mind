@@ -75,12 +75,12 @@
     {
         <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-2" />
     }
-    else if (processingHistories != null)
+    else
     {
-        <MudTable Items="@processingHistories" Hover="true" Bordered="true" Striped="true"
-                  Dense="true" Filter="new Func<FluxProcessingSearchReponse, bool>(FilterFunc)"
-                  @bind-SelectedItem="selectedItem" T="FluxProcessingSearchReponse"
-                  Breakpoint="Breakpoint.Sm">
+        <MudTable ServerData="@ServerReload"
+                 Hover="true" Bordered="true" Striped="true"
+                 Dense="true" @bind-SelectedItem="selectedItem" T="FluxProcessingSearchReponse"
+                 Breakpoint="Breakpoint.Sm">
             <ToolBarContent>
                 <MudText Typo="Typo.h6" Class="ml-2">Processing History</MudText>
                 <MudSpacer />
@@ -121,10 +121,7 @@
                     }
                 </MudTd>
                 <MudTd DataLabel="Processed Items">
-                    <MudBadge Content="@context.NbContent" Color="Color.Primary" Overlap="true"
-                              Class="d-flex justify-center">
-                        <MudIcon Icon="@Icons.Material.Filled.DataObject" />
-                    </MudBadge>
+                    <MudBadge Content="@context.NbContent" Color="Color.Primary" Overlap="true" Class="d-flex justify-center"></MudBadge>
                 </MudTd>
                 <MudTd DataLabel="Status">
                     @if (context.Status.HasValue)
@@ -191,30 +188,63 @@
     private SearchCriteria<DateTime> processingDateStartSearchCriteria = new();
     private SearchCriteria<DateTime> processingDateEndSearchCriteria = new();
 
+    private TableState tableState;
+
+    [Parameter]
+    [SupplyParameterFromQuery(Name = "fluxId")]
+    public string FluxIdParameter { get; set; }
+
     protected override async Task OnInitializedAsync()
     {
+        // Vérifier si le paramètre FluxId est fourni
+        if (!string.IsNullOrEmpty(FluxIdParameter) && int.TryParse(FluxIdParameter, out int fluxId))
+        {
+            // Initialiser le critère de recherche pour FluxId
+            fluxIdSearchCriteria = new SearchCriteria<int>
+            {
+                Operator = Operator.Equal,
+                Value = fluxId
+            };
+        }
+        
         await Search();
     }
 
-    private async Task Search()
+    private async Task<TableData<FluxProcessingSearchReponse>> ServerReload(TableState state, CancellationToken token)
     {
+        tableState = state;
+        loading = true;
+
         try
         {
-            loading = true;
-
             // Apply search criteria
             ApplySearchCriteria();
 
+            // Configurer la pagination
+            searchRequest.Pagination = new Pagination(state.PageSize, state.Page + 1);
+
             var response = await MindApi.SearchProcessingHistoryAsync(searchRequest);
             processingHistories = response.Data.ToList();
+
+            return new TableData<FluxProcessingSearchReponse>
+            {
+                Items = processingHistories,
+                TotalItems = (int)response.TotalRecords
+            };
         }
         catch (Exception ex)
         {
             Snackbar.Add($"Error searching processing history: {ex.Message}", Severity.Error);
+            return new TableData<FluxProcessingSearchReponse>
+            {
+                Items = new List<FluxProcessingSearchReponse>(),
+                TotalItems = 0
+            };
         }
         finally
         {
             loading = false;
+            StateHasChanged();
         }
     }
 
@@ -227,9 +257,21 @@
         // Apply datetime SearchCriteria
         searchRequest.ProcessingDateStart = processingDateStartSearchCriteria.IsSet() ? processingDateStartSearchCriteria : null;
         searchRequest.ProcessingDateEnd = processingDateEndSearchCriteria.IsSet() ? processingDateEndSearchCriteria : null;
+        
+        // La pagination est configurée dans ServerReload
     }
 
-    private void Reset()
+    private async Task Search()
+    {
+        // Utiliser le state actuel pour recharger les données
+        await ServerReload(tableState ?? new TableState
+        {
+            Page = 0,
+            PageSize = 10
+        }, CancellationToken.None);
+    }
+
+    private async Task Reset()
     {
         searchRequest = new FluxProcessingSearchRequest();
         fluxIdSearchCriteria = new SearchCriteria<int>();
@@ -237,6 +279,12 @@
         processingDateStartSearchCriteria = new SearchCriteria<DateTime>();
         processingDateEndSearchCriteria = new SearchCriteria<DateTime>();
         searchString = "";
+        
+        if (tableState != null)
+        {
+            tableState.Page = 0;
+            await ServerReload(tableState, CancellationToken.None);
+        }
     }
 
     private void ViewDetails(int id)

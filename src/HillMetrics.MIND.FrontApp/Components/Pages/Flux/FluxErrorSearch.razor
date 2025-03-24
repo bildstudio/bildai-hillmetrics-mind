@@ -92,12 +92,12 @@
     {
         <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-2" />
     }
-    else if (errors != null)
+    else
     {
-        <MudTable Items="@errors" Hover="true" Bordered="true" Striped="true"
-                  Dense="true" Filter="new Func<FluxErrorSearchDto, bool>(FilterFunc)"
-                  @bind-SelectedItem="selectedItem" T="FluxErrorSearchDto"
-                  Breakpoint="Breakpoint.Sm">
+        <MudTable ServerData="@ServerReload"
+                 Hover="true" Bordered="true" Striped="true"
+                 Dense="true" @bind-SelectedItem="selectedItem" T="FluxErrorSearchResponse"
+                 Breakpoint="Breakpoint.Sm">
             <ToolBarContent>
                 <MudText Typo="Typo.h6" Class="ml-2">Flux Errors</MudText>
                 <MudSpacer />
@@ -130,8 +130,14 @@
                     </MudChip>
                 </MudTd>
                 <MudTd DataLabel="Message">
-                    <MudTooltip Text="@context.Message" Placement="Placement.Top">
-                        <div class="mud-text-truncate" style="max-width: 300px;">@context.Message</div>
+                    <MudTooltip Text="@(context.Message ?? string.Empty)" Placement="Placement.Top">
+                        <div class="mud-text-truncate" style="max-width: 300px;">
+                            @(string.IsNullOrEmpty(context.Message)
+                                ? "-"
+                                : (context.Message.Length > 200
+                                    ? context.Message.Substring(0, 200) + "..."
+                                    : context.Message))
+                        </div>
                     </MudTooltip>
                 </MudTd>
                 <MudTd DataLabel="Date">
@@ -157,7 +163,7 @@
                 <MudTablePager PageSizeOptions="new int[] { 10, 25, 50, 100 }" />
             </PagerContent>
             <NoRecordsContent>
-                <MudAlert Severity="Severity.Info" Class="my-2">No flux errors found matching your search criteria.</MudAlert>
+                <MudAlert Severity="Severity.Info" Class="my-2">No errors found matching your search criteria.</MudAlert>
             </NoRecordsContent>
         </MudTable>
     }
@@ -165,12 +171,12 @@
 
 @code {
     private FluxErrorSearchRequest searchRequest = new();
-    private List<FluxErrorSearchDto>? errors;
+    private List<FluxErrorSearchResponse>? errors;
     private bool loading = false;
     private bool isValid = false;
     private MudForm form;
     private string searchString = "";
-    private FluxErrorSearchDto selectedItem = null;
+    private FluxErrorSearchResponse selectedItem = null;
 
     // SearchCriteria for each field
     private SearchCriteria<int> fluxIdSearchCriteria = new();
@@ -181,32 +187,77 @@
     private SearchCriteria<DateTime> createdAtSearchCriteria = new();
 
     // Dialog for metadata
-    private FluxErrorSearchDto selectedMetadata = null;
+    private FluxErrorSearchResponse selectedMetadata = null;
+
+    private TableState tableState;
+
+    [Parameter]
+    [SupplyParameterFromQuery(Name = "fluxId")]
+    public string FluxIdParameter { get; set; }
+
+    [Parameter]
+    [SupplyParameterFromQuery(Name = "actionType")]
+    public string ActionTypeParameter { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
-        await Search();
+        // Vérifier si des paramètres d'URL sont fournis
+        if (!string.IsNullOrEmpty(FluxIdParameter) && int.TryParse(FluxIdParameter, out int fluxId))
+        {
+            // Initialiser le critère de recherche pour FluxId
+            fluxIdSearchCriteria = new SearchCriteria<int>
+            {
+                Operator = Operator.Equal,
+                Value = fluxId
+            };
+
+            // Si ActionType est spécifié, l'appliquer aussi
+            if (!string.IsNullOrEmpty(ActionTypeParameter) &&
+                Enum.TryParse<FluxActionType>(ActionTypeParameter, out var actionType))
+            {
+                searchRequest.ActionType = actionType;
+            }
+
+            // Lancer la recherche avec ces critères
+            await Search();
+        }
     }
 
-    private async Task Search()
+    private async Task<TableData<FluxErrorSearchResponse>> ServerReload(TableState state, CancellationToken token)
     {
+        tableState = state;
+        loading = true;
+
         try
         {
-            loading = true;
-
             // Apply search criteria
             ApplySearchCriteria();
 
+            // Configurer la pagination
+            searchRequest.Pagination = new Pagination(state.PageSize, state.Page + 1);
+
             var response = await MindApi.SearchFluxErrorsAsync(searchRequest);
             errors = response.Data.ToList();
+
+            return new TableData<FluxErrorSearchResponse>
+            {
+                Items = errors,
+                TotalItems = (int)response.TotalRecords
+            };
         }
         catch (Exception ex)
         {
             Snackbar.Add($"Error searching flux errors: {ex.Message}", Severity.Error);
+            return new TableData<FluxErrorSearchResponse>
+            {
+                Items = new List<FluxErrorSearchResponse>(),
+                TotalItems = 0
+            };
         }
         finally
         {
             loading = false;
+            StateHasChanged();
         }
     }
 
@@ -214,7 +265,7 @@
     {
         // Apply FluxId SearchCriteria
         searchRequest.FluxId = fluxIdSearchCriteria.IsSet() ? fluxIdSearchCriteria : null;
-        
+
         // Apply string criteria only if they are set
         if (errorTypeSearchCriteria.IsSet())
         {
@@ -224,7 +275,7 @@
         {
             searchRequest.FluxErrorType = null;
         }
-        
+
         if (externalIdSearchCriteria.IsSet())
         {
             searchRequest.ExternalId = externalIdSearchCriteria.Value;
@@ -233,7 +284,7 @@
         {
             searchRequest.ExternalId = null;
         }
-        
+
         if (messageSearchCriteria.IsSet())
         {
             searchRequest.Message = messageSearchCriteria.Value;
@@ -242,7 +293,7 @@
         {
             searchRequest.Message = null;
         }
-        
+
         if (metadataSearchCriteria.IsSet())
         {
             searchRequest.Metadata = metadataSearchCriteria.Value;
@@ -251,12 +302,24 @@
         {
             searchRequest.Metadata = null;
         }
-        
+
         // Apply datetime SearchCriteria
         searchRequest.CreatedAt = createdAtSearchCriteria.IsSet() ? createdAtSearchCriteria : null;
+
+        // La pagination est configurée dans ServerReload
     }
 
-    private void Reset()
+    private async Task Search()
+    {
+        // Utiliser le state actuel pour recharger les données
+        await ServerReload(tableState ?? new TableState
+        {
+            Page = 0,
+            PageSize = 10
+        }, CancellationToken.None);
+    }
+
+    private async Task Reset()
     {
         searchRequest = new FluxErrorSearchRequest();
         fluxIdSearchCriteria = new SearchCriteria<int>();
@@ -266,6 +329,12 @@
         metadataSearchCriteria = new SearchCriteria<string>();
         createdAtSearchCriteria = new SearchCriteria<DateTime>();
         searchString = "";
+
+        if (tableState != null)
+        {
+            tableState.Page = 0;
+            await ServerReload(tableState, CancellationToken.None);
+        }
     }
 
     private void ViewFluxDetails(int id)
@@ -273,19 +342,19 @@
         NavigationManager.NavigateTo($"/flux/details/{id}");
     }
 
-    private async Task ShowMetadata(FluxErrorSearchDto error)
+    private async Task ShowMetadata(FluxErrorSearchResponse error)
     {
         var parameters = new DialogParameters();
         parameters.Add("Error", error);
-        
-        var options = new DialogOptions() 
+
+        var options = new DialogOptions()
         {
-            CloseOnEscapeKey = true, 
+            CloseOnEscapeKey = true,
             MaxWidth = MaxWidth.Medium,
             FullWidth = true,
             Position = DialogPosition.Center
         };
-        
+
         await DialogService.ShowAsync<ErrorMetadataDialog>("Error Metadata", parameters, options);
     }
 
@@ -333,7 +402,7 @@
     }
 
     // Filter function for MudTable
-    private bool FilterFunc(FluxErrorSearchDto error)
+    private bool FilterFunc(FluxErrorSearchResponse error)
     {
         if (string.IsNullOrWhiteSpace(searchString))
             return true;
@@ -346,4 +415,4 @@
             error.Message.Contains(searchString, StringComparison.OrdinalIgnoreCase) ||
             (error.Metadata?.Contains(searchString, StringComparison.OrdinalIgnoreCase) ?? false);
     }
-} 
+}

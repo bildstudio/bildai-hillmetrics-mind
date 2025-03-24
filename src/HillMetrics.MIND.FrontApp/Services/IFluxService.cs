@@ -14,7 +14,7 @@ namespace HillMetrics.MIND.FrontApp.Services
         Task<FluxForceFetchResponse?> ForceFetchAsync(int id);
         Task<FluxForceProcessResponse?> ForceProcessAsync(int id);
         Task<PagedApiResponseBase<FluxProcessingSearchReponse>?> SearchProcessingHistoryAsync(FluxProcessingSearchRequest request);
-        Task<PagedApiResponseBase<FluxErrorSearchDto>?> SearchErrorsAsync(FluxErrorSearchRequest request);
+        Task<PagedApiResponseBase<FluxErrorSearchResponse>?> SearchErrorsAsync(FluxErrorSearchRequest request);
         Task<FluxFetchingResponse?> GetFetchingHistoryAsync(int id);
         Task<FluxProcessingResponse?> GetProcessingHistoryAsync(int id);
         Task<PagedApiResponseBase<FluxFetchingSearchResponse>?> SearchFetchingHistoryAsync(FluxFetchingSearchRequest request);
