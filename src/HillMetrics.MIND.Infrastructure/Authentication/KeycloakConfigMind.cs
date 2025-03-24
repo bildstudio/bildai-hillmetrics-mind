@@ -4,9 +4,12 @@
     {
         public IdentityProviderSettings Azure { get; set; } = null!;
 
-        public override string GetAudience()
+        public override string[] GetValidAudiences()
         {
-            return Azure.ClientId;
+            if (string.IsNullOrEmpty(Audiences))
+                return [Azure.ClientId];
+
+            return Audiences.Split([';'], StringSplitOptions.RemoveEmptyEntries); ;
         }
     }
 }
