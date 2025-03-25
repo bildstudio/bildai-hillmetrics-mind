@@ -1,0 +1,1907 @@
+﻿@page "/file-data-mapping"
+@page "/file-data-mapping/file/{FileUploadId:int}"
+@using AiTraining.Components.Pages.FileUpload.Components
+@using AiTraining.Services
+@using ExcelDataReader
+@using Microsoft.EntityFrameworkCore
+@using System.IO
+@using AiTraining.Data.Enums
+@inject FileUploadService FileUploadService
+@inject AiTrainingDbContext DbContext
+@inject ISnackbar Snackbar
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@inject IDialogService dialogService;
+
+<MudBreadcrumbs Items="_breadcrumbs"></MudBreadcrumbs>
+
+<MudText Typo="Typo.h4" Class="mb-4">
+    @(isEditMode ? "Edit File Data Mappings" : "File Upload & Data Mapping")
+</MudText>
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+    <MudAlert Severity="Severity.Error" Class="mb-3" Dismissable="true">@errorMessage</MudAlert>
+}
+
+@if (isLoading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-7" />
+}
+else
+{
+    <MudGrid>
+        <!-- File Information and Preview -->
+        <MudItem xs="12" md="6">
+            <MudCard Elevation="3" Class="mb-4">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">
+                            <MudIcon Icon="@Icons.Material.Filled.InsertDriveFile" Class="mr-2" />
+                            File Details
+                        </MudText>
+                    </CardHeaderContent>
+                    <CardHeaderActions>
+                        @if (isEditMode && uploadedFile != null)
+                        {
+                            <MudTooltip Text="Download File">
+                                <MudIconButton Icon="@GetFileIcon(uploadedFile.FileType)" 
+                                Color="Color.Primary"
+                                OnClick="DownloadFile" />
+                            </MudTooltip>
+                        }
+                    </CardHeaderActions>
+                </MudCardHeader>
+                <MudCardContent>
+                    @if (!isEditMode && selectedFile == null && uploadedFile == null)
+                    {
+                <MudFileUpload T="IBrowserFile" Accept=".csv,.xls,.xlsx,.pdf,.xml,.json,.html" 
+                OnFilesChanged="OnFileChanged" MaximumFileCount="1">
+                    <ButtonTemplate>
+                        <MudButton HtmlTag="label"
+                        Variant="Variant.Filled"
+                        Color="Color.Primary"
+                        StartIcon="@Icons.Material.Filled.CloudUpload"
+                                for="@context.Id"
+                                FullWidth="true">
+                            Choose File
+                        </MudButton>
+                    </ButtonTemplate>
+                </MudFileUpload>
+
+                <MudPaper Class="d-flex align-center justify-center mud-width-full py-8 px-2 mt-4" 
+                          Outlined="true" 
+                          Style="height: 100px; border-style: dashed; background-color: var(--mud-palette-background-grey)">
+                    <MudFileUpload T="IBrowserFile" Accept=".csv,.xls,.xlsx,.pdf,.xml,.json,.html" 
+                                   OnFilesChanged="OnFileChanged" MaximumFileCount="1"
+                                   Class="d-flex align-center justify-center">
+                        <ButtonTemplate>
+                            <MudText Typo="Typo.body1" Color="Color.Secondary">
+                                <MudIcon Icon="@Icons.Material.Filled.CloudUpload" Class="mr-2" />
+                                Drag and drop files here or click to browse
+                            </MudText>
+                        </ButtonTemplate>
+                    </MudFileUpload>
+                </MudPaper>
+
+                        <MudText Typo="Typo.caption" Class="mt-2">
+                            Supported formats: CSV, Excel, PDF, XML, JSON, HTML
+                        </MudText>
+            }
+                    else if (!isEditMode && selectedFile != null)
+            {
+                        <MudList Dense="true">
+                    <MudListItem>
+                                <MudText><strong>File Name:</strong> @selectedFileName</MudText>
+                    </MudListItem>
+                    <MudListItem>
+                                <MudText><strong>Size:</strong> @FormatFileSize(selectedFileSize)</MudText>
+                    </MudListItem>
+                    <MudListItem>
+                                <MudText><strong>Type:</strong> @selectedFileContentType</MudText>
+                    </MudListItem>
+                </MudList>
+
+                        <MudTextField @bind-Value="customFileName" 
+                        Label="Custom File Name (optional)" 
+                        Variant="Variant.Outlined"
+                        Placeholder="Enter a custom name for this file"
+                        Class="mt-3 mb-3" />
+
+                        <MudSelect T="FileDifficulty" @bind-Value="fileDifficulty" 
+                                 Label="File Difficulty" 
+                                 Variant="Variant.Outlined"
+                                 Class="mt-3 mb-3">
+                            @foreach (var difficulty in Enum.GetValues(typeof(FileDifficulty)))
+                            {
+                                <MudSelectItem Value="@((FileDifficulty)difficulty)">@difficulty.ToString()</MudSelectItem>
+                            }
+                        </MudSelect>
+
+                        <div class="d-flex justify-space-between mt-4">
+                    <MudButton Variant="Variant.Outlined"
+                    Color="Color.Default"
+                    OnClick="ClearFile">
+                        Clear
+                    </MudButton>
+                    <MudButton Variant="Variant.Filled"
+                    Color="Color.Primary"
+                    OnClick="UploadFile"
+                    Disabled="isUploading">
+                        @if (isUploading)
+                        {
+                            <MudProgressCircular Class="mr-2" Size="Size.Small" Indeterminate="true" />
+                            <span>Uploading...</span>
+                        }
+                        else
+                        {
+                            <span>Upload</span>
+                        }
+                    </MudButton>
+                        </div>
+                    }
+                    else if (uploadedFile != null)
+                    {
+                        <MudList Dense="true">
+                            <MudListItem>
+                                <MudText><strong>File ID:</strong> @uploadedFile.FileUploadId</MudText>
+                            </MudListItem>
+                            @if (!isEditingFileName)
+                            {
+                                <MudListItem>
+                                    <div class="d-flex align-center">
+                                        <MudText><strong>File Name:</strong> @uploadedFile.FileName</MudText>
+                                        <MudIconButton Icon="@Icons.Material.Filled.Edit" 
+                                        Size="Size.Small" 
+                                        Class="ml-2" 
+                                        OnClick="() => StartEditingFileName()" />
+                                    </div>
+                                </MudListItem>
+                            }
+                            else
+                            {
+                                <MudListItem>
+                                    <div class="d-flex align-center">
+                                        <MudTextField @bind-Value="editedFileName" 
+                                        Label="File Name" 
+                                        Variant="Variant.Outlined"
+                                        Immediate="true"
+                                        Class="mr-2" />
+                                        <MudIconButton Icon="@Icons.Material.Filled.Check" 
+                                        Size="Size.Small" 
+                                        Color="Color.Success"
+                                        OnClick="SaveFileName" />
+                                        <MudIconButton Icon="@Icons.Material.Filled.Close" 
+                                        Size="Size.Small" 
+                                        Color="Color.Error"
+                                        OnClick="CancelEditingFileName" />
+                                    </div>
+                                </MudListItem>
+                            }
+                            <MudListItem>
+                                <MudText><strong>Type:</strong> @uploadedFile.FileType</MudText>
+                            </MudListItem>
+                            <MudListItem>
+                                <MudText><strong>Size:</strong> @FormatFileSize(uploadedFile.FileSize)</MudText>
+                            </MudListItem>
+                            <MudListItem>
+                                <MudText><strong>Uploaded:</strong> @uploadedFile.UploadedAt.ToLocalTime().ToString("g")</MudText>
+                            </MudListItem>
+        @if (uploadedFile != null)
+        {
+                                <MudListItem>
+                                    <div class="d-flex align-center">
+                                        <MudText><strong>Status:</strong> 
+                                            @if (!isEditingStatus)
+                                            {
+                                                @* <MudChip Color="@GetStatusColor(uploadedFile.MappingStatus)" Size="Size.Small" Class="ml-2">
+                                                    @uploadedFile.MappingStatus.ToString()
+                                                </MudChip> *@
+                                                <MudIconButton Icon="@Icons.Material.Filled.Edit" 
+                                                             Size="Size.Small" 
+                                                             Class="ml-2" 
+                                                             OnClick="() => StartEditingStatus()" />
+                                            }
+                                            else
+                                            {
+                                                <MudSelect T="MappingStatus?" @bind-Value="editedStatus" 
+                                                         Class="ml-2" Style="min-width: 150px;">
+                                                    @foreach (var status in Enum.GetValues(typeof(MappingStatus)))
+                                                    {
+                                                        <MudSelectItem T="MappingStatus?" Value="@((MappingStatus)status)">@status.ToString()</MudSelectItem>
+                                                    }
+                                                </MudSelect>
+                                                <MudIconButton Icon="@Icons.Material.Filled.Check" 
+                                                             Size="Size.Small" 
+                    Color="Color.Success" 
+                                                             OnClick="SaveStatus" />
+                                                <MudIconButton Icon="@Icons.Material.Filled.Close" 
+                                                             Size="Size.Small" 
+                                                             Color="Color.Error"
+                                                             OnClick="CancelEditingStatus" />
+                                            }
+                </MudText>
+                                    </div>
+                                </MudListItem>
+                            }
+                            @if (uploadedFile != null)
+                            {
+                                <MudListItem>
+                                    <div class="d-flex align-center">
+                                        <MudText><strong>Difficulty:</strong> 
+                                            @if (!isEditingDifficulty)
+                                            {
+                                                <MudChip Color="@GetDifficultyColor(uploadedFile.Difficulty)" Size="Size.Small" Class="ml-2">
+                                                    @uploadedFile.Difficulty.ToString()
+                                                </MudChip>
+                                                <MudIconButton Icon="@Icons.Material.Filled.Edit" 
+                                                             Size="Size.Small" 
+                                                             Class="ml-2" 
+                                                             OnClick="() => StartEditingDifficulty()" />
+                                            }
+                                            else
+                                            {
+                                                <MudSelect T="FileDifficulty" @bind-Value="editedDifficulty" 
+                                                         Class="ml-2" Style="min-width: 150px;">
+                                                    @foreach (var difficulty in Enum.GetValues(typeof(FileDifficulty)))
+                                                    {
+                                                        <MudSelectItem Value="@((FileDifficulty)difficulty)">@difficulty.ToString()</MudSelectItem>
+                                                    }
+                                                </MudSelect>
+                                                <MudIconButton Icon="@Icons.Material.Filled.Check" 
+                                                             Size="Size.Small" 
+                                                             Color="Color.Success"
+                                                             OnClick="SaveDifficulty" />
+                                                <MudIconButton Icon="@Icons.Material.Filled.Close" 
+                                                             Size="Size.Small" 
+                                                             Color="Color.Error"
+                                                             OnClick="CancelEditingDifficulty" />
+                                            }
+                </MudText>
+                                    </div>
+                                </MudListItem>
+                            }
+                        </MudList>
+
+                        @if (duplicateFileFound && !isEditMode)
+                        {
+                            <MudAlert Severity="Severity.Warning" Class="mt-3" Dense="true">
+                                This file already exists in the system.
+                            </MudAlert>
+                        }
+                    }
+                </MudCardContent>
+            </MudCard>
+
+            <!-- File Preview Card - Version améliorée -->
+            @if (uploadedFile != null && IsSpreadsheetFile(uploadedFile.FileType))
+            {
+                <MudCard Elevation="3" Class="mb-4">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <div class="d-flex align-center">
+                                <MudText Typo="Typo.h6">
+                                    <MudIcon Icon="@Icons.Material.Filled.TableChart" Class="mr-2" />
+                                    File Preview
+                </MudText>
+                                @if (isSelectingField)
+                                {
+                                    <MudChip Color="Color.Secondary" Size="Size.Small" Class="ml-4">
+                                        Click on a cell to set value for: @selectedFieldName
+                                    </MudChip>
+                                    <MudIconButton Icon="@Icons.Material.Filled.Close" 
+                                    Size="Size.Small"
+                                    Color="Color.Error"
+                                    OnClick="CancelFieldSelection" />
+                                }
+                            </div>
+                        </CardHeaderContent>
+                        <CardHeaderActions>
+                            <MudTooltip Text="Refresh Preview">
+                                <MudIconButton Icon="@Icons.Material.Filled.Refresh" 
+                                OnClick="LoadFilePreview" />
+                            </MudTooltip>
+                            <MudTooltip Text="Download File">
+                                <MudIconButton Icon="@GetFileIcon(uploadedFile.FileType)" 
+                                Color="Color.Primary"
+                                OnClick="DownloadFile" />
+                            </MudTooltip>
+                        </CardHeaderActions>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        @if (isLoadingPreview)
+                        {
+                            <MudProgressLinear Color="Color.Secondary" Indeterminate="true" Class="my-7" />
+                        }
+                        else if (filePreviewData.Count > 0)
+                        {
+                            <div class="excel-container">
+                                <div class="excel-header">
+                                    <div class="excel-corner-cell"></div>
+                                    @for (int col = 0; col < filePreviewHeaders.Count; col++)
+                                    {
+                                        <div class="excel-header-cell">
+                                            <div class="excel-column-letter">@GetExcelColumnName(col)</div>
+                                            <div class="excel-header-text">@filePreviewHeaders[col]</div>
+                                        </div>
+                                    }
+                                </div>
+                                <div class="excel-body">
+                                    @for (int row = 0; row < filePreviewData.Count; row++)
+                                    {
+                                        <div class="excel-row">
+                                            <div class="excel-row-header">@(row + 1)</div>
+                                            @for (int col = 0; col < filePreviewData[row].Count; col++)
+                                            {
+                                                string cellValue = filePreviewData[row][col];
+                                                string cellAddress = $"{GetExcelColumnName(col)}{row + 1}";
+                                                <div class="excel-cell @(isSelectingField ? "selectable" : "")" 
+                                                     @onclick="() => OnCellClick(cellValue)">
+                                                    <div class="excel-cell-content" title="@cellValue">
+                                                        @cellValue
+                                                    </div>
+                                                    <div class="excel-cell-address">@cellAddress</div>
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <MudAlert Severity="Severity.Info">
+                                No preview available. The file may be empty or in an unsupported format.
+                            </MudAlert>
+                        }
+                    </MudCardContent>
+                    <MudCardActions>
+                        <MudButton Variant="Variant.Text" 
+                                  Color="Color.Primary" 
+                                  OnClick="() => ShowSheetSelector()" 
+                                  Disabled="@(worksheets.Count <= 1)">
+                            <MudIcon Icon="@Icons.Material.Filled.ViewList" Class="mr-2" />
+                            @(currentWorksheet)
+                        </MudButton>
+                        <MudSpacer />
+                        <MudButton Variant="Variant.Text" 
+                                  StartIcon="@Icons.Material.Filled.ZoomIn" 
+                                  OnClick="ZoomIn">
+                            Zoom In
+                        </MudButton>
+                        <MudButton Variant="Variant.Text" 
+                                  StartIcon="@Icons.Material.Filled.ZoomOut" 
+                                  OnClick="ZoomOut">
+                            Zoom Out
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+        }
+    </MudItem>
+
+        <!-- Data Mapping Card -->
+    <MudItem xs="12" md="6">
+            <MudCard Elevation="3" Class="mb-4">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">
+                            <MudIcon Icon="@Icons.Material.Filled.DataObject" Class="mr-2" />
+                            @(isEditMode ? "Edit Data Mappings" : "Map Financial Data")
+                        </MudText>
+                    </CardHeaderContent>
+                    <CardHeaderActions>
+                        @if (dataMappings.Count > 0)
+                        {
+                            <MudTooltip Text="Expand All">
+                                <MudIconButton Icon="@Icons.Material.Filled.UnfoldMore" 
+                                OnClick="ExpandAllPanels" />
+                            </MudTooltip>
+                            <MudTooltip Text="Collapse All">
+                                <MudIconButton Icon="@Icons.Material.Filled.UnfoldLess" 
+                                OnClick="CollapseAllPanels" />
+                            </MudTooltip>
+                        }
+                    </CardHeaderActions>
+                </MudCardHeader>
+                <MudCardContent>
+                    @if (uploadedFile == null && !isEditMode)
+            {
+                <MudAlert Severity="Severity.Info">Upload a file first to map financial data.</MudAlert>
+            }
+            else
+            {
+                        @if (availableDataPoints.Count == 0)
+                {
+                    <MudAlert Severity="Severity.Warning">
+                        No financial data points available. 
+                        <MudLink Href="/financial-data/create">Create some first</MudLink>.
+                    </MudAlert>
+                }
+                else
+                {
+                            <MudPaper Class="pa-4 mb-4" Elevation="0">
+                                <MudGrid>
+                                    <MudItem xs="12" md="8">
+                                        <MudSelect T="int" Label="Select Financial Data Point"
+                                        @bind-Value="selectedDataPointId"
+                                        Class="mb-2">
+                                            @foreach (var dataPoint in availableDataPoints)
+                                            {
+                                                <MudSelectItem Value="@dataPoint.FinancialDataPointId">
+                                                    @dataPoint.Name
+                                                </MudSelectItem>
+                        }
+                    </MudSelect>
+                                    </MudItem>
+                                    <MudItem xs="12" md="4" Class="d-flex align-center">
+                                        <MudButton Variant="Variant.Filled"
+                                        Color="Color.Primary"
+                                        OnClick="() => AddDataPoint((selectedDataPointId, string.Empty))"
+                                        Disabled="selectedDataPointId == 0"
+                                        FullWidth="true">
+                                            Add Data Point
+                                        </MudButton>
+                                    </MudItem>
+                                </MudGrid>
+                            </MudPaper>
+
+                    @if (dataMappings.Count == 0)
+                    {
+                        <MudText Class="my-4">No data points mapped yet. Select data points to map from the dropdown above.</MudText>
+                    }
+                    else
+                    {
+                                <MudExpansionPanels @ref="expansionPanels" MultiExpansion="true" Class="mb-4">
+                            @foreach (var mapping in dataMappings)
+                            {
+                                        <InteractiveDataPointMappingItem 
+                                        Mapping="mapping" 
+                                        OnRemove="() => RemoveDataMapping(mapping.MappingId)"
+                                        OnFieldSelect="SelectField" />
+                                    }
+                                </MudExpansionPanels>
+                            }
+                        }
+                                                            }
+                                                        </MudCardContent>
+                                                    </MudCard>
+        </MudItem>
+
+        <!-- Action Buttons -->
+        <MudItem xs="12">
+            <MudPaper Class="pa-4" Elevation="3">
+                <MudGrid>
+                    <MudItem xs="12" md="6">
+                        @if (dataMappings.Count > 0)
+                        {
+                        <MudButton OnClick="SaveMappings"
+                        Color="Color.Primary"
+                        Variant="Variant.Filled"
+                        Disabled="isSaving || dataMappings.Count == 0"
+                        StartIcon="@Icons.Material.Filled.Save"
+                            Size="Size.Large"
+                        FullWidth="true">
+                            @if (isSaving)
+                            {
+                                <MudProgressCircular Class="mr-2" Size="Size.Small" Indeterminate="true" />
+                                <span>Saving...</span>
+                            }
+                            else
+                            {
+                                    <span>@(isEditMode ? "Update Data Mappings" : "Save Data Mappings")</span>
+                            }
+                        </MudButton>
+                    }
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudButton OnClick="NavigateBack"
+                        Color="Color.Secondary"
+                        Variant="Variant.Outlined"
+                        StartIcon="@Icons.Material.Filled.ArrowBack"
+                        Size="Size.Large"
+                        FullWidth="true">
+                            Cancel
+                        </MudButton>
+                    </MudItem>
+                </MudGrid>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+}
+
+<style>
+    .clickable-cell {
+    cursor: pointer;
+    }
+    .clickable-cell:hover {
+    background-color: rgba(var(--mud-palette-primary-rgb), 0.1);
+    }
+    .spreadsheet-container {
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: 4px;
+    }
+    
+    /* Excel-like styles */
+    .excel-container {
+        border: 1px solid #e0e0e0;
+        border-radius: 4px;
+        overflow: auto;
+        height: 400px;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        font-size: 14px;
+        position: relative;
+        background-color: white;
+    }
+    
+    .excel-header {
+        display: flex;
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background-color: #f5f5f5;
+        border-bottom: 2px solid #e0e0e0;
+    }
+    
+    .excel-corner-cell {
+        min-width: 40px;
+        border-right: 1px solid #e0e0e0;
+        background-color: #f5f5f5;
+        position: sticky;
+        left: 0;
+        z-index: 3;
+    }
+    
+    .excel-header-cell {
+        min-width: 120px;
+        padding: 8px;
+        text-align: center;
+        font-weight: bold;
+        border-right: 1px solid #e0e0e0;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .excel-column-letter {
+        color: #666;
+        font-size: 12px;
+        margin-bottom: 4px;
+    }
+    
+    .excel-header-text {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .excel-body {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .excel-row {
+        display: flex;
+        border-bottom: 1px solid #e0e0e0;
+    }
+    
+    .excel-row-header {
+        min-width: 40px;
+        padding: 8px 0;
+        text-align: center;
+        background-color: #f5f5f5;
+        border-right: 1px solid #e0e0e0;
+        position: sticky;
+        left: 0;
+        z-index: 1;
+    }
+    
+    .excel-cell {
+        min-width: 120px;
+        padding: 8px;
+        border-right: 1px solid #e0e0e0;
+        position: relative;
+    }
+    
+    .excel-cell.selectable {
+        cursor: pointer;
+    }
+    
+    .excel-cell.selectable:hover {
+        background-color: rgba(25, 118, 210, 0.1);
+    }
+    
+    .excel-cell-content {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .excel-cell-address {
+        position: absolute;
+        bottom: 2px;
+        right: 2px;
+        font-size: 9px;
+        color: #999;
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+    
+    .excel-cell:hover .excel-cell-address {
+        opacity: 1;
+    }
+    
+    /* Zoom controls */
+    .zoom-controls {
+        position: absolute;
+        bottom: 10px;
+        right: 10px;
+        z-index: 10;
+    }
+</style>
+
+@code {
+
+
+
+
+
+
+
+    [Parameter]
+    public int? FileUploadId { get; set; }
+
+    private FileUploadEntity? uploadedFile;
+    private IBrowserFile? selectedFile;
+
+    private MemoryStream? streamFile;
+    private string selectedFileName = string.Empty;
+    private long selectedFileSize;
+    private string selectedFileContentType = string.Empty;
+    private string errorMessage = string.Empty;
+    private bool isLoading = true;
+    private bool isSaving = false;
+    private bool isUploading = false;
+    private bool duplicateFileFound;
+    private bool isEditMode => FileUploadId.HasValue;
+    private List<BreadcrumbItem> _breadcrumbs = new();
+    private int selectedDataPointId;
+    private MudExpansionPanels? expansionPanels;
+    private string customFileName = string.Empty;
+    private string editedFileName = string.Empty;
+    private bool isEditingFileName = false;
+    private bool isEditingStatus = false;
+    private MappingStatus? editedStatus;
+
+    private List<FinancialDataPointEntity> availableDataPoints = new();
+    private List<DataMappingViewModel> dataMappings = new();
+    private int nextMappingId = 1;
+
+    // New properties for file preview
+    private bool isLoadingPreview = false;
+    private List<List<string>> filePreviewData = new();
+    private List<string> filePreviewHeaders = new();
+
+    // Properties for field selection
+    private bool isSelectingField = false;
+    private string selectedFieldName = string.Empty;
+    private Action<string>? selectedFieldCallback;
+
+    // Propriétés pour la visualisation Excel
+    private List<string> worksheets = new();
+    private string currentWorksheet = "Sheet1";
+    private double zoomLevel = 1.0;
+
+    private bool isEditingDifficulty = false;
+    private FileDifficulty editedDifficulty;
+    private FileDifficulty fileDifficulty = FileDifficulty.Medium;
+
+    protected override async Task OnInitializedAsync()
+    {
+        isLoading = true;
+        SetupBreadcrumbs();
+        await LoadFinancialDataPoints();
+
+        if (isEditMode)
+        {
+            await LoadExistingFile();
+            if (uploadedFile != null && IsSpreadsheetFile(uploadedFile.FileType))
+            {
+                await LoadFilePreview();
+            }
+        }
+
+        isLoading = false;
+    }
+
+    protected override void OnParametersSet()
+    {
+        // Initialiser selectedDataPointId avec le premier élément de la liste
+        if (availableDataPoints.Count > 0 && selectedDataPointId == 0)
+        {
+            selectedDataPointId = availableDataPoints[0].FinancialDataPointId;
+        }
+    }
+
+    private void SetupBreadcrumbs()
+    {
+        _breadcrumbs = new List<BreadcrumbItem>
+        {
+            new BreadcrumbItem("Home", "/"),
+            new BreadcrumbItem("File Data Mappings", "/file-data-mappings")
+        };
+
+        if (isEditMode)
+        {
+            _breadcrumbs.Add(new BreadcrumbItem($"Edit File Mappings", null, true));
+        }
+        else
+        {
+            _breadcrumbs.Add(new BreadcrumbItem("Create New Mapping", null, true));
+        }
+    }
+
+    private async Task LoadExistingFile()
+    {
+        try
+        {
+            if (!FileUploadId.HasValue) return;
+
+            // Charger le fichier
+            uploadedFile = await DbContext.FileUploads
+                .FirstOrDefaultAsync(f => f.FileUploadId == FileUploadId.Value);
+
+            if (uploadedFile == null)
+            {
+                errorMessage = $"File with ID {FileUploadId.Value} not found.";
+                return;
+            }
+
+            // Mettre à jour le breadcrumb avec le nom du fichier
+            _breadcrumbs[2] = new BreadcrumbItem($"Edit Mappings: {uploadedFile.FileName}", null, true);
+
+            // Charger tous les mappings pour ce fichier
+            await LoadMappingsForFile(FileUploadId.Value);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading file: {ex.Message}";
+            Console.WriteLine($"Exception in LoadExistingFile: {ex}");
+        }
+    }
+
+    private async Task LoadMappingsForFile(int fileUploadId)
+    {
+        try
+        {
+            // Charger tous les mappings pour ce fichier
+            var allMappingsForFile = await DbContext.FileDataMappings
+                .Include(m => m.FinancialDataPoint)
+                    .ThenInclude(dp => dp.Elements)
+                .Include(m => m.ElementValues)
+                    .ThenInclude(e => e.FinancialDataPointElement)
+                .Where(m => m.FileUploadId == fileUploadId)
+                .ToListAsync();
+
+            Console.WriteLine($"Found {allMappingsForFile.Count} mappings for file ID: {fileUploadId}");
+            dataMappings.Clear();
+            nextMappingId = 1;
+
+            foreach (var fileMapping in allMappingsForFile)
+            {
+                // Créer un dictionnaire pour les valeurs d'éléments et types de données
+                var elementValues = new Dictionary<int, string>();
+                var elementDataTypes = new Dictionary<int, PropertyDataType>();
+
+                foreach (var element in fileMapping.FinancialDataPoint.Elements)
+                {
+                    // Trouver la valeur correspondante pour cet élément
+                    var elementValue = fileMapping.ElementValues
+                        .FirstOrDefault(e => e.FinancialDataPointElementId == element.FinancialDataPointElementId);
+
+                    elementValues[element.FinancialDataPointElementId] = elementValue?.ExtractedValue ?? string.Empty;
+                    elementDataTypes[element.FinancialDataPointElementId] = elementValue?.PropertyDataType ?? PropertyDataType.Column;
+                }
+
+                // Ajouter ce mapping à la liste des mappings
+                dataMappings.Add(new DataMappingViewModel
+                {
+                    MappingId = nextMappingId++,
+                    DataPointId = fileMapping.FinancialDataPointId,
+                    DataPoint = fileMapping.FinancialDataPoint,
+                    InstanceName = fileMapping.InstanceName ?? string.Empty,
+                    ElementValues = elementValues,
+                    ElementDataTypes = elementDataTypes,
+                    FileDataMappingId = fileMapping.FileDataMappingId // Conserver l'ID réel du mapping
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading mappings: {ex.Message}";
+            Console.WriteLine($"Exception in LoadMappingsForFile: {ex}");
+        }
+    }
+
+    private async Task LoadFinancialDataPoints()
+    {
+        try
+        {
+            availableDataPoints = await DbContext.FinancialDataPoints
+                .Include(dp => dp.Elements)
+                .OrderBy(dp => dp.Name)
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading financial data points: {ex.Message}";
+            Console.WriteLine($"Exception in LoadFinancialDataPoints: {ex}");
+        }
+    }
+
+    private void HandleFileUploaded((FileUploadEntity, bool) callback)
+    {
+        uploadedFile = callback.Item1;
+        duplicateFileFound = callback.Item2;
+        StateHasChanged();
+    }
+
+    private void HandleError(string message)
+    {
+        errorMessage = message;
+        StateHasChanged();
+    }
+
+    private void AddDataPoint((int, string) callback)
+    {
+        int dataPointId = callback.Item1;
+        string instanceName = callback.Item2;
+
+        var dataPoint = availableDataPoints.FirstOrDefault(dp => dp.FinancialDataPointId == dataPointId);
+        if (dataPoint == null)
+        {
+            return;
+        }
+
+        // Générer un nom d'instance unique pour ce data point si non fourni
+        if (string.IsNullOrEmpty(instanceName))
+        {
+            int instanceCount = dataMappings.Count(m => m.DataPointId == dataPointId) + 1;
+            if (instanceCount > 1)
+            {
+                instanceName = $"Instance {instanceCount}";
+            }
+        }
+
+        var elementValues = new Dictionary<int, string>();
+        var elementDataTypes = new Dictionary<int, PropertyDataType>();
+
+        foreach (var element in dataPoint.Elements)
+        {
+            elementValues[element.FinancialDataPointElementId] = string.Empty;
+            elementDataTypes[element.FinancialDataPointElementId] = PropertyDataType.Column; // Default to Column
+        }
+
+        dataMappings.Add(new DataMappingViewModel
+        {
+            MappingId = nextMappingId++,
+            DataPointId = dataPoint.FinancialDataPointId,
+            DataPoint = dataPoint,
+            InstanceName = instanceName,
+            ElementValues = elementValues,
+            ElementDataTypes = elementDataTypes
+        });
+    }
+
+    private void RemoveDataMapping(int mappingId)
+    {
+        dataMappings.RemoveAll(m => m.MappingId == mappingId);
+    }
+
+    private async Task SaveMappings()
+    {
+        if (uploadedFile == null || dataMappings.Count == 0)
+        {
+            return;
+        }
+
+        try
+        {
+            isSaving = true;
+
+            if (isEditMode)
+            {
+                // Update existing mappings
+                await UpdateExistingMappings();
+            }
+            else
+            {
+                // Create new mappings
+                await CreateNewMappings();
+            }
+            
+            // Mettre à jour le statut du fichier
+            uploadedFile.MappingStatus = MappingStatus.Completed;
+            uploadedFile.MappingStatusUpdatedAt = DateTime.UtcNow;
+            DbContext.FileUploads.Update(uploadedFile);
+            await DbContext.SaveChangesAsync();
+
+            Snackbar.Add(isEditMode ? "Mappings updated successfully!" : "Data mappings saved successfully!", Severity.Success);
+
+            // Navigate back to list page
+            NavigateBack();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error {(isEditMode ? "updating" : "saving")} data mappings: {ex.Message}";
+            Snackbar.Add(errorMessage, Severity.Error);
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private void ExpandAllPanels()
+    {
+        if (expansionPanels != null)
+        {
+            expansionPanels.ExpandAll();
+        }
+    }
+
+    private void CollapseAllPanels()
+    {
+        if (expansionPanels != null)
+        {
+            expansionPanels.CollapseAll();
+        }
+    }
+
+    private string GetFileIcon(string fileType)
+    {
+        if (string.IsNullOrEmpty(fileType))
+            return Icons.Material.Filled.InsertDriveFile;
+
+        fileType = fileType.ToLowerInvariant();
+
+        return fileType switch
+        {
+            ".xlsx" or ".xls" => Icons.Custom.FileFormats.FileExcel,
+            ".csv" => Icons.Custom.FileFormats.FileExcel,
+            ".pdf" => Icons.Custom.FileFormats.FilePdf,
+            ".xml" => Icons.Custom.FileFormats.FileCode,
+            ".json" => Icons.Custom.FileFormats.FileCode,
+            _ => Icons.Material.Filled.InsertDriveFile
+        };
+    }
+
+    private async Task DownloadFile()
+    {
+        if (uploadedFile == null) return;
+
+        try
+        {
+            // Récupérer le fichier depuis le service
+            var fileStream = await FileUploadService.GetFileStreamAsync(uploadedFile.FileUploadId);
+            if (fileStream == null)
+            {
+                Snackbar.Add("File not found", Severity.Error);
+            return;
+        }
+
+            // Convertir le stream en base64 pour le téléchargement
+            using var memoryStream = new MemoryStream();
+            await fileStream.CopyToAsync(memoryStream);
+            var fileBytes = memoryStream.ToArray();
+            var base64 = Convert.ToBase64String(fileBytes);
+
+            // Déterminer le type MIME
+            var mimeType = GetMimeType(Path.GetExtension(uploadedFile.FileName));
+
+            // Télécharger le fichier via JS
+            await JSRuntime.InvokeVoidAsync("downloadFileFromBase64", uploadedFile.FileName, base64, mimeType);
+
+            Snackbar.Add("File download started", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error downloading file: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private string GetMimeType(string extension)
+    {
+        if (string.IsNullOrEmpty(extension))
+            return "application/octet-stream";
+
+        extension = extension.ToLowerInvariant();
+
+        return extension switch
+        {
+            ".xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            ".xls" => "application/vnd.ms-excel",
+            ".csv" => "text/csv",
+            ".pdf" => "application/pdf",
+            ".xml" => "application/xml",
+            ".json" => "application/json",
+            ".html" or ".htm" => "text/html",
+            _ => "application/octet-stream"
+        };
+    }
+
+    private async Task UpdateExistingMappings()
+    {
+        if (uploadedFile == null || dataMappings.Count == 0) return;
+
+        // Utiliser une transaction pour garantir l'intégrité des données
+        using var transaction = await DbContext.Database.BeginTransactionAsync();
+        try
+        {
+            // Récupérer tous les mappings existants pour ce fichier
+            var existingMappingsForFile = await DbContext.FileDataMappings
+                .Where(m => m.FileUploadId == uploadedFile.FileUploadId)
+                .ToListAsync();
+
+            // Regrouper les mappings par DataPointId pour détecter les doublons
+            var dataPointGroups = dataMappings.GroupBy(m => m.DataPointId).ToList();
+
+            foreach (var group in dataPointGroups)
+            {
+                var dataPointId = group.Key;
+                var mappingsForDataPoint = group.ToList();
+
+                // Si nous avons plusieurs mappings pour le même data point, assurons-nous qu'ils ont tous un nom d'instance
+                if (mappingsForDataPoint.Count > 1)
+                {
+                    for (int i = 0; i < mappingsForDataPoint.Count; i++)
+                    {
+                        var mapping = mappingsForDataPoint[i];
+                        if (string.IsNullOrWhiteSpace(mapping.InstanceName))
+                        {
+                            mapping.InstanceName = $"Instance {i + 1}";
+                        }
+                    }
+                }
+                
+                // Traiter chaque mapping dans ce groupe
+                foreach (var mapping in mappingsForDataPoint)
+                {
+                    // Chercher un mapping existant correspondant
+                    FileDataMappingEntity? existingDataPointMapping = null;
+
+                    // Si le mapping a déjà un ID de base de données, l'utiliser
+                    if (mapping.FileDataMappingId > 0)
+                    {
+                        existingDataPointMapping = existingMappingsForFile
+                            .FirstOrDefault(m => m.FileDataMappingId == mapping.FileDataMappingId);
+                    }
+
+                    // Sinon, chercher un mapping existant avec le même data point et le même nom d'instance
+                    if (existingDataPointMapping == null)
+                    {
+                        existingDataPointMapping = existingMappingsForFile
+                            .FirstOrDefault(m => m.FinancialDataPointId == dataPointId && 
+                                                   m.InstanceName == mapping.InstanceName);
+                    }
+
+                    // Si aucun mapping correspondant n'est trouvé, en créer un nouveau
+                    if (existingDataPointMapping == null)
+                    {
+                        existingDataPointMapping = new FileDataMappingEntity
+                        {
+                            FileUploadId = uploadedFile.FileUploadId,
+                            FinancialDataPointId = mapping.DataPointId,
+                            InstanceName = !string.IsNullOrWhiteSpace(mapping.InstanceName) ? mapping.InstanceName : null
+                        };
+
+                        DbContext.FileDataMappings.Add(existingDataPointMapping);
+                        await DbContext.SaveChangesAsync();
+                    }
+                    else
+                    {
+                        // Mettre à jour le mapping existant
+                        existingDataPointMapping.InstanceName = !string.IsNullOrWhiteSpace(mapping.InstanceName) ? mapping.InstanceName : null;
+                        DbContext.FileDataMappings.Update(existingDataPointMapping);
+                        await DbContext.SaveChangesAsync();
+
+                        // Supprimer les anciennes valeurs d'éléments
+                        var existingValues = await DbContext.FileDataElementValues
+                            .Where(e => e.FileDataMappingId == existingDataPointMapping.FileDataMappingId)
+                            .ToListAsync();
+
+                        DbContext.FileDataElementValues.RemoveRange(existingValues);
+                        await DbContext.SaveChangesAsync();
+
+                        // Marquer ce mapping comme traité
+                        existingMappingsForFile.Remove(existingDataPointMapping);
+                    }
+
+                    // Ajouter les nouvelles valeurs d'éléments
+                    foreach (var elementEntry in mapping.ElementValues)
+                    {
+                        var elementId = elementEntry.Key;
+                        var value = elementEntry.Value?.Trim();
+
+                        if (string.IsNullOrWhiteSpace(value))
+                            continue;
+
+                        var dataType = mapping.ElementDataTypes[elementId];
+
+                        var elementValue = new FileDataElementValueEntity
+                        {
+                            FileDataMappingId = existingDataPointMapping.FileDataMappingId,
+                            FinancialDataPointElementId = elementId,
+                            PropertyDataType = dataType,
+                            ExtractedValue = value
+                        };
+
+                        DbContext.FileDataElementValues.Add(elementValue);
+                    }
+
+                    await DbContext.SaveChangesAsync();
+                }
+            }
+
+            // Supprimer les mappings qui ne sont plus utilisés
+            if (existingMappingsForFile.Any())
+            {
+                foreach (var mappingToDelete in existingMappingsForFile)
+                {
+                    // Supprimer d'abord les valeurs d'éléments associées
+                    var valuesToDelete = await DbContext.FileDataElementValues
+                        .Where(e => e.FileDataMappingId == mappingToDelete.FileDataMappingId)
+                        .ToListAsync();
+
+                    DbContext.FileDataElementValues.RemoveRange(valuesToDelete);
+                    await DbContext.SaveChangesAsync();
+
+                    // Puis supprimer le mapping lui-même
+                    DbContext.FileDataMappings.Remove(mappingToDelete);
+                }
+
+                await DbContext.SaveChangesAsync();
+            }
+
+            // Valider la transaction
+            await transaction.CommitAsync();
+        }
+        catch (Exception ex)
+        {
+            // Annuler la transaction en cas d'erreur
+            await transaction.RollbackAsync();
+            throw new Exception($"Erreur lors de la mise à jour des mappings: {ex.Message}", ex);
+        }
+    }
+
+    private async Task CreateNewMappings()
+    {
+        // Regrouper les mappings par DataPointId pour détecter les doublons
+        var dataPointGroups = dataMappings.GroupBy(m => m.DataPointId).ToList();
+
+        foreach (var group in dataPointGroups)
+        {
+            var dataPointId = group.Key;
+            var mappingsForDataPoint = group.ToList();
+
+            // Si nous avons plusieurs mappings pour le même data point, assurons-nous qu'ils ont tous un nom d'instance
+            if (mappingsForDataPoint.Count > 1)
+            {
+                for (int i = 0; i < mappingsForDataPoint.Count; i++)
+                {
+                    var mapping = mappingsForDataPoint[i];
+                    if (string.IsNullOrWhiteSpace(mapping.InstanceName))
+                    {
+                        mapping.InstanceName = $"Instance {i + 1}";
+                    }
+                }
+            }
+
+            // Créer chaque mapping avec son nom d'instance
+            foreach (var mapping in mappingsForDataPoint)
+            {
+                var fileDataMapping = new FileDataMappingEntity
+                {
+                    FileUploadId = uploadedFile.FileUploadId,
+                    FinancialDataPointId = mapping.DataPointId,
+                    InstanceName = !string.IsNullOrWhiteSpace(mapping.InstanceName) ? mapping.InstanceName : null
+                };
+
+                DbContext.FileDataMappings.Add(fileDataMapping);
+                await DbContext.SaveChangesAsync();
+
+                // Ajouter les valeurs d'éléments pour chaque élément
+                foreach (var elementEntry in mapping.ElementValues)
+                {
+                    var elementId = elementEntry.Key;
+                    var value = elementEntry.Value?.Trim();
+
+                    if (string.IsNullOrWhiteSpace(value))
+                    {
+                        continue;
+                    }
+
+                    // Obtenir le type de données pour cet élément
+                    var dataType = mapping.ElementDataTypes[elementId];
+
+                    var elementMapping = new FileDataElementValueEntity
+                        {
+                            FileDataMappingId = fileDataMapping.FileDataMappingId,
+                            FinancialDataPointElementId = elementId,
+                            PropertyDataType = dataType,
+                            ExtractedValue = value
+                        };
+
+                    DbContext.FileDataElementValues.Add(elementMapping);
+                }
+
+                await DbContext.SaveChangesAsync();
+            }
+        }
+    }
+
+    private void NavigateBack()
+    {
+        if (isEditMode)
+        {
+            NavigationManager.NavigateTo($"/file-details/{uploadedFile?.FileUploadId}");
+        }
+        else
+        {
+            NavigationManager.NavigateTo("/file-data-mappings");
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JSRuntime.InvokeVoidAsync("eval", @"
+                window.downloadFileFromBase64 = function (fileName, base64, contentType) {
+                    const linkSource = `data:${contentType};base64,${base64}`;
+                    const downloadLink = document.createElement('a');
+                    document.body.appendChild(downloadLink);
+
+                    downloadLink.href = linkSource;
+                    downloadLink.download = fileName;
+                    downloadLink.click();
+                    document.body.removeChild(downloadLink);
+                }
+            ");
+        }
+    }
+
+    private async Task OnFileChanged(InputFileChangeEventArgs e)
+    {
+        if (e.FileCount == 0)
+        {
+            ClearFile();
+            return;
+        }
+
+        selectedFile = e.File;
+        selectedFileName = e.File.Name;
+        selectedFileSize = e.File.Size;
+        selectedFileContentType = e.File.ContentType;
+
+        using var stream = selectedFile.OpenReadStream(maxAllowedSize: 10485760); // 10 MB max
+
+        streamFile = new MemoryStream();
+        await stream.CopyToAsync(streamFile);
+        streamFile.Position = 0;
+        errorMessage = string.Empty;
+    }
+
+    private void ClearFile()
+    {
+        selectedFile = null;
+        selectedFileName = string.Empty;
+        selectedFileSize = 0;
+        selectedFileContentType = string.Empty;
+        customFileName = string.Empty;
+
+        streamFile.Dispose();
+
+        streamFile = null;
+    }
+
+    private async Task UploadFile()
+    {
+        if (selectedFile == null) return;
+
+        try
+        {
+            isUploading = true;
+            errorMessage = string.Empty;
+            
+            // Déterminer le type de fichier à partir de l'extension
+            string fileType = Path.GetExtension(selectedFile.Name);
+            
+            // Use custom file name if provided, otherwise use the original file name
+            string fileName = !string.IsNullOrWhiteSpace(customFileName) 
+                ? (customFileName.EndsWith(fileType, StringComparison.OrdinalIgnoreCase) 
+                    ? customFileName 
+                    : customFileName + fileType)
+                : selectedFile.Name;
+            
+            // Appeler le service pour télécharger le fichier
+            var result = await FileUploadService.UploadFileFromStreamAsync(
+                streamFile!,
+                fileName,
+                selectedFile.ContentType,
+                selectedFile.Size);
+            
+            uploadedFile = result.Item1;
+            duplicateFileFound = result.Item2;
+            
+            // Définir la difficulté du fichier
+            if (uploadedFile != null)
+            {
+                uploadedFile.Difficulty = fileDifficulty;
+                DbContext.FileUploads.Update(uploadedFile);
+            await DbContext.SaveChangesAsync();
+            }
+            
+            // Effacer le fichier sélectionné après le téléchargement
+            ClearFile();
+            
+            Snackbar.Add("File uploaded successfully!", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error uploading file: {ex.Message}";
+            Snackbar.Add(errorMessage, Severity.Error);
+        }
+        finally
+        {
+            isUploading = false;
+        }
+    }
+    
+    private string FormatFileSize(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB", "TB" };
+        double len = bytes;
+        int order = 0;
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len = len / 1024;
+        }
+        return $"{len:0.##} {sizes[order]}";
+    }
+
+    private void StartEditingFileName()
+    {
+        if (uploadedFile != null)
+        {
+            editedFileName = uploadedFile.FileName;
+            isEditingFileName = true;
+        }
+    }
+
+    private void CancelEditingFileName()
+    {
+        isEditingFileName = false;
+    }
+
+    private async Task SaveFileName()
+    {
+        if (uploadedFile != null && !string.IsNullOrWhiteSpace(editedFileName))
+        {
+            try
+            {
+                // Ensure the file extension is preserved
+                string currentExtension = Path.GetExtension(uploadedFile.FileName);
+                string newFileName = editedFileName;
+                
+                if (!newFileName.EndsWith(currentExtension, StringComparison.OrdinalIgnoreCase))
+                {
+                    newFileName += currentExtension;
+                }
+
+                // Update the file name in the database
+                uploadedFile.FileName = newFileName;
+                DbContext.FileUploads.Update(uploadedFile);
+                await DbContext.SaveChangesAsync();
+                
+                isEditingFileName = false;
+                Snackbar.Add("File name updated successfully", Severity.Success);
+            }
+            catch (Exception ex)
+            {
+                errorMessage = $"Error updating file name: {ex.Message}";
+                Snackbar.Add(errorMessage, Severity.Error);
+            }
+        }
+    }
+
+    private void StartEditingStatus()
+    {
+        if (uploadedFile != null)
+        {
+            editedStatus = uploadedFile.MappingStatus;
+            isEditingStatus = true;
+        }
+    }
+
+    private void CancelEditingStatus()
+    {
+        isEditingStatus = false;
+    }
+
+    private async Task SaveStatus()
+    {
+        if (uploadedFile != null)
+        {
+            try
+            {
+                uploadedFile.MappingStatus = editedStatus.Value;
+                uploadedFile.MappingStatusUpdatedAt = DateTime.UtcNow;
+                
+                DbContext.FileUploads.Update(uploadedFile);
+                await DbContext.SaveChangesAsync();
+                
+                isEditingStatus = false;
+                Snackbar.Add("Mapping status updated successfully", Severity.Success);
+            }
+            catch (Exception ex)
+            {
+                errorMessage = $"Error updating mapping status: {ex.Message}";
+                Snackbar.Add(errorMessage, Severity.Error);
+            }
+        }
+    }
+
+    private Color GetStatusColor(MappingStatus status)
+    {
+        return status switch
+        {
+            MappingStatus.NotMapped => Color.Default,
+            MappingStatus.InProgress => Color.Info,
+            MappingStatus.Completed => Color.Success,
+            MappingStatus.Approved => Color.Primary,
+            _ => Color.Default
+        };
+    }
+
+    private void StartEditingDifficulty()
+    {
+        if (uploadedFile != null)
+        {
+            editedDifficulty = uploadedFile.Difficulty;
+            isEditingDifficulty = true;
+        }
+    }
+
+    private void CancelEditingDifficulty()
+    {
+        isEditingDifficulty = false;
+    }
+
+    private async Task SaveDifficulty()
+    {
+        if (uploadedFile != null)
+        {
+            try
+            {
+                uploadedFile.Difficulty = editedDifficulty;
+                
+                DbContext.FileUploads.Update(uploadedFile);
+                await DbContext.SaveChangesAsync();
+                
+                isEditingDifficulty = false;
+                Snackbar.Add("File difficulty updated successfully", Severity.Success);
+            }
+            catch (Exception ex)
+            {
+                errorMessage = $"Error updating file difficulty: {ex.Message}";
+                Snackbar.Add(errorMessage, Severity.Error);
+            }
+        }
+    }
+
+    private Color GetDifficultyColor(FileDifficulty difficulty)
+    {
+        return difficulty switch
+        {
+            FileDifficulty.VeryEasy => Color.Success,
+            FileDifficulty.Simple => Color.Info,
+            FileDifficulty.Medium => Color.Primary,
+            FileDifficulty.Hard => Color.Warning,
+            FileDifficulty.VeryDifficult => Color.Error,
+            _ => Color.Default
+        };
+    }
+
+    public class DataMappingViewModel
+    {
+        public int MappingId { get; set; } // Local ID for UI tracking
+        public int FileDataMappingId { get; set; } // Real DB ID if exists
+        public int DataPointId { get; set; }
+        public FinancialDataPointEntity DataPoint { get; set; } = null!;
+        public string InstanceName { get; set; } = string.Empty; // For multiple instances of the same data point
+        public Dictionary<int, string> ElementValues { get; set; } = new();
+        public Dictionary<int, PropertyDataType> ElementDataTypes { get; set; } = new();
+    }
+
+    // Method to check if file is a spreadsheet
+    private bool IsSpreadsheetFile(string? fileType)
+    {
+        if (string.IsNullOrEmpty(fileType))
+            return false;
+            
+        fileType = fileType.ToLowerInvariant();
+        return fileType == "csv" || fileType == "xlsx" || fileType == "xls";
+    }
+    
+    // Method to load file preview
+    private async Task LoadFilePreview()
+    {
+        if (uploadedFile == null || !IsSpreadsheetFile(uploadedFile.FileType))
+            return;
+            
+        try
+        {
+            isLoadingPreview = true;
+            
+            // Get file stream
+            var fileStream = await FileUploadService.GetFileStreamAsync(uploadedFile.FileUploadId);
+            if (fileStream == null)
+            {
+                Snackbar.Add("File not found", Severity.Error);
+                return;
+            }
+            
+            // Parse file based on type
+            if (uploadedFile.FileType.ToLowerInvariant() == "csv")
+            {
+                await ParseCsvFile(fileStream);
+            }
+            else
+            {
+                await ParseExcelFile(fileStream);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading file preview: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoadingPreview = false;
+        }
+    }
+    
+    // Method to parse CSV file
+    private async Task ParseCsvFile(Stream fileStream)
+    {
+        using var reader = new StreamReader(fileStream);
+        
+        // Read header
+        var headerLine = await reader.ReadLineAsync();
+        if (headerLine != null)
+        {
+            filePreviewHeaders = headerLine.Split(',').Select(h => h.Trim('"')).ToList();
+        }
+        
+        // Read data (limit to 100 rows for performance)
+        filePreviewData.Clear();
+        int rowCount = 0;
+        while (!reader.EndOfStream && rowCount < 100)
+        {
+            var line = await reader.ReadLineAsync();
+            if (line != null)
+            {
+                filePreviewData.Add(line.Split(',').Select(c => c.Trim('"')).ToList());
+                rowCount++;
+            }
+        }
+    }
+    
+    // Method to parse Excel file using ExcelDataReader
+    private async Task ParseExcelFile(Stream fileStream)
+    {
+        try
+        {
+            // Assurez-vous d'avoir installé les packages NuGet suivants:
+            // dotnet add package ExcelDataReader
+            // dotnet add package ExcelDataReader.DataSet
+            // dotnet add package System.Text.Encoding.CodePages
+
+            // Enregistrer les encodages (nécessaire pour ExcelDataReader)
+            System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+            
+            // Créer un reader pour le fichier Excel
+            using var reader = ExcelDataReader.ExcelReaderFactory.CreateReader(fileStream);
+            
+            // Récupérer toutes les feuilles de calcul
+            var result = reader.AsDataSet(new ExcelDataReader.ExcelDataSetConfiguration()
+            {
+                ConfigureDataTable = (_) => new ExcelDataReader.ExcelDataTableConfiguration()
+                {
+                    UseHeaderRow = true
+                }
+            });
+            
+            // Récupérer la liste des noms de feuilles
+            worksheets.Clear();
+            for (int i = 0; i < result.Tables.Count; i++)
+            {
+                worksheets.Add(result.Tables[i].TableName);
+            }
+            
+            // Utiliser la première feuille par défaut
+            var dataTable = result.Tables[0];
+            currentWorksheet = dataTable.TableName;
+            
+            if (dataTable.Rows.Count == 0)
+            {
+                Snackbar.Add("Excel file is empty or has no data", Severity.Warning);
+                return;
+            }
+            
+            filePreviewHeaders.Clear();
+            filePreviewData.Clear();
+            
+            // Récupérer les en-têtes (noms de colonnes)
+            foreach (System.Data.DataColumn column in dataTable.Columns)
+            {
+                filePreviewHeaders.Add(string.IsNullOrWhiteSpace(column.ColumnName) 
+                    ? $"Column {column.Ordinal + 1}" 
+                    : column.ColumnName);
+            }
+            
+            // Récupérer les données (limiter à 100 lignes)
+            int maxRows = Math.Min(dataTable.Rows.Count, 100);
+            for (int i = 0; i < maxRows; i++)
+            {
+                var rowData = new List<string>();
+                for (int j = 0; j < dataTable.Columns.Count; j++)
+                {
+                    var value = dataTable.Rows[i][j];
+                    string cellValue;
+                    
+                    if (value == null || value == DBNull.Value)
+                    {
+                        cellValue = string.Empty;
+                    }
+                    else if (value is DateTime dateTime)
+                    {
+                        cellValue = dateTime.ToString("yyyy-MM-dd");
+                    }
+                    else if (value is double number && number >= 0 && number <= 1)
+                    {
+                        cellValue = (number * 100).ToString("0.##") + "%";
+                    }
+                    else
+                    {
+                        cellValue = value.ToString();
+                    }
+                    
+                    rowData.Add(cellValue);
+                }
+                filePreviewData.Add(rowData);
+            }
+            
+            // Si aucune donnée n'a été trouvée
+            if (filePreviewData.Count == 0)
+            {
+                Snackbar.Add("No data found in the Excel file", Severity.Warning);
+            }
+            
+            // Initialiser le zoom
+            await JSRuntime.InvokeVoidAsync("eval", @"
+                window.applyExcelZoom = function(zoomLevel) {
+                    const container = document.querySelector('.excel-container');
+                    if (container) {
+                        container.style.fontSize = (14 * zoomLevel) + 'px';
+                        
+                        const cells = document.querySelectorAll('.excel-cell, .excel-header-cell');
+                        cells.forEach(cell => {
+                            cell.style.minWidth = (120 * zoomLevel) + 'px';
+                            cell.style.padding = (8 * zoomLevel) + 'px';
+                        });
+                        
+                        const rowHeaders = document.querySelectorAll('.excel-row-header, .excel-corner-cell');
+                        rowHeaders.forEach(header => {
+                            header.style.minWidth = (40 * zoomLevel) + 'px';
+                        });
+                    }
+                }
+            ");
+        }
+        catch (Exception ex)
+        {
+            // Gérer les erreurs
+            Snackbar.Add($"Error parsing Excel file: {ex.Message}", Severity.Error);
+            
+            // Ajouter des données factices en cas d'erreur pour que l'interface reste fonctionnelle
+            filePreviewHeaders = new List<string> { "Column A", "Column B", "Column C" };
+            filePreviewData = new List<List<string>>
+            {
+                new List<string> { "Error", "Parsing", "File" },
+                new List<string> { "Please", "Check", "Format" }
+            };
+        }
+        
+        await Task.CompletedTask;
+    }
+    
+    // Method to handle cell click in the preview
+    private void OnCellClick(string cellValue)
+    {
+        if (isSelectingField && selectedFieldCallback != null)
+        {
+            selectedFieldCallback(cellValue);
+            CancelFieldSelection();
+        }
+    }
+    
+    // Method to select a field for mapping
+    private void SelectField((string fieldName, Action<string> callback) cb)
+    {
+        isSelectingField = true;
+        selectedFieldName = cb.fieldName;
+        selectedFieldCallback = cb.callback;
+    }
+    
+    // Method to cancel field selection
+    private void CancelFieldSelection()
+    {
+        isSelectingField = false;
+        selectedFieldName = string.Empty;
+        selectedFieldCallback = null;
+    }
+
+    // Méthode pour obtenir le nom de colonne Excel (A, B, C, ..., AA, AB, etc.)
+    private string GetExcelColumnName(int columnIndex)
+    {
+        string columnName = "";
+        int dividend = columnIndex + 1;
+        int modulo;
+
+        while (dividend > 0)
+        {
+            modulo = (dividend - 1) % 26;
+            columnName = Convert.ToChar(65 + modulo) + columnName;
+            dividend = (dividend - modulo) / 26;
+        }
+
+        return columnName;
+    }
+
+    // Méthode pour afficher le sélecteur de feuilles
+    private async Task ShowSheetSelector()
+    {
+        if (worksheets.Count <= 1) return;
+        
+        var parameters = new DialogParameters
+        {
+            ["Worksheets"] = worksheets,
+            ["CurrentWorksheet"] = currentWorksheet
+        };
+
+        var dialog = await dialogService.ShowAsync<WorksheetSelectorDialog>("Select Worksheet", parameters);
+        var result = await dialog.Result;
+        
+        if (!result.Cancelled && result.Data is string selectedSheet)
+        {
+            currentWorksheet = (string)result.Data;
+            await LoadWorksheet((string)result.Data);
+        }
+    }
+
+    // Méthode pour charger une feuille spécifique
+    private async Task LoadWorksheet(string sheetName)
+    {
+        if (uploadedFile == null) return;
+        
+        try
+        {
+            isLoadingPreview = true;
+            
+            // Récupérer le fichier
+            var fileStream = await FileUploadService.GetFileStreamAsync(uploadedFile.FileUploadId);
+            if (fileStream == null)
+            {
+                Snackbar.Add("File not found", Severity.Error);
+                return;
+            }
+            
+            // Enregistrer les encodages
+            System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+            
+            // Créer un reader pour le fichier Excel
+            using var reader = ExcelDataReader.ExcelReaderFactory.CreateReader(fileStream);
+            
+            // Récupérer toutes les feuilles
+            var result = reader.AsDataSet(new ExcelDataReader.ExcelDataSetConfiguration()
+            {
+                ConfigureDataTable = (_) => new ExcelDataReader.ExcelDataTableConfiguration()
+                {
+                    UseHeaderRow = true
+                }
+            });
+            
+            // Trouver la feuille demandée
+            var dataTable = result.Tables[sheetName];
+            if (dataTable == null)
+            {
+                Snackbar.Add($"Worksheet '{sheetName}' not found", Severity.Error);
+                return;
+            }
+            
+            currentWorksheet = sheetName;
+            
+            filePreviewHeaders.Clear();
+            filePreviewData.Clear();
+            
+            // Récupérer les en-têtes
+            foreach (System.Data.DataColumn column in dataTable.Columns)
+            {
+                filePreviewHeaders.Add(string.IsNullOrWhiteSpace(column.ColumnName) 
+                    ? $"Column {column.Ordinal + 1}" 
+                    : column.ColumnName);
+            }
+            
+            // Récupérer les données (limiter à 100 lignes)
+            int maxRows = Math.Min(dataTable.Rows.Count, 100);
+            for (int i = 0; i < maxRows; i++)
+            {
+                var rowData = new List<string>();
+                for (int j = 0; j < dataTable.Columns.Count; j++)
+                {
+                    var value = dataTable.Rows[i][j];
+                    string cellValue;
+                    
+                    if (value == null || value == DBNull.Value)
+                    {
+                        cellValue = string.Empty;
+                    }
+                    else if (value is DateTime dateTime)
+                    {
+                        cellValue = dateTime.ToString("yyyy-MM-dd");
+                    }
+                    else if (value is double number && number >= 0 && number <= 1)
+                    {
+                        cellValue = (number * 100).ToString("0.##") + "%";
+                    }
+                    else
+                    {
+                        cellValue = value.ToString();
+                    }
+                    
+                    rowData.Add(cellValue);
+                }
+                filePreviewData.Add(rowData);
+            }
+            
+            Snackbar.Add($"Loaded worksheet: {sheetName}", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading worksheet: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoadingPreview = false;
+        }
+    }
+
+    // Méthodes pour le zoom
+    private void ZoomIn()
+    {
+        zoomLevel = Math.Min(zoomLevel + 0.1, 2.0);
+        ApplyZoom();
+    }
+
+    private void ZoomOut()
+    {
+        zoomLevel = Math.Max(zoomLevel - 0.1, 0.5);
+        ApplyZoom();
+    }
+
+    private async Task ApplyZoom()
+    {
+        await JSRuntime.InvokeVoidAsync("applyExcelZoom", zoomLevel);
+    }
+} 

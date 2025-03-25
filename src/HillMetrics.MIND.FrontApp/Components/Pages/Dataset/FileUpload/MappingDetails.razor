@@ -1,0 +1,354 @@
+﻿@page "/mapping-details/{MappingId:int}"
+@using AiTraining.Services
+@using Microsoft.EntityFrameworkCore
+@inject AiTrainingDbContext DbContext
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+@inject MappingExportService MappingExportService
+
+<MudBreadcrumbs Items="_breadcrumbs"></MudBreadcrumbs>
+
+<MudGrid Class="mt-4">
+    <MudItem xs="12">
+        <MudPaper Class="pa-4" Elevation="3">
+            <MudGrid>
+                <MudItem xs="12" md="8">
+                    <MudText Typo="Typo.h4">Mapping Details</MudText>
+                    @if (mapping != null)
+                    {
+                        <MudText Typo="Typo.subtitle1" Color="Color.Secondary">ID: @mapping.FileDataMappingId</MudText>
+                    }
+                </MudItem>
+                <MudItem xs="12" md="4" Class="d-flex justify-end align-center">
+                    <MudButton Variant="Variant.Outlined"
+                              Color="Color.Primary"
+                              StartIcon="@Icons.Material.Filled.ArrowBack"
+                              OnClick="NavigateBack"
+                              Class="mr-2">
+                        Back to List
+                    </MudButton>
+                    @if (mapping != null)
+                    {
+                        <MudButton Variant="Variant.Outlined"
+                                  Color="Color.Secondary"
+                                  StartIcon="@Icons.Material.Filled.Edit"
+                                  OnClick="() => NavigateToEdit(mapping.FileDataMappingId)"
+                                  Class="mr-2">
+                            Edit
+                        </MudButton>
+                        <MudButton Variant="Variant.Outlined"
+                                  Color="Color.Primary"
+                                  StartIcon="@Icons.Material.Filled.Download"
+                                  OnClick="ExportMapping">
+                            Export
+                        </MudButton>
+                    }
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@if (isLoading)
+{
+    <MudProgressCircular Color="Color.Primary" Indeterminate="true" Class="my-7" />
+}
+else if (mapping == null)
+{
+    <MudAlert Severity="Severity.Error" Class="mt-4">Mapping not found or has been deleted.</MudAlert>
+}
+else
+{
+    <MudGrid Class="mt-4">
+        <!-- File Information Card -->
+        <MudItem xs="12" md="6">
+            <MudCard Elevation="3">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">
+                            <MudIcon Icon="@Icons.Material.Filled.InsertDriveFile" Class="mr-2" />
+                            File Information
+                        </MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudList Dense="true">
+                        <MudListItem>
+                            <MudText>
+                                <strong>File Name:</strong> @mapping.FileName
+                            </MudText>
+                        </MudListItem>
+                        <MudListItem>
+                            <MudText>
+                                <strong>File Type:</strong> @mapping.FileType
+                            </MudText>
+                        </MudListItem>
+                        <MudListItem>
+                            <MudText>
+                                <strong>File Size:</strong> @FormatFileSize(mapping.FileSize)
+                            </MudText>
+                        </MudListItem>
+                        <MudListItem>
+                            <MudText>
+                                <strong>Uploaded:</strong> @mapping.UploadedAt.ToLocalTime().ToString("g")
+                            </MudText>
+                        </MudListItem>
+                    </MudList>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <!-- Data Point Information Card -->
+        <MudItem xs="12" md="6">
+            <MudCard Elevation="3">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">
+                            <MudIcon Icon="@Icons.Material.Filled.DataObject" Class="mr-2" />
+                            Data Point Information
+                        </MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudList Dense="true">
+                        <MudListItem>
+                            <MudText>
+                                <strong>Data Point:</strong> @mapping.DataPointName
+                            </MudText>
+                        </MudListItem>
+                        <MudListItem>
+                            <MudText>
+                                <strong>Elements Count:</strong> @mapping.Elements.Count
+                            </MudText>
+                        </MudListItem>
+                        <MudListItem>
+                            <MudText>
+                                <strong>Created:</strong> @mapping.CreatedAt.ToLocalTime().ToString("g")
+                            </MudText>
+                        </MudListItem>
+                    </MudList>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <!-- Elements Card -->
+        <MudItem xs="12">
+            <MudCard Elevation="3">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">
+                            <MudIcon Icon="@Icons.Material.Filled.List" Class="mr-2" />
+                            Mapped Elements
+                        </MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    @if (mapping.Elements.Count == 0)
+                    {
+                        <MudAlert Severity="Severity.Info">No elements found for this mapping.</MudAlert>
+                    }
+                    else
+                    {
+                        <MudTable Items="@mapping.Elements" 
+                                 Dense="true" 
+                                 Hover="true" 
+                                 Bordered="true" 
+                                 Striped="true">
+                            <HeaderContent>
+                                <MudTh>Property</MudTh>
+                                <MudTh>Value</MudTh>
+                                <MudTh>Data Type</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd DataLabel="Property">
+                                    <MudText>@context.PropertyName</MudText>
+                                </MudTd>
+                                <MudTd DataLabel="Value">
+                                    <MudHighlighter Text="@context.Value" HighlightedText="@searchTerm" />
+                                </MudTd>
+                                <MudTd DataLabel="Data Type">
+                                    <MudChip Size="Size.Small" Color="Color.Primary">@context.DataType</MudChip>
+                                </MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    }
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <!-- Visualization Card -->
+        <MudItem xs="12">
+            <MudCard Elevation="3">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">
+                            <MudIcon Icon="@Icons.Material.Filled.Visibility" Class="mr-2" />
+                            Visual Representation
+                        </MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudPaper Class="pa-4" Elevation="0">
+                        <MudText Typo="Typo.h6" Class="mb-4">@mapping.DataPointName Structure</MudText>
+                        
+                        <div class="d-flex flex-column">
+                            @foreach (var element in mapping.Elements)
+                            {
+                                <div class="d-flex align-center mb-3">
+                                    <MudIcon Icon="@Icons.Material.Filled.Label" Class="mr-2" />
+                                    <MudText Class="mr-4" Style="min-width: 150px;"><strong>@element.PropertyName:</strong></MudText>
+                                    <MudPaper Elevation="2" Class="pa-2 flex-grow-1">
+                                        <MudText>@element.Value</MudText>
+                                    </MudPaper>
+                                    <MudChip Size="Size.Small" Color="Color.Primary" Class="ml-2">@element.DataType</MudChip>
+                                </div>
+                            }
+                        </div>
+                    </MudPaper>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    [Parameter]
+    public int MappingId { get; set; }
+
+    private MappingDetailsViewModel? mapping;
+    private bool isLoading = true;
+    private string searchTerm = string.Empty;
+    private List<BreadcrumbItem> _breadcrumbs = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _breadcrumbs = new List<BreadcrumbItem>
+        {
+            new BreadcrumbItem("Home", "/"),
+            new BreadcrumbItem("File Data Mappings", "/file-data-mappings"),
+            new BreadcrumbItem("Details", null, true)
+        };
+
+        await LoadMapping();
+    }
+
+    private async Task LoadMapping()
+    {
+        try
+        {
+            isLoading = true;
+            
+            var dbMapping = await DbContext.FileDataMappings
+                .Include(m => m.FileUpload)
+                .Include(m => m.FinancialDataPoint)
+                .Include(m => m.ElementValues)
+                    .ThenInclude(e => e.FinancialDataPointElement)
+                .FirstOrDefaultAsync(m => m.FileDataMappingId == MappingId);
+
+            if (dbMapping == null)
+            {
+                mapping = null;
+                return;
+            }
+
+            mapping = new MappingDetailsViewModel
+            {
+                FileDataMappingId = dbMapping.FileDataMappingId,
+                FileUploadId = dbMapping.FileUploadId,
+                FileName = dbMapping.FileUpload.FileName,
+                FileType = dbMapping.FileUpload.FileType,
+                FileSize = dbMapping.FileUpload.FileSize,
+                ContentType = dbMapping.FileUpload.ContentType,
+                DataPointId = dbMapping.FinancialDataPointId,
+                DataPointName = dbMapping.FinancialDataPoint.Name,
+                CreatedAt = dbMapping.FileUpload.UploadedAt,
+                UploadedAt = dbMapping.FileUpload.UploadedAt,
+                Elements = dbMapping.ElementValues.Select(e => new ElementDetailsViewModel
+                {
+                    ElementValueId = e.ElementValueId,
+                    PropertyName = e.FinancialDataPointElement.PropertyName,
+                    Value = e.ExtractedValue ?? string.Empty,
+                    DataType = e.PropertyDataType.ToString(),
+                    Description = e.FinancialDataPointElement.Description
+                }).ToList()
+            };
+
+            // Update breadcrumb with file name
+            _breadcrumbs[2] = new BreadcrumbItem($"Mapping {MappingId}: {mapping.FileName}", null, true);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading mapping: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void NavigateBack()
+    {
+        NavigationManager.NavigateTo("/file-data-mappings");
+    }
+
+    private void NavigateToEdit(int mappingId)
+    {
+        NavigationManager.NavigateTo($"/file-data-mapping/{mappingId}");
+    }
+
+    private async Task ExportMapping()
+    {
+        if (mapping == null) return;
+
+        try
+        {
+            var json = await MappingExportService.ExportMappingToJsonAsync(MappingId);
+            await MappingExportService.DownloadJsonFileAsync(json, $"mapping_{MappingId}.json");
+            
+            Snackbar.Add("Mapping exported successfully", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error exporting mapping: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private string FormatFileSize(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB", "TB" };
+        int order = 0;
+        double size = bytes;
+
+        while (size >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            size /= 1024;
+        }
+
+        return $"{size:0.##} {sizes[order]}";
+    }
+
+    private class MappingDetailsViewModel
+    {
+        public int FileDataMappingId { get; set; }
+        public int FileUploadId { get; set; }
+        public string FileName { get; set; } = string.Empty;
+        public string FileType { get; set; } = string.Empty;
+        public long FileSize { get; set; }
+        public string ContentType { get; set; } = string.Empty;
+        public int DataPointId { get; set; }
+        public string DataPointName { get; set; } = string.Empty;
+        public DateTime CreatedAt { get; set; }
+        public DateTime UploadedAt { get; set; }
+        public List<ElementDetailsViewModel> Elements { get; set; } = new();
+    }
+
+    private class ElementDetailsViewModel
+    {
+        public int ElementValueId { get; set; }
+        public string PropertyName { get; set; } = string.Empty;
+        public string Value { get; set; } = string.Empty;
+        public string DataType { get; set; } = string.Empty;
+        public string? Description { get; set; }
+    }
+} 

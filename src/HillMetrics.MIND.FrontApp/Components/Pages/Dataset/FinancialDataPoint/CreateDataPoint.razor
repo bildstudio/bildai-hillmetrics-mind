@@ -1,0 +1,376 @@
+﻿@page "/financial-data/create"
+@page "/financial-data/edit/{Id:int?}"
+@using Microsoft.EntityFrameworkCore
+@inject AiTrainingDbContext DbContext
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+
+<MudText Typo="Typo.h4" Class="mb-4">@(IsEditMode ? "Edit" : "Create") Financial Data Point</MudText>
+
+@if (isLoading)
+{
+    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+}
+else
+{
+    <MudCard Class="mb-6">
+        <MudCardContent>
+            <MudTextField @bind-Value="dataPoint.Name" Label="Data Point Name" Required="true" RequiredError="Name is required" />
+        </MudCardContent>
+    </MudCard>
+
+    <div class="d-flex justify-space-between align-center mb-4">
+        <MudText Typo="Typo.h5">Elements</MudText>
+        <MudText Typo="Typo.caption" Color="Color.Info">
+            <MudIcon Icon="@Icons.Material.Filled.DragIndicator" Size="Size.Small" Class="mr-1" />
+            Drag elements to reorder them
+        </MudText>
+    </div>
+
+    <MudDragDropZone T="ElementViewModel" 
+                     Items="elements" 
+                     ItemDraggable="true"
+                     ItemDropped="ItemDropped"
+                     Class="mud-height-full">
+        <ChildContent>
+            @foreach (var element in elements)
+            {
+                <MudDragDropItem T="ElementViewModel" 
+                                 Item="element" 
+                                 Class="mb-4">
+                    <MudCard Elevation="2">
+                        <MudCardHeader>
+                            <CardHeaderAvatar>
+                                <MudAvatar Color="Color.Primary" Size="Size.Small">@(element.Position)</MudAvatar>
+                            </CardHeaderAvatar>
+                            <CardHeaderContent>
+                                <MudText Typo="Typo.body1">@(string.IsNullOrEmpty(element.PropertyName) ? "New Element" : element.PropertyName)</MudText>
+                            </CardHeaderContent>
+                            <CardHeaderActions>
+                                <MudIconButton Icon="@Icons.Material.Filled.DragIndicator" 
+                                             Size="Size.Small" 
+                                             Class="drag-handle" />
+                            </CardHeaderActions>
+                        </MudCardHeader>
+                        <MudCardContent>
+                            <MudGrid>
+                                <MudItem xs="12" md="4">
+                                    <MudTextField @bind-Value="element.PropertyName" Label="Property Name" Required="true" />
+                                </MudItem>
+                                <MudItem xs="12" md="8">
+                                    <MudTextField @bind-Value="element.Description" Label="Description" />
+                                </MudItem>
+                                <MudItem xs="12">
+                                    <MudChipSet @bind-SelectedChips="element.ChipValues" 
+                                                MultiSelection="true" 
+                                                Filter="true" 
+                                                Mandatory="false"
+                                                OnClose="@(() => RemoveValue(element))">
+                                        @foreach (var value in element.PotentialValues)
+                                        {
+                                            <MudChip Text="@value" Value="@value" />
+                                        }
+                                    </MudChipSet>
+                                </MudItem>
+                                <MudItem xs="12">
+                                    <MudGrid>
+                                        <MudItem xs="8">
+                                            <MudTextField @bind-Value="element.NewValue" Label="Add New Value" />
+                                        </MudItem>
+                                        <MudItem xs="4">
+                                            <MudButton OnClick="() => AddValue(element)" 
+                                                      Color="Color.Primary" 
+                                                      Variant="Variant.Filled"
+                                                      Class="mt-4">
+                                                Add Value
+                                            </MudButton>
+                                        </MudItem>
+                                    </MudGrid>
+                                </MudItem>
+                            </MudGrid>
+                        </MudCardContent>
+                        <MudCardActions>
+                            <MudButton OnClick="() => RemoveElement(element)" 
+                                       Color="Color.Error" 
+                                       StartIcon="@Icons.Material.Filled.Delete">
+                                Remove Element
+                            </MudButton>
+                        </MudCardActions>
+                    </MudCard>
+                </MudDragDropItem>
+            }
+        </ChildContent>
+        <EmptyZoneContent>
+            <MudAlert Severity="Severity.Info">No elements added yet. Click "Add Element" to start.</MudAlert>
+        </EmptyZoneContent>
+    </MudDragDropZone>
+
+    <MudButton OnClick="AddElement" 
+               Color="Color.Primary" 
+               Variant="Variant.Outlined" 
+               StartIcon="@Icons.Material.Filled.Add" 
+               Class="mb-4 mt-4">
+        Add Element
+    </MudButton>
+
+    <MudDivider Class="my-6" />
+
+    <MudButton OnClick="SaveDataPoint" 
+               Color="Color.Primary" 
+               Variant="Variant.Filled" 
+               Size="Size.Large" 
+               Disabled="@(!CanSave())">
+        @(IsEditMode ? "Update" : "Save") Data Point
+    </MudButton>
+}
+
+<style>
+    .mud-card.mud-drag-item {
+        cursor: move;
+    }
+    .drag-handle {
+        cursor: move;
+    }
+</style>
+
+@code {
+    [Parameter]
+    public int? Id { get; set; }
+
+    private bool IsEditMode => Id.HasValue;
+    private FinancialDataPointEntity dataPoint = new();
+    private List<ElementViewModel> elements = new();
+    private bool isLoading = true;
+
+    private class ElementViewModel
+    {
+        public int? ElementId { get; set; }
+        public string PropertyName { get; set; } = string.Empty;
+        public List<string> PotentialValues { get; set; } = new();
+        public string? Description { get; set; }
+        public MudChip[] ChipValues { get; set; } = Array.Empty<MudChip>();
+        public string NewValue { get; set; } = string.Empty;
+        public int Position { get; set; }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (IsEditMode)
+        {
+            await LoadDataPoint();
+        }
+        else
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task LoadDataPoint()
+    {
+        try
+        {
+            var existingDataPoint = await DbContext.FinancialDataPoints
+                .Include(dp => dp.Elements)
+                .FirstOrDefaultAsync(dp => dp.FinancialDataPointId == Id);
+
+            if (existingDataPoint == null)
+            {
+                Snackbar.Add("Financial data point not found", Severity.Error);
+                NavigationManager.NavigateTo("/financial-data/list");
+                return;
+            }
+
+            dataPoint = existingDataPoint;
+            
+            // Convert database entities to view models
+            elements = existingDataPoint.Elements
+                .OrderBy(e => e.Position) // Order by position if it exists, otherwise use default order
+                .Select((e, index) => new ElementViewModel
+                {
+                    ElementId = e.FinancialDataPointElementId,
+                    PropertyName = e.PropertyName,
+                    Description = e.Description,
+                    PotentialValues = e.PotentialValues.ToList(),
+                    ChipValues = e.PotentialValues.Select(v => new MudChip { Text = v, Value = v }).ToArray(),
+                    Position = e.Position ?? (index + 1) // Use existing position or generate based on index
+                }).ToList();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading data: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void AddElement()
+    {
+        // Set position to the next available position
+        int nextPosition = elements.Count > 0 ? elements.Max(e => e.Position) + 1 : 1;
+        
+        elements.Add(new ElementViewModel { Position = nextPosition });
+    }
+
+    private void RemoveElement(ElementViewModel element)
+    {
+        elements.Remove(element);
+        
+        // Reorder remaining elements to ensure continuous positions
+        UpdateElementPositions();
+    }
+
+    private void ItemDropped(MudItemDropInfo<ElementViewModel> dropInfo)
+    {
+        // Get the dropped item
+        var item = dropInfo.Item;
+        
+        // Remove the item from its original position
+        elements.Remove(item);
+        
+        // Insert it at the new position
+        elements.Insert(dropInfo.IndexInZone, item);
+        
+        // Update positions for all elements
+        UpdateElementPositions();
+    }
+    
+    private void UpdateElementPositions()
+    {
+        // Reassign positions to ensure they are sequential
+        for (int i = 0; i < elements.Count; i++)
+        {
+            elements[i].Position = i + 1;
+        }
+    }
+
+    private void AddValue(ElementViewModel element)
+    {
+        if (!string.IsNullOrWhiteSpace(element.NewValue) && !element.PotentialValues.Contains(element.NewValue))
+        {
+            element.PotentialValues.Add(element.NewValue);
+            element.NewValue = string.Empty;
+        }
+    }
+
+    private void RemoveValue(ElementViewModel element)
+    {
+        var selectedValues = element.ChipValues.Select(c => c.Text).ToList();
+        element.PotentialValues.RemoveAll(v => selectedValues.Contains(v));
+    }
+
+    private bool CanSave()
+    {
+        if (string.IsNullOrWhiteSpace(dataPoint.Name))
+            return false;
+
+        if (elements.Count == 0)
+            return false;
+
+        return elements.All(e => !string.IsNullOrWhiteSpace(e.PropertyName));
+    }
+
+    private async Task SaveDataPoint()
+    {
+        try
+        {
+            if (IsEditMode)
+            {
+                // Update existing data point
+                // Instead of clearing all elements, we need to handle them individually
+                
+                // Get existing elements from the database to compare
+                var existingElements = await DbContext.FinancialDataPointElements
+                    .Where(e => e.FinancialDataPointId == dataPoint.FinancialDataPointId)
+                    .ToListAsync();
+                
+                // Check which elements are used in mappings
+                var usedElementIds = await DbContext.FileDataElementValues
+                    .Where(v => existingElements.Select(e => e.FinancialDataPointElementId).Contains(v.FinancialDataPointElementId))
+                    .Select(v => v.FinancialDataPointElementId)
+                    .Distinct()
+                    .ToListAsync();
+                
+                // Update existing elements
+                foreach (var element in elements)
+                {
+                    if (element.ElementId.HasValue)
+                    {
+                        // This is an existing element, update it
+                        var existingElement = existingElements.FirstOrDefault(e => e.FinancialDataPointElementId == element.ElementId.Value);
+                        if (existingElement != null)
+                        {
+                            existingElement.PropertyName = element.PropertyName;
+                            existingElement.Description = element.Description;
+                            existingElement.PotentialValues = element.PotentialValues;
+                            existingElement.Position = element.Position; // Update position
+                            
+                            // Remove from the list of existing elements as we've handled it
+                            existingElements.Remove(existingElement);
+                        }
+                    }
+                    else
+                    {
+                        // This is a new element, add it
+                        dataPoint.Elements.Add(new FinancialDataPointElementEntity
+                        {
+                            PropertyName = element.PropertyName,
+                            Description = element.Description,
+                            PotentialValues = element.PotentialValues,
+                            Position = element.Position // Set position
+                        });
+                    }
+                }
+                
+                // Handle elements that were removed in the UI
+                foreach (var elementToRemove in existingElements)
+                {
+                    if (usedElementIds.Contains(elementToRemove.FinancialDataPointElementId))
+                    {
+                        // This element is used in mappings, we can't delete it
+                        Snackbar.Add($"Cannot remove element '{elementToRemove.PropertyName}' as it is used in existing mappings.", Severity.Warning);
+                    }
+                    else
+                    {
+                        // This element is not used, we can safely remove it
+                        DbContext.FinancialDataPointElements.Remove(elementToRemove);
+                    }
+                }
+                
+                // Update the data point
+                DbContext.Update(dataPoint);
+            }
+            else
+            {
+                // Create new data point
+                var financialDataPoint = new FinancialDataPointEntity
+                {
+                    Name = dataPoint.Name,
+                    Elements = elements.Select(e => new FinancialDataPointElementEntity
+                    {
+                        PropertyName = e.PropertyName,
+                        Description = e.Description,
+                        PotentialValues = e.PotentialValues,
+                        Position = e.Position // Set position
+                    }).ToList()
+                };
+
+                DbContext.FinancialDataPoints.Add(financialDataPoint);
+            }
+
+            // Save changes
+            await DbContext.SaveChangesAsync();
+
+            // Show success message
+            Snackbar.Add($"Financial data point {(IsEditMode ? "updated" : "created")} successfully", Severity.Success);
+
+            // Navigate to the list page
+            NavigationManager.NavigateTo("/financial-data/list");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error {(IsEditMode ? "updating" : "saving")} data: {ex.Message}", Severity.Error);
+        }
+    }
+} 

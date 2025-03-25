@@ -197,56 +197,42 @@ namespace HillMetrics.MIND.API.Controllers
         /// <summary>
         /// Force the processing of normalized financial prices, triggering the same flow as when prices are automatically inserted
         /// </summary>
-        /// <param name="request">Request parameters including FinancialIds, FluxId, Currency, and Dates</param>
+        /// <param name="request">Request parameters including FinancialIds and Dates (FluxId and Currency are optional)</param>
         /// <returns>Operation status</returns>
         [HttpPost("force-financial-price-processing")]
         public async Task<ActionResult<ApiResponseBase<ForceFinancialPriceProcessingResponse>>> ForceFinancialPriceProcessingAsync(ForceFinancialPriceProcessingRequest request)
         {
-            // Basic validation
-            if (request.FinancialIds == null || !request.FinancialIds.Any())
-                return BadRequest("At least one FinancialId must be provided");
-
-            if (request.FinancialIds.Any(id => id <= 0))
-                return BadRequest("All FinancialIds must be greater than 0");
-
-            if (request.FluxId <= 0)
-                return BadRequest("FluxId must be greater than 0");
-
-            if (string.IsNullOrWhiteSpace(request.Currency))
-                return BadRequest("Currency is required");
-
             try
             {
-                // Verify that the flux exists
-                var fluxResult = await Mediator.Send(new FluxQuery() { FluxId = request.FluxId });
-                if (fluxResult.IsFailed)
-                    return new ErrorApiActionResult(fluxResult.Errors.ToApiResult());
+                // Basic validation
+                if (request.FinancialIds == null || !request.FinancialIds.Any())
+                    return BadRequest("At least one FinancialId must be provided");
 
-                // Get MassTransit publish endpoint
-                var busPublisher = HttpContext.RequestServices.GetRequiredService<IBusPublisher>();
+                if (request.FinancialIds.Any(id => id <= 0))
+                    return BadRequest("All FinancialIds must be greater than 0");
 
-                // Publish an event for each financial ID
-                foreach (var financialId in request.FinancialIds)
+                // Map request to command
+                var command = new ForceFinancialPriceProcessingCommand
                 {
-                    await busPublisher.PublishAsync(
-                        new FinancialNormalizedPriceAdded(
-                            financialId,
-                            request.FluxId,
-                            request.Currency,
-                            request.Dates
-                        )
-                    );
-
-                    logger.LogInformation("Published FinancialNormalizedPriceAdded event for FinancialId: {financialId}, FluxId: {fluxId}, Currency: {currency}, Dates Count: {datesCount}",
-                        financialId, request.FluxId, request.Currency, request.Dates.Count);
-                }
-
+                    FinancialIds = request.FinancialIds,
+                    FluxId = request.FluxId,
+                    Currency = request.Currency,
+                    Dates = request.Dates
+                };
+                
+                // Send the command to the handler
+                var result = await Mediator.Send(command);
+                
+                if (result.IsFailed)
+                    return new ErrorApiActionResult(result.Errors.ToApiResult());
+                
+                // Map the result to response
                 return new ApiResponseBase<ForceFinancialPriceProcessingResponse>(
                     new ForceFinancialPriceProcessingResponse
                     {
-                        Success = true,
-                        FinancialIdCount = request.FinancialIds.Count,
-                        DatesCount = request.Dates.Count
+                        Success = result.Value.Success,
+                        FinancialIdCount = result.Value.FinancialIdCount,
+                        DatesCount = result.Value.DatesCount
                     }
                 );
             }
@@ -517,6 +503,32 @@ namespace HillMetrics.MIND.API.Controllers
                 return new ErrorApiActionResult(result.Errors.ToApiResult());
 
             return new ApiResponseBase<FluxErrorResponse>(mapper.Map<FluxErrorResponse>(result.Value));
+        }
+
+        /// <summary>
+        /// Delete multiple flux errors
+        /// </summary>
+        /// <param name="errorIds">List of error IDs to delete</param>
+        /// <returns>True if all errors were deleted successfully</returns>
+        [HttpDelete("errors")]
+        public async Task<ActionResult<ApiResponseBase<bool>>> DeleteFluxErrorsAsync([FromBody] List<int> errorIds)
+        {
+            try
+            {
+                var result = await Mediator.Send(new DeleteFluxErrorCommand(errorIds));
+
+                if (result.IsFailed)
+                    return new ErrorApiActionResult(result.Errors.ToApiResult());
+
+                return new ApiResponseBase<bool>(true);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error deleting flux errors: {ErrorIds}", string.Join(", ", errorIds));
+                return new ErrorApiActionResult(new ErrorApiResponse(
+                    new Core.API.Exceptions.ApiException($"Error deleting flux errors: {ex.Message}"), 
+                    System.Net.HttpStatusCode.InternalServerError));
+            }
         }
         #endregion
 

@@ -48,6 +48,11 @@ namespace HillMetrics.MIND.API.Contracts.Responses.Flux
         public int Id { get; set; }
 
         /// <summary>
+        /// Flux id
+        /// </summary>
+        public int FluxId { get; set; }
+
+        /// <summary>
         /// Flux matching history foreign key
         /// </summary>
         public int FluxIdentificationHistoryId { get; set; }

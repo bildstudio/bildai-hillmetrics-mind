@@ -140,6 +140,14 @@ namespace HillMetrics.MIND.API.SDK.V1
         [Get("/api/v1/flux/errors/{errorId}")]
         Task<ApiResponseBase<FluxErrorResponse>> GetErrorAsync(int errorId);
 
+        /// <summary>
+        /// Delete multiple flux errors
+        /// </summary>
+        /// <param name="errorIds">List of error IDs to delete</param>
+        /// <returns>API response indicating success or failure</returns>
+        [Delete("/api/v1/flux/errors")]
+        Task<ApiResponseBase<bool>> DeleteFluxErrorsAsync([Body] List<int> errorIds);
+
         #endregion
 
         #region Sources
