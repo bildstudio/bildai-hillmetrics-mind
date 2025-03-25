@@ -27,6 +27,8 @@ using HillMetrics.Core.Mediator.Extensions;
 using HillMetrics.Core.Monitoring.Audits;
 using HillMetrics.Core.Monitoring;
 using HillMetrics.MIND.API.Contracts.Converter;
+using HillMetrics.Core.Messaging.Notification.Services;
+using HillMetrics.MIND.API.Consumers;
 
 
 namespace HillMetrics.MIND.API;
@@ -47,7 +49,9 @@ public partial class Program
         // Add services to the container.
 
         //Core services
-        var logger = builder.ConfigureCommonFluxService(Services.MindAPI, typeof(Program), typeof(PriceBondHandler), _ => { });
+        var logger = builder.ConfigureCommonFluxService(Services.MindAPI, typeof(Program), typeof(PriceBondHandler), s => {
+            s.AddConsumer<SignalrSubscribeEventConsumerTest>();
+        });
 
         logger.LogInformation("Starting {applicationName}...", Services.MindAPI);
 
@@ -102,6 +106,8 @@ public partial class Program
 
         builder.Services.AddHillMetricsAuditedRequestsPreProcessors();
         builder.Services.AddHillMetricsAuditServices(Core.AuditApplicationName.HillMetrics_Mind);
+
+        builder.Services.AddHillMetricsSignalRServices();
 
         var app = builder.Build();
 
