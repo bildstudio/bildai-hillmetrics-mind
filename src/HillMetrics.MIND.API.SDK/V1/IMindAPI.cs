@@ -1,9 +1,21 @@
-﻿using HillMetrics.MIND.API.Contracts.Requests.Flux;
+﻿using HillMetrics.MIND.API.Contracts.Requests.AiDataset;
+using HillMetrics.MIND.API.Contracts.Requests.Flux;
+using HillMetrics.MIND.API.Contracts.Requests.Prices;
 using HillMetrics.MIND.API.Contracts.Requests.Source;
 using HillMetrics.MIND.API.Contracts.Responses;
 using HillMetrics.MIND.API.Contracts.Responses.Flux;
+using HillMetrics.MIND.API.Contracts.Responses.Prices;
 using HillMetrics.MIND.API.Contracts.Responses.Source;
+using HillMetrics.Normalized.Domain.Contracts.AI.Dataset;
+using HillMetrics.Normalized.Domain.Contracts.AI.Dataset.Cqrs.ElementValue;
+using HillMetrics.Normalized.Domain.Contracts.AI.Dataset.Cqrs.FileDataMapping;
+using HillMetrics.Normalized.Domain.Contracts.AI.Dataset.Cqrs.FileUpload;
+using HillMetrics.Normalized.Domain.Contracts.AI.Dataset.Cqrs.FinancialDataPoint;
 using Refit;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace HillMetrics.MIND.API.SDK.V1
 {
@@ -212,6 +224,281 @@ namespace HillMetrics.MIND.API.SDK.V1
         /// <returns>Stream of the raw content file</returns>
         [Get("/api/v1/raw/{id}")]
         Task<Stream> GetFile(string id);
+        #endregion
+
+        #region AI Dataset - File Upload
+
+        /// <summary>
+        /// Upload a new file for AI dataset processing
+        /// </summary>
+        /// <param name="file">File to upload</param>
+        /// <param name="difficulty">Difficulty level of the file</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Details of the uploaded file</returns>
+        [Multipart]
+        [Post("/api/AiDataset/file-upload")]
+        Task<ApiResponseBase<FileUpload>> CreateFileUploadAsync(
+            [AliasAs("file")] StreamPart file,
+            [AliasAs("difficulty")] FileDifficulty difficulty = FileDifficulty.Medium,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Get all uploaded files
+        /// </summary>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>List of all file uploads</returns>
+        [Get("/api/AiDataset/file-uploads")]
+        Task<ApiResponseBase<List<FileUpload>>> GetAllFileUploadsAsync(CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Get details of a specific file upload
+        /// </summary>
+        /// <param name="fileUploadId">ID of the file upload</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>File upload details</returns>
+        [Get("/api/AiDataset/file-upload/{fileUploadId}")]
+        Task<ApiResponseBase<FileUpload>> GetFileUploadAsync(int fileUploadId, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Update a file upload's properties
+        /// </summary>
+        /// <param name="fileUploadId">ID of the file upload to update</param>
+        /// <param name="request">Update data</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Updated file upload details</returns>
+        [Put("/api/AiDataset/file-upload/{fileUploadId}")]
+        Task<ApiResponseBase<FileUpload>> UpdateFileUploadAsync(
+            [Body] UpdateFileUploadRequest request,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Delete a file upload
+        /// </summary>
+        /// <param name="fileUploadId">ID of the file upload to delete</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Operation result</returns>
+        [Delete("/api/AiDataset/file-upload/{fileUploadId}")]
+        Task<ApiResponseBase<bool>> DeleteFileUploadAsync(int fileUploadId, CancellationToken cancellationToken = default);
+
+        #endregion
+
+        #region AI Dataset - File Data Mapping
+
+        /// <summary>
+        /// Create a new mapping between a file and a financial data point
+        /// </summary>
+        /// <param name="request">Mapping details</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Created mapping details</returns>
+        [Post("/api/AiDataset/file-mapping")]
+        Task<ApiResponseBase<HillMetrics.Normalized.Domain.Contracts.AI.Dataset.FileDataMapping>> CreateFileMappingAsync(
+            [Body] CreateFileMappingRequest request,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Get a specific file mapping by ID
+        /// </summary>
+        /// <param name="mappingId">ID of the mapping</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Mapping details</returns>
+        [Get("/api/AiDataset/file-mapping/{mappingId}")]
+        Task<ApiResponseBase<HillMetrics.Normalized.Domain.Contracts.AI.Dataset.FileDataMapping>> GetFileMappingAsync(
+            int mappingId,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Get all mappings associated with a specific file upload
+        /// </summary>
+        /// <param name="fileUploadId">ID of the file upload</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>List of mappings</returns>
+        [Get("/api/AiDataset/file-mappings/by-file-upload/{fileUploadId}")]
+        Task<ApiResponseBase<List<HillMetrics.Normalized.Domain.Contracts.AI.Dataset.FileDataMapping>>> GetMappingsByFileUploadAsync(
+            int fileUploadId,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Delete a file mapping
+        /// </summary>
+        /// <param name="mappingId">ID of the mapping to delete</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Operation result</returns>
+        [Delete("/api/AiDataset/file-mapping/{mappingId}")]
+        Task<ApiResponseBase<bool>> DeleteFileMappingAsync(
+            int mappingId,
+            CancellationToken cancellationToken = default);
+
+        #endregion
+
+        #region AI Dataset - Element Value
+
+        /// <summary>
+        /// Create a new element value
+        /// </summary>
+        /// <param name="command">Element value details</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Created element value</returns>
+        [Post("/api/AiDataset/element-value")]
+        Task<ApiResponseBase<FileDataElementValue>> CreateElementValueAsync(
+            [Body] CreateElementValueCommand command,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Create multiple element values
+        /// </summary>
+        /// <param name="command">Collection of element values</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Operation result</returns>
+        [Post("/api/AiDataset/element-values")]
+        Task<ApiResponseBase<bool>> CreateElementValuesAsync(
+            [Body] CreateElementValuesCommand command,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Get all element values for a specific mapping
+        /// </summary>
+        /// <param name="mappingId">ID of the mapping</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>List of element values</returns>
+        [Get("/api/AiDataset/element-values/by-mapping/{mappingId}")]
+        Task<ApiResponseBase<List<FileDataElementValue>>> GetElementValuesByMappingAsync(
+            int mappingId,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Delete all element values for a specific mapping
+        /// </summary>
+        /// <param name="mappingId">ID of the mapping</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Operation result</returns>
+        [Delete("/api/AiDataset/element-values/by-mapping/{mappingId}")]
+        Task<ApiResponseBase<bool>> DeleteElementValuesByMappingAsync(
+            int mappingId,
+            CancellationToken cancellationToken = default);
+
+        #endregion
+
+        #region AI Dataset - Financial Data Point
+
+        /// <summary>
+        /// Create a new financial data point
+        /// </summary>
+        /// <param name="request">Financial data point details</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Created financial data point</returns>
+        [Post("/api/AiDataset/financial-data-point")]
+        Task<ApiResponseBase<FinancialDataPoint>> CreateFinancialDataPointAsync(
+            [Body] CreateFinancialDataPointRequest request,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Get all financial data points
+        /// </summary>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>List of financial data points</returns>
+        [Get("/api/AiDataset/financial-data-points")]
+        Task<ApiResponseBase<List<FinancialDataPoint>>> GetAllFinancialDataPointsAsync(
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Get a specific financial data point by ID
+        /// </summary>
+        /// <param name="dataPointId">ID of the data point</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Financial data point details</returns>
+        [Get("/api/AiDataset/financial-data-point/{dataPointId}")]
+        Task<ApiResponseBase<FinancialDataPoint>> GetFinancialDataPointAsync(
+            int dataPointId,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Update a financial data point
+        /// </summary>
+        /// <param name="dataPointId">ID of the data point to update</param>
+        /// <param name="request">Update data</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Updated financial data point</returns>
+        [Put("/api/AiDataset/financial-data-point/{dataPointId}")]
+        Task<ApiResponseBase<FinancialDataPoint>> UpdateFinancialDataPointAsync(
+            int dataPointId,
+            [Body] CreateFinancialDataPointRequest request,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Delete a financial data point
+        /// </summary>
+        /// <param name="dataPointId">ID of the data point to delete</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Operation result</returns>
+        [Delete("/api/AiDataset/financial-data-point/{dataPointId}")]
+        Task<ApiResponseBase<bool>> DeleteFinancialDataPointAsync(
+            int dataPointId,
+            CancellationToken cancellationToken = default);
+
+        #endregion
+
+        #region AI Dataset - Financial Data Point Element
+
+        /// <summary>
+        /// Create a new financial data point element
+        /// </summary>
+        /// <param name="command">Element details</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Created data point element</returns>
+        [Post("/api/AiDataset/data-point-element")]
+        Task<ApiResponseBase<FinancialDataPointElement>> CreateDataPointElementAsync(
+            [Body] CreateDataPointElementCommand command,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Create multiple financial data point elements
+        /// </summary>
+        /// <param name="command">Collection of elements to create</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Operation result</returns>
+        [Post("/api/AiDataset/data-point-elements")]
+        Task<ApiResponseBase<bool>> CreateDataPointElementsAsync(
+            [Body] CreateDataPointElementsCommand command,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Get all elements for a specific data point
+        /// </summary>
+        /// <param name="dataPointId">ID of the data point</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>List of data point elements</returns>
+        [Get("/api/AiDataset/data-point-elements/by-data-point/{dataPointId}")]
+        Task<ApiResponseBase<List<FinancialDataPointElement>>> GetElementsByDataPointAsync(
+            int dataPointId,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Delete all elements for a specific data point
+        /// </summary>
+        /// <param name="dataPointId">ID of the data point</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Operation result</returns>
+        [Delete("/api/AiDataset/data-point-elements/by-data-point/{dataPointId}")]
+        Task<ApiResponseBase<bool>> DeleteElementsByDataPointAsync(
+            int dataPointId,
+            CancellationToken cancellationToken = default);
+
+        #endregion
+
+        #region Prices
+
+        /// <summary>
+        /// Update a price entity
+        /// </summary>
+        [Post("/api/v1/prices/update")]
+        Task<ApiResponseBase<bool>> UpdatePriceAsync([Body] UpdatePriceRequest request);
+
+        /// <summary>
+        /// Search for prices based on criteria
+        /// </summary>
+        [Get("/api/v1/prices/search")]
+        Task<ApiResponseBase<SearchPricesResponse>> SearchPricesAsync([Query] SearchPricesRequest request);
+
         #endregion
     }
 }

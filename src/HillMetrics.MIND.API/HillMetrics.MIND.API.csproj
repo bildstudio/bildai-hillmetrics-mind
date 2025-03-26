@@ -34,6 +34,7 @@
 
   <ItemGroup>
     <Folder Include="Configs\" />
+    <Folder Include="Contracts\Requests\Dataset\" />
   </ItemGroup>
 
 </Project>

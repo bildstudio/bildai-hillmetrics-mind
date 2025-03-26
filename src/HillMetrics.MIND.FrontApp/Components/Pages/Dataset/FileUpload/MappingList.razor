@@ -1,14 +1,13 @@
 ﻿@page "/file-data-mappings"
-@using AiTraining.Data.Enums
-@using AiTraining.Services
+@using HillMetrics.Normalized.Domain.Contracts.AI.Dataset
 @using Microsoft.EntityFrameworkCore
-@inject AiTrainingDbContext DbContext
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
 @inject MappingExportService MappingExportService
 @inject IJSRuntime JSRuntime
 @inject FileUploadService FileUploadService
+@inject IMindAPI MindApi
 
 <PageTitle>AI Training - File Data Mappings</PageTitle>
 
@@ -18,14 +17,14 @@
     <MudGrid>
         <MudItem xs="12" md="6">
             <MudText Typo="Typo.h6" Class="mb-3">Filter Options</MudText>
-            <MudTextField @bind-Value="searchTerm" 
-                         Label="Search by file name or data point" 
-                         Adornment="Adornment.End" 
+            <MudTextField @bind-Value="searchTerm"
+                         Label="Search by file name or data point"
+                         Adornment="Adornment.End"
                          AdornmentIcon="@Icons.Material.Filled.Search"
                          OnAdornmentClick="ApplyFilters"
                          Class="mb-3" />
-            <MudSelect T="MappingStatus?" Label="Filter by Status" 
-                      @bind-Value="statusFilter" 
+            <MudSelect T="MappingStatus?" Label="Filter by Status"
+                      @bind-Value="statusFilter"
                       Clearable="true"
                       AnchorOrigin="Origin.BottomCenter">
                 @foreach (var status in Enum.GetValues(typeof(MappingStatus)))
@@ -33,8 +32,8 @@
                     <MudSelectItem T="MappingStatus?" Value="@((MappingStatus?)status)">@status.ToString()</MudSelectItem>
                 }
             </MudSelect>
-            <MudSelect T="FileDifficulty?" Label="Filter by Difficulty" 
-                      @bind-Value="difficultyFilter" 
+            <MudSelect T="FileDifficulty?" Label="Filter by Difficulty"
+                      @bind-Value="difficultyFilter"
                       Clearable="true"
                       AnchorOrigin="Origin.BottomCenter">
                 @foreach (var difficulty in Enum.GetValues(typeof(FileDifficulty)))
@@ -45,16 +44,16 @@
         </MudItem>
         <MudItem xs="12" md="6">
             <MudText Typo="Typo.h6" Class="mb-3">Actions</MudText>
-            <MudButton Variant="Variant.Filled" 
-                      Color="Color.Primary" 
+            <MudButton Variant="Variant.Filled"
+                      Color="Color.Primary"
                       StartIcon="@Icons.Material.Filled.Add"
                        OnClick="() => NavigationManager.NavigateTo(FileDataMappingUrl)"
                       Class="mb-3 me-3">
                 Create New Mapping
             </MudButton>
-            <MudButton Variant="Variant.Outlined" 
-                      Color="Color.Primary" 
-                      StartIcon="@Icons.Material.Filled.Refresh" 
+            <MudButton Variant="Variant.Outlined"
+                      Color="Color.Primary"
+                      StartIcon="@Icons.Material.Filled.Refresh"
                       OnClick="LoadMappings"
                       Class="mb-3">
                 Refresh
@@ -70,25 +69,25 @@
 else if (files.Count == 0)
 {
     <MudAlert Severity="Severity.Info">
-        No file data mappings found. 
+        No file data mappings found.
         <MudLink Href="/file-data-mapping">Create your first mapping</MudLink>.
     </MudAlert>
 }
 else
 {
-    <MudTable Items="@files" 
-             Dense="true" 
-             Hover="true" 
-             Bordered="true" 
+    <MudTable Items="@files"
+             Dense="true"
+             Hover="true"
+             Bordered="true"
              Striped="true"
              Filter="FilterFunc"
              T="FileViewModel">
         <ToolBarContent>
             <MudText Typo="Typo.h6">Files (@files.Count)</MudText>
             <MudSpacer />
-            <MudButton Variant="Variant.Outlined" 
-                      Color="Color.Primary" 
-                      StartIcon="@Icons.Material.Filled.Download" 
+            <MudButton Variant="Variant.Outlined"
+                      Color="Color.Primary"
+                      StartIcon="@Icons.Material.Filled.Download"
                       OnClick="ExportAllMappings"
                       Class="ml-2">
                 Export All
@@ -105,14 +104,14 @@ else
             <MudTh>Actions</MudTh>
         </HeaderContent>
         <RowTemplate>
-            <MudTd DataLabel="ID">@context.FileUploadId</MudTd>
+            <MudTd DataLabel="ID">@context.Id</MudTd>
             <MudTd DataLabel="File">
                 <div class="d-flex align-center">
                     <MudTooltip Text="@context.FileName">
-                        <MudIconButton Icon="@GetFileIcon(context.FileType)" 
+                        <MudIconButton Icon="@GetFileIcon(context.FileType)"
                                      Color="Color.Primary"
                                      Size="Size.Small"
-                                     OnClick="() => DownloadFile(context.FileUploadId, context.FileName)"
+                                     OnClick="() => DownloadFile(context.Id, context.FileName)"
                                      Class="mr-2" />
                     </MudTooltip>
                 <MudTooltip Text="@context.FileName">
@@ -123,12 +122,12 @@ else
                 </div>
             </MudTd>
             <MudTd DataLabel="Data Points">
-                <MudChipSet>
+                <MudChipSet T="FileDataMapping">
                     @foreach (var mapping in context.Mappings)
                     {
-                        <MudChip Size="Size.Small" 
-                               Color="Color.Primary" 
-                               OnClick="() => ShowDetails(mapping.FileDataMappingId)"
+                        <MudChip Size="Size.Small"
+                               Color="Color.Primary"
+                               OnClick="() => ShowDetails(mapping.Id)"
                                Style="margin: 2px">
                             @mapping.DataPointName (@mapping.ElementCount)
                         </MudChip>
@@ -138,29 +137,29 @@ else
             <MudTd DataLabel="Total Elements">@context.TotalElements</MudTd>
             <MudTd DataLabel="Uploaded">@context.UploadedAt.ToLocalTime().ToString("g")</MudTd>
             <MudTd DataLabel="Status">
-                <MudChip Color="@GetStatusColor(context.MappingStatus)" Size="Size.Small">
+                <MudChip T="Color" Color="@GetStatusColor(context.MappingStatus)" Size="Size.Small">
                     @context.MappingStatus.ToString()
                 </MudChip>
             </MudTd>
             <MudTd DataLabel="Difficulty">
-                <MudChip Color="@GetDifficultyColor(context.Difficulty)" Size="Size.Small">
+                <MudChip T="Color" Color="@GetDifficultyColor(context.Difficulty)" Size="Size.Small">
                     @context.Difficulty.ToString()
                 </MudChip>
             </MudTd>
             <MudTd DataLabel="Actions">
                 <MudButtonGroup Size="Size.Small" Variant="Variant.Text">
-                    <MudIconButton Icon="@Icons.Material.Filled.Visibility" 
-                                 OnClick="() => NavigateToDetails(context.FileUploadId)" 
+                    <MudIconButton Icon="@Icons.Material.Filled.Visibility"
+                                 OnClick="() => NavigateToDetails(context.Id)"
                                  Title="View Details" />
-                    <MudIconButton Icon="@Icons.Material.Filled.Edit" 
-                                 OnClick="() => NavigateToEditFile(context.FileUploadId)" 
-                                 Title="Edit Data Points" 
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                 OnClick="() => NavigateToEditFile(context.Id)"
+                                 Title="Edit Data Points"
                                  Color="Color.Primary" />
-                    <MudIconButton Icon="@Icons.Material.Filled.Download" 
-                                 OnClick="() => ExportFileAllMappings(context.FileUploadId)" 
+                    <MudIconButton Icon="@Icons.Material.Filled.Download"
+                                 OnClick="() => ExportFileAllMappings(context.Id)"
                                  Title="Export All" />
-                    <MudIconButton Icon="@Icons.Material.Filled.Delete" 
-                                 OnClick="() => DeleteFileMappings(context.FileUploadId)" 
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                 OnClick="() => DeleteFileMappings(context.Id)"
                                  Title="Delete All"
                                  Color="Color.Error" />
                 </MudButtonGroup>
@@ -181,13 +180,13 @@ else
         {
             <MudCard Elevation="0">
                 <MudCardContent>
-                    <MudText Typo="Typo.body1"><strong>Mapping ID:</strong> @selectedMapping.FileDataMappingId</MudText>
+                    <MudText Typo="Typo.body1"><strong>Mapping ID:</strong> @selectedMapping.Id</MudText>
                     <MudText Typo="Typo.body1"><strong>File:</strong> @selectedMapping.FileName</MudText>
                     <MudText Typo="Typo.body1"><strong>Data Point:</strong> @selectedMapping.DataPointName</MudText>
                     <MudText Typo="Typo.body1"><strong>Created:</strong> @selectedMapping.CreatedAt.ToLocalTime().ToString("g")</MudText>
-                    
+
                     <MudDivider Class="my-3" />
-                    
+
                     <MudText Typo="Typo.h6" Class="mb-2">Elements</MudText>
                     @if (selectedMapping.Elements.Count == 0)
                     {
@@ -195,12 +194,12 @@ else
                     }
                     else
                     {
-                        <MudList Dense="true">
+                        <MudList T="ElementViewModel" Dense="true">
                             @foreach (var element in selectedMapping.Elements)
                             {
                                 <MudListItem>
                                     <MudText>
-                                        <strong>@element.PropertyName:</strong> @element.Value 
+                                        <strong>@element.PropertyName:</strong> @element.Value
                                         <MudChip Size="Size.Small" Color="Color.Primary">@element.DataType</MudChip>
                                     </MudText>
                                 </MudListItem>
@@ -215,8 +214,8 @@ else
         <MudButton OnClick="CloseDetailsDialog">Close</MudButton>
         @if (selectedMapping != null)
         {
-            <MudButton Color="Color.Primary" 
-                     OnClick="() => ExportMapping(selectedMapping.FileDataMappingId)">
+            <MudButton Color="Color.Primary"
+                     OnClick="() => ExportMapping(selectedMapping.Id)">
                 Export
             </MudButton>
         }
@@ -225,7 +224,7 @@ else
 
 @code {
     private List<FileViewModel> files = new();
-    private List<MappingViewModel> allMappings = new(); // Pour stocker tous les mappings individuels
+    private List<MappingViewModel> allMappings = new();
     private bool isLoading = true;
     private string searchTerm = string.Empty;
     private bool isDetailsDialogVisible;
@@ -250,7 +249,7 @@ else
                     const linkSource = `data:${contentType};base64,${base64}`;
                     const downloadLink = document.createElement('a');
                     document.body.appendChild(downloadLink);
-                    
+
                     downloadLink.href = linkSource;
                     downloadLink.download = fileName;
                     downloadLink.click();
@@ -265,62 +264,55 @@ else
         try
         {
             isLoading = true;
-            
-            var query = DbContext.FileUploads.AsQueryable();
-            
-            // Appliquer le filtre par statut si sélectionné
+
+            var response = await MindApi.GetAllFileUploadsAsync();
+
+            // if (!response.IsSuccess)
+            // {
+            //     Snackbar.Add(response.Error ?? "Failed to load mappings", Severity.Error);
+            //     return;
+            // }
+
+            var filteredFiles = response.Data;
             if (statusFilter.HasValue)
             {
-                query = query.Where(f => f.MappingStatus == statusFilter.Value);
+                filteredFiles = filteredFiles.Where(f => f.MappingStatus == statusFilter.Value).ToList();
             }
-            
-            // Appliquer le filtre par difficulté si sélectionné
             if (difficultyFilter.HasValue)
             {
-                query = query.Where(f => f.Difficulty == difficultyFilter.Value);
+                filteredFiles = filteredFiles.Where(f => f.Difficulty == difficultyFilter.Value).ToList();
             }
-            
-            var dbMappings = await query
-                .Include(f => f.DataMappings)
-                .ThenInclude(m => m.FinancialDataPoint)
-                .Include(f => f.DataMappings)
-                .ThenInclude(m => m.ElementValues)
-                    .ThenInclude(e => e.FinancialDataPointElement)
-                .OrderByDescending(f => f.UploadedAt)
-                .ToListAsync();
 
-            // Convert to view models
-            files = dbMappings.Select(f => new FileViewModel
+            files = filteredFiles.Select(f => new FileViewModel
             {
-                FileUploadId = f.FileUploadId,
+                Id = f.Id,
                 FileName = f.FileName,
                 FileType = f.FileType,
                 UploadedAt = f.UploadedAt,
                 MappingStatus = f.MappingStatus,
                 Difficulty = f.Difficulty,
                 Mappings = f.DataMappings.Select(m => new MappingViewModel
-            {
-                FileDataMappingId = m.FileDataMappingId,
-                FileUploadId = m.FileUploadId,
+                {
+                    Id = m.Id,
+                    FileUploadId = f.Id,
                     FileName = f.FileName,
                     FileType = f.FileType,
-                DataPointId = m.FinancialDataPointId,
-                DataPointName = m.FinancialDataPoint.Name,
+                    DataPointId = m.FinancialDataPoint.Id,
+                    DataPointName = m.FinancialDataPoint.Name,
                     ElementCount = m.ElementValues.Count,
                     CreatedAt = f.UploadedAt,
                     Elements = m.ElementValues.Select(e => new ElementViewModel
                     {
-                        ExtractionId = e.ElementValueId,
-                    PropertyName = e.FinancialDataPointElement.PropertyName,
-                    Value = e.ExtractedValue ?? string.Empty,
-                    DataType = e.PropertyDataType.ToString()
+                        ExtractionId = e.Id,
+                        PropertyName = e.FinancialDataPointElement.PropertyName,
+                        Value = e.ExtractedValue ?? string.Empty,
+                        DataType = e.PropertyDataType.ToString()
                     }).ToList()
                 }).ToList()
             })
             .OrderByDescending(f => f.UploadedAt)
             .ToList();
 
-            // Créer allMappings en aplatissant les mappings de tous les fichiers
             allMappings = files.SelectMany(f => f.Mappings).ToList();
         }
         catch (Exception ex)
@@ -339,12 +331,12 @@ else
             return true;
 
         var term = searchTerm.Trim().ToLower();
-        
+
         return file.FileName.ToLower().Contains(term) ||
-               file.FileUploadId.ToString().Contains(term) ||
-               file.Mappings.Any(m => 
+               file.Id.ToString().Contains(term) ||
+               file.Mappings.Any(m =>
                    m.DataPointName.ToLower().Contains(term) ||
-                   m.Elements.Any(e => e.PropertyName.ToLower().Contains(term) || 
+                   m.Elements.Any(e => e.PropertyName.ToLower().Contains(term) ||
                                       e.Value.ToLower().Contains(term)));
     }
 
@@ -355,19 +347,16 @@ else
 
     private void ShowDetails(int mappingId)
     {
-        // Rediriger vers la page de détails du mapping spécifique
         NavigationManager.NavigateTo($"/mapping-details/{mappingId}");
     }
 
     private void NavigateToDetails(int fileUploadId)
     {
-        // Rediriger vers la page de détails du fichier qui affiche tous les mappings
         NavigationManager.NavigateTo($"/file-details/{fileUploadId}");
     }
 
     private void NavigateToEditFile(int fileUploadId)
     {
-        // Rediriger vers la page d'édition avec le fichier préchargé
         NavigationManager.NavigateTo($"/file-data-mapping/file/{fileUploadId}");
     }
 
@@ -380,16 +369,8 @@ else
     {
         try
         {
-            var mapping = allMappings.FirstOrDefault(m => m.FileDataMappingId == mappingId);
-            if (mapping == null)
-            {
-                Snackbar.Add("Mapping not found", Severity.Error);
-                return;
-            }
-
-            var json = await MappingExportService.ExportMappingToJsonAsync(mappingId);
-            await MappingExportService.DownloadJsonFileAsync(json, $"mapping_{mappingId}.json");
-            
+            var jsonContent = await MappingExportService.ExportMappingToJsonAsync(mappingId);
+            await DownloadJsonFile(jsonContent, $"mapping_{mappingId}.json");
             Snackbar.Add("Mapping exported successfully", Severity.Success);
         }
         catch (Exception ex)
@@ -400,24 +381,24 @@ else
 
     private async Task ExportAllMappings()
     {
-        try
-        {
-            var json = await MappingExportService.ExportAllMappingsToJsonAsync();
-            await MappingExportService.DownloadJsonFileAsync(json, "all_mappings.json");
-            
-            Snackbar.Add("All mappings exported successfully", Severity.Success);
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Error exporting mappings: {ex.Message}", Severity.Error);
-        }
+        // try
+        // {
+        //     var jsonContent = await MappingExportService.ExportAllMappingsToJsonAsync();
+        //     await DownloadJsonFile(jsonContent, "all_mappings.json");
+        //     Snackbar.Add("All mappings exported successfully", Severity.Success);
+        // }
+        // catch (Exception ex)
+        // {
+        //     Snackbar.Add($"Error exporting mappings: {ex.Message}", Severity.Error);
+        // }
     }
 
     private async Task ExportFileAllMappings(int fileUploadId)
     {
         try
         {
-            // Get all mappings for this file
+            var jsonContent = await MappingExportService.ExportFileMappingsToJsonAsync(fileUploadId);
+
             var fileMappings = allMappings.Where(m => m.FileUploadId == fileUploadId).ToList();
             if (!fileMappings.Any())
             {
@@ -426,13 +407,9 @@ else
             }
 
             var fileName = fileMappings.First().FileName;
-            var json = await MappingExportService.ExportFileMappingsToJsonAsync(fileUploadId);
-            
-            // Use the file name for the export, adding "_answer.json" suffix
-            var exportFileName = Path.GetFileNameWithoutExtension(fileName) + "_answer";
-            
-            await MappingExportService.DownloadJsonFileAsync(json, exportFileName);
-            
+            var exportFileName = Path.GetFileNameWithoutExtension(fileName) + "_answer.json";
+
+            await DownloadJsonFile(jsonContent, exportFileName);
             Snackbar.Add("All mappings for this file exported successfully", Severity.Success);
         }
         catch (Exception ex)
@@ -451,7 +428,7 @@ else
         }
 
         var fileName = fileMappings.First().FileName;
-        
+
         bool? result = await DialogService.ShowMessageBox(
             "Confirm Deletion",
             $"Are you sure you want to delete ALL mappings for file '{fileName}'? This action cannot be undone.",
@@ -459,23 +436,23 @@ else
             cancelText: "Cancel",
             options: new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.ExtraSmall }
         );
-        
+
         if (result == true)
         {
             try
             {
-                var dbMappings = await DbContext.FileDataMappings
-                    .Where(m => m.FileUploadId == fileUploadId)
-                    .ToListAsync();
-
-                if (dbMappings.Any())
+                foreach (var mapping in fileMappings)
                 {
-                    DbContext.FileDataMappings.RemoveRange(dbMappings);
-                    await DbContext.SaveChangesAsync();
-                    
-                    Snackbar.Add("All mappings for this file deleted successfully", Severity.Success);
-                    await LoadMappings();
+                    var response = await MindApi.DeleteFileMappingAsync(mapping.Id);
+                    // if (!response.IsSuccess)
+                    // {
+                    //     Snackbar.Add($"Error deleting mapping {mapping.Id}: {response.Error}", Severity.Error);
+                    //     return;
+                    // }
                 }
+
+                Snackbar.Add("All mappings for this file deleted successfully", Severity.Success);
+                await LoadMappings();
             }
             catch (Exception ex)
             {
@@ -490,7 +467,7 @@ else
             return Icons.Material.Filled.InsertDriveFile;
 
         fileType = fileType.ToLowerInvariant();
-        
+
         return fileType switch
         {
             ".xlsx" or ".xls" => Icons.Custom.FileFormats.FileExcel,
@@ -515,13 +492,10 @@ else
 
             using var memoryStream = new MemoryStream();
             await fileStream.CopyToAsync(memoryStream);
-            var fileBytes = memoryStream.ToArray();
-            var base64 = Convert.ToBase64String(fileBytes);
-
+            var base64 = Convert.ToBase64String(memoryStream.ToArray());
             var mimeType = GetMimeType(Path.GetExtension(fileName));
 
             await JSRuntime.InvokeVoidAsync("downloadFileFromBase64", fileName, base64, mimeType);
-            
             Snackbar.Add("File download started", Severity.Success);
         }
         catch (Exception ex)
@@ -530,13 +504,20 @@ else
         }
     }
 
+    private async Task DownloadJsonFile(string jsonContent, string fileName)
+    {
+        var bytes = System.Text.Encoding.UTF8.GetBytes(jsonContent);
+        var base64 = Convert.ToBase64String(bytes);
+        await JSRuntime.InvokeVoidAsync("downloadFileFromBase64", fileName, base64, "application/json");
+    }
+
     private string GetMimeType(string extension)
     {
         if (string.IsNullOrEmpty(extension))
             return "application/octet-stream";
 
         extension = extension.ToLowerInvariant();
-        
+
         return extension switch
         {
             ".xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -577,7 +558,7 @@ else
 
     private class FileViewModel
     {
-        public int FileUploadId { get; set; }
+        public int Id { get; set; }
         public string FileName { get; set; } = string.Empty;
         public string FileType { get; set; } = string.Empty;
         public DateTime UploadedAt { get; set; }
@@ -589,7 +570,7 @@ else
 
     private class MappingViewModel
     {
-        public int FileDataMappingId { get; set; }
+        public int Id { get; set; }
         public int FileUploadId { get; set; }
         public string FileName { get; set; } = string.Empty;
         public string FileType { get; set; } = string.Empty;
@@ -607,4 +588,4 @@ else
         public string Value { get; set; } = string.Empty;
         public string DataType { get; set; } = string.Empty;
     }
-} 
+}

@@ -1,4 +1,4 @@
-﻿@using AiTraining.Data.Entities
+﻿@using HillMetrics.Normalized.Domain.Contracts.AI.Dataset
 
 <MudText Typo="Typo.h6" Class="mb-3">File Information</MudText>
 
@@ -11,10 +11,10 @@
                      Class="mr-2" />
             File Details
         </MudText>
-        <MudList>
+        <MudList T="FileUpload">
             <MudListItem>
                 <MudText Typo="Typo.body1">
-                    <strong>File ID:</strong> @UploadedFile.FileUploadId
+                    <strong>File ID:</strong> @UploadedFile.Id
                 </MudText>
             </MudListItem>
             <MudListItem>
@@ -47,7 +47,7 @@ else
 
 @code {
     [Parameter]
-    public FileUploadEntity? UploadedFile { get; set; }
+    public FileUpload? UploadedFile { get; set; }
 
     private string FormatFileSize(long bytes)
     {
@@ -63,4 +63,4 @@ else
 
         return $"{size:0.##} {sizes[order]}";
     }
-} 
+}

@@ -1,13 +1,10 @@
 using HillMetrics.MIND.FrontApp.Components;
-using HillMetrics.MIND.FrontApp.Services;
 using MudBlazor.Services;
 using MudBlazor;
-using HillMetrics.MIND.FrontApp.Services.Base;
 using HillMetrics.MIND.API.SDK;
 using HillMetrics.Core;
 using HillMetrics.Core.Monitoring.Logging;
 using HillMetrics.Core.Monitoring;
-using HillMetrics.MIND.API.SDK.V1;
 using HillMetrics.Core.Http.Extensions;
 
 
@@ -45,10 +42,6 @@ builder.Services.AddMudServices(config =>
     config.SnackbarConfiguration.HideTransitionDuration = 500;
     config.SnackbarConfiguration.ShowTransitionDuration = 200;
 });
-
-// Register services for API communication
-builder.Services.AddScoped<IFluxService, FluxService>();
-builder.Services.AddScoped<ISourceService, SourceService>();
 
 var app = builder.Build();
 

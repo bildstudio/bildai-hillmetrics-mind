@@ -1,29 +1,39 @@
-﻿@using AiTraining.Data.Enums
+﻿@using HillMetrics.Normalized.Domain.Contracts.AI.Dataset
+@using HillMetrics.Normalized.Domain.Contracts.AI.Dataset.Cqrs.ElementValue
 
 <MudExpansionPanel>
     <TitleContent>
         <div class="d-flex align-center">
-            <MudText Typo="Typo.h6">@Mapping.DataPoint.Name</MudText>
+            <MudText Typo="Typo.h6">@Mapping.FinancialDataPoint.Name</MudText>
             @if (!string.IsNullOrEmpty(Mapping.InstanceName))
             {
-                <MudChip Size="Size.Small" Color="Color.Secondary" Class="ml-2">@Mapping.InstanceName</MudChip>
+                <MudChip T="Color" Size="Size.Small" Color="Color.Secondary" Class="ml-2">@Mapping.InstanceName</MudChip>
             }
         </div>
     </TitleContent>
     <ChildContent>
         @if (!string.IsNullOrEmpty(Mapping.InstanceName))
         {
-            <MudTextField @bind-Value="Mapping.InstanceName" 
-                         Label="Instance Name" 
+            <MudTextField @bind-Value="Mapping.InstanceName"
+                         Label="Instance Name"
                          Class="mb-4" />
         }
-        
+
         <MudText Typo="Typo.subtitle1" Class="mb-3">Elements</MudText>
-        
-        @foreach (var element in Mapping.DataPoint.Elements)
+
+        @foreach (var element in Mapping.FinancialDataPoint.Elements)
         {
-            var elementId = element.FinancialDataPointElementId;
-            
+            var elementValue = Mapping.ElementValues.FirstOrDefault(v => v.FinancialDataPointElementId == element.Id);
+            if (elementValue == null)
+            {
+                elementValue = new FileDataElementValue
+                {
+                    FinancialDataPointElementId = element.Id,
+                    FileDataMappingId = Mapping.Id
+                };
+                Mapping.ElementValues.Add(elementValue);
+            }
+
             <MudPaper Class="pa-3 mb-3" Elevation="0">
                 <MudGrid>
                     <MudItem xs="12" md="4">
@@ -35,21 +45,21 @@
                     </MudItem>
                     <MudItem xs="12" md="8">
                         <div class="d-flex">
-                            <MudTextField @bind-Value="Mapping.ElementValues[elementId]"
-                                         Label="Value"
-                                         Variant="Variant.Outlined"
-                                         Class="flex-grow-1" />
+                            <MudTextField @bind-Value="elementValue.ExtractedValue"
+                                        Label="Value"
+                                        Variant="Variant.Outlined"
+                                        Class="flex-grow-1" />
                             <MudIconButton Icon="@Icons.Material.Filled.ContentCopy"
                                          Color="Color.Primary"
                                          Size="Size.Small"
                                          Class="ml-2 mt-2"
-                                         OnClick="() => SelectElementField(element.PropertyName, elementId)" />
+                                         OnClick="() => SelectElementField(element.PropertyName, element.Id)" />
                         </div>
-                        
-                        <MudSelect T="PropertyDataType" 
-                                  @bind-Value="Mapping.ElementDataTypes[elementId]"
-                                  Label="Data Type"
-                                  Class="mt-2">
+
+                        <MudSelect T="PropertyDataType"
+                                 @bind-Value="elementValue.PropertyDataType"
+                                 Label="Data Type"
+                                 Class="mt-2">
                             <MudSelectItem Value="PropertyDataType.Column">Column</MudSelectItem>
                             <MudSelectItem Value="PropertyDataType.Fixed">Fixed Value</MudSelectItem>
                             <MudSelectItem Value="PropertyDataType.Row">Row</MudSelectItem>
@@ -59,7 +69,7 @@
                 </MudGrid>
             </MudPaper>
         }
-        
+
         <div class="d-flex justify-end mt-4">
             <MudButton OnClick="@(() => OnRemove.InvokeAsync())"
                        Color="Color.Error"
@@ -73,19 +83,27 @@
 
 @code {
     [Parameter]
-    public FileDataMapping.DataMappingViewModel Mapping { get; set; } = null!;
-    
+    public FileDataMapping Mapping { get; set; } = null!;
+
     [Parameter]
     public EventCallback OnRemove { get; set; }
-    
+
     [Parameter]
     public EventCallback<(string FieldName, Action<string> Callback)> OnFieldSelect { get; set; }
-    
+
     private void SelectElementField(string propertyName, int elementId)
     {
         OnFieldSelect.InvokeAsync((propertyName, value => {
-            Mapping.ElementValues[elementId] = value;
-            StateHasChanged();
+            var element = Mapping.FinancialDataPoint.Elements.FirstOrDefault(e => e.Id == elementId);
+            if (element != null)
+            {
+                var elementValue = Mapping.ElementValues.FirstOrDefault(v => v.FinancialDataPointElementId == element.Id);
+                if (elementValue != null)
+                {
+                    elementValue.ExtractedValue = value;
+                }
+                StateHasChanged();
+            }
         }));
     }
-} 
+}

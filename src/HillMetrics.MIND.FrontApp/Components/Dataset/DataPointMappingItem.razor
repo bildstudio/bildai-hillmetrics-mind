@@ -1,5 +1,74 @@
-﻿<h3>DataPointMappingItem</h3>
+﻿@using HillMetrics.Normalized.Domain.Contracts.AI.Dataset
+@using HillMetrics.Normalized.Domain.Contracts.AI.Dataset.Cqrs.FileDataMapping
+
+<MudExpansionPanel>
+    <TitleContent>
+        <div class="d-flex align-center">
+            <MudText Typo="Typo.h6">@Mapping.FinancialDataPoint.Name</MudText>
+            @if (!string.IsNullOrEmpty(Mapping.InstanceName))
+            {
+                <MudChip T="string" Size="Size.Small" Color="Color.Secondary" Class="ml-2">@Mapping.InstanceName</MudChip>
+            }
+        </div>
+    </TitleContent>
+    <ChildContent>
+        <MudPaper Class="pa-4" Elevation="0">
+            @if (!string.IsNullOrEmpty(Mapping.InstanceName))
+            {
+                <MudTextField @bind-Value="Mapping.InstanceName"
+                             Label="Instance Name"
+                             Class="mb-4" />
+            }
+
+            <MudText Typo="Typo.subtitle1" Class="mb-3">Elements</MudText>
+
+            @foreach (var element in Mapping.FinancialDataPoint.Elements)
+            {
+                var elementValue = Mapping.ElementValues.FirstOrDefault(v => v.FinancialDataPointElementId == element.Id);
+                if (elementValue == null)
+                {
+                    elementValue = new FileDataElementValue
+                    {
+                        FinancialDataPointElementId = element.Id,
+                        FileDataMappingId = Mapping.Id
+                    };
+                    Mapping.ElementValues.Add(elementValue);
+                }
+
+                <MudPaper Class="pa-3 mb-3" Elevation="1">
+                    <MudGrid>
+                        <MudItem xs="12" md="4">
+                            <MudText><strong>@element.PropertyName</strong></MudText>
+                            @if (!string.IsNullOrEmpty(element.Description))
+                            {
+                                <MudText Typo="Typo.caption">@element.Description</MudText>
+                            }
+                        </MudItem>
+                        <MudItem xs="12" md="8">
+                            <MudTextField @bind-Value="@elementValue.ExtractedValue"
+                                        Label="Value"
+                                        Variant="Variant.Outlined" />
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+            }
+
+            <div class="d-flex justify-end mt-4">
+                <MudButton OnClick="@(() => OnRemove.InvokeAsync(Mapping.Id))"
+                          Color="Color.Error"
+                          Variant="Variant.Text"
+                          StartIcon="@Icons.Material.Filled.Delete">
+                    Remove Mapping
+                </MudButton>
+            </div>
+        </MudPaper>
+    </ChildContent>
+</MudExpansionPanel>
 
 @code {
+    [Parameter]
+    public FileDataMapping Mapping { get; set; } = null!;
 
+    [Parameter]
+    public EventCallback<int> OnRemove { get; set; }
 }

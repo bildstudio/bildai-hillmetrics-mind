@@ -2,10 +2,10 @@
 
 <MudDialog>
     <DialogContent>
-        <MudList Clickable="true">
+        <MudList T="string" Clickable="true">
             @foreach (var sheet in Worksheets)
             {
-                <MudListItem Text="@sheet" 
+                <MudListItem Text="@sheet"
                            Icon="@Icons.Material.Filled.TableChart"
                            Selected="sheet == CurrentWorksheet"
                            OnClick="() => SelectWorksheet(sheet)" />

@@ -1,10 +1,9 @@
 ﻿@page "/mapping-details/{MappingId:int}"
-@using AiTraining.Services
-@using Microsoft.EntityFrameworkCore
-@inject AiTrainingDbContext DbContext
+@using HillMetrics.Normalized.Domain.Contracts.AI.Dataset
+@using HillMetrics.MIND.API.SDK.V1
+@inject IMindAPI MindApi
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
-@inject MappingExportService MappingExportService
 
 <MudBreadcrumbs Items="_breadcrumbs"></MudBreadcrumbs>
 
@@ -16,7 +15,7 @@
                     <MudText Typo="Typo.h4">Mapping Details</MudText>
                     @if (mapping != null)
                     {
-                        <MudText Typo="Typo.subtitle1" Color="Color.Secondary">ID: @mapping.FileDataMappingId</MudText>
+                        <MudText Typo="Typo.subtitle1" Color="Color.Secondary">ID: @mapping.Id</MudText>
                     }
                 </MudItem>
                 <MudItem xs="12" md="4" Class="d-flex justify-end align-center">
@@ -25,22 +24,16 @@
                               StartIcon="@Icons.Material.Filled.ArrowBack"
                               OnClick="NavigateBack"
                               Class="mr-2">
-                        Back to List
+                        Back
                     </MudButton>
                     @if (mapping != null)
                     {
                         <MudButton Variant="Variant.Outlined"
                                   Color="Color.Secondary"
                                   StartIcon="@Icons.Material.Filled.Edit"
-                                  OnClick="() => NavigateToEdit(mapping.FileDataMappingId)"
+                                   OnClick="() => NavigateToEdit(mapping.Id)"
                                   Class="mr-2">
                             Edit
-                        </MudButton>
-                        <MudButton Variant="Variant.Outlined"
-                                  Color="Color.Primary"
-                                  StartIcon="@Icons.Material.Filled.Download"
-                                  OnClick="ExportMapping">
-                            Export
                         </MudButton>
                     }
                 </MudItem>
@@ -72,25 +65,20 @@ else
                     </CardHeaderContent>
                 </MudCardHeader>
                 <MudCardContent>
-                    <MudList Dense="true">
+                    <MudList T="FileDataMapping" Dense="true">
                         <MudListItem>
                             <MudText>
-                                <strong>File Name:</strong> @mapping.FileName
+                                <strong>File Name:</strong> @mapping.FileUpload.FileName
                             </MudText>
                         </MudListItem>
                         <MudListItem>
                             <MudText>
-                                <strong>File Type:</strong> @mapping.FileType
+                                <strong>File Type:</strong> @mapping.FileUpload.FileType
                             </MudText>
                         </MudListItem>
                         <MudListItem>
                             <MudText>
-                                <strong>File Size:</strong> @FormatFileSize(mapping.FileSize)
-                            </MudText>
-                        </MudListItem>
-                        <MudListItem>
-                            <MudText>
-                                <strong>Uploaded:</strong> @mapping.UploadedAt.ToLocalTime().ToString("g")
+                                <strong>File Size:</strong> @FormatFileSize(mapping.FileUpload.FileSize)
                             </MudText>
                         </MudListItem>
                     </MudList>
@@ -110,20 +98,21 @@ else
                     </CardHeaderContent>
                 </MudCardHeader>
                 <MudCardContent>
-                    <MudList Dense="true">
+                    <MudList T="FileDataMapping" Dense="true">
                         <MudListItem>
                             <MudText>
-                                <strong>Data Point:</strong> @mapping.DataPointName
+                                <strong>Data Point:</strong> @mapping.FinancialDataPoint.Name
                             </MudText>
                         </MudListItem>
                         <MudListItem>
                             <MudText>
-                                <strong>Elements Count:</strong> @mapping.Elements.Count
+                                <strong>Instance Name:</strong>
+                                @(string.IsNullOrEmpty(mapping.InstanceName) ? "Default" : mapping.InstanceName)
                             </MudText>
                         </MudListItem>
                         <MudListItem>
                             <MudText>
-                                <strong>Created:</strong> @mapping.CreatedAt.ToLocalTime().ToString("g")
+                                <strong>Elements Count:</strong> @mapping.ElementValues.Count
                             </MudText>
                         </MudListItem>
                     </MudList>
@@ -143,68 +132,26 @@ else
                     </CardHeaderContent>
                 </MudCardHeader>
                 <MudCardContent>
-                    @if (mapping.Elements.Count == 0)
-                    {
-                        <MudAlert Severity="Severity.Info">No elements found for this mapping.</MudAlert>
-                    }
-                    else
-                    {
-                        <MudTable Items="@mapping.Elements" 
-                                 Dense="true" 
-                                 Hover="true" 
-                                 Bordered="true" 
-                                 Striped="true">
-                            <HeaderContent>
-                                <MudTh>Property</MudTh>
-                                <MudTh>Value</MudTh>
-                                <MudTh>Data Type</MudTh>
-                            </HeaderContent>
-                            <RowTemplate>
-                                <MudTd DataLabel="Property">
-                                    <MudText>@context.PropertyName</MudText>
-                                </MudTd>
-                                <MudTd DataLabel="Value">
-                                    <MudHighlighter Text="@context.Value" HighlightedText="@searchTerm" />
-                                </MudTd>
-                                <MudTd DataLabel="Data Type">
-                                    <MudChip Size="Size.Small" Color="Color.Primary">@context.DataType</MudChip>
-                                </MudTd>
-                            </RowTemplate>
-                        </MudTable>
-                    }
-                </MudCardContent>
-            </MudCard>
-        </MudItem>
-
-        <!-- Visualization Card -->
-        <MudItem xs="12">
-            <MudCard Elevation="3">
-                <MudCardHeader>
-                    <CardHeaderContent>
-                        <MudText Typo="Typo.h6">
-                            <MudIcon Icon="@Icons.Material.Filled.Visibility" Class="mr-2" />
-                            Visual Representation
-                        </MudText>
-                    </CardHeaderContent>
-                </MudCardHeader>
-                <MudCardContent>
-                    <MudPaper Class="pa-4" Elevation="0">
-                        <MudText Typo="Typo.h6" Class="mb-4">@mapping.DataPointName Structure</MudText>
-                        
-                        <div class="d-flex flex-column">
-                            @foreach (var element in mapping.Elements)
-                            {
-                                <div class="d-flex align-center mb-3">
-                                    <MudIcon Icon="@Icons.Material.Filled.Label" Class="mr-2" />
-                                    <MudText Class="mr-4" Style="min-width: 150px;"><strong>@element.PropertyName:</strong></MudText>
-                                    <MudPaper Elevation="2" Class="pa-2 flex-grow-1">
-                                        <MudText>@element.Value</MudText>
-                                    </MudPaper>
-                                    <MudChip Size="Size.Small" Color="Color.Primary" Class="ml-2">@element.DataType</MudChip>
-                                </div>
-                            }
-                        </div>
-                    </MudPaper>
+                    <MudTable Items="@mapping.ElementValues"
+                             Dense="true"
+                             Hover="true"
+                             Bordered="true"
+                             Striped="true">
+                        <HeaderContent>
+                            <MudTh>Property</MudTh>
+                            <MudTh>Value</MudTh>
+                            <MudTh>Data Type</MudTh>
+                            <MudTh>Description</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="Property">@context.FinancialDataPointElement.PropertyName</MudTd>
+                            <MudTd DataLabel="Value">@context.FinancialDataPointElement.PotentialValues</MudTd>
+                            <MudTd DataLabel="Data Type">
+                                <MudChip T="Color" Size="Size.Small" Color="Color.Primary">@context.PropertyDataType</MudChip>
+                            </MudTd>
+                            <MudTd DataLabel="Description">@context.FinancialDataPointElement.Description</MudTd>
+                        </RowTemplate>
+                    </MudTable>
                 </MudCardContent>
             </MudCard>
         </MudItem>
@@ -215,9 +162,8 @@ else
     [Parameter]
     public int MappingId { get; set; }
 
-    private MappingDetailsViewModel? mapping;
+    private FileDataMapping? mapping;
     private bool isLoading = true;
-    private string searchTerm = string.Empty;
     private List<BreadcrumbItem> _breadcrumbs = new();
 
     protected override async Task OnInitializedAsync()
@@ -226,7 +172,7 @@ else
         {
             new BreadcrumbItem("Home", "/"),
             new BreadcrumbItem("File Data Mappings", "/file-data-mappings"),
-            new BreadcrumbItem("Details", null, true)
+            new BreadcrumbItem("Mapping Details", null, true)
         };
 
         await LoadMapping();
@@ -237,44 +183,19 @@ else
         try
         {
             isLoading = true;
-            
-            var dbMapping = await DbContext.FileDataMappings
-                .Include(m => m.FileUpload)
-                .Include(m => m.FinancialDataPoint)
-                .Include(m => m.ElementValues)
-                    .ThenInclude(e => e.FinancialDataPointElement)
-                .FirstOrDefaultAsync(m => m.FileDataMappingId == MappingId);
 
-            if (dbMapping == null)
-            {
-                mapping = null;
-                return;
-            }
+            var result = await MindApi.GetFileMappingAsync(MappingId);
 
-            mapping = new MappingDetailsViewModel
-            {
-                FileDataMappingId = dbMapping.FileDataMappingId,
-                FileUploadId = dbMapping.FileUploadId,
-                FileName = dbMapping.FileUpload.FileName,
-                FileType = dbMapping.FileUpload.FileType,
-                FileSize = dbMapping.FileUpload.FileSize,
-                ContentType = dbMapping.FileUpload.ContentType,
-                DataPointId = dbMapping.FinancialDataPointId,
-                DataPointName = dbMapping.FinancialDataPoint.Name,
-                CreatedAt = dbMapping.FileUpload.UploadedAt,
-                UploadedAt = dbMapping.FileUpload.UploadedAt,
-                Elements = dbMapping.ElementValues.Select(e => new ElementDetailsViewModel
-                {
-                    ElementValueId = e.ElementValueId,
-                    PropertyName = e.FinancialDataPointElement.PropertyName,
-                    Value = e.ExtractedValue ?? string.Empty,
-                    DataType = e.PropertyDataType.ToString(),
-                    Description = e.FinancialDataPointElement.Description
-                }).ToList()
-            };
+            // if (!result.IsSuccess)
+            // {
+            //     Snackbar.Add(result.Error ?? "Failed to load mapping", Severity.Error);
+            //     return;
+            // }
 
-            // Update breadcrumb with file name
-            _breadcrumbs[2] = new BreadcrumbItem($"Mapping {MappingId}: {mapping.FileName}", null, true);
+            mapping = result.Data;
+
+            // Update breadcrumb
+            _breadcrumbs[2] = new BreadcrumbItem($"Mapping {MappingId}", null, true);
         }
         catch (Exception ex)
         {
@@ -288,29 +209,19 @@ else
 
     private void NavigateBack()
     {
-        NavigationManager.NavigateTo("/file-data-mappings");
+        if (mapping != null)
+        {
+            NavigationManager.NavigateTo($"/file-details/{mapping.FileUploadId}");
+        }
+        else
+        {
+            NavigationManager.NavigateTo("/file-data-mappings");
+        }
     }
 
     private void NavigateToEdit(int mappingId)
     {
-        NavigationManager.NavigateTo($"/file-data-mapping/{mappingId}");
-    }
-
-    private async Task ExportMapping()
-    {
-        if (mapping == null) return;
-
-        try
-        {
-            var json = await MappingExportService.ExportMappingToJsonAsync(MappingId);
-            await MappingExportService.DownloadJsonFileAsync(json, $"mapping_{MappingId}.json");
-            
-            Snackbar.Add("Mapping exported successfully", Severity.Success);
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Error exporting mapping: {ex.Message}", Severity.Error);
-        }
+        NavigationManager.NavigateTo($"/file-data-mapping/mapping/{mappingId}");
     }
 
     private string FormatFileSize(long bytes)
@@ -327,28 +238,4 @@ else
 
         return $"{size:0.##} {sizes[order]}";
     }
-
-    private class MappingDetailsViewModel
-    {
-        public int FileDataMappingId { get; set; }
-        public int FileUploadId { get; set; }
-        public string FileName { get; set; } = string.Empty;
-        public string FileType { get; set; } = string.Empty;
-        public long FileSize { get; set; }
-        public string ContentType { get; set; } = string.Empty;
-        public int DataPointId { get; set; }
-        public string DataPointName { get; set; } = string.Empty;
-        public DateTime CreatedAt { get; set; }
-        public DateTime UploadedAt { get; set; }
-        public List<ElementDetailsViewModel> Elements { get; set; } = new();
-    }
-
-    private class ElementDetailsViewModel
-    {
-        public int ElementValueId { get; set; }
-        public string PropertyName { get; set; } = string.Empty;
-        public string Value { get; set; } = string.Empty;
-        public string DataType { get; set; } = string.Empty;
-        public string? Description { get; set; }
-    }
-} 
+}

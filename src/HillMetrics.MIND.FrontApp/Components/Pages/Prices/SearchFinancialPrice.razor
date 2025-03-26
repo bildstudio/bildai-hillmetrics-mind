@@ -1,0 +1,244 @@
+@page "/prices/search"
+@using HillMetrics.Core.Financial
+@using HillMetrics.MIND.API.Contracts.Requests.Prices
+@using HillMetrics.MIND.API.Contracts.Responses.Prices
+@using HillMetrics.Normalized.Domain.Contracts.Market
+@inject IMindAPI MindApi
+@inject ISnackbar Snackbar
+
+<PageTitle>Search Financial Prices</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudPaper Elevation="3" Class="pa-4">
+        <MudText Typo="Typo.h5" Class="mb-4">Search Financial Prices</MudText>
+
+        <MudGrid>
+            <MudItem xs="12" md="3">
+                <MudTextField @bind-Value="searchRequest.Code"
+                Label="Code"
+                Variant="Variant.Outlined"
+                Placeholder="Search by code..."
+                Immediate="true"
+                DebounceInterval="500"
+                OnDebounceIntervalElapsed="SearchPrices"
+                Adornment="Adornment.Start"
+                AdornmentIcon="@Icons.Material.Filled.Search"/>
+            </MudItem>
+            <MudItem xs="12" md="3">
+                <MudTextField @bind-Value="searchRequest.FinancialId"
+                Label="Financial ID"
+                Variant="Variant.Outlined"/>
+            </MudItem>
+            <MudItem xs="12" md="3">
+                <MudTextField @bind-Value="searchRequest.CurrencyCode"
+                Label="Currency Code"
+                Variant="Variant.Outlined"/>
+            </MudItem>
+            <MudItem xs="12" md="3">
+                <MudSelect T="FinancialType" @bind-Value="searchRequest.FinancialType"
+                Label="Financial Type"
+                Variant="Variant.Outlined"
+                AnchorOrigin="Origin.BottomCenter">
+                    @foreach (var type in Enum.GetValues(typeof(FinancialType)))
+                    {
+                        <MudSelectItem T="FinancialType" Value="@((FinancialType)type)">@type</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="3">
+                <MudTextField @bind-Value="searchRequest.FluxId"
+                Label="Flux ID"
+                Variant="Variant.Outlined"/>
+            </MudItem>
+            <MudItem xs="12" md="3">
+                <SearchCriteriaComponent T="DateTime"
+                SearchCriteria="@searchRequest.From"
+                SearchCriteriaChanged="@((criteria) => searchRequest.From = criteria)"
+                Label="From Date" />
+            </MudItem>
+            <MudItem xs="12" md="3">
+                <SearchCriteriaComponent T="DateTime"
+                SearchCriteria="@searchRequest.To"
+                SearchCriteriaChanged="@((criteria) => searchRequest.To = criteria)"
+                Label="To Date" />
+            </MudItem>
+            <MudItem xs="12" md="3" Class="d-flex align-center">
+                <MudButton Variant="Variant.Filled"
+                Color="Color.Primary"
+                OnClick="SearchPrices"
+                StartIcon="@Icons.Material.Filled.Search"
+                Class="mt-2">
+                    Search
+                </MudButton>
+                <MudButton Variant="Variant.Outlined"
+                Color="Color.Secondary"
+                OnClick="ResetSearch"
+                StartIcon="@Icons.Material.Filled.Clear"
+                Class="mt-2 ml-2">
+                    Reset
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    @if (isLoading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+    }
+
+    @if (searchResults?.Any() == true)
+    {
+        <MudPaper Class="pa-4 mt-4">
+            <MudText Typo="Typo.h6" Class="mb-4">Results (@searchResults.Count)</MudText>
+            <MudTable Items="@searchResults"
+            T="PriceEntityData"
+            Dense="true"
+            Hover="true"
+            Striped="true"
+            @ref="table"
+            Loading="@isLoading"
+            LoadingProgressColor="Color.Info">
+                <HeaderContent>
+                    <MudTh>Financial ID</MudTh>
+                    <MudTh>Code</MudTh>
+                    <MudTh>Name</MudTh>
+                    <MudTh>Date</MudTh>
+                    <MudTh>Currency</MudTh>
+                    <MudTh>Type</MudTh>
+                    <MudTh>Properties</MudTh>
+                    <MudTh>Actions</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Financial ID">@context.FinancialId</MudTd>
+                    <MudTd DataLabel="Code">@context.Code (@context.FinancialCodeIdentifier)</MudTd>
+                    <MudTd DataLabel="Financial ID">@context.Name</MudTd>
+                    <MudTd DataLabel="Date">@context.Date.ToShortDateString()</MudTd>
+                    <MudTd DataLabel="Currency">@context.CurrencyCode</MudTd>
+                    <MudTd DataLabel="Type">@context.FinancialType</MudTd>
+                    <MudTd DataLabel="Properties">
+                        @* @foreach (var prop in context.Properties)
+                        {
+                            <MudTextField @bind-Value="prop.Value"
+                            Label="@prop.Key"
+                            Variant="Variant.Text"
+                            Margin="Margin.Dense"
+                            Class="my-1"
+                            OnBlur="() => SaveChanges(context)"/>
+                        } *@
+                    </MudTd>
+                    <MudTd>
+                        <MudIconButton Icon="@Icons.Material.Filled.Save"
+                        Color="Color.Primary"
+                        Size="Size.Small"
+                        OnClick="() => SaveChanges(context)"
+                        Title="Save changes"/>
+                    </MudTd>
+                </RowTemplate>
+                <NoRecordsContent>
+                    <MudText>No matching records found</MudText>
+                </NoRecordsContent>
+                <LoadingContent>
+                    <MudText>Loading...</MudText>
+                </LoadingContent>
+                <PagerContent>
+                    <MudTablePager />
+                </PagerContent>
+            </MudTable>
+        </MudPaper>
+    }
+    else if (hasSearched)
+    {
+        <MudAlert Severity="Severity.Info" Class="mt-4">No results found.</MudAlert>
+    }
+</MudContainer>
+
+@code {
+    private bool isLoading;
+    private bool hasSearched;
+    private MudTable<PriceEntityData> table;
+    private List<PriceEntityData> searchResults = new();
+    private SearchPricesRequest searchRequest = new()
+    {
+        Pagination = Pagination.New(1, 50),
+        Sorting = new Sorting("Date", Core.Search.SortDirection.Descending)
+    };
+
+    private async Task SearchPrices()
+    {
+        try
+        {
+            isLoading = true;
+            hasSearched = true;
+
+            var response = await MindApi.SearchPricesAsync(searchRequest);
+            searchResults = response.Data.Data.ToList();
+            if (searchResults.Any())
+            {
+                Snackbar.Add($"Found {searchResults.Count} results", Severity.Success);
+            }
+
+            // if (response.IsSuccess)
+            // {
+            //     searchResults = response.Data.Results.ToList();
+            //     if (searchResults.Any())
+            //     {
+            //         Snackbar.Add($"Found {searchResults.Count} results", Severity.Success);
+            //     }
+            // }
+            // else
+            // {
+            //     Snackbar.Add("Failed to fetch prices", Severity.Error);
+            // }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void ResetSearch()
+    {
+        searchRequest = new()
+        {
+            Pagination = Pagination.New(1, 50),
+            Sorting = new Sorting("Date", Core.Search.SortDirection.Descending)
+        };
+        searchResults.Clear();
+        hasSearched = false;
+        StateHasChanged();
+    }
+
+    private async Task SaveChanges(PriceEntityData price)
+    {
+        try
+        {
+            var request = new UpdatePriceRequest
+            {
+                FinancialId = price.FinancialId,
+                Date = price.Date,
+                CurrencyCode = price.CurrencyCode,
+                FluxId = price.FluxId,
+                FinancialType = price.FinancialType,
+                Properties = price.FinancialProperties.Select(x => new Normalized.Domain.Contracts.Market.Cqrs.Price.PropertyValueModel(x.Name, x.Value!.ToString())).ToList()
+            };
+
+            var response = await MindApi.UpdatePriceAsync(request);
+            if (response.Data)
+            {
+                Snackbar.Add("Price updated successfully", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add("Failed to update price", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+    }
+}

@@ -1,7 +1,7 @@
-﻿@using AiTraining.Data.Entities
-@using AiTraining.Services
-@using System.IO
-@inject FileUploadService FileUploadService
+﻿@using HillMetrics.Normalized.Domain.Contracts.AI.Dataset
+@using HillMetrics.MIND.API.SDK.V1
+@using Refit
+@inject IMindAPI MindApi
 @inject ISnackbar Snackbar
 
 <MudText Typo="Typo.h6" Class="mb-3">Upload File</MudText>
@@ -14,7 +14,7 @@
 @if (DuplicateFileFound)
 {
     <MudAlert Severity="Severity.Warning" Class="mb-3">
-        This file has already been uploaded. Using the existing file (ID: @UploadedFile?.FileUploadId).
+        This file has already been uploaded. Using the existing file (ID: @UploadedFile?.Id).
     </MudAlert>
 }
 
@@ -24,20 +24,17 @@
 
     <MudFileUpload T="IBrowserFile" Accept=".csv,.xls,.xlsx,.pdf,.xml,.json,.html"
                    OnFilesChanged="OnFileChanged" MaximumFileCount="1">
-        <ButtonTemplate>
-            <MudButton HtmlTag="label"
-                       Variant="Variant.Filled"
-                       Color="Color.Primary"
-                       StartIcon="@Icons.Material.Filled.CloudUpload"
-                       for="@context.Id">
-                Choose File
-            </MudButton>
-        </ButtonTemplate>
+        <MudButton HtmlTag="label"
+                   Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.CloudUpload">
+            Choose File
+        </MudButton>
     </MudFileUpload>
 }
 else
 {
-    <MudList>
+    <MudList T="object">
         <MudListItem>
             <MudText Typo="Typo.body1">
                 <strong>File Name:</strong> @selectedFileName
@@ -88,7 +85,7 @@ else
             File @(DuplicateFileFound ? "Found" : "Uploaded Successfully")
         </MudText>
         <MudText Typo="Typo.body1">
-            <strong>File ID:</strong> @UploadedFile.FileUploadId
+            <strong>File ID:</strong> @UploadedFile.Id
         </MudText>
         <MudText Typo="Typo.body1">
             <strong>File:</strong> @UploadedFile.FileName
@@ -107,19 +104,18 @@ else
 
 @code {
     [Parameter]
-    public FileUploadEntity? UploadedFile { get; set; }
+    public FileUpload? UploadedFile { get; set; }
 
     [Parameter]
     public bool DuplicateFileFound { get; set; }
 
     [Parameter]
-    public EventCallback<(FileUploadEntity, bool)> OnFileUploaded { get; set; }
+    public EventCallback<(FileUpload, bool)> OnFileUploaded { get; set; }
 
     [Parameter]
     public EventCallback<string> OnError { get; set; }
 
     private IBrowserFile? selectedFile;
-    private MemoryStream? fileMemoryStream;
     private string errorMessage = string.Empty;
     private bool isUploading;
     private string selectedFileName = string.Empty;
@@ -155,24 +151,6 @@ else
                 ClearFile();
                 return;
             }
-
-            // Immediately copy the file to a memory stream
-            fileMemoryStream = new MemoryStream();
-
-            // Use a buffer for reading the file
-            var buffer = new byte[4096]; // 4KB buffer
-            var stream = selectedFile.OpenReadStream(maxAllowedSize: 10485760); // 10MB max
-
-            int bytesRead;
-            while ((bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length)) > 0)
-            {
-                await fileMemoryStream.WriteAsync(buffer, 0, bytesRead);
-            }
-
-            // Reset position for future use
-            fileMemoryStream.Position = 0;
-
-            await stream.DisposeAsync();
         }
         catch (Exception ex)
         {
@@ -185,8 +163,6 @@ else
     private void ClearFile()
     {
         selectedFile = null;
-        fileMemoryStream?.Dispose();
-        fileMemoryStream = null;
         selectedFileName = string.Empty;
         selectedFileSize = 0;
         selectedFileContentType = string.Empty;
@@ -195,7 +171,7 @@ else
 
     private async Task UploadFile()
     {
-        if (selectedFile == null || fileMemoryStream == null)
+        if (selectedFile == null)
         {
             return;
         }
@@ -205,38 +181,23 @@ else
             isUploading = true;
             errorMessage = string.Empty;
 
-            // Reset position to start of stream
-            fileMemoryStream.Position = 0;
+            using var stream = selectedFile.OpenReadStream(maxAllowedSize: 10485760); // 10MB
+            var streamContent = new StreamPart(stream, selectedFileName, selectedFileContentType);
 
-            // Upload file and check for duplicates using the memory stream
-            var result = await FileUploadService.UploadFileFromStreamAsync(fileMemoryStream, selectedFileName, selectedFileContentType, selectedFileSize);
-
-            // Clear file selection
-            selectedFile = null;
-            fileMemoryStream.Dispose();
-            fileMemoryStream = null;
-
-            if (result.IsDuplicate)
-            {
-                Snackbar.Add($"File already exists in the system (ID: {result.FileUpload.FileUploadId}). Using existing file.", Severity.Warning);
-            }
-            else
-            {
-                Snackbar.Add("File uploaded successfully!", Severity.Success);
-            }
-
-            // Notify parent component
-            await OnFileUploaded.InvokeAsync((result.FileUpload, result.IsDuplicate));
+            var result = await MindApi.CreateFileUploadAsync(streamContent);
+            Snackbar.Add("File uploaded successfully!", Severity.Success);
+            await OnFileUploaded.InvokeAsync((result.Data, false));
         }
         catch (Exception ex)
         {
             errorMessage = $"Error uploading file: {ex.Message}";
             await OnError.InvokeAsync(errorMessage);
-            Snackbar.Add($"Error uploading file: {ex.Message}", Severity.Error);
+            Snackbar.Add(errorMessage, Severity.Error);
         }
         finally
         {
             isUploading = false;
+            ClearFile();
         }
     }
 
@@ -254,4 +215,4 @@ else
 
         return $"{size:0.##} {sizes[order]}";
     }
-} 
+}

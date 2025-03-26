@@ -1,13 +1,15 @@
 ﻿@page "/financial-data/list"
-@using Microsoft.EntityFrameworkCore
-@inject AiTrainingDbContext DbContext
+@using HillMetrics.Normalized.Domain.Contracts.AI.Dataset
+@using HillMetrics.MIND.API.SDK.V1
+@inject IMindAPI MindApi
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
+@inject IDialogService DialogService
 @implements IDisposable
 
 <MudText Typo="Typo.h4" Class="mb-4">Financial Data Points</MudText>
 
-<MudButton OnClick="() => NavigationManager.NavigateTo(CreateFinancialDataUrl)"
+<MudButton OnClick="() => NavigationManager.NavigateTo(FinancialDataCreateRoute)"
            Color="Color.Primary"
            Variant="Variant.Filled"
            StartIcon="@Icons.Material.Filled.Add"
@@ -33,18 +35,26 @@ else
                     <MudCardHeader>
                         <CardHeaderContent>
                             <MudText Typo="Typo.h6">@dataPoint.Name</MudText>
-                            <MudText Typo="Typo.caption">ID: @dataPoint.FinancialDataPointId</MudText>
+                            <MudText Typo="Typo.caption">ID: @dataPoint.Id</MudText>
                         </CardHeaderContent>
                         <CardHeaderActions>
                             <MudMenu Icon="@Icons.Material.Filled.MoreVert" AnchorOrigin="Origin.BottomRight">
-                                <MudMenuItem OnClick="() => EditDataPoint(dataPoint.FinancialDataPointId)">Edit</MudMenuItem>
-                                <MudMenuItem OnClick="() => DeleteDataPoint(dataPoint.FinancialDataPointId)">Delete</MudMenuItem>
+                                <MudMenuItem OnClick="() => EditDataPoint(dataPoint.Id)">
+                                    <MudIcon Icon="@Icons.Material.Filled.Edit" Class="mr-2" Size="Size.Small" />
+                                    Edit
+                                </MudMenuItem>
+                                <MudMenuItem OnClick="() => DeleteDataPoint(dataPoint.Id)">
+                                    <MudIcon Icon="@Icons.Material.Filled.Delete" Class="mr-2" Size="Size.Small" Color="Color.Error" />
+                                    Delete
+                                </MudMenuItem>
                             </MudMenu>
                         </CardHeaderActions>
                     </MudCardHeader>
                     <MudCardContent>
-                        <MudText Typo="Typo.subtitle2" Class="mb-2">Elements (@dataPoint.Elements.Count)</MudText>
-                        
+                        <MudText Typo="Typo.subtitle2" Class="mb-2">
+                            Elements (@dataPoint.Elements.Count)
+                        </MudText>
+
                         @if (dataPoint.Elements.Count == 0)
                         {
                             <MudText Typo="Typo.body2">No elements defined.</MudText>
@@ -52,18 +62,22 @@ else
                         else
                         {
                             <MudExpansionPanels>
-                                @foreach (var element in dataPoint.Elements)
+                                @foreach (var element in dataPoint.Elements.OrderBy(e => e.Position))
                                 {
                                     <MudExpansionPanel>
                                         <TitleContent>
-                                            <MudText Typo="Typo.body1">@element.PropertyName</MudText>
+                                            <div class="d-flex align-center">
+                                                <MudText Typo="Typo.body1">@element.PropertyName</MudText>
+                                            </div>
                                         </TitleContent>
                                         <ChildContent>
                                             @if (!string.IsNullOrEmpty(element.Description))
                                             {
-                                                <MudText Typo="Typo.body2" Class="mb-2">@element.Description</MudText>
+                                                <MudText Typo="Typo.body2" Class="mb-2">
+                                                    @element.Description
+                                                </MudText>
                                             }
-                                            
+
                                             <MudText Typo="Typo.caption" Class="mb-1">Potential Values:</MudText>
                                             @if (element.PotentialValues.Count == 0)
                                             {
@@ -71,10 +85,14 @@ else
                                             }
                                             else
                                             {
-                                                <MudChipSet ReadOnly="true">
+                                                <MudChipSet T="string" ReadOnly="true">
                                                     @foreach (var value in element.PotentialValues)
                                                     {
-                                                        <MudChip Text="@value" Color="Color.Primary" Variant="Variant.Outlined" />
+                                                        <MudChip Color="Color.Primary"
+                                                                Variant="Variant.Outlined"
+                                                                Size="Size.Small">
+                                                            @value
+                                                        </MudChip>
                                                     }
                                                 </MudChipSet>
                                             }
@@ -84,39 +102,30 @@ else
                             </MudExpansionPanels>
                         }
                     </MudCardContent>
+                    <MudCardActions>
+                        <MudButton Variant="Variant.Text"
+                                  Color="Color.Primary"
+                                  OnClick="() => EditDataPoint(dataPoint.Id)">
+                            Edit Data Point
+                        </MudButton>
+                    </MudCardActions>
                 </MudCard>
             </MudItem>
         }
     </MudGrid>
 }
 
-<MudDialog @bind-IsVisible="isDeleteDialogVisible" Options="dialogOptions">
-    <TitleContent>
-        <MudText Typo="Typo.h6">Delete Confirmation</MudText>
-    </TitleContent>
-    <DialogContent>
-        <MudText>Are you sure you want to delete this financial data point? This action cannot be undone.</MudText>
-    </DialogContent>
-    <DialogActions>
-        <MudButton OnClick="CancelDelete">Cancel</MudButton>
-        <MudButton Color="Color.Error" OnClick="ConfirmDelete">Delete</MudButton>
-    </DialogActions>
-</MudDialog>
-
 @code {
-    private List<FinancialDataPointEntity> dataPoints = new();
+    private List<FinancialDataPoint> dataPoints = new();
     private bool isLoading = true;
-    private bool isDeleteDialogVisible = false;
-    private int dataPointIdToDelete;
-    private DialogOptions dialogOptions = new() { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small };
     private System.Timers.Timer? refreshTimer;
 
-    public const string CreateFinancialDataUrl = "/financial-data/create";
+    private string FinancialDataCreateRoute => "/financial-data/create";
 
     protected override async Task OnInitializedAsync()
     {
         await LoadDataPoints();
-        
+
         // Set up a timer to refresh the data every 30 seconds
         refreshTimer = new System.Timers.Timer(30000);
         refreshTimer.Elapsed += async (sender, e) => await RefreshData();
@@ -126,20 +135,29 @@ else
 
     private async Task LoadDataPoints()
     {
-        isLoading = true;
         try
         {
-            dataPoints = await DbContext.FinancialDataPoints
-                .Include(dp => dp.Elements)
-                .OrderBy(dp => dp.Name)
-                .ToListAsync();
+            isLoading = true;
+            var result = await MindApi.GetAllFinancialDataPointsAsync();
+            dataPoints = result.Data;
+            // if (result.IsSuccess)
+            // {
+            //     dataPoints = result.Data;
+            // }
+            // else
+            // {
+            //     Snackbar.Add(result.Error ?? "Failed to load data points", Severity.Error);
+            // }
         }
         catch (Exception ex)
         {
             Snackbar.Add($"Error loading data: {ex.Message}", Severity.Error);
         }
-        isLoading = false;
-        StateHasChanged();
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
     }
 
     private async Task RefreshData()
@@ -150,38 +168,36 @@ else
         });
     }
 
-    private void DeleteDataPoint(int id)
+    private async Task DeleteDataPoint(int id)
     {
-        dataPointIdToDelete = id;
-        isDeleteDialogVisible = true;
-    }
+        var dialog = await DialogService.ShowMessageBox(
+            "Confirm Deletion",
+            "Are you sure you want to delete this financial data point? This action cannot be undone.",
+            yesText: "Delete",
+            cancelText: "Cancel"
+        );
 
-    private void CancelDelete()
-    {
-        isDeleteDialogVisible = false;
-    }
-
-    private async Task ConfirmDelete()
-    {
-        isDeleteDialogVisible = false;
-        
-        try
+        if (dialog == true)
         {
-            var dataPoint = await DbContext.FinancialDataPoints
-                .Include(dp => dp.Elements)
-                .FirstOrDefaultAsync(dp => dp.FinancialDataPointId == dataPointIdToDelete);
-                
-            if (dataPoint != null)
+            try
             {
-                DbContext.FinancialDataPoints.Remove(dataPoint);
-                await DbContext.SaveChangesAsync();
+                var result = await MindApi.DeleteFinancialDataPointAsync(id);
                 Snackbar.Add("Financial data point deleted successfully", Severity.Success);
                 await LoadDataPoints();
+                // if (result.IsSuccess)
+                // {
+                //     Snackbar.Add("Financial data point deleted successfully", Severity.Success);
+                //     await LoadDataPoints();
+                // }
+                // else
+                // {
+                //     Snackbar.Add(result.Error ?? "Failed to delete data point", Severity.Error);
+                // }
             }
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Error deleting data point: {ex.Message}", Severity.Error);
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error deleting data point: {ex.Message}", Severity.Error);
+            }
         }
     }
 
@@ -194,4 +210,4 @@ else
     {
         refreshTimer?.Dispose();
     }
-} 
+}

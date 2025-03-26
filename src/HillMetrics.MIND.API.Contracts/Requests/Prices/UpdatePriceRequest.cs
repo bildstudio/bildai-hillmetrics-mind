@@ -21,13 +21,14 @@ namespace HillMetrics.MIND.API.Contracts.Requests.Prices
 
     public class SearchPricesRequest
     {
-        public int FinancialId { get; set; }
-        public int FluxId { get; set; }
+        public string? Code { get; set; }
+        public SearchCriteria<int>? FinancialId { get; set; }
+        public SearchCriteria<int>? FluxId { get; set; }
         public Core.Financial.FinancialType FinancialType { get; set; }
         public string? CurrencyCode { get; set; }
-        public int? FluxProcessingContentId { get; set; }
-        public DateTime? From { get; set; }
-        public DateTime? To { get; set; }
+        public SearchCriteria<int>? FluxProcessingContentId { get; set; }
+        public SearchCriteria<DateTime>? From { get; set; }
+        public SearchCriteria<DateTime>? To { get; set; }
         public Pagination Pagination { get; set; } = Pagination.Default;
         public Sorting Sorting { get; set; } = new Sorting("Date", SortDirection.Ascending);
     }

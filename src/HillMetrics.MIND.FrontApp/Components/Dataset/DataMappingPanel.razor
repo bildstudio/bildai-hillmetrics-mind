@@ -1,5 +1,8 @@
-﻿@using AiTraining.Data.Entities
-@using AiTraining.Data.Enums
+﻿@using HillMetrics.Normalized.Domain.Contracts.AI.Dataset
+@using HillMetrics.Normalized.Domain.Contracts.AI.Dataset.Cqrs.FileDataMapping
+@using HillMetrics.MIND.API.SDK.V1
+@inject IMindAPI MindApi
+@inject ISnackbar Snackbar
 
 <MudText Typo="Typo.h6" Class="mb-3">
     @(IsEditMode ? "Edit Data Mappings" : "Map Financial Data")
@@ -27,7 +30,7 @@ else
                            Class="mb-4">
                     @foreach (var dataPoint in AvailableDataPoints)
                     {
-                        <MudSelectItem Value="@dataPoint.FinancialDataPointId">
+                        <MudSelectItem Value="@dataPoint.Id">
                             @dataPoint.Name
                         </MudSelectItem>
                     }
@@ -53,9 +56,8 @@ else
             <MudExpansionPanels MultiExpansion="true" Class="mb-4">
                 @foreach (var mapping in DataMappings)
                 {
-                    <DataPointMappingItem 
-                        Mapping="mapping" 
-                        OnRemove="() => RemoveMapping(mapping.MappingId)" />
+                    <DataPointMappingItem Mapping="mapping"
+                                          OnRemove="RemoveMapping" />
                 }
             </MudExpansionPanels>
 
@@ -72,7 +74,7 @@ else
                 }
                 else
                 {
-                    <span>@(IsEditMode ? "Update Data Mappings" : "Save Data Mappings")</span>
+                    <span>@(IsEditMode ? "Update Mappings" : "Save Mappings")</span>
                 }
             </MudButton>
 
@@ -93,13 +95,13 @@ else
 
 @code {
     [Parameter]
-    public FileUploadEntity? UploadedFile { get; set; }
+    public FileUpload? UploadedFile { get; set; }
 
     [Parameter]
-    public List<FileDataMapping.DataMappingViewModel> DataMappings { get; set; } = new();
+    public List<FileDataMapping> DataMappings { get; set; } = new();
 
     [Parameter]
-    public List<FinancialDataPointEntity> AvailableDataPoints { get; set; } = new();
+    public List<FinancialDataPoint> AvailableDataPoints { get; set; } = new();
 
     [Parameter]
     public bool IsEditMode { get; set; }
@@ -110,12 +112,6 @@ else
     [Parameter]
     public EventCallback OnCancel { get; set; }
 
-    [Parameter]
-    public EventCallback<(int, string)> OnAddDataPoint { get; set; }
-
-    [Parameter]
-    public EventCallback<int> OnRemoveDataPoint { get; set; }
-
     private int selectedDataPointId;
     private bool isSaving;
 
@@ -123,42 +119,65 @@ else
     {
         if (AvailableDataPoints.Count > 0 && selectedDataPointId == 0)
         {
-            selectedDataPointId = AvailableDataPoints[0].FinancialDataPointId;
+            selectedDataPointId = AvailableDataPoints[0].Id;
         }
     }
 
     private async Task AddDataPoint()
     {
         if (selectedDataPointId == 0 || UploadedFile == null)
-        {
             return;
-        }
 
-        // Générer un nom d'instance unique pour ce data point
-        string instanceName = string.Empty;
-        int instanceCount = DataMappings.Count(m => m.DataPointId == selectedDataPointId) + 1;
-        if (instanceCount > 1)
+        try
         {
-            instanceName = $"Instance {instanceCount}";
-        }
+            var command = new CreateFileMappingCommand
+                {
+                    FileUploadId = UploadedFile.Id,
+                    FinancialDataPointId = selectedDataPointId,
+                    ElementValues = new List<FileDataElementValue>()
+                };
 
-        await OnAddDataPoint.InvokeAsync((selectedDataPointId, instanceName));
-        
-        // Reset selection
-        selectedDataPointId = 0;
+            var result = await MindApi.CreateFileMappingAsync(command);
+
+            DataMappings.Add(result.Data);
+            Snackbar.Add("Data point mapping added successfully", Severity.Success);
+            selectedDataPointId = 0;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error adding data point mapping: {ex.Message}", Severity.Error);
+        }
     }
 
     private async Task RemoveMapping(int mappingId)
     {
-        await OnRemoveDataPoint.InvokeAsync(mappingId);
+        try
+        {
+            var result = await MindApi.DeleteFileMappingAsync(mappingId);
+
+            DataMappings.RemoveAll(m => m.Id == mappingId);
+            Snackbar.Add("Mapping removed successfully", Severity.Success);
+
+            // if (result.IsSuccess)
+            // {
+            //     DataMappings.RemoveAll(m => m.FileDataMappingId == mappingId);
+            //     Snackbar.Add("Mapping removed successfully", Severity.Success);
+            // }
+            // else
+            // {
+            //     Snackbar.Add(result.Error ?? "Failed to remove mapping", Severity.Error);
+            // }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error removing mapping: {ex.Message}", Severity.Error);
+        }
     }
 
     private async Task SaveMappings()
     {
         if (UploadedFile == null || DataMappings.Count == 0)
-        {
             return;
-        }
 
         try
         {
@@ -175,4 +194,4 @@ else
     {
         await OnCancel.InvokeAsync();
     }
-} 
+}

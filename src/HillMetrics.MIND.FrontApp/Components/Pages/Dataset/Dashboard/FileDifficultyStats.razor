@@ -1,5 +1,7 @@
 ﻿@page "/file-difficulty-stats"
-@using AiTraining.Data.Enums
+@using HillMetrics.Normalized.Domain.Contracts.AI.Dataset
+@using HillMetrics.MIND.API.SDK.V1
+@inject IMindAPI MindApi
 
 <MudText Typo="Typo.h4" Class="mb-4">File Difficulty Statistics</MudText>
 
@@ -12,8 +14,8 @@
                 </CardHeaderContent>
             </MudCardHeader>
             <MudCardContent>
-                <MudChart ChartType="ChartType.Pie" 
-                         Width="300px" 
+                <MudChart ChartType="ChartType.Pie"
+                         Width="300px"
                          Height="300px"
                          InputData="@difficultyData"
                          InputLabels="@difficultyLabels">
@@ -21,7 +23,7 @@
             </MudCardContent>
         </MudCard>
     </MudItem>
-    
+
     <MudItem xs="12" md="6">
         <MudCard>
             <MudCardHeader>
@@ -43,7 +45,7 @@
                         {
                             <tr>
                                 <td>
-                                    <MudChip Color="@GetDifficultyColor((FileDifficulty)i)" Size="Size.Small">
+                                    <MudChip T="Color" Color="@GetDifficultyColor((FileDifficulty)i)" Size="Size.Small">
                                         @difficultyLabels[i]
                                     </MudChip>
                                 </td>
@@ -71,24 +73,36 @@
 
     private async Task LoadDifficultyStats()
     {
-        // Récupérer le nombre total de fichiers
-        totalFiles = await DbContext.FileUploads.CountAsync();
-        
-        if (totalFiles == 0)
+        try
         {
-            // Éviter la division par zéro
-            return;
-        }
+            // Get all file uploads
+            var result = await MindApi.GetAllFileUploadsAsync();
 
-        // Récupérer le nombre de fichiers pour chaque niveau de difficulté
-        for (int i = 0; i < 5; i++)
+            // if (!result.IsSuccess)
+            //     return;
+
+            var files = result.Data;
+            totalFiles = files.Count;
+
+            if (totalFiles == 0)
+                return;
+
+            // Calculate difficulty distribution
+            foreach (var file in files)
+            {
+                var difficultyIndex = (int)file.Difficulty;
+                difficultyCount[difficultyIndex]++;
+            }
+
+            // Calculate percentages
+            for (int i = 0; i < 5; i++)
+            {
+                difficultyData[i] = (double)difficultyCount[i] / totalFiles;
+            }
+        }
+        catch (Exception ex)
         {
-            var difficulty = (FileDifficulty)i;
-            difficultyCount[i] = await DbContext.FileUploads
-                .Where(f => f.Difficulty == difficulty)
-                .CountAsync();
-            
-            difficultyData[i] = (double)difficultyCount[i] / totalFiles;
+            // Handle error
         }
     }
 
@@ -104,4 +118,4 @@
             _ => Color.Default
         };
     }
-} 
+}
