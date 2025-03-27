@@ -9,10 +9,11 @@ using HillMetrics.Normalized.Domain.Contracts.AI.Dataset.Cqrs.FinancialDataPoint
 using HillMetrics.Normalized.Domain.Contracts.AI.Dataset;
 using HillMetrics.MIND.API.Contracts.Responses;
 using HillMetrics.MIND.API.Contracts.Requests.AiDataset;
+using HillMetrics.Core.Financial;
 
 namespace HillMetrics.MIND.API.Controllers;
 
-public class AiDatasetController(IMediator mediator, IMapper mapper, ILogger<AiDatasetController> logger) : BaseHillMetricsController(mediator)
+public class FluxCaracController(IMediator mediator, IMapper mapper, ILogger<FluxCaracController> logger) : BaseHillMetricsController(mediator)
 {
     #region FileUpload
 
@@ -85,11 +86,10 @@ public class AiDatasetController(IMediator mediator, IMapper mapper, ILogger<AiD
     /// <summary>
     /// Update a file upload's properties
     /// </summary>
-    /// <param name="fileUploadId">ID of the file upload to update</param>
     /// <param name="request">Update file upload request</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Updated file upload details</returns>
-    [HttpPut("file-upload/{fileUploadId}")]
+    [HttpPut("file-upload/")]
     public async Task<ActionResult<ApiResponseBase<FileUpload>>> UpdateFileUpload(
         [FromBody] UpdateFileUploadRequest request,
         CancellationToken cancellationToken)

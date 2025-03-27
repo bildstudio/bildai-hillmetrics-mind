@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using HillMetrics.Core.Financial;
 using HillMetrics.MIND.API.Contracts.Requests.AiDataset;
 using HillMetrics.MIND.API.Contracts.Responses.AiDataset;
 using HillMetrics.Normalized.Domain.Contracts.AI.Dataset;
@@ -6,7 +7,6 @@ using HillMetrics.Normalized.Domain.Contracts.AI.Dataset.Cqrs.ElementValue;
 using HillMetrics.Normalized.Domain.Contracts.AI.Dataset.Cqrs.FileDataMapping;
 using HillMetrics.Normalized.Domain.Contracts.AI.Dataset.Cqrs.FileUpload;
 using HillMetrics.Normalized.Domain.Contracts.AI.Dataset.Cqrs.FinancialDataPoint;
-using System.Collections.Generic;
 
 namespace HillMetrics.MIND.API.Mappers
 {
@@ -34,7 +34,7 @@ namespace HillMetrics.MIND.API.Mappers
 
             // ElementValue mappings
             CreateMap<FileDataElementValue, ElementValueResponse>();
-            CreateMap<CreateElementValueRequest, CreateElementValueCommand>();
+            //CreateMap<CreateElementValueRequest, CreateElementValueCommand>();
             CreateMap<CreateElementValuesRequest, CreateElementValuesCommand>();
             CreateMap<List<FileDataElementValue>, ElementValueListResponse>()
                 .ForMember(dest => dest.Elements, opt => opt.MapFrom(src => src));

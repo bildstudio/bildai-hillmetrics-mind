@@ -6,6 +6,7 @@ using HillMetrics.Core;
 using HillMetrics.Core.Monitoring.Logging;
 using HillMetrics.Core.Monitoring;
 using HillMetrics.Core.Http.Extensions;
+using HillMetrics.MIND.FrontApp.Services;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -26,6 +27,9 @@ builder.Services.AddHillMetricsHttpClient("MindAPI", client =>
     client.BaseAddress = new Uri(mindApi);
     client.Timeout = TimeSpan.FromMinutes(5);
 });
+
+builder.Services.AddTransient<FileUploadService>();
+builder.Services.AddTransient<MappingExportService>();
 
 // Add services to the container.
 builder.Services.AddRazorComponents()

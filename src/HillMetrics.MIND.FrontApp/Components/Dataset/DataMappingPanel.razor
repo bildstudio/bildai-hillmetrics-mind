@@ -1,4 +1,6 @@
-﻿@using HillMetrics.Normalized.Domain.Contracts.AI.Dataset
+﻿@using HillMetrics.Core.Financial
+@using HillMetrics.MIND.API.Contracts.Requests.AiDataset
+@using HillMetrics.Normalized.Domain.Contracts.AI.Dataset
 @using HillMetrics.Normalized.Domain.Contracts.AI.Dataset.Cqrs.FileDataMapping
 @using HillMetrics.MIND.API.SDK.V1
 @inject IMindAPI MindApi
@@ -130,11 +132,12 @@ else
 
         try
         {
-            var command = new CreateFileMappingCommand
+            var command = new CreateFileMappingRequest
                 {
                     FileUploadId = UploadedFile.Id,
                     FinancialDataPointId = selectedDataPointId,
-                    ElementValues = new List<FileDataElementValue>()
+                    InstanceName = "",
+                    ElementValues = new List<ElementValueRequest>()
                 };
 
             var result = await MindApi.CreateFileMappingAsync(command);

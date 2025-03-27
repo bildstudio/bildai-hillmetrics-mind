@@ -1,5 +1,5 @@
 using System.ComponentModel.DataAnnotations;
-using HillMetrics.Normalized.Domain.Contracts.AI.Dataset;
+using HillMetrics.Core.Financial;
 
 namespace HillMetrics.MIND.API.Contracts.Requests.AiDataset;
 

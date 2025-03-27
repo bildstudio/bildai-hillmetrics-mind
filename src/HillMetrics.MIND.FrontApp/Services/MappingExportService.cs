@@ -2,6 +2,7 @@ using HillMetrics.MIND.API.SDK.V1;
 using System.Text.Json;
 using System.Text;
 using Microsoft.JSInterop;
+using HillMetrics.Normalized.Domain.Contracts.AI.Dataset;
 
 namespace HillMetrics.MIND.FrontApp.Services
 {
