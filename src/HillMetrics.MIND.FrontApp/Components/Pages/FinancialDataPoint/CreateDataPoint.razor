@@ -18,10 +18,33 @@ else
 {
     <MudCard Class="mb-6">
         <MudCardContent>
-            <MudTextField @bind-Value="dataPoint.Name"
-                          Label="Data Point Name"
-                          Required="true"
-                          RequiredError="Name is required" />
+            <MudGrid>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="dataPoint.Name"
+                                Label="Data Point Name"
+                                Required="true"
+                                RequiredError="Name is required" />
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudSelect T="FinancialType"
+                              @bind-Value="dataPoint.FinancialType"
+                              Label="Financial Type"
+                              Required="true"
+                              RequiredError="Financial Type is required"
+                              AnchorOrigin="Origin.BottomCenter">
+                        @foreach (var type in Enum.GetValues<FinancialType>())
+                        {
+                            <MudSelectItem Value="@type">@type</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="dataPoint.Description"
+                                 Label="Description"
+                                 Lines="3"
+                                 Variant="Variant.Outlined" />
+                </MudItem>
+            </MudGrid>
         </MudCardContent>
     </MudCard>
 
@@ -33,15 +56,15 @@ else
         </MudText>
     </div>
 
-    <MudDragDropZone T="ElementViewModel"
+    <MudDragDropZone T="FinancialDataPointElementRequest"
                      Items="elements"
                      ItemDraggable="true"
                      ItemDropped="ItemDropped"
                      Class="mud-height-full">
         <ChildContent>
-            @foreach (var element in elements)
+            @foreach (var element in dataPoint.Elements)
             {
-                <MudDragDropItem T="ElementViewModel"
+                <MudDragDropItem T="FinancialDataPointElementRequest"
                                  Item="element"
                                  Class="mb-4">
                     <MudCard Elevation="2">
@@ -70,46 +93,6 @@ else
                                 <MudItem xs="12" md="8">
                                     <MudTextField @bind-Value="element.Description"
                                                   Label="Description" />
-                                </MudItem>
-                                <MudItem xs="12">
-                                    <MudSelect T="PropertyDataType"
-                                               @bind-Value="element.DataType"
-                                               Label="Default Data Type">
-                                        <MudSelectItem Value="PropertyDataType.Column">Column</MudSelectItem>
-                                        <MudSelectItem Value="PropertyDataType.Fixed">Fixed Value</MudSelectItem>
-                                        <MudSelectItem Value="PropertyDataType.Row">Row</MudSelectItem>
-                                        <MudSelectItem Value="PropertyDataType.Deductive">Deductive</MudSelectItem>
-                                    </MudSelect>
-                                </MudItem>
-                                <MudItem xs="12">
-                                    <MudExpansionPanels>
-                                        <MudExpansionPanel Text="Potential Values">
-                                            <MudChipSet T="ElementViewModel" @bind-SelectedChips="element.ChipValues"
-                                                        MultiSelection="true"
-                                                        Filter="true"
-                                                        Mandatory="false"
-                                                        OnClose="@(() => RemoveValue(element))">
-                                                @foreach (var value in element.PotentialValues)
-                                                {
-                                                    <MudChip Text="@value" Value="@value" />
-                                                }
-                                            </MudChipSet>
-                                            <MudGrid Class="mt-2">
-                                                <MudItem xs="8">
-                                                    <MudTextField @bind-Value="element.NewValue"
-                                                                  Label="Add New Value" />
-                                                </MudItem>
-                                                <MudItem xs="4">
-                                                    <MudButton OnClick="() => AddValue(element)"
-                                                               Color="Color.Primary"
-                                                               Variant="Variant.Filled"
-                                                               Class="mt-4">
-                                                        Add Value
-                                                    </MudButton>
-                                                </MudItem>
-                                            </MudGrid>
-                                        </MudExpansionPanel>
-                                    </MudExpansionPanels>
                                 </MudItem>
                             </MudGrid>
                         </MudCardContent>
@@ -163,8 +146,7 @@ else
     public int? Id { get; set; }
 
     private bool IsEditMode => Id.HasValue;
-    private FinancialDataPoint dataPoint = new();
-    private List<ElementViewModel> elements = new();
+    private CreateFinancialDataPointRequest dataPoint = new();
     private bool isLoading = true;
 
     private class ElementViewModel
@@ -197,27 +179,21 @@ else
         {
             var result = await MindApi.GetFinancialDataPointAsync(Id!.Value);
 
-            // if (!result.IsSuccess)
-            // {
-            //     Snackbar.Add(result.Error ?? "Failed to load data point", Severity.Error);
-            //     NavigationManager.NavigateTo("/financial-data/list");
-            //     return;
-            // }
-
-            dataPoint = result.Data;
-
-            elements = dataPoint.Elements
-                .OrderBy(e => e.Position)
-                .Select((e, index) => new ElementViewModel
+            dataPoint = new CreateFinancialDataPointRequest() {
+                    Description = result.Data.Description,
+                    Elements = result.Data.Elements.Select(e => new FinancialDataPointElementRequest
                     {
-                        ElementId = e.Id,
+                        Id = e.Id,
+                        FinancialDataPointId = e.FinancialDataPointId,
                         PropertyName = e.PropertyName,
                         Description = e.Description,
-                        DataType = PropertyDataType.Column,
                         PotentialValues = e.PotentialValues.ToList(),
-                        // ChipValues = e.PotentialValues.Select(v => new MudChip<ElementViewModel> { Text = v, Value = v }).ToArray(),
-                        Position = e.Position ?? (index + 1)
-                    }).ToList();
+                        Position = e.Position
+                    }).ToList(),
+                    FinancialType = result.Data.FinancialType,
+                    Id = result.Data.Id,
+                    Name = result.Data.Name
+            };
         }
         catch (Exception ex)
         {
@@ -231,28 +207,28 @@ else
 
     private void AddElement()
     {
-        int nextPosition = elements.Count > 0 ? elements.Max(e => e.Position) + 1 : 1;
-        elements.Add(new ElementViewModel { Position = nextPosition });
+        int nextPosition = dataPoint.Elements.Count > 0 ? (int)dataPoint.Elements.Max(e => e.Position) + 1 : 1;
+        dataPoint.Elements.Add(new FinancialDataPointElementRequest { Position = nextPosition });
     }
 
-    private void RemoveElement(ElementViewModel element)
+    private void RemoveElement(FinancialDataPointElementRequest element)
     {
-        elements.Remove(element);
+        dataPoint.Elements.Remove(element);
         UpdateElementPositions();
     }
 
-    private void ItemDropped(MudItemDropInfo<ElementViewModel> dropInfo)
+    private void ItemDropped(MudItemDropInfo<FinancialDataPointElementRequest> dropInfo)
     {
-        elements.Remove(dropInfo.Item);
-        elements.Insert(dropInfo.IndexInZone, dropInfo.Item);
+        dataPoint.Elements.Remove(dropInfo.Item);
+        dataPoint.Elements.Insert(dropInfo.IndexInZone, dropInfo.Item);
         UpdateElementPositions();
     }
 
     private void UpdateElementPositions()
     {
-        for (int i = 0; i < elements.Count; i++)
+        for (int i = 0; i < dataPoint.Elements.Count; i++)
         {
-            elements[i].Position = i + 1;
+            dataPoint.Elements[i].Position = i + 1;
         }
     }
 
@@ -277,10 +253,10 @@ else
         if (string.IsNullOrWhiteSpace(dataPoint.Name))
             return false;
 
-        if (elements.Count == 0)
+        if (dataPoint.Elements.Count == 0)
             return false;
 
-        return elements.All(e => !string.IsNullOrWhiteSpace(e.PropertyName));
+        return dataPoint.Elements.All(e => !string.IsNullOrWhiteSpace(e.PropertyName));
     }
 
     private async Task SaveDataPoint()
@@ -289,52 +265,13 @@ else
         {
             if (IsEditMode)
             {
-                var updateRequest = new CreateFinancialDataPointRequest
-                    {
-                        Name = dataPoint.Name,
-                        Elements = elements.Select(e => new FinancialDataPointElement
-                        {
-                            Id = e.ElementId.Value,
-                            PropertyName = e.PropertyName,
-                            Description = e.Description,
-                            FinancialDataPointId = dataPoint.Id,
-                            // DefaultDataType = e.DataType,
-                            PotentialValues = e.PotentialValues,
-                            Position = e.Position
-                        }).ToList()
-                    };
-
-                var result = await MindApi.UpdateFinancialDataPointAsync(dataPoint.Id, updateRequest);
+                var result = await MindApi.UpdateFinancialDataPointAsync(dataPoint.Id, dataPoint);
                 Snackbar.Add("Financial data point updated successfully", Severity.Success);
                 NavigationManager.NavigateTo("/financial-data/list");
-
-                // if (result.IsSuccess)
-                // {
-                //     Snackbar.Add("Financial data point updated successfully", Severity.Success);
-                //     NavigationManager.NavigateTo("/financial-data/list");
-                // }
-                // else
-                // {
-                //     Snackbar.Add(result.Error ?? "Failed to update data point", Severity.Error);
-                // }
             }
             else
             {
-                var createCommand = new CreateFinancialDataPointRequest
-                    {
-                        Name = dataPoint.Name,
-                        Elements = elements.Select(e => new FinancialDataPointElement
-                        {
-                            PropertyName = e.PropertyName,
-                            Description = e.Description,
-                            FinancialDataPointId = dataPoint.Id,
-                            // DefaultDataType = e.DataType,
-                            PotentialValues = e.PotentialValues,
-                            Position = e.Position
-                        }).ToList()
-                    };
-
-                var result = await MindApi.CreateFinancialDataPointAsync(createCommand);
+                var result = await MindApi.CreateFinancialDataPointAsync(dataPoint);
 
                 if (result.Data != null)
                 {

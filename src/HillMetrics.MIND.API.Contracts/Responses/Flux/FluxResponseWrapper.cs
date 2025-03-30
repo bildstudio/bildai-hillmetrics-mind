@@ -30,7 +30,10 @@ public class FluxResponseWrapper
     // Other properties from FluxResponse
     public List<FluxIdentificationHistoryDto> FluxIdentificationHistory { get; set; } = new();
     public List<FluxProcessingHistoryDto> FluxProcessingHistory { get; set; } = new();
-    
+
+    public bool HasCustomFetching { get; set; }
+    public bool HasCustomProcessing { get; set; }
+
     public FluxResponseWrapper() { }
     
     public FluxResponseWrapper(FluxResponse response)
@@ -49,7 +52,9 @@ public class FluxResponseWrapper
         CanHaveConcurrencyMultiFetching = response.CanHaveConcurrencyMultiFetching;
         FluxIdentificationHistory = response.FluxIdentificationHistory;
         FluxProcessingHistory = response.FluxProcessingHistory;
-        
+        HasCustomFetching = response.HasCustomFetching;
+        HasCustomProcessing = response.HasCustomProcessing;
+
         // Copy metadata to the appropriate concrete property
         if (response.FluxMetadata != null)
         {

@@ -161,6 +161,20 @@
                                     }
                                 </MudField>
                             </MudItem>
+                            <MudItem xs="6" md="4">
+                                <MudField Label="Custom Fetching" Variant="Variant.Outlined">
+                                    <MudChip T="Color" Color="@(flux.HasCustomFetching ? Color.Success : Color.Error)" Size="Size.Small">
+                                        @(flux.HasCustomFetching ? "Yes" : "No")
+                                    </MudChip>
+                                </MudField>
+                            </MudItem>
+                            <MudItem xs="6" md="4">
+                                <MudField Label="Custom Processing" Variant="Variant.Outlined">
+                                    <MudChip T="Color" Color="@(flux.HasCustomProcessing ? Color.Success : Color.Error)" Size="Size.Small">
+                                        @(flux.HasCustomProcessing ? "Yes" : "No")
+                                    </MudChip>
+                                </MudField>
+                            </MudItem>
                         </MudGrid>
                     </MudCardContent>
                 </MudCard>

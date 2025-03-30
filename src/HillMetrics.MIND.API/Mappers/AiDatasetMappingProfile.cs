@@ -42,13 +42,12 @@ namespace HillMetrics.MIND.API.Mappers
             // FinancialDataPoint mappings
             CreateMap<FinancialDataPoint, FinancialDataPointResponse>();
             CreateMap<CreateFinancialDataPointRequest, CreateFinancialDataPointCommand>();
+            CreateMap<FinancialDataPointElementRequest, FinancialDataPointElement>();
             CreateMap<List<FinancialDataPoint>, FinancialDataPointListResponse>()
                 .ForMember(dest => dest.DataPoints, opt => opt.MapFrom(src => src));
 
             // DataPointElement mappings
             CreateMap<FinancialDataPointElement, DataPointElementResponse>();
-            CreateMap<CreateDataPointElementRequest, CreateDataPointElementCommand>();
-            CreateMap<CreateDataPointElementsRequest, CreateDataPointElementsCommand>();
             CreateMap<List<FinancialDataPointElement>, DataPointElementListResponse>()
                 .ForMember(dest => dest.Elements, opt => opt.MapFrom(src => src));
         }

@@ -10,9 +10,12 @@ using HillMetrics.Normalized.Domain.Contracts.AI.Dataset;
 using HillMetrics.MIND.API.Contracts.Responses;
 using HillMetrics.MIND.API.Contracts.Requests.AiDataset;
 using HillMetrics.Core.Financial;
+using Microsoft.AspNetCore.Authorization;
+using HillMetrics.MIND.API.Contracts.Responses.AiDataset;
 
 namespace HillMetrics.MIND.API.Controllers;
 
+[Route("api/v{v:apiVersion}/[controller]"), AllowAnonymous]
 public class FluxCaracController(IMediator mediator, IMapper mapper, ILogger<FluxCaracController> logger) : BaseHillMetricsController(mediator)
 {
     #region FileUpload
@@ -36,7 +39,39 @@ public class FluxCaracController(IMediator mediator, IMapper mapper, ILogger<Flu
             FileName = request.File.FileName,
             ContentType = request.File.ContentType,
             FileStream = stream,
-            Difficulty = request.Difficulty
+            FileMetadataId = request.FileMetadataId,
+            Difficulty = request.Difficulty,
+            MappingStatus = MappingStatus.NotMapped
+        };
+
+        var result = await mediator.Send(command, cancellationToken);
+
+        if (result.IsFailed)
+            return new ErrorApiActionResult(result.Errors.ToApiResult());
+
+        return new ApiResponseBase<FileUpload>(result.Value);
+    }
+
+    /// <summary>
+    /// Create a file upload from a flux content
+    /// </summary>
+    /// <param name="request">File upload request with flux content reference</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Details of the uploaded file</returns>
+    [HttpPost("file-upload/from-flux")]
+    public async Task<ActionResult<ApiResponseBase<FileUpload>>> CreateFileUploadFromFlux(
+        [FromBody] CreateFileUploadFromFluxRequest request,
+        CancellationToken cancellationToken)
+    {
+        logger.LogInformation("Creating file upload from flux content: {FluxFetchingContentId}", request.FluxFetchingContentId);
+
+        var command = new CreateFileUploadCommand
+        {
+            FileName = request.FileName,
+            ContentType = request.ContentType,
+            FluxFetchingContentId = request.FluxFetchingContentId,
+            Difficulty = request.Difficulty,
+            MappingStatus = MappingStatus.NotMapped
         };
 
         var result = await mediator.Send(command, cancellationToken);
@@ -86,16 +121,26 @@ public class FluxCaracController(IMediator mediator, IMapper mapper, ILogger<Flu
     /// <summary>
     /// Update a file upload's properties
     /// </summary>
+    /// <param name="fileUploadId">ID of the file upload to update</param>
     /// <param name="request">Update file upload request</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Updated file upload details</returns>
-    [HttpPut("file-upload/")]
+    [HttpPut("file-upload/{fileUploadId}")]
     public async Task<ActionResult<ApiResponseBase<FileUpload>>> UpdateFileUpload(
+        int fileUploadId,
         [FromBody] UpdateFileUploadRequest request,
         CancellationToken cancellationToken)
     {
-        logger.LogInformation("Updating file upload with ID: {FileUploadId}", request.FileUploadId);
-        var command = mapper.Map<UpdateFileUploadCommand>(request);
+        logger.LogInformation("Updating file upload with ID: {FileUploadId}", fileUploadId);
+
+        var command = new CreateFileUploadCommand
+        {
+            FileUploadId = fileUploadId,
+            FileName = request.FileName,
+            ContentType = request.ContentType,
+            Difficulty = request.Difficulty,
+            MappingStatus = request.MappingStatus
+        };
 
         var result = await mediator.Send(command, cancellationToken);
 
@@ -305,27 +350,6 @@ public class FluxCaracController(IMediator mediator, IMapper mapper, ILogger<Flu
     #region FinancialDataPoint
 
     /// <summary>
-    /// Create a new financial data point
-    /// </summary>
-    /// <param name="request">Financial data point request</param>
-    /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>Created financial data point</returns>
-    [HttpPost("financial-data-point")]
-    public async Task<ActionResult<ApiResponseBase<FinancialDataPoint>>> CreateFinancialDataPoint(
-        [FromBody] CreateFinancialDataPointRequest request,
-        CancellationToken cancellationToken)
-    {
-        logger.LogInformation("Creating financial data point with name: {Name}", request.Name);
-        var command = mapper.Map<CreateFinancialDataPointCommand>(request);
-        var result = await mediator.Send(command, cancellationToken);
-
-        if (result.IsFailed)
-            return new ErrorApiActionResult(result.Errors.ToApiResult());
-
-        return new ApiResponseBase<FinancialDataPoint>(result.Value);
-    }
-
-    /// <summary>
     /// Get all financial data points
     /// </summary>
     /// <param name="cancellationToken">Cancellation token</param>
@@ -365,10 +389,50 @@ public class FluxCaracController(IMediator mediator, IMapper mapper, ILogger<Flu
     }
 
     /// <summary>
+    /// Create a new financial data point
+    /// </summary>
+    /// <param name="request">Financial data point request</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Created financial data point</returns>
+    [HttpPost("financial-data-point")]
+    public async Task<ActionResult<ApiResponseBase<FinancialDataPoint>>> CreateFinancialDataPoint(
+        [FromBody] CreateFinancialDataPointRequest request,
+        CancellationToken cancellationToken)
+    {
+        logger.LogInformation("Creating financial data point with name: {Name}", request.Name);
+        var command = new CreateFinancialDataPointCommand()
+        {
+            FinancialDataPoint = new FinancialDataPoint()
+            {
+                Id = 0,
+                Name = request.Name,
+                Description = request.Description,
+                FinancialType = request.FinancialType,
+                Elements = request.Elements.Select(x => new FinancialDataPointElement()
+                {
+                    PropertyName = x.PropertyName,
+                    Description = x.Description,
+                    Id = x.Id,
+                    FinancialDataPointId = 0,
+                    Position = x.Position,
+                    PotentialValues = x.PotentialValues
+                }).ToList()
+            }
+        };
+
+        var result = await mediator.Send(command, cancellationToken);
+
+        if (result.IsFailed)
+            return new ErrorApiActionResult(result.Errors.ToApiResult());
+
+        return new ApiResponseBase<FinancialDataPoint>(result.Value);
+    }
+
+    /// <summary>
     /// Update a financial data point
     /// </summary>
     /// <param name="dataPointId">ID of the data point to update</param>
-    /// <param name="command">Update data</param>
+    /// <param name="request">Update data</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Updated financial data point</returns>
     [HttpPut("financial-data-point/{dataPointId}")]
@@ -379,10 +443,27 @@ public class FluxCaracController(IMediator mediator, IMapper mapper, ILogger<Flu
     {
         logger.LogInformation("Updating financial data point with ID: {DataPointId}", dataPointId);
 
-        var command = mapper.Map<UpdateFinancialDataPointCommand>(request);
-        command.DataPointId = dataPointId;
+        var command = new CreateFinancialDataPointCommand()
+        {
+            FinancialDataPoint = new FinancialDataPoint()
+            {
+                Id = dataPointId,
+                Name = request.Name,
+                Description = request.Description,
+                FinancialType = request.FinancialType,
+                Elements = request.Elements.Select(x => new FinancialDataPointElement()
+                {
+                    PropertyName = x.PropertyName,
+                    Description = x.Description,
+                    Id = x.Id,
+                    FinancialDataPointId = dataPointId,
+                    Position = x.Position,
+                    PotentialValues = x.PotentialValues
+                }).ToList()
+            }
+        };
 
-        var result = await mediator.Send(mapper.Map<UpdateFinancialDataPointCommand>(request), cancellationToken);
+        var result = await mediator.Send(command, cancellationToken);
 
         if (result.IsFailed)
             return new ErrorApiActionResult(result.Errors.ToApiResult());
@@ -411,92 +492,33 @@ public class FluxCaracController(IMediator mediator, IMapper mapper, ILogger<Flu
         return new ApiResponseBase<bool>(true);
     }
 
-    #endregion
-
-    #region FinancialDataPointElement
-
     /// <summary>
-    /// Create a new financial data point element
+    /// Search for financial data points following the given criteria
     /// </summary>
-    /// <param name="command">Element details</param>
+    /// <param name="request">Search criteria</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>Created data point element</returns>
-    [HttpPost("data-point-element")]
-    public async Task<ActionResult<ApiResponseBase<FinancialDataPointElement>>> CreateDataPointElement(
-        [FromBody] CreateDataPointElementCommand command,
+    /// <returns>Paged list of financial data points</returns>
+    [HttpGet("financial-data-points/search")]
+    public async Task<ActionResult<PagedApiResponseBase<FinancialDataPointSearchResponse>>> SearchFinancialDataPoints(
+        [FromQuery] SearchFinancialDataPointRequest request,
         CancellationToken cancellationToken)
     {
-        logger.LogInformation("Creating element for data point ID: {DataPointId}", command.FinancialDataPointId);
+        logger.LogInformation("Searching financial data points with criteria: {Criteria}",
+            System.Text.Json.JsonSerializer.Serialize(request));
 
-        var result = await mediator.Send(command, cancellationToken);
-
-        if (result.IsFailed)
-            return new ErrorApiActionResult(result.Errors.ToApiResult());
-
-        return new ApiResponseBase<FinancialDataPointElement>(result.Value);
-    }
-
-    /// <summary>
-    /// Create multiple financial data point elements
-    /// </summary>
-    /// <param name="command">Collection of elements to create</param>
-    /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>Operation result</returns>
-    [HttpPost("data-point-elements")]
-    public async Task<ActionResult<ApiResponseBase<bool>>> CreateDataPointElements(
-        [FromBody] CreateDataPointElementsCommand command,
-        CancellationToken cancellationToken)
-    {
-        logger.LogInformation("Creating multiple data point elements");
-        var result = await mediator.Send(command, cancellationToken);
-
-        if (result.IsFailed)
-            return new ErrorApiActionResult(result.Errors.ToApiResult());
-
-        return new ApiResponseBase<bool>(true);
-    }
-
-    /// <summary>
-    /// Get all elements for a specific data point
-    /// </summary>
-    /// <param name="dataPointId">ID of the data point</param>
-    /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>List of data point elements</returns>
-    [HttpGet("data-point-elements/by-data-point/{dataPointId}")]
-    public async Task<ActionResult<ApiResponseBase<List<FinancialDataPointElement>>>> GetElementsByDataPoint(
-        int dataPointId,
-        CancellationToken cancellationToken)
-    {
-        logger.LogInformation("Getting elements for data point ID: {DataPointId}", dataPointId);
-        var query = new GetElementsByDataPointQuery { DataPointId = dataPointId };
+        var query = mapper.Map<SearchFinancialDataPointQuery>(request);
         var result = await mediator.Send(query, cancellationToken);
 
         if (result.IsFailed)
             return new ErrorApiActionResult(result.Errors.ToApiResult());
 
-        return new ApiResponseBase<List<FinancialDataPointElement>>(result.Value);
+        return new PagedApiResponseBase<FinancialDataPointSearchResponse>(
+            mapper.Map<List<FinancialDataPointSearchResponse>>(result.Value.Results),
+            result.Value.TotalRecords);
     }
 
-    /// <summary>
-    /// Delete all elements for a specific data point
-    /// </summary>
-    /// <param name="dataPointId">ID of the data point</param>
-    /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>Operation result</returns>
-    [HttpDelete("data-point-elements/by-data-point/{dataPointId}")]
-    public async Task<ActionResult<ApiResponseBase<bool>>> DeleteElementsByDataPoint(
-        int dataPointId,
-        CancellationToken cancellationToken)
-    {
-        logger.LogInformation("Deleting elements for data point ID: {DataPointId}", dataPointId);
-        var command = new DeleteElementsByDataPointCommand { DataPointId = dataPointId };
-        var result = await mediator.Send(command, cancellationToken);
+    #endregion
 
-        if (result.IsFailed)
-            return new ErrorApiActionResult(result.Errors.ToApiResult());
-
-        return new ApiResponseBase<bool>(true);
-    }
-
+    #region FinancialDataPointElement
     #endregion
 }

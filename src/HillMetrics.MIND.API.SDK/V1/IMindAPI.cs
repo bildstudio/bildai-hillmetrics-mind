@@ -4,6 +4,7 @@ using HillMetrics.MIND.API.Contracts.Requests.Flux;
 using HillMetrics.MIND.API.Contracts.Requests.Prices;
 using HillMetrics.MIND.API.Contracts.Requests.Source;
 using HillMetrics.MIND.API.Contracts.Responses;
+using HillMetrics.MIND.API.Contracts.Responses.AiDataset;
 using HillMetrics.MIND.API.Contracts.Responses.Flux;
 using HillMetrics.MIND.API.Contracts.Responses.Prices;
 using HillMetrics.MIND.API.Contracts.Responses.Source;
@@ -226,53 +227,53 @@ namespace HillMetrics.MIND.API.SDK.V1
         /// <summary>
         /// Upload a new file for AI dataset processing
         /// </summary>
-        /// <param name="file">File to upload</param>
-        /// <param name="difficulty">Difficulty level of the file</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Details of the uploaded file</returns>
         [Multipart]
-        [Post("/api/fluxcarac/file-upload")]
+        [Post("/api/v1/fluxcarac/file-upload")]
         Task<ApiResponseBase<FileUpload>> CreateFileUploadAsync(
             [AliasAs("file")] StreamPart file,
             [AliasAs("difficulty")] FileDifficulty difficulty = FileDifficulty.Medium,
+            [AliasAs("fileMetadataId")] int? fileMetadataId = null,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Create a file upload from a flux content
+        /// </summary>
+        [Post("/api/v1/fluxcarac/file-upload/from-flux")]
+        Task<ApiResponseBase<FileUpload>> CreateFileUploadFromFluxAsync(
+            [Body] CreateFileUploadFromFluxRequest request,
             CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Get all uploaded files
         /// </summary>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>List of all file uploads</returns>
-        [Get("/api/fluxcarac/file-uploads")]
-        Task<ApiResponseBase<List<FileUpload>>> GetAllFileUploadsAsync(CancellationToken cancellationToken = default);
+        [Get("/api/v1/fluxcarac/file-uploads")]
+        Task<ApiResponseBase<List<FileUpload>>> GetAllFileUploadsAsync(
+            CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Get details of a specific file upload
         /// </summary>
-        /// <param name="fileUploadId">ID of the file upload</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>File upload details</returns>
-        [Get("/api/fluxcarac/file-upload/{fileUploadId}")]
-        Task<ApiResponseBase<FileUpload>> GetFileUploadAsync(int fileUploadId, CancellationToken cancellationToken = default);
+        [Get("/api/v1/fluxcarac/file-upload/{fileUploadId}")]
+        Task<ApiResponseBase<FileUpload>> GetFileUploadAsync(
+            int fileUploadId,
+            CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Update a file upload's properties
         /// </summary>
-        /// <param name="request">Update data</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Updated file upload details</returns>
-        [Put("/api/fluxcarac/file-upload/")]
+        [Put("/api/v1/fluxcarac/file-upload/{fileUploadId}")]
         Task<ApiResponseBase<FileUpload>> UpdateFileUploadAsync(
+            int fileUploadId,
             [Body] UpdateFileUploadRequest request,
             CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Delete a file upload
         /// </summary>
-        /// <param name="fileUploadId">ID of the file upload to delete</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Operation result</returns>
-        [Delete("/api/fluxcarac/file-upload/{fileUploadId}")]
-        Task<ApiResponseBase<bool>> DeleteFileUploadAsync(int fileUploadId, CancellationToken cancellationToken = default);
+        [Delete("/api/v1/fluxcarac/file-upload/{fileUploadId}")]
+        Task<ApiResponseBase<bool>> DeleteFileUploadAsync(
+            int fileUploadId,
+            CancellationToken cancellationToken = default);
 
         #endregion
 
@@ -284,7 +285,7 @@ namespace HillMetrics.MIND.API.SDK.V1
         /// <param name="request">Mapping details</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Created mapping details</returns>
-        [Post("/api/fluxcarac/file-mapping")]
+        [Post("/api/v1/fluxcarac/file-mapping")]
         Task<ApiResponseBase<HillMetrics.Normalized.Domain.Contracts.AI.Dataset.FileDataMapping>> CreateFileMappingAsync(
             [Body] CreateFileMappingRequest request,
             CancellationToken cancellationToken = default);
@@ -295,7 +296,7 @@ namespace HillMetrics.MIND.API.SDK.V1
         /// <param name="mappingId">ID of the mapping</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Mapping details</returns>
-        [Get("/api/fluxcarac/file-mapping/{mappingId}")]
+        [Get("/api/v1/fluxcarac/file-mapping/{mappingId}")]
         Task<ApiResponseBase<HillMetrics.Normalized.Domain.Contracts.AI.Dataset.FileDataMapping>> GetFileMappingAsync(
             int mappingId,
             CancellationToken cancellationToken = default);
@@ -306,7 +307,7 @@ namespace HillMetrics.MIND.API.SDK.V1
         /// <param name="fileUploadId">ID of the file upload</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>List of mappings</returns>
-        [Get("/api/fluxcarac/file-mappings/by-file-upload/{fileUploadId}")]
+        [Get("/api/v1/fluxcarac/file-mappings/by-file-upload/{fileUploadId}")]
         Task<ApiResponseBase<List<HillMetrics.Normalized.Domain.Contracts.AI.Dataset.FileDataMapping>>> GetMappingsByFileUploadAsync(
             int fileUploadId,
             CancellationToken cancellationToken = default);
@@ -317,7 +318,7 @@ namespace HillMetrics.MIND.API.SDK.V1
         /// <param name="mappingId">ID of the mapping to delete</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Operation result</returns>
-        [Delete("/api/fluxcarac/file-mapping/{mappingId}")]
+        [Delete("/api/v1/fluxcarac/file-mapping/{mappingId}")]
         Task<ApiResponseBase<bool>> DeleteFileMappingAsync(
             int mappingId,
             CancellationToken cancellationToken = default);
@@ -332,7 +333,7 @@ namespace HillMetrics.MIND.API.SDK.V1
         /// <param name="command">Element value details</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Created element value</returns>
-        [Post("/api/fluxcarac/element-value")]
+        [Post("/api/v1/fluxcarac/element-value")]
         Task<ApiResponseBase<FileDataElementValue>> CreateElementValueAsync(
             [Body] CreateElementValueCommand command,
             CancellationToken cancellationToken = default);
@@ -343,7 +344,7 @@ namespace HillMetrics.MIND.API.SDK.V1
         /// <param name="command">Collection of element values</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Operation result</returns>
-        [Post("/api/fluxcarac/element-values")]
+        [Post("/api/v1/fluxcarac/element-values")]
         Task<ApiResponseBase<bool>> CreateElementValuesAsync(
             [Body] CreateElementValuesCommand command,
             CancellationToken cancellationToken = default);
@@ -354,7 +355,7 @@ namespace HillMetrics.MIND.API.SDK.V1
         /// <param name="mappingId">ID of the mapping</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>List of element values</returns>
-        [Get("/api/fluxcarac/element-values/by-mapping/{mappingId}")]
+        [Get("/api/v1/fluxcarac/element-values/by-mapping/{mappingId}")]
         Task<ApiResponseBase<List<FileDataElementValue>>> GetElementValuesByMappingAsync(
             int mappingId,
             CancellationToken cancellationToken = default);
@@ -365,7 +366,7 @@ namespace HillMetrics.MIND.API.SDK.V1
         /// <param name="mappingId">ID of the mapping</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Operation result</returns>
-        [Delete("/api/fluxcarac/element-values/by-mapping/{mappingId}")]
+        [Delete("/api/v1/fluxcarac/element-values/by-mapping/{mappingId}")]
         Task<ApiResponseBase<bool>> DeleteElementValuesByMappingAsync(
             int mappingId,
             CancellationToken cancellationToken = default);
@@ -380,7 +381,7 @@ namespace HillMetrics.MIND.API.SDK.V1
         /// <param name="request">Financial data point details</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Created financial data point</returns>
-        [Post("/api/fluxcarac/financial-data-point")]
+        [Post("/api/v1/fluxcarac/financial-data-point")]
         Task<ApiResponseBase<FinancialDataPoint>> CreateFinancialDataPointAsync(
             [Body] CreateFinancialDataPointRequest request,
             CancellationToken cancellationToken = default);
@@ -390,7 +391,7 @@ namespace HillMetrics.MIND.API.SDK.V1
         /// </summary>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>List of financial data points</returns>
-        [Get("/api/fluxcarac/financial-data-points")]
+        [Get("/api/v1/fluxcarac/financial-data-points")]
         Task<ApiResponseBase<List<FinancialDataPoint>>> GetAllFinancialDataPointsAsync(
             CancellationToken cancellationToken = default);
 
@@ -400,7 +401,7 @@ namespace HillMetrics.MIND.API.SDK.V1
         /// <param name="dataPointId">ID of the data point</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Financial data point details</returns>
-        [Get("/api/fluxcarac/financial-data-point/{dataPointId}")]
+        [Get("/api/v1/fluxcarac/financial-data-point/{dataPointId}")]
         Task<ApiResponseBase<FinancialDataPoint>> GetFinancialDataPointAsync(
             int dataPointId,
             CancellationToken cancellationToken = default);
@@ -412,7 +413,7 @@ namespace HillMetrics.MIND.API.SDK.V1
         /// <param name="request">Update data</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Updated financial data point</returns>
-        [Put("/api/fluxcarac/financial-data-point/{dataPointId}")]
+        [Put("/api/v1/fluxcarac/financial-data-point/{dataPointId}")]
         Task<ApiResponseBase<FinancialDataPoint>> UpdateFinancialDataPointAsync(
             int dataPointId,
             [Body] CreateFinancialDataPointRequest request,
@@ -424,7 +425,7 @@ namespace HillMetrics.MIND.API.SDK.V1
         /// <param name="dataPointId">ID of the data point to delete</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Operation result</returns>
-        [Delete("/api/fluxcarac/financial-data-point/{dataPointId}")]
+        [Delete("/api/v1/fluxcarac/financial-data-point/{dataPointId}")]
         Task<ApiResponseBase<bool>> DeleteFinancialDataPointAsync(
             int dataPointId,
             CancellationToken cancellationToken = default);
@@ -432,50 +433,6 @@ namespace HillMetrics.MIND.API.SDK.V1
         #endregion
 
         #region AI Dataset - Financial Data Point Element
-
-        /// <summary>
-        /// Create a new financial data point element
-        /// </summary>
-        /// <param name="command">Element details</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Created data point element</returns>
-        [Post("/api/fluxcarac/data-point-element")]
-        Task<ApiResponseBase<FinancialDataPointElement>> CreateDataPointElementAsync(
-            [Body] CreateDataPointElementCommand command,
-            CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Create multiple financial data point elements
-        /// </summary>
-        /// <param name="command">Collection of elements to create</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Operation result</returns>
-        [Post("/api/fluxcarac/data-point-elements")]
-        Task<ApiResponseBase<bool>> CreateDataPointElementsAsync(
-            [Body] CreateDataPointElementsCommand command,
-            CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Get all elements for a specific data point
-        /// </summary>
-        /// <param name="dataPointId">ID of the data point</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>List of data point elements</returns>
-        [Get("/api/fluxcarac/data-point-elements/by-data-point/{dataPointId}")]
-        Task<ApiResponseBase<List<FinancialDataPointElement>>> GetElementsByDataPointAsync(
-            int dataPointId,
-            CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Delete all elements for a specific data point
-        /// </summary>
-        /// <param name="dataPointId">ID of the data point</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Operation result</returns>
-        [Delete("/api/fluxcarac/data-point-elements/by-data-point/{dataPointId}")]
-        Task<ApiResponseBase<bool>> DeleteElementsByDataPointAsync(
-            int dataPointId,
-            CancellationToken cancellationToken = default);
 
         #endregion
 
@@ -491,8 +448,16 @@ namespace HillMetrics.MIND.API.SDK.V1
         /// Search for prices based on criteria
         /// </summary>
         [Get("/api/v1/prices/search")]
-        Task<ApiResponseBase<SearchPricesResponse>> SearchPricesAsync([Query] SearchPricesRequest request);
+        Task<PagedApiResponseBase<SearchPricesResponse>> SearchPricesAsync([Query] SearchPricesRequest request);
 
         #endregion
+
+        /// <summary>
+        /// Search for financial data points based on criteria
+        /// </summary>
+        /// <param name="request">Search criteria</param>
+        /// <returns>Paged list of financial data points</returns>
+        [Get("/api/v1/fluxcarac/financial-data-points/search")]
+        Task<PagedApiResponseBase<FinancialDataPointSearchResponse>> SearchFinancialDataPointsAsync([Query] SearchFinancialDataPointRequest request);
     }
 }

@@ -127,10 +127,10 @@ else
         await LoadDataPoints();
 
         // Set up a timer to refresh the data every 30 seconds
-        refreshTimer = new System.Timers.Timer(30000);
-        refreshTimer.Elapsed += async (sender, e) => await RefreshData();
-        refreshTimer.AutoReset = true;
-        refreshTimer.Enabled = true;
+        // refreshTimer = new System.Timers.Timer(30000);
+        // refreshTimer.Elapsed += async (sender, e) => await RefreshData();
+        // refreshTimer.AutoReset = true;
+        // refreshTimer.Enabled = true;
     }
 
     private async Task LoadDataPoints()

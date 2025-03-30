@@ -19,8 +19,28 @@ namespace HillMetrics.MIND.API.Mappers
     {
         public FluxMappingProfile()
         {
+            CreateMap<FluxQueryResult, FluxResponse>()
+                .ForMember(dest => dest.HasCustomFetching, opt => opt.MapFrom(src => src.HasCustomFetching))
+                .ForMember(dest => dest.HasCustomProcessing, opt => opt.MapFrom(src => src.HasCustomProcessing))
+                .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Flux.Id))
+                .ForMember(dest => dest.FluxType, opt => opt.MapFrom(src => src.Flux.FluxType))
+                .ForMember(dest => dest.FinancialType, opt => opt.MapFrom(src => src.Flux.FinancialType))
+                .ForMember(dest => dest.FluxName, opt => opt.MapFrom(src => src.Flux.FluxName))
+                .ForMember(dest => dest.Description, opt => opt.MapFrom(src => src.Flux.Description))
+                .ForMember(dest => dest.Comment, opt => opt.MapFrom(src => src.Flux.Comment))
+                .ForMember(dest => dest.FluxState, opt => opt.MapFrom(src => src.Flux.FluxState))
+                .ForMember(dest => dest.FetchTriggerPeriod, opt => opt.MapFrom(src => src.Flux.FetchTriggerPeriod))
+                .ForMember(dest => dest.ProcessTriggerPeriod, opt => opt.MapFrom(src => src.Flux.ProcessTriggerPeriod))
+                .ForMember(dest => dest.CanHaveConcurrencyMultiFetching, opt => opt.MapFrom(src => src.Flux.CanHaveConcurrencyMultiFetching))
+                .ForMember(dest => dest.FluxMetadata, opt => opt.MapFrom(src => src.Flux.FluxMetadata))
+                .ForMember(dest => dest.Source, opt => opt.MapFrom(src => src.Flux.Source))
+                .ForMember(dest => dest.FluxProcessingHistory, opt => opt.MapFrom(src => src.Flux.FluxProcessingHistory))
+                .ForMember(dest => dest.FluxIdentificationHistory, opt => opt.MapFrom(src => src.Flux.FluxFetchingHistory))
+                .ForMember(dest => dest.FluxErrors, opt => opt.MapFrom(src => src.Flux.FluxErrors))
+                .ForMember(dest => dest.FinancialDataPoints, opt => opt.MapFrom(src => src.Flux.FinancialDataPoints));
+
             CreateMap<FluxProvider, FluxResponse>().ReverseMap();
-            
+
             CreateMap<TriggerPeriod, TriggerPeriodDto>().ReverseMap();
 
             CreateMap<SourceProvider, SourceProviderDto>().ReverseMap();
@@ -30,7 +50,7 @@ namespace HillMetrics.MIND.API.Mappers
             CreateMap<FluxFetchingContentHistory, FluxIdentificationContentHistoryDto>().ReverseMap();
             CreateMap<FluxErrors, FluxErrorsDto>().ReverseMap();
             CreateMap<FluxFinancialDataPoint, FluxFinancialDataPointDto>().ReverseMap();
-            
+
             CreateMap<FetchFluxCommandResult, FluxForceFetchResponse>().ReverseMap();
             CreateMap<ProcessFluxCommandResult, FluxForceProcessResponse>().ReverseMap();
             CreateMap<ProcessFluxCommandResultItem, ProcessFluxCommandResultItemDto>().ReverseMap();
@@ -59,16 +79,16 @@ namespace HillMetrics.MIND.API.Mappers
 
             CreateMap<FluxSearchRequest, SearchFluxQuery>();
             CreateMap<SearchFluxQueryItemResult, FluxSearchResponse>();
-            
+
             CreateMap<FluxFetchingSearchRequest, SearchFluxFetchingQuery>();
             CreateMap<SearchFluxFetchingQueryItemResult, FluxFetchingSearchResponse>();
-            
+
             CreateMap<FluxProcessingSearchRequest, SearchFluxProcessingFluxQuery>();
             CreateMap<SearchFluxProcessingQueryItemResult, FluxProcessingSearchReponse>();
 
             CreateMap<FluxErrorSearchRequest, SearchFluxErrorQuery>();
             CreateMap<SearchFluxErrrorQueryItemResult, FluxErrorSearchResponse>();
-            
+
             CreateMap<FluxFetchHistoryQueryResult, FluxFetchingResponse>();
             CreateMap<FluxFetchingHistory, FluxFetchingHistoryResponse>();
             CreateMap<FluxFetchingContentHistory, FluxFetchingContentHistoryResponse>();

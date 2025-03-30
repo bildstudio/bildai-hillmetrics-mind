@@ -38,10 +38,15 @@
                 <MudGrid Spacing="1">
                     <!-- Flux Name -->
                     <MudItem xs="12" md="6">
-                        <SearchCriteriaComponent T="string"
-                        SearchCriteria="@nameSearchCriteria"
-                        SearchCriteriaChanged="@((criteria) => nameSearchCriteria = criteria)"
-                        Label="Flux Name" />
+                        <MudTextField @bind-Value="searchRequest.Name"
+                                     Label="Flux Name"
+                                     Variant="Variant.Outlined"
+                                     Placeholder="Search by name..."
+                                     Immediate="true"
+                                     DebounceInterval="500"
+                                     OnDebounceIntervalElapsed="Search"
+                                     Adornment="Adornment.Start"
+                                     AdornmentIcon="@Icons.Material.Filled.Search"/>
                     </MudItem>
 
                     <!-- Flux ID -->
@@ -232,7 +237,7 @@
                     @if (context.LastFetching.HasValue)
                     {
                         <MudTooltip Text="@context.LastFetching.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")">
-                            <div style="cursor: pointer;" 
+                            <div style="cursor: pointer;"
                                  @onclick="@(() => NavigateToFetchingHistoryPage(context.FluxId))">
                                 @FormatDateTime(context.LastFetching.Value.ToLocalTime())
                             </div>
@@ -261,10 +266,10 @@
                 <MudTd DataLabel="Fetch Errors">
                     @if (context.LastFetchingErrorCount > 0)
                     {
-                        <MudChip T="int" 
-                                Color="Color.Error" 
-                                Size="Size.Small" 
-                                OnClick="@(() => NavigateToErrorsPage(context.FluxId, FluxActionType.Fetching))" 
+                        <MudChip T="int"
+                                Color="Color.Error"
+                                Size="Size.Small"
+                                OnClick="@(() => NavigateToErrorsPage(context.FluxId, FluxActionType.Fetching))"
                                 Style="cursor: pointer;">
                             @context.LastFetchingErrorCount
                         </MudChip>
@@ -278,7 +283,7 @@
                     @if (context.LastProcessing.HasValue)
                     {
                         <MudTooltip Text="@context.LastProcessing.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")">
-                            <div style="cursor: pointer;" 
+                            <div style="cursor: pointer;"
                                  @onclick="@(() => NavigateToProcessingHistoryPage(context.FluxId))">
                                 @FormatDateTime(context.LastProcessing.Value.ToLocalTime())
                             </div>
@@ -307,10 +312,10 @@
                 <MudTd DataLabel="Process Errors">
                     @if (context.LastProcessingErrorCount > 0)
                     {
-                        <MudChip T="int" 
-                                Color="Color.Error" 
-                                Size="Size.Small" 
-                                OnClick="@(() => NavigateToErrorsPage(context.FluxId, FluxActionType.ProcessFlux))" 
+                        <MudChip T="int"
+                                Color="Color.Error"
+                                Size="Size.Small"
+                                OnClick="@(() => NavigateToErrorsPage(context.FluxId, FluxActionType.ProcessFlux))"
                                 Style="cursor: pointer;">
                             @context.LastProcessingErrorCount
                         </MudChip>
@@ -354,7 +359,6 @@
     private FluxSearchRequest searchRequest = new();
 
     // SearchCriteria for each field
-    private SearchCriteria<string> nameSearchCriteria = new();
     private SearchCriteria<int> idSearchCriteria = new();
     private SearchCriteria<DateTime> lastFetchingDateSearchCriteria = new();
     private SearchCriteria<DateTime> lastProcessingDateSearchCriteria = new();
@@ -390,7 +394,7 @@
     {
         await LoadSourcesAsync();
         await LoadActiveWorkflows();
-        
+
         // Configure a timer to refresh workflows every 10 seconds
         // workflowRefreshTimer = new System.Threading.Timer(
         //     async _ => await InvokeAsync(async () =>
@@ -460,16 +464,6 @@
 
     private void ApplySearchCriteria()
     {
-        // Apply Name SearchCriteria
-        if (nameSearchCriteria.IsSet())
-        {
-            searchRequest.Name = nameSearchCriteria.Value;
-        }
-        else
-        {
-            searchRequest.Name = null;
-        }
-
         searchRequest.LastFetching = lastFetchingDateSearchCriteria.IsSet() ? lastFetchingDateSearchCriteria : null;
         searchRequest.LastProcessing = lastProcessingDateSearchCriteria.IsSet() ? lastProcessingDateSearchCriteria : null;
         searchRequest.LastFetchingErrorCount = fetchingErrorCountSearchCriteria.IsSet() ? fetchingErrorCountSearchCriteria : null;
@@ -491,14 +485,13 @@
     private async Task Reset()
     {
         searchRequest = new FluxSearchRequest();
-        nameSearchCriteria = new SearchCriteria<string>();
         idSearchCriteria = new SearchCriteria<int>();
         lastFetchingDateSearchCriteria = new SearchCriteria<DateTime>();
         lastProcessingDateSearchCriteria = new SearchCriteria<DateTime>();
         fetchingErrorCountSearchCriteria = new SearchCriteria<int>();
         processingErrorCountSearchCriteria = new SearchCriteria<int>();
         searchString = "";
-        
+
         if (tableState != null)
         {
             tableState.Page = 0;
@@ -695,12 +688,12 @@
     {
         // Construction d'une chaîne de requête pour passer les paramètres
         var query = $"?fluxId={fluxId}";
-        
+
         if (actionType.HasValue)
         {
             query += $"&actionType={actionType.Value}";
         }
-        
+
         // Naviguer vers la page de recherche d'erreurs avec les paramètres
         NavigationManager.NavigateTo($"/flux/errors{query}");
     }
