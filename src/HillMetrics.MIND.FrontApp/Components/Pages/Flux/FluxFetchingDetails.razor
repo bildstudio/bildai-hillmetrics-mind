@@ -692,7 +692,7 @@
     // Component to display metadata
     public class DisplayMetadataDialog : ComponentBase
     {
-        [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+        [CascadingParameter] IMudDialogInstance MudDialog { get; set; }
 
         [Parameter] public string Metadata { get; set; }
 
@@ -778,7 +778,7 @@
 
     public class DeleteConfirmationDialog : ComponentBase
     {
-        [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+        [CascadingParameter] IMudDialogInstance MudDialog { get; set; }
 
         [Parameter] public string ContentText { get; set; }
         [Parameter] public string ButtonText { get; set; }

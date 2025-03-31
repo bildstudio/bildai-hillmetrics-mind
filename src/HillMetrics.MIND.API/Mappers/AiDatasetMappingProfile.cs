@@ -26,6 +26,7 @@ namespace HillMetrics.MIND.API.Mappers
             // FileDataMapping mappings
             CreateMap<FileDataMapping, FileDataMappingResponse>();
             CreateMap<CreateFileMappingRequest, CreateFileMappingCommand>();
+            CreateMap<ElementValueRequest, FileDataElementValue>();
             CreateMap<List<FileDataMapping>, FileDataMappingListResponse>()
                 .ForMember(dest => dest.Mappings, opt => opt.MapFrom(src => src));
 

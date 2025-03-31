@@ -1,0 +1,55 @@
+@inject HttpClient Http
+@inject ISnackbar Snackbar
+
+<MudExpansionPanels Class="@Class">
+    <MudExpansionPanel Text="@Title" Icon="@Icons.Material.Filled.Info">
+        @if (IsLoading)
+        {
+            <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-2" />
+        }
+        else
+        {
+            <MudMarkdown Value="@_markdownContent" />
+        }
+    </MudExpansionPanel>
+</MudExpansionPanels>
+
+@code {
+    private string _markdownContent = "";
+    private bool IsLoading = true;
+
+    [Parameter]
+    public string FileName { get; set; } = "";
+
+    [Parameter]
+    public string Title { get; set; } = "Documentation";
+
+    [Parameter]
+    public string Class { get; set; } = "mb-4";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (string.IsNullOrWhiteSpace(FileName))
+        {
+            Snackbar.Add("No documentation file specified", Severity.Warning);
+            IsLoading = false;
+            return;
+        }
+
+        try
+        {
+            IsLoading = true;
+            var filePath = $"markdown/{FileName.TrimStart('/')}";
+            _markdownContent = await Http.GetStringAsync(filePath);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading documentation: {ex.Message}", Severity.Error);
+            _markdownContent = "Documentation unavailable.";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+}

@@ -8,8 +8,13 @@
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
+@inject HttpClient Http
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <Documentation
+        FileName="property-data-type-info.md"
+        Title="What is a Property Data Type?" />
+
     <MudGrid>
         <MudItem xs="6">
             <MudText Typo="Typo.h4" Class="mb-4">Property Data Types</MudText>
@@ -129,6 +134,11 @@
     private string searchString = "";
     private PropertyDataTypeResponse selectedItem = null;
     private TableState tableState;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+    }
 
     private async Task<TableData<PropertyDataTypeResponse>> ServerReload(TableState state, CancellationToken token)
     {

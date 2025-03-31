@@ -46,6 +46,7 @@ builder.Services.AddMudServices(config =>
     config.SnackbarConfiguration.HideTransitionDuration = 500;
     config.SnackbarConfiguration.ShowTransitionDuration = 200;
 });
+builder.Services.AddMudMarkdownServices();
 
 var app = builder.Build();
 
