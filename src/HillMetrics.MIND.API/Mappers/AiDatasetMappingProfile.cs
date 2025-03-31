@@ -7,6 +7,7 @@ using HillMetrics.Normalized.Domain.Contracts.AI.Dataset.Cqrs.ElementValue;
 using HillMetrics.Normalized.Domain.Contracts.AI.Dataset.Cqrs.FileDataMapping;
 using HillMetrics.Normalized.Domain.Contracts.AI.Dataset.Cqrs.FileUpload;
 using HillMetrics.Normalized.Domain.Contracts.AI.Dataset.Cqrs.FinancialDataPoint;
+using HillMetrics.Normalized.Domain.Contracts.AI.Dataset.Cqrs.PropertyDataType;
 
 namespace HillMetrics.MIND.API.Mappers
 {
@@ -22,10 +23,6 @@ namespace HillMetrics.MIND.API.Mappers
                 .ForMember(dest => dest.FileStream, opt => opt.Ignore())
                 .ForMember(dest => dest.Difficulty, opt => opt.MapFrom(src => src.Difficulty));
 
-            CreateMap<UpdateFileUploadRequest, UpdateFileUploadCommand>();
-            //CreateMap<List<FileUpload>, FileUploadListResponse>()
-            //    .ForMember(dest => dest.FileUploads, opt => opt.MapFrom(src => src));
-
             // FileDataMapping mappings
             CreateMap<FileDataMapping, FileDataMappingResponse>();
             CreateMap<CreateFileMappingRequest, CreateFileMappingCommand>();
@@ -34,8 +31,6 @@ namespace HillMetrics.MIND.API.Mappers
 
             // ElementValue mappings
             CreateMap<FileDataElementValue, ElementValueResponse>();
-            //CreateMap<CreateElementValueRequest, CreateElementValueCommand>();
-            CreateMap<CreateElementValuesRequest, CreateElementValuesCommand>();
             CreateMap<List<FileDataElementValue>, ElementValueListResponse>()
                 .ForMember(dest => dest.Elements, opt => opt.MapFrom(src => src));
 
@@ -50,6 +45,12 @@ namespace HillMetrics.MIND.API.Mappers
             CreateMap<FinancialDataPointElement, DataPointElementResponse>();
             CreateMap<List<FinancialDataPointElement>, DataPointElementListResponse>()
                 .ForMember(dest => dest.Elements, opt => opt.MapFrom(src => src));
+
+            CreateMap<SearchPropertyDataTypeRequest, SearchPropertyDataTypeQuery>();
+            CreateMap<CreatePropertyDataTypeRequest, CreatePropertyDataTypeCommand>();
+            CreateMap<CreatePropertyDataTypeRequest, CreatePropertyDataTypeCommand>();
+            CreateMap<PropertyDataType, PropertyDataTypeResponse>();
+            CreateMap<SearchPropertyDataTypeQueryItem, PropertyDataTypeResponse>();
         }
     }
 }

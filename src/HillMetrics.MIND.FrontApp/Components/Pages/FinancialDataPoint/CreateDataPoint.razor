@@ -154,7 +154,6 @@ else
         public int? ElementId { get; set; }
         public string PropertyName { get; set; } = string.Empty;
         public string? Description { get; set; }
-        public PropertyDataType DataType { get; set; } = PropertyDataType.Column;
         public List<string> PotentialValues { get; set; } = new();
         public MudChip<ElementViewModel>[] ChipValues { get; set; } = Array.Empty<MudChip<ElementViewModel>>();
         public string NewValue { get; set; } = string.Empty;

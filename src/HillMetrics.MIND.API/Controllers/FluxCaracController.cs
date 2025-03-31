@@ -12,6 +12,7 @@ using HillMetrics.MIND.API.Contracts.Requests.AiDataset;
 using HillMetrics.Core.Financial;
 using Microsoft.AspNetCore.Authorization;
 using HillMetrics.MIND.API.Contracts.Responses.AiDataset;
+using HillMetrics.Normalized.Domain.Contracts.AI.Dataset.Cqrs.PropertyDataType;
 
 namespace HillMetrics.MIND.API.Controllers;
 
@@ -23,24 +24,27 @@ public class FluxCaracController(IMediator mediator, IMapper mapper, ILogger<Flu
     /// <summary>
     /// Upload a new file for AI dataset processing
     /// </summary>
-    /// <param name="request">File upload request</param>
+    /// <param name="file">File upload</param>
+    /// <param name="difficulty">Difficulty</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Details of the uploaded file</returns>
     [HttpPost("file-upload")]
     public async Task<ActionResult<ApiResponseBase<FileUpload>>> CreateFileUpload(
-        [FromForm] FileUploadRequest request,
+        IFormFile file,
+        FileDifficulty difficulty,
         CancellationToken cancellationToken)
     {
-        logger.LogInformation("Handling file upload request for file: {FileName}", request.File.FileName);
+        logger.LogInformation("Handling file upload request for file: {FileName}", file.FileName);
 
-        using var stream = request.File.OpenReadStream();
+        using var stream = file.OpenReadStream();
         var command = new CreateFileUploadCommand
         {
-            FileName = request.File.FileName,
-            ContentType = request.File.ContentType,
+            FileName = file.FileName,
+            ContentType = file.ContentType,
             FileStream = stream,
-            FileMetadataId = request.FileMetadataId,
-            Difficulty = request.Difficulty,
+            FileMetadataId = 0,
+            FluxFetchingContentId = null,
+            Difficulty = difficulty,
             MappingStatus = MappingStatus.NotMapped
         };
 
@@ -68,7 +72,7 @@ public class FluxCaracController(IMediator mediator, IMapper mapper, ILogger<Flu
         var command = new CreateFileUploadCommand
         {
             FileName = request.FileName,
-            ContentType = request.ContentType,
+            ContentType =request.ContentType,
             FluxFetchingContentId = request.FluxFetchingContentId,
             Difficulty = request.Difficulty,
             MappingStatus = MappingStatus.NotMapped
@@ -137,7 +141,7 @@ public class FluxCaracController(IMediator mediator, IMapper mapper, ILogger<Flu
         {
             FileUploadId = fileUploadId,
             FileName = request.FileName,
-            ContentType = request.ContentType,
+            ContentType = null,
             Difficulty = request.Difficulty,
             MappingStatus = request.MappingStatus
         };
@@ -169,6 +173,30 @@ public class FluxCaracController(IMediator mediator, IMapper mapper, ILogger<Flu
         return new ApiResponseBase<bool>(true);
     }
 
+    /// <summary>
+    /// Update a file upload's difficulty
+    /// </summary>
+    [HttpPut("file-upload/{fileUploadId}/difficulty")]
+    public async Task<ActionResult<ApiResponseBase<FileUpload>>> UpdateFileUploadDifficulty(
+        int fileUploadId,
+        [FromBody] FileDifficulty difficulty,
+        CancellationToken cancellationToken)
+    {
+        logger.LogInformation("Updating difficulty for file upload with ID: {FileUploadId}", fileUploadId);
+
+        var command = new UpdateFileUploadDifficultyCommand
+        {
+            FileUploadId = fileUploadId,
+            Difficulty = difficulty
+        };
+
+        var result = await mediator.Send(command, cancellationToken);
+
+        if (result.IsFailed)
+            return new ErrorApiActionResult(result.Errors.ToApiResult());
+
+        return new ApiResponseBase<FileUpload>(result.Value);
+    }
     #endregion
 
     #region FileDataMapping
@@ -260,49 +288,6 @@ public class FluxCaracController(IMediator mediator, IMapper mapper, ILogger<Flu
     #endregion
 
     #region ElementValue
-
-    /// <summary>
-    /// Create a new element value
-    /// </summary>
-    /// <param name="request">Element value request</param>
-    /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>Created element value</returns>
-    [HttpPost("element-value")]
-    public async Task<ActionResult<ApiResponseBase<FileDataElementValue>>> CreateElementValue(
-        [FromBody] CreateElementValuesRequest request,
-        CancellationToken cancellationToken)
-    {
-        //logger.LogInformation("Creating element value for mapping ID: {MappingId}", request.FileDataMappingId);
-        var command = mapper.Map<CreateElementValueCommand>(request);
-        var result = await mediator.Send(command, cancellationToken);
-
-        if (result.IsFailed)
-            return new ErrorApiActionResult(result.Errors.ToApiResult());
-
-        return new ApiResponseBase<FileDataElementValue>(result.Value);
-    }
-
-    /// <summary>
-    /// Create multiple element values
-    /// </summary>
-    /// <param name="request">Collection of element values request</param>
-    /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>Operation result</returns>
-    [HttpPost("element-values")]
-    public async Task<ActionResult<ApiResponseBase<bool>>> CreateElementValues(
-        [FromBody] CreateElementValuesRequest request,
-        CancellationToken cancellationToken)
-    {
-        logger.LogInformation("Creating multiple element values");
-        var command = mapper.Map<CreateElementValuesCommand>(request);
-        var result = await mediator.Send(command, cancellationToken);
-
-        if (result.IsFailed)
-            return new ErrorApiActionResult(result.Errors.ToApiResult());
-
-        return new ApiResponseBase<bool>(true);
-    }
-
     /// <summary>
     /// Get all element values for a specific mapping
     /// </summary>
@@ -520,5 +505,126 @@ public class FluxCaracController(IMediator mediator, IMapper mapper, ILogger<Flu
     #endregion
 
     #region FinancialDataPointElement
+    #endregion
+
+    #region PropertyDataType
+
+    /// <summary>
+    /// Create a new property data type
+    /// </summary>
+    [HttpPost("property-data-type")]
+    public async Task<ActionResult<ApiResponseBase<PropertyDataTypeResponse>>> CreatePropertyDataType(
+        [FromBody] CreatePropertyDataTypeRequest request,
+        CancellationToken cancellationToken)
+    {
+        logger.LogInformation("Creating property data type with name: {Name}", request.Name);
+
+        var command = new CreatePropertyDataTypeCommand
+        {
+            PropertyDataType = new PropertyDataType
+            {
+                Name = request.Name,
+                Description = request.Description,
+                ContentType = request.ContentType
+            }
+        };
+
+        var result = await mediator.Send(command, cancellationToken);
+
+        if (result.IsFailed)
+            return new ErrorApiActionResult(result.Errors.ToApiResult());
+
+        return new ApiResponseBase<PropertyDataTypeResponse>(mapper.Map<PropertyDataTypeResponse>(result.Value));
+    }
+
+    /// <summary>
+    /// Update an existing property data type
+    /// </summary>
+    [HttpPut("property-data-type/{id}")]
+    public async Task<ActionResult<ApiResponseBase<PropertyDataTypeResponse>>> UpdatePropertyDataType(
+        int id,
+        [FromBody] CreatePropertyDataTypeRequest request,
+        CancellationToken cancellationToken)
+    {
+        logger.LogInformation("Updating property data type with ID: {Id}", id);
+
+        var command = new CreatePropertyDataTypeCommand
+        {
+            PropertyDataType = new PropertyDataType
+            {
+                Id = id,
+                Name = request.Name,
+                Description = request.Description,
+                ContentType = request.ContentType
+            }
+        };
+
+        var result = await mediator.Send(command, cancellationToken);
+
+        if (result.IsFailed)
+            return new ErrorApiActionResult(result.Errors.ToApiResult());
+
+        return new ApiResponseBase<PropertyDataTypeResponse>(mapper.Map<PropertyDataTypeResponse>(result.Value));
+    }
+
+    /// <summary>
+    /// Get a specific property data type
+    /// </summary>
+    [HttpGet("property-data-type/{id}")]
+    public async Task<ActionResult<ApiResponseBase<PropertyDataTypeResponse>>> GetPropertyDataType(
+        int id,
+        CancellationToken cancellationToken)
+    {
+        logger.LogInformation("Getting property data type with ID: {Id}", id);
+
+        var query = new GetPropertyDataTypeQuery { PropertyDataTypeId = id };
+        var result = await mediator.Send(query, cancellationToken);
+
+        if (result.IsFailed)
+            return new ErrorApiActionResult(result.Errors.ToApiResult());
+
+        return new ApiResponseBase<PropertyDataTypeResponse>(mapper.Map<PropertyDataTypeResponse>(result.Value));
+    }
+
+    /// <summary>
+    /// Delete a property data type
+    /// </summary>
+    [HttpDelete("property-data-type/{id}")]
+    public async Task<ActionResult<ApiResponseBase<bool>>> DeletePropertyDataType(
+        int id,
+        CancellationToken cancellationToken)
+    {
+        logger.LogInformation("Deleting property data type with ID: {Id}", id);
+
+        var command = new DeletePropertyDataTypeCommand { PropertyDataTypeId = id };
+        var result = await mediator.Send(command, cancellationToken);
+
+        if (result.IsFailed)
+            return new ErrorApiActionResult(result.Errors.ToApiResult());
+
+        return new ApiResponseBase<bool>(true);
+    }
+
+    /// <summary>
+    /// Search property data types
+    /// </summary>
+    [HttpGet("property-data-types/search")]
+    public async Task<ActionResult<PagedApiResponseBase<PropertyDataTypeResponse>>> SearchPropertyDataTypes(
+        [FromQuery] SearchPropertyDataTypeRequest request,
+        CancellationToken cancellationToken)
+    {
+        logger.LogInformation("Searching property data types");
+
+        var query = mapper.Map<SearchPropertyDataTypeQuery>(request);
+        var result = await mediator.Send(query, cancellationToken);
+
+        if (result.IsFailed)
+            return new ErrorApiActionResult(result.Errors.ToApiResult());
+
+        return new PagedApiResponseBase<PropertyDataTypeResponse>(
+            mapper.Map<List<PropertyDataTypeResponse>>(result.Value.Results),
+            result.Value.TotalRecords);
+    }
+
     #endregion
 }

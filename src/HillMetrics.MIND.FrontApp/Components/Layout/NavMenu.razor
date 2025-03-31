@@ -28,14 +28,30 @@
         <MudNavLink Href="/flux/errors" Icon="@Icons.Material.Filled.Error">
             Errors
         </MudNavLink>
-    </MudNavGroup>
-
-    <MudNavGroup Title="Financial Data Points" Icon="@Icons.Material.Filled.MonetizationOn" Expanded="false">
+        <MudDivider Class="my-2" />
         <MudNavLink Href="/financial-data/search" Icon="@Icons.Material.Filled.Search">
             Search Data Points
         </MudNavLink>
         <MudNavLink Href="/financial-data/create" Icon="@Icons.Material.Filled.Add">
             Create Data Point
+        </MudNavLink>
+    </MudNavGroup>
+
+    <MudNavGroup Title="Data Mapping" Icon="@Icons.Material.Filled.Storage" Expanded="false">
+        <MudNavLink Href="/file-data-mappings" Icon="@Icons.Material.Filled.List">
+            Mapping List
+        </MudNavLink>
+        <MudNavLink Href="/file-data-mapping" Icon="@Icons.Material.Filled.Add">
+            Create Mapping
+        </MudNavLink>
+    </MudNavGroup>
+
+    <MudNavGroup Title="Property Types" Icon="@Icons.Material.Filled.Category" Expanded="false">
+        <MudNavLink Href="/property-data-types/search" Icon="@Icons.Material.Filled.Search">
+            Search Property Types
+        </MudNavLink>
+        <MudNavLink Href="/property-data-types/create" Icon="@Icons.Material.Filled.Add">
+            Create Property Type
         </MudNavLink>
     </MudNavGroup>
 

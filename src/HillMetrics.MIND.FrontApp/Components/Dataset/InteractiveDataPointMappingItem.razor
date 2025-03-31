@@ -1,5 +1,10 @@
-﻿@using HillMetrics.Normalized.Domain.Contracts.AI.Dataset
+﻿@using HillMetrics.MIND.API.Contracts.Requests.AiDataset
+@using HillMetrics.MIND.API.Contracts.Responses.AiDataset
+@using HillMetrics.Normalized.Domain.Contracts.AI.Dataset
 @using HillMetrics.Normalized.Domain.Contracts.AI.Dataset.Cqrs.ElementValue
+@using HillMetrics.Core.Common
+@inject IMindAPI MindApi
+@inject ISnackbar Snackbar
 
 <MudExpansionPanel>
     <TitleContent>
@@ -56,14 +61,14 @@
                                          OnClick="() => SelectElementField(element.PropertyName, element.Id)" />
                         </div>
 
-                        <MudSelect T="PropertyDataType"
-                                 @bind-Value="elementValue.PropertyDataType"
-                                 Label="Data Type"
-                                 Class="mt-2">
-                            <MudSelectItem Value="PropertyDataType.Column">Column</MudSelectItem>
-                            <MudSelectItem Value="PropertyDataType.Fixed">Fixed Value</MudSelectItem>
-                            <MudSelectItem Value="PropertyDataType.Row">Row</MudSelectItem>
-                            <MudSelectItem Value="PropertyDataType.Deductive">Deductive</MudSelectItem>
+                        <MudSelect T="int"
+                                   @bind-Value="elementValue.PropertyDataTypeId"
+                                   Label="Data Type"
+                                   Class="mt-2">
+                            @foreach (var propertyType in propertyTypes)
+                            {
+                                <MudSelectItem Value="@propertyType.Id">@propertyType.Name</MudSelectItem>
+                            }
                         </MudSelect>
                     </MudItem>
                 </MudGrid>
@@ -90,6 +95,35 @@
 
     [Parameter]
     public EventCallback<(string FieldName, Action<string> Callback)> OnFieldSelect { get; set; }
+
+    [Parameter]
+    public ContentType ContentType { get; set; }
+
+    private List<PropertyDataTypeResponse> propertyTypes = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPropertyTypes();
+    }
+
+    private async Task LoadPropertyTypes()
+    {
+        try
+        {
+            var response = await MindApi.SearchPropertyDataTypesAsync(
+                new SearchPropertyDataTypeRequest 
+                { 
+                    ContentType = ContentType
+                }, 
+                CancellationToken.None);
+
+            propertyTypes = response.Data.ToList();
+        }
+        catch (Exception)
+        {
+            Snackbar.Add($"Unable to load property data types", Severity.Error);
+        }
+    }
 
     private void SelectElementField(string propertyName, int elementId)
     {

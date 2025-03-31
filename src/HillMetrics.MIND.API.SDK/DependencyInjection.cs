@@ -138,13 +138,13 @@ namespace HillMetrics.MIND.API.SDK
                     s.Timeout = httpClientTimeout.Value;
                 });
 
-            httpClientBuilder.AddHillMetricsResilience(options =>
-            {
-                options.Retry = new Microsoft.Extensions.Http.Resilience.HttpRetryStrategyOptions()
-                {
-                    MaxRetryAttempts = 1
-                };
-            });
+            //httpClientBuilder.AddHillMetricsResilience(options =>
+            //{
+            //    options.Retry = new Microsoft.Extensions.Http.Resilience.HttpRetryStrategyOptions()
+            //    {
+            //        MaxRetryAttempts = 1
+            //    };
+            //});
 
             httpClientBuilder.AddServiceDiscovery();
             httpClientBuilder.AddHttpMessageHandler<LoggingHttpRequestHandler>();

@@ -1,12 +1,12 @@
 ﻿@page "/file-data-mapping"
 @page "/file-data-mapping/file/{FileUploadId:int}"
+@page "/file-data-mapping/flux/{FluxFetchingHistoryContentId:int}"
 @using ExcelDataReader
 @using HillMetrics.MIND.API.Contracts.Requests.AiDataset
 @using HillMetrics.Normalized.Domain.Contracts.AI.Dataset
 @using Microsoft.EntityFrameworkCore
 @using System.IO
 @using Refit
-using HillMetrics.Normalized.Infrastructure.Contracts.Database.Entity.Ai.Dataset;
 @inject FileUploadService FileUploadService
 @inject ISnackbar Snackbar
 @inject NavigationManager NavigationManager
@@ -47,42 +47,54 @@ else
                         {
                             <MudTooltip Text="Download File">
                                 <MudIconButton Icon="@GetFileIcon(uploadedFile.FileType)"
-                                               Color="Color.Primary"
-                                               OnClick="DownloadFile" />
+                                Color="Color.Primary"
+                                OnClick="DownloadFile" />
                             </MudTooltip>
                         }
                     </CardHeaderActions>
                 </MudCardHeader>
                 <MudCardContent>
-                    @if (!isEditMode && selectedFile == null && uploadedFile == null)
+                    @if (CanUploadFile())
                     {
-                        <MudFileUpload T="IBrowserFile" Accept=".csv,.xls,.xlsx,.pdf,.xml,.json,.html"
-                                       OnFilesChanged="OnFileChanged" MaximumFileCount="1">
-                            <MudButton HtmlTag="label"
-                                       Variant="Variant.Filled"
-                                       Color="Color.Primary"
-                                       StartIcon="@Icons.Material.Filled.CloudUpload"
-                                       FullWidth="true">
-                                Choose File
-                            </MudButton>
+                        <MudFileUpload T="IBrowserFile"
+                        @ref="_fileUpload"
+                        OnFilesChanged="OnFileChanged"
+                        Accept=".csv,.xls,.xlsx,.pdf,.xml,.json,.html"
+                        MaximumFileCount="1"
+                        Hidden="false"
+                        InputClass="absolute mud-width-full mud-height-full overflow-hidden z-10"
+                        InputStyle="opacity:0"
+                        @ondrop="@ClearDragClass"
+                        @ondragenter="@SetDragClass"
+                        @ondragleave="@ClearDragClass"
+                        @ondragend="@ClearDragClass">
+                            <ActivatorContent>
+                                <MudPaper Height="200px"
+                                Outlined="true"
+                                Class="@uploadFileClass">
+                                    <MudIcon Icon="@Icons.Material.Filled.CloudUpload" Size="Size.Large" />
+                                    <MudText Typo="Typo.h6">
+                                        Drag and drop files here or click to browse
+                                    </MudText>
+                                    @if (selectedFile != null)
+                                    {
+                                        <MudChip T="Color" Color="Color.Primary" Text="@selectedFileName" />
+                                    }
+                                </MudPaper>
+                            </ActivatorContent>
                         </MudFileUpload>
 
-                        <MudPaper Class="d-flex align-center justify-center mud-width-full py-8 px-2 mt-4"
-                                  Outlined="true"
-                                  Style="height: 100px; border-style: dashed; background-color: var(--mud-palette-background-grey)">
-                            <MudFileUpload T="IBrowserFile" Accept=".csv,.xls,.xlsx,.pdf,.xml,.json,.html"
-                                           OnFilesChanged="OnFileChanged" MaximumFileCount="1"
-                                           Class="d-flex align-center justify-center">
-                                <MudText Typo="Typo.body1" Color="Color.Secondary">
-                                    <MudIcon Icon="@Icons.Material.Filled.CloudUpload" Class="mr-2" />
-                                    Drag and drop files here or click to browse
-                                </MudText>
-                            </MudFileUpload>
-                        </MudPaper>
-
-                        <MudText Typo="Typo.caption" Class="mt-2">
-                            Supported formats: CSV, Excel, PDF, XML, JSON, HTML
-                        </MudText>
+                        <MudToolBar DisableGutters="true" Class="gap-4 mt-4">
+                            @if (selectedFile != null)
+                            {
+                                <MudButton Color="Color.Error"
+                                OnClick="@ClearAsync"
+                                StartIcon="@Icons.Material.Filled.Clear"
+                                Variant="Variant.Filled">
+                                    Clear
+                                </MudButton>
+                            }
+                        </MudToolBar>
                     }
                     else if (!isEditMode && selectedFile != null)
                     {
@@ -99,15 +111,15 @@ else
                         </MudList>
 
                         <MudTextField @bind-Value="customFileName"
-                                      Label="Custom File Name (optional)"
-                                      Variant="Variant.Outlined"
-                                      Placeholder="Enter a custom name for this file"
-                                      Class="mt-3 mb-3" />
+                        Label="Custom File Name (optional)"
+                        Variant="Variant.Outlined"
+                        Placeholder="Enter a custom name for this file"
+                        Class="mt-3 mb-3" />
 
                         <MudSelect T="FileDifficulty" @bind-Value="fileDifficulty"
-                                   Label="File Difficulty"
-                                   Variant="Variant.Outlined"
-                                   Class="mt-3 mb-3">
+                        Label="File Difficulty"
+                        Variant="Variant.Outlined"
+                        Class="mt-3 mb-3">
                             @foreach (var difficulty in Enum.GetValues(typeof(FileDifficulty)))
                             {
                                 <MudSelectItem Value="@((FileDifficulty)difficulty)">@difficulty.ToString()</MudSelectItem>
@@ -116,14 +128,14 @@ else
 
                         <div class="d-flex justify-space-between mt-4">
                             <MudButton Variant="Variant.Outlined"
-                                       Color="Color.Default"
-                                       OnClick="ClearFile">
+                            Color="Color.Default"
+                            OnClick="ClearFile">
                                 Clear
                             </MudButton>
                             <MudButton Variant="Variant.Filled"
-                                       Color="Color.Primary"
-                                       OnClick="UploadFile"
-                                       Disabled="isUploading">
+                            Color="Color.Primary"
+                            OnClick="UploadFile"
+                            Disabled="isUploading">
                                 @if (isUploading)
                                 {
                                     <MudProgressCircular Class="mr-2" Size="Size.Small" Indeterminate="true" />
@@ -148,9 +160,9 @@ else
                                     <div class="d-flex align-center">
                                         <MudText><strong>File Name:</strong> @uploadedFile.FileName</MudText>
                                         <MudIconButton Icon="@Icons.Material.Filled.Edit"
-                                                       Size="Size.Small"
-                                                       Class="ml-2"
-                                                       OnClick="() => StartEditingFileName()" />
+                                        Size="Size.Small"
+                                        Class="ml-2"
+                                        OnClick="() => StartEditingFileName()" />
                                     </div>
                                 </MudListItem>
                             }
@@ -159,18 +171,18 @@ else
                                 <MudListItem>
                                     <div class="d-flex align-center">
                                         <MudTextField @bind-Value="editedFileName"
-                                                      Label="File Name"
-                                                      Variant="Variant.Outlined"
-                                                      Immediate="true"
-                                                      Class="mr-2" />
+                                        Label="File Name"
+                                        Variant="Variant.Outlined"
+                                        Immediate="true"
+                                        Class="mr-2" />
                                         <MudIconButton Icon="@Icons.Material.Filled.Check"
-                                                       Size="Size.Small"
-                                                       Color="Color.Success"
-                                                       OnClick="SaveFileName" />
+                                        Size="Size.Small"
+                                        Color="Color.Success"
+                                        OnClick="SaveFileName" />
                                         <MudIconButton Icon="@Icons.Material.Filled.Close"
-                                                       Size="Size.Small"
-                                                       Color="Color.Error"
-                                                       OnClick="CancelEditingFileName" />
+                                        Size="Size.Small"
+                                        Color="Color.Error"
+                                        OnClick="CancelEditingFileName" />
                                     </div>
                                 </MudListItem>
                             }
@@ -191,31 +203,28 @@ else
                                             <strong>Status:</strong>
                                             @if (!isEditingStatus)
                                             {
-                                                @* <MudChip Color="@GetStatusColor(uploadedFile.MappingStatus)" Size="Size.Small" Class="ml-2">
-                                                    @uploadedFile.MappingStatus.ToString()
-                                                </MudChip> *@
                                                 <MudIconButton Icon="@Icons.Material.Filled.Edit"
-                                                               Size="Size.Small"
-                                                               Class="ml-2"
-                                                               OnClick="() => StartEditingStatus()" />
+                                                Size="Size.Small"
+                                                Class="ml-2"
+                                                OnClick="() => StartEditingStatus()" />
                                             }
                                             else
                                             {
                                                 <MudSelect T="MappingStatus?" @bind-Value="editedStatus"
-                                                           Class="ml-2" Style="min-width: 150px;">
+                                                Class="ml-2" Style="min-width: 150px;">
                                                     @foreach (var status in Enum.GetValues(typeof(MappingStatus)))
                                                     {
                                                         <MudSelectItem T="MappingStatus?" Value="@((MappingStatus)status)">@status.ToString()</MudSelectItem>
                                                     }
                                                 </MudSelect>
                                                 <MudIconButton Icon="@Icons.Material.Filled.Check"
-                                                               Size="Size.Small"
-                                                               Color="Color.Success"
-                                                               OnClick="SaveStatus" />
+                                                Size="Size.Small"
+                                                Color="Color.Success"
+                                                OnClick="SaveStatus" />
                                                 <MudIconButton Icon="@Icons.Material.Filled.Close"
-                                                               Size="Size.Small"
-                                                               Color="Color.Error"
-                                                               OnClick="CancelEditingStatus" />
+                                                Size="Size.Small"
+                                                Color="Color.Error"
+                                                OnClick="CancelEditingStatus" />
                                             }
                                         </MudText>
                                     </div>
@@ -233,27 +242,27 @@ else
                                                     @uploadedFile.Difficulty.ToString()
                                                 </MudChip>
                                                 <MudIconButton Icon="@Icons.Material.Filled.Edit"
-                                                               Size="Size.Small"
-                                                               Class="ml-2"
-                                                               OnClick="() => StartEditingDifficulty()" />
+                                                Size="Size.Small"
+                                                Class="ml-2"
+                                                OnClick="() => StartEditingDifficulty()" />
                                             }
                                             else
                                             {
                                                 <MudSelect T="FileDifficulty" @bind-Value="editedDifficulty"
-                                                           Class="ml-2" Style="min-width: 150px;">
+                                                Class="ml-2" Style="min-width: 150px;">
                                                     @foreach (var difficulty in Enum.GetValues(typeof(FileDifficulty)))
                                                     {
                                                         <MudSelectItem Value="@((FileDifficulty)difficulty)">@difficulty.ToString()</MudSelectItem>
                                                     }
                                                 </MudSelect>
                                                 <MudIconButton Icon="@Icons.Material.Filled.Check"
-                                                               Size="Size.Small"
-                                                               Color="Color.Success"
-                                                               OnClick="SaveDifficulty" />
+                                                Size="Size.Small"
+                                                Color="Color.Success"
+                                                OnClick="SaveDifficulty" />
                                                 <MudIconButton Icon="@Icons.Material.Filled.Close"
-                                                               Size="Size.Small"
-                                                               Color="Color.Error"
-                                                               OnClick="CancelEditingDifficulty" />
+                                                Size="Size.Small"
+                                                Color="Color.Error"
+                                                OnClick="CancelEditingDifficulty" />
                                             }
                                         </MudText>
                                     </div>
@@ -288,21 +297,21 @@ else
                                         Click on a cell to set value for: @selectedFieldName
                                     </MudChip>
                                     <MudIconButton Icon="@Icons.Material.Filled.Close"
-                                                   Size="Size.Small"
-                                                   Color="Color.Error"
-                                                   OnClick="CancelFieldSelection" />
+                                    Size="Size.Small"
+                                    Color="Color.Error"
+                                    OnClick="CancelFieldSelection" />
                                 }
                             </div>
                         </CardHeaderContent>
                         <CardHeaderActions>
                             <MudTooltip Text="Refresh Preview">
                                 <MudIconButton Icon="@Icons.Material.Filled.Refresh"
-                                               OnClick="LoadFilePreview" />
+                                OnClick="LoadFilePreview" />
                             </MudTooltip>
                             <MudTooltip Text="Download File">
                                 <MudIconButton Icon="@GetFileIcon(uploadedFile.FileType)"
-                                               Color="Color.Primary"
-                                               OnClick="DownloadFile" />
+                                Color="Color.Primary"
+                                OnClick="DownloadFile" />
                             </MudTooltip>
                         </CardHeaderActions>
                     </MudCardHeader>
@@ -334,7 +343,7 @@ else
                                                 string cellValue = filePreviewData[row][col];
                                                 string cellAddress = $"{GetExcelColumnName(col)}{row + 1}";
                                                 <div class="excel-cell @(isSelectingField ? "selectable" : "")"
-                                                     @onclick="() => OnCellClick(cellValue)">
+                                                @onclick="() => OnCellClick(cellValue)">
                                                     <div class="excel-cell-content" title="@cellValue">
                                                         @cellValue
                                                     </div>
@@ -355,21 +364,21 @@ else
                     </MudCardContent>
                     <MudCardActions>
                         <MudButton Variant="Variant.Text"
-                                   Color="Color.Primary"
-                                   OnClick="() => ShowSheetSelector()"
-                                   Disabled="@(worksheets.Count <= 1)">
+                        Color="Color.Primary"
+                        OnClick="() => ShowSheetSelector()"
+                        Disabled="@(worksheets.Count <= 1)">
                             <MudIcon Icon="@Icons.Material.Filled.ViewList" Class="mr-2" />
                             @(currentWorksheet)
                         </MudButton>
                         <MudSpacer />
                         <MudButton Variant="Variant.Text"
-                                   StartIcon="@Icons.Material.Filled.ZoomIn"
-                                   OnClick="ZoomIn">
+                        StartIcon="@Icons.Material.Filled.ZoomIn"
+                        OnClick="ZoomIn">
                             Zoom In
                         </MudButton>
                         <MudButton Variant="Variant.Text"
-                                   StartIcon="@Icons.Material.Filled.ZoomOut"
-                                   OnClick="ZoomOut">
+                        StartIcon="@Icons.Material.Filled.ZoomOut"
+                        OnClick="ZoomOut">
                             Zoom Out
                         </MudButton>
                     </MudCardActions>
@@ -392,11 +401,11 @@ else
                         {
                             <MudTooltip Text="Expand All">
                                 <MudIconButton Icon="@Icons.Material.Filled.UnfoldMore"
-                                               OnClick="ExpandAllPanels" />
+                                OnClick="ExpandAllPanels" />
                             </MudTooltip>
                             <MudTooltip Text="Collapse All">
                                 <MudIconButton Icon="@Icons.Material.Filled.UnfoldLess"
-                                               OnClick="CollapseAllPanels" />
+                                OnClick="CollapseAllPanels" />
                             </MudTooltip>
                         }
                     </CardHeaderActions>
@@ -421,8 +430,8 @@ else
                                 <MudGrid>
                                     <MudItem xs="12" md="8">
                                         <MudSelect T="int" Label="Select Financial Data Point"
-                                                   @bind-Value="selectedDataPointId"
-                                                   Class="mb-2">
+                                        @bind-Value="selectedDataPointId"
+                                        Class="mb-2">
                                             @foreach (var dataPoint in availableDataPoints)
                                             {
                                                 <MudSelectItem Value="@dataPoint.Id">
@@ -433,10 +442,10 @@ else
                                     </MudItem>
                                     <MudItem xs="12" md="4" Class="d-flex align-center">
                                         <MudButton Variant="Variant.Filled"
-                                                   Color="Color.Primary"
-                                                   OnClick="() => AddDataPoint((selectedDataPointId, string.Empty))"
-                                                   Disabled="selectedDataPointId == 0"
-                                                   FullWidth="true">
+                                        Color="Color.Primary"
+                                        OnClick="() => AddDataPoint((selectedDataPointId, string.Empty))"
+                                        Disabled="selectedDataPointId == 0"
+                                        FullWidth="true">
                                             Add Data Point
                                         </MudButton>
                                     </MudItem>
@@ -453,8 +462,9 @@ else
                                     @foreach (var mapping in dataMappings)
                                     {
                                         <HillMetrics.MIND.FrontApp.Components.Dataset.InteractiveDataPointMappingItem Mapping="mapping"
-                                                                                                                      OnRemove="() => RemoveDataMapping(mapping.Id)"
-                                                                                                                      OnFieldSelect="SelectField" />
+                                        OnRemove="() => RemoveDataMapping(mapping.Id)"
+                                        OnFieldSelect="SelectField"
+                                        ContentType="@(HillMetrics.Core.Common.ContentTypeMapper.GetContentType(uploadedFile!.ContentType))" />
                                     }
                                 </MudExpansionPanels>
                             }
@@ -472,12 +482,12 @@ else
                         @if (dataMappings.Count > 0)
                         {
                             <MudButton OnClick="SaveMappings"
-                                       Color="Color.Primary"
-                                       Variant="Variant.Filled"
-                                       Disabled="isSaving || dataMappings.Count == 0"
-                                       StartIcon="@Icons.Material.Filled.Save"
-                                       Size="Size.Large"
-                                       FullWidth="true">
+                            Color="Color.Primary"
+                            Variant="Variant.Filled"
+                            Disabled="isSaving || dataMappings.Count == 0"
+                            StartIcon="@Icons.Material.Filled.Save"
+                            Size="Size.Large"
+                            FullWidth="true">
                                 @if (isSaving)
                                 {
                                     <MudProgressCircular Class="mr-2" Size="Size.Small" Indeterminate="true" />
@@ -492,11 +502,11 @@ else
                     </MudItem>
                     <MudItem xs="12" md="6">
                         <MudButton OnClick="NavigateBack"
-                                   Color="Color.Secondary"
-                                   Variant="Variant.Outlined"
-                                   StartIcon="@Icons.Material.Filled.ArrowBack"
-                                   Size="Size.Large"
-                                   FullWidth="true">
+                        Color="Color.Secondary"
+                        Variant="Variant.Outlined"
+                        StartIcon="@Icons.Material.Filled.ArrowBack"
+                        Size="Size.Large"
+                        FullWidth="true">
                             Cancel
                         </MudButton>
                     </MudItem>
@@ -508,138 +518,141 @@ else
 
 <style>
     .clickable-cell {
-        cursor: pointer;
+    cursor: pointer;
     }
 
-        .clickable-cell:hover {
-            background-color: rgba(var(--mud-palette-primary-rgb), 0.1);
-        }
+    .clickable-cell:hover {
+    background-color: rgba(var(--mud-palette-primary-rgb), 0.1);
+    }
 
     .spreadsheet-container {
-        border: 1px solid var(--mud-palette-lines-default);
-        border-radius: 4px;
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: 4px;
     }
 
     /* Excel-like styles */
     .excel-container {
-        border: 1px solid #e0e0e0;
-        border-radius: 4px;
-        overflow: auto;
-        height: 400px;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        font-size: 14px;
-        position: relative;
-        background-color: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    overflow: auto;
+    height: 400px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 14px;
+    position: relative;
+    background-color: white;
     }
 
     .excel-header {
-        display: flex;
-        position: sticky;
-        top: 0;
-        z-index: 2;
-        background-color: #f5f5f5;
-        border-bottom: 2px solid #e0e0e0;
+    display: flex;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background-color: #f5f5f5;
+    border-bottom: 2px solid #e0e0e0;
     }
 
     .excel-corner-cell {
-        min-width: 40px;
-        border-right: 1px solid #e0e0e0;
-        background-color: #f5f5f5;
-        position: sticky;
-        left: 0;
-        z-index: 3;
+    min-width: 40px;
+    border-right: 1px solid #e0e0e0;
+    background-color: #f5f5f5;
+    position: sticky;
+    left: 0;
+    z-index: 3;
     }
 
     .excel-header-cell {
-        min-width: 120px;
-        padding: 8px;
-        text-align: center;
-        font-weight: bold;
-        border-right: 1px solid #e0e0e0;
-        display: flex;
-        flex-direction: column;
+    min-width: 120px;
+    padding: 8px;
+    text-align: center;
+    font-weight: bold;
+    border-right: 1px solid #e0e0e0;
+    display: flex;
+    flex-direction: column;
     }
 
     .excel-column-letter {
-        color: #666;
-        font-size: 12px;
-        margin-bottom: 4px;
+    color: #666;
+    font-size: 12px;
+    margin-bottom: 4px;
     }
 
     .excel-header-text {
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
     }
 
     .excel-body {
-        display: flex;
-        flex-direction: column;
+    display: flex;
+    flex-direction: column;
     }
 
     .excel-row {
-        display: flex;
-        border-bottom: 1px solid #e0e0e0;
+    display: flex;
+    border-bottom: 1px solid #e0e0e0;
     }
 
     .excel-row-header {
-        min-width: 40px;
-        padding: 8px 0;
-        text-align: center;
-        background-color: #f5f5f5;
-        border-right: 1px solid #e0e0e0;
-        position: sticky;
-        left: 0;
-        z-index: 1;
+    min-width: 40px;
+    padding: 8px 0;
+    text-align: center;
+    background-color: #f5f5f5;
+    border-right: 1px solid #e0e0e0;
+    position: sticky;
+    left: 0;
+    z-index: 1;
     }
 
     .excel-cell {
-        min-width: 120px;
-        padding: 8px;
-        border-right: 1px solid #e0e0e0;
-        position: relative;
+    min-width: 120px;
+    padding: 8px;
+    border-right: 1px solid #e0e0e0;
+    position: relative;
     }
 
-        .excel-cell.selectable {
-            cursor: pointer;
-        }
+    .excel-cell.selectable {
+    cursor: pointer;
+    }
 
-            .excel-cell.selectable:hover {
-                background-color: rgba(25, 118, 210, 0.1);
-            }
+    .excel-cell.selectable:hover {
+    background-color: rgba(25, 118, 210, 0.1);
+    }
 
     .excel-cell-content {
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
     }
 
     .excel-cell-address {
-        position: absolute;
-        bottom: 2px;
-        right: 2px;
-        font-size: 9px;
-        color: #999;
-        opacity: 0;
-        transition: opacity 0.2s;
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    font-size: 9px;
+    color: #999;
+    opacity: 0;
+    transition: opacity 0.2s;
     }
 
     .excel-cell:hover .excel-cell-address {
-        opacity: 1;
+    opacity: 1;
     }
 
     /* Zoom controls */
     .zoom-controls {
-        position: absolute;
-        bottom: 10px;
-        right: 10px;
-        z-index: 10;
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    z-index: 10;
     }
 </style>
 
 @code {
     [Parameter]
     public int? FileUploadId { get; set; }
+
+    [Parameter]
+    public int? FluxFetchingHistoryContentId { get; set; }
 
     private HillMetrics.Normalized.Domain.Contracts.AI.Dataset.FileUpload? uploadedFile;
     private IBrowserFile? selectedFile;
@@ -663,7 +676,7 @@ else
     private bool isEditingStatus = false;
     private MappingStatus? editedStatus;
 
-    private List<FinancialDataPoint> availableDataPoints = new();
+    private List<HillMetrics.Core.Financial.FinancialDataPoint> availableDataPoints = new();
     // private List<DataMappingViewModel> dataMappings = new();
     private List<FileDataMapping> dataMappings = new();
     private int nextMappingId = 1;
@@ -687,22 +700,28 @@ else
     private FileDifficulty editedDifficulty;
     private FileDifficulty fileDifficulty = FileDifficulty.Medium;
 
-    protected override async Task OnInitializedAsync()
+    // Ajouter ces nouvelles propriétés
+    private MudFileUpload<IBrowserFile>? _fileUpload;
+
+    private string uploadFileClass => $"{_dragClass} d-flex align-center justify-center flex-column gap-4";
+    private string _dragClass = string.Empty;
+    
+    private void SetDragClass()
     {
-        isLoading = true;
-        SetupBreadcrumbs();
-        await LoadFinancialDataPoints();
+        _dragClass = "mud-border-primary";
+    }
 
-        if (isEditMode)
-        {
-            await LoadExistingFile();
-            if (uploadedFile != null && IsSpreadsheetFile(uploadedFile.FileType))
-            {
-                await LoadFilePreview();
-            }
-        }
+    private void ClearDragClass()
+    {
+        _dragClass = string.Empty;
+    }
 
-        isLoading = false;
+    private async Task ClearAsync()
+    {
+        if (_fileUpload != null)
+            await _fileUpload.ClearAsync();
+        
+        ClearFile();
     }
 
     protected override void OnParametersSet()
@@ -713,6 +732,27 @@ else
             selectedDataPointId = availableDataPoints[0].Id;
         }
     }
+
+    protected override async Task OnInitializedAsync()
+    {
+        isLoading = true;
+        SetupBreadcrumbs();
+        await LoadFinancialDataPoints();
+
+        if (isEditMode)
+        {
+            await LoadExistingFile();
+        }
+
+        if (uploadedFile != null && IsSpreadsheetFile(uploadedFile.FileType))
+        {
+            await LoadFilePreview();
+        }
+
+        isLoading = false;
+    }
+
+    private bool CanUploadFile() => !isEditMode && selectedFile == null && uploadedFile == null;
 
     private void SetupBreadcrumbs()
     {
@@ -725,6 +765,10 @@ else
         if (isEditMode)
         {
             _breadcrumbs.Add(new BreadcrumbItem($"Edit File Mappings", null, true));
+        }
+        else if (FluxFetchingHistoryContentId.HasValue)
+        {
+            _breadcrumbs.Add(new BreadcrumbItem("Create Mapping from Flux", null, true));
         }
         else
         {
@@ -766,35 +810,9 @@ else
         try
         {
             var response = await MindApi.GetMappingsByFileUploadAsync(fileUploadId);
-            // if (!response.IsSuccess)
-            // {
-            //     errorMessage = response.ErrorMessage;
-            //     return;
-            // }
 
-            // var mappings = response.Data;
             dataMappings = response.Data;
             nextMappingId = 1;
-
-            // foreach (var mapping in mappings)
-            // {
-            //     dataMappings.Add(new DataMappingViewModel
-            //     {
-            //         MappingId = nextMappingId++,
-            //         DataPointId = mapping.FinancialDataPointId,
-            //         DataPoint = mapping.FinancialDataPoint,
-            //         InstanceName = mapping.InstanceName ?? string.Empty,
-            //         ElementValues = mapping.ElementValues.ToDictionary(
-            //             ev => ev.FinancialDataPointElementId,
-            //             ev => ev.ExtractedValue
-            //         ),
-            //         ElementDataTypes = mapping.ElementValues.ToDictionary(
-            //             ev => ev.FinancialDataPointElementId,
-            //             ev => ev.PropertyDataType
-            //         ),
-            //         FileDataMappingId = mapping.FileDataMappingId
-            //     });
-            // }
         }
         catch (Exception ex)
         {
@@ -834,7 +852,7 @@ else
         StateHasChanged();
     }
 
-    private void AddDataPoint((int, string) callback)
+    private async Task AddDataPoint((int, string) callback)
     {
         int dataPointId = callback.Item1;
         string instanceName = callback.Item2;
@@ -849,30 +867,56 @@ else
         if (string.IsNullOrEmpty(instanceName))
         {
             int instanceCount = dataMappings.Count(m => m.FinancialDataPointId == dataPointId) + 1;
-            if (instanceCount > 1)
-            {
-                instanceName = $"Instance {instanceCount}";
-            }
+            instanceName = $"Instance {instanceCount}";
         }
 
-        var elementValues = new Dictionary<int, string>();
-        var elementDataTypes = new Dictionary<int, PropertyDataType>();
-
-        foreach (var element in dataPoint.Elements)
+        try
         {
-            elementValues[element.FinancialDataPointId] = string.Empty;
-            elementDataTypes[element.FinancialDataPointId] = PropertyDataType.Column; // Default to Column
-        }
+            // Récupérer tous les PropertyDataTypes disponibles
+            var propertyTypesResponse = await MindApi.SearchPropertyDataTypesAsync(
+                new SearchPropertyDataTypeRequest 
+                {
+                        ContentType = HillMetrics.Core.Common.ContentTypeMapper.GetContentType(uploadedFile!.ContentType),
+                }, 
+                CancellationToken.None);
 
-        // dataMappings.Add(new DataMappingViewModel
-        // {
-        //     MappingId = nextMappingId++,
-        //     DataPointId = dataPoint.FinancialDataPointId,
-        //     DataPoint = dataPoint,
-        //     InstanceName = instanceName,
-        //     ElementValues = elementValues,
-        //     ElementDataTypes = elementDataTypes
-        // });
+
+            var propertyTypes = propertyTypesResponse.Data;
+
+            // Créer un nouveau mapping
+            var newMapping = new FileDataMapping
+            {
+                FileUploadId = uploadedFile!.Id,
+                FinancialDataPointId = dataPointId,
+                FinancialDataPoint = availableDataPoints.First(x => x.Id == dataPointId),
+                InstanceName = instanceName,
+                ElementValues = dataPoint.Elements.Select(e => 
+                {
+                    // Trouver le PropertyDataType approprié en fonction du ContentType
+                    // Par défaut, on prend le premier PropertyDataType de type "Column" si disponible
+                    var propertyType = propertyTypes.FirstOrDefault();
+
+                    if (propertyType == null)
+                    {
+                        throw new InvalidOperationException("No PropertyDataType available in the system");
+                    }
+
+                    return new FileDataElementValue
+                    {
+                        FinancialDataPointElementId = e.Id,
+                        ExtractedValue = string.Empty,
+                        PropertyDataTypeId = propertyType.Id
+                    };
+                }).ToList()
+            };
+
+            dataMappings.Add(newMapping);
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error adding data point: {ex.Message}", Severity.Error);
+        }
     }
 
     private void RemoveDataMapping(int mappingId)
@@ -897,7 +941,7 @@ else
                     {
                         Id = ev.Id,
                         ExtractedValue = ev.ExtractedValue,
-                        PropertyDataType = ev.PropertyDataType,
+                        PropertyDataTypeId = ev.PropertyDataTypeId,
                         FileDataMappingId = ev.FileDataMappingId,
                         FinancialDataPointElementId = ev.FinancialDataPointElementId,
 
@@ -907,6 +951,7 @@ else
 
             foreach (var mapping in mappingToSave)
             {
+                Console.WriteLine($"Request payload: {System.Text.Json.JsonSerializer.Serialize(mapping)}");
                 var response = await MindApi.CreateFileMappingAsync(mapping);
             }
 
@@ -1198,17 +1243,10 @@ else
                         Difficulty = uploadedFile.Difficulty
                     };
 
-                var response = await MindApi.UpdateFileUploadAsync(request);
-                if (response.IsSuccess)
-                {
-                    uploadedFile.FileName = newFileName;
-                    isEditingFileName = false;
-                    Snackbar.Add("File name updated successfully", Severity.Success);
-                }
-                else
-                {
-                    Snackbar.Add($"Error updating file name: {response.ErrorMessage}", Severity.Error);
-                }
+                var response = await MindApi.UpdateFileUploadAsync(uploadedFile.Id, request);
+                uploadedFile.FileName = newFileName;
+                isEditingFileName = false;
+                Snackbar.Add("File name updated successfully", Severity.Success);
             }
             catch (Exception ex)
             {
@@ -1239,24 +1277,17 @@ else
             {
                 var request = new UpdateFileUploadRequest
                     {
-                        Id = uploadedFile.Id,
+                        FileUploadId = uploadedFile.Id,
                         MappingStatus = editedStatus.Value,
                         FileName = uploadedFile.FileName,
                         Difficulty = uploadedFile.Difficulty
                     };
 
-                var response = await MindApi.UpdateFileUploadAsync(request);
-                if (response.IsSuccess)
-                {
-                    uploadedFile.MappingStatus = editedStatus.Value;
-                    uploadedFile.MappingStatusUpdatedAt = DateTime.UtcNow;
-                    isEditingStatus = false;
-                    Snackbar.Add("Mapping status updated successfully", Severity.Success);
-                }
-                else
-                {
-                    Snackbar.Add($"Error updating mapping status: {response.ErrorMessage}", Severity.Error);
-                }
+                var response = await MindApi.UpdateFileUploadAsync(uploadedFile.Id, request);
+                uploadedFile.MappingStatus = editedStatus.Value;
+                uploadedFile.MappingStatusUpdatedAt = DateTime.UtcNow;
+                isEditingStatus = false;
+                Snackbar.Add("Mapping status updated successfully", Severity.Success);
             }
             catch (Exception ex)
             {
@@ -1297,11 +1328,12 @@ else
         {
             try
             {
+                var response = await MindApi.UpdateFileUploadDifficultyAsync(
+                    uploadedFile.Id,
+                    editedDifficulty,
+                    CancellationToken.None);
+
                 uploadedFile.Difficulty = editedDifficulty;
-
-                DbContext.FileUploads.Update(uploadedFile);
-                await DbContext.SaveChangesAsync();
-
                 isEditingDifficulty = false;
                 Snackbar.Add("File difficulty updated successfully", Severity.Success);
             }
@@ -1326,19 +1358,6 @@ else
         };
     }
 
-    // public class DataMappingViewModel
-    // {
-    //     public int MappingId { get; set; } // Local ID for UI tracking
-    //     public int FileDataMappingId { get; set; } // Real DB ID if exists
-    //     public int DataPointId { get; set; }
-    //     public FinancialDataPointEntity DataPoint { get; set; } = null!;
-    //     public string InstanceName { get; set; } = string.Empty; // For multiple instances of the same data point
-    //     public Dictionary<int, string>
-    // ElementValues { get; set; } = new ();
-    //     public Dictionary<int, PropertyDataType>
-    // ElementDataTypes { get; set; } = new();
-    // }
-
     // Method to check if file is a spreadsheet
     private bool IsSpreadsheetFile(string? fileType)
     {
@@ -1360,7 +1379,7 @@ else
             isLoadingPreview = true;
 
             // Get file stream
-            var fileStream = await FileUploadService.GetFileStreamAsync(uploadedFile.FileUploadId);
+            var fileStream = await FileUploadService.GetFileStreamAsync(uploadedFile.Id);
             if (fileStream == null)
             {
                 Snackbar.Add("File not found", Severity.Error);
@@ -1601,7 +1620,7 @@ else
         var dialog = await dialogService.ShowAsync<WorksheetSelectorDialog>("Select Worksheet", parameters);
         var result = await dialog.Result;
 
-        if (!result.Cancelled && result.Data is string selectedSheet)
+        if (!result.Canceled && result.Data is string selectedSheet)
         {
             currentWorksheet = (string)result.Data;
             await LoadWorksheet((string)result.Data);
@@ -1618,7 +1637,7 @@ else
             isLoadingPreview = true;
 
             // Récupérer le fichier
-            var fileStream = await FileUploadService.GetFileStreamAsync(uploadedFile.FileUploadId);
+            var fileStream = await FileUploadService.GetFileStreamAsync(uploadedFile.Id);
             if (fileStream == null)
             {
                 Snackbar.Add("File not found", Severity.Error);

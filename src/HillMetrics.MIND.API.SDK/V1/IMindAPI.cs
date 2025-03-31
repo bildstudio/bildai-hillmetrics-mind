@@ -232,7 +232,6 @@ namespace HillMetrics.MIND.API.SDK.V1
         Task<ApiResponseBase<FileUpload>> CreateFileUploadAsync(
             [AliasAs("file")] StreamPart file,
             [AliasAs("difficulty")] FileDifficulty difficulty = FileDifficulty.Medium,
-            [AliasAs("fileMetadataId")] int? fileMetadataId = null,
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -275,6 +274,14 @@ namespace HillMetrics.MIND.API.SDK.V1
             int fileUploadId,
             CancellationToken cancellationToken = default);
 
+        /// <summary>
+        /// Update file difficulty
+        /// </summary>
+        [Put("/api/v1/fluxcarac/file-upload/{fileUploadId}/difficulty")]
+        Task<ApiResponseBase<FileUpload>> UpdateFileUploadDifficultyAsync(
+            int fileUploadId,
+            [Body] FileDifficulty difficulty,
+            CancellationToken cancellationToken = default);
         #endregion
 
         #region AI Dataset - File Data Mapping
@@ -326,29 +333,6 @@ namespace HillMetrics.MIND.API.SDK.V1
         #endregion
 
         #region AI Dataset - Element Value
-
-        /// <summary>
-        /// Create a new element value
-        /// </summary>
-        /// <param name="command">Element value details</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Created element value</returns>
-        [Post("/api/v1/fluxcarac/element-value")]
-        Task<ApiResponseBase<FileDataElementValue>> CreateElementValueAsync(
-            [Body] CreateElementValueCommand command,
-            CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Create multiple element values
-        /// </summary>
-        /// <param name="command">Collection of element values</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Operation result</returns>
-        [Post("/api/v1/fluxcarac/element-values")]
-        Task<ApiResponseBase<bool>> CreateElementValuesAsync(
-            [Body] CreateElementValuesCommand command,
-            CancellationToken cancellationToken = default);
-
         /// <summary>
         /// Get all element values for a specific mapping
         /// </summary>
@@ -433,6 +417,51 @@ namespace HillMetrics.MIND.API.SDK.V1
         #endregion
 
         #region AI Dataset - Financial Data Point Element
+
+        #endregion
+
+        #region AI Dataset - Property Data Type
+
+        /// <summary>
+        /// Create a new property data type
+        /// </summary>
+        [Post("/api/v1/fluxcarac/property-data-type")]
+        Task<ApiResponseBase<PropertyDataTypeResponse>> CreatePropertyDataTypeAsync(
+            [Body] CreatePropertyDataTypeRequest request,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Update an existing property data type
+        /// </summary>
+        [Put("/api/v1/fluxcarac/property-data-type/{id}")]
+        Task<ApiResponseBase<PropertyDataTypeResponse>> UpdatePropertyDataTypeAsync(
+            int id,
+            [Body] CreatePropertyDataTypeRequest request,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Get a specific property data type
+        /// </summary>
+        [Get("/api/v1/fluxcarac/property-data-type/{id}")]
+        Task<ApiResponseBase<PropertyDataTypeResponse>> GetPropertyDataTypeAsync(
+            int id,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Delete a property data type
+        /// </summary>
+        [Delete("/api/v1/fluxcarac/property-data-type/{id}")]
+        Task<ApiResponseBase<bool>> DeletePropertyDataTypeAsync(
+            int id,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Search property data types
+        /// </summary>
+        [Get("/api/v1/fluxcarac/property-data-types/search")]
+        Task<PagedApiResponseBase<PropertyDataTypeResponse>> SearchPropertyDataTypesAsync(
+            [Query] SearchPropertyDataTypeRequest request,
+            CancellationToken cancellationToken = default);
 
         #endregion
 

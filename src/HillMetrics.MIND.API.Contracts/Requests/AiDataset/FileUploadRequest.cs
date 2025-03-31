@@ -28,7 +28,7 @@ namespace HillMetrics.MIND.API.Contracts.Requests.AiDataset
         /// <summary>
         /// The difficulty level of processing this file
         /// </summary>
-        public int? Difficulty { get; set; }
+        public FileDifficulty Difficulty { get; set; }
     }
 
     public class FileUploadSearchRequest

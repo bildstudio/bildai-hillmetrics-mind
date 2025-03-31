@@ -1,3 +1,4 @@
+
 using System;
 using System.Collections.Generic;
 
@@ -8,17 +9,17 @@ namespace HillMetrics.MIND.API.Contracts.Responses.AiDataset
         /// <summary>
         /// The unique identifier of the file data mapping
         /// </summary>
-        public string Id { get; set; }
+        public int Id { get; set; }
 
         /// <summary>
         /// The ID of the file upload associated with this mapping
         /// </summary>
-        public string FileUploadId { get; set; }
+        public int FileUploadId { get; set; }
 
         /// <summary>
         /// The ID of the financial data point associated with this mapping
         /// </summary>
-        public string FinancialDataPointId { get; set; }
+        public int FinancialDataPointId { get; set; }
 
         /// <summary>
         /// The instance name for this mapping
