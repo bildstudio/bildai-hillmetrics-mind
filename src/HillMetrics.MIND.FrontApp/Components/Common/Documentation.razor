@@ -1,5 +1,6 @@
 @inject HttpClient Http
 @inject ISnackbar Snackbar
+@inject NavigationManager NavigationManager;
 
 <MudExpansionPanels Class="@Class">
     <MudExpansionPanel Text="@Title" Icon="@Icons.Material.Filled.Info">
@@ -27,6 +28,9 @@
     [Parameter]
     public string Class { get; set; } = "mb-4";
 
+    [Parameter]
+    public string BasePath { get; set; } = "_content/HillMetrics.MIND.FrontApp/markdown/";
+
     protected override async Task OnParametersSetAsync()
     {
         if (string.IsNullOrWhiteSpace(FileName))
@@ -39,7 +43,17 @@
         try
         {
             IsLoading = true;
-            var filePath = $"markdown/{FileName.TrimStart('/')}";
+            string cleanFileName = FileName.TrimStart('/');
+
+            // Ensure the file ends with .md extension
+            if (!cleanFileName.EndsWith(".md", StringComparison.OrdinalIgnoreCase))
+            {
+                cleanFileName += ".md";
+            }
+
+            string baseUri = NavigationManager.BaseUri.TrimEnd('/');
+            var filePath = $"{baseUri}/markdown/{cleanFileName}";
+
             _markdownContent = await Http.GetStringAsync(filePath);
         }
         catch (Exception ex)
