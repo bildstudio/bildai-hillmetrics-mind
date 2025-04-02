@@ -54,7 +54,7 @@
 
             @if (!IsEditMode)
             {
-                <MudButton OnClick="HandleFileUpload"
+                <MudButton OnClick="HandleSave"
                            Color="Color.Primary"
                            Variant="Variant.Filled"
                            Disabled="@(IsUploading || FinancialType == FinancialType.Undefined)"
@@ -67,7 +67,7 @@
                     }
                     else
                     {
-                        <span>Upload File</span>
+                        <span>@(File == null ? "Upload" : "Save")</span>
                     }
                 </MudButton>
 
@@ -112,6 +112,28 @@
     [Parameter] public EventCallback<MappingStatus> OnStatusUpdated { get; set; }
     [Parameter] public EventCallback<FileDifficulty> OnDifficultyUpdated { get; set; }
     [Parameter] public EventCallback<FinancialType> OnFinancialTypeUpdated { get; set; }
+    [Parameter] public EventCallback<FileUploadMetadata> OnSave { get; set; }
+
+    private async Task HandleSave()
+    {
+        var metadata = new FileUploadMetadata
+        {
+            FileName = SelectedFileName,
+            MappingStatus = MappingStatus,
+            Difficulty = FileDifficulty,
+            FinancialType = FinancialType
+        };
+
+        await OnSave.InvokeAsync(metadata);
+    }
+
+    public class FileUploadMetadata
+    {
+        public string FileName { get; set; } = string.Empty;
+        public MappingStatus MappingStatus { get; set; }
+        public FileDifficulty Difficulty { get; set; }
+        public FinancialType FinancialType { get; set; }
+    }
 
     private async Task HandleFileSelected(IBrowserFile file)
     {

@@ -37,23 +37,19 @@ else
         <!-- File Information and Preview -->
         <MudItem xs="12" md="6">
             <FileUploadCard IsEditMode="isEditMode"
-            File="uploadedFile"
-            SelectedFile="selectedFile"
-            SelectedFileName="@selectedFileName"
-            SelectedFileSize="@selectedFileSize"
-            SelectedFileContentType="selectedFileContentType"
-            CustomFileName="customFileName"
-            FileDifficulty="fileDifficulty"
-            IsUploading="isUploading"
-            DuplicateFileFound="duplicateFileFound"
-            CanUploadFile="CanUploadFile()"
-            OnFileSelected="OnFileChanged"
-            OnFileClear="ClearFile"
-            OnFileUpload="UploadFile"
-            OnFileNameUpdated="SaveFileName"
-            OnStatusUpdated="SaveStatus"
-            OnDifficultyUpdated="SaveDifficulty"
-            OnFinancialTypeUpdated="SaveFinancialType" />
+                            File="uploadedFile"
+                            SelectedFile="selectedFile"
+                            SelectedFileName="@selectedFileName"
+                            SelectedFileSize="@selectedFileSize"
+                            SelectedFileContentType="selectedFileContentType"
+                            CustomFileName="customFileName"
+                            FileDifficulty="fileDifficulty"
+                            IsUploading="isUploading"
+                            DuplicateFileFound="duplicateFileFound"
+                            CanUploadFile="CanUploadFile()"
+                            OnFileSelected="OnFileChanged"
+                            OnFileClear="ClearFile"
+                            OnSave="HandleSave" />
 
             @if (uploadedFile != null && IsSpreadsheetFile(uploadedFile.FileType))
             {
@@ -579,39 +575,53 @@ else
         streamFile = null;
     }
 
-    private async Task UploadFile()
+    private async Task HandleSave(FileUploadCard.FileUploadMetadata metadata)
     {
-        if (selectedFile == null) return;
-
         try
         {
-            isUploading = true;
-            errorMessage = string.Empty;
+            if (uploadedFile == null)
+            {
+                // Nouveau fichier - Upload puis SaveContext
+                isUploading = true;
 
-            string fileType = Path.GetExtension(selectedFile.Name);
-            string fileName = !string.IsNullOrWhiteSpace(customFileName)
-                ? (customFileName.EndsWith(fileType, StringComparison.OrdinalIgnoreCase)
-                    ? customFileName
-                    : customFileName + fileType)
-                : selectedFile.Name;
+                if (selectedFile == null) return;
 
-            // Créer un StreamPart pour l'upload
-            var fileContent = new StreamPart(streamFile!, fileName, selectedFile.ContentType);
+                // Upload du fichier
+                var fileContent = new StreamPart(streamFile!, metadata.FileName, selectedFile.ContentType);
+                var response = await MindApi.CreateFileUploadAsync(fileContent, metadata.Difficulty);
 
-            var response = await MindApi.CreateFileUploadAsync(fileContent, fileDifficulty);
-            // if (!response.IsSuccess)
-            // {
-            //     throw new Exception(response.ErrorMessage);
-            // }
+                if (response.Data != null)
+                {
+                    uploadedFile = response.Data;
 
-            uploadedFile = response.Data;
-            ClearFile();
+                    // Mise à jour des métadonnées après l'upload
+                    uploadedFile = await SaveContext(
+                        metadata.FileName,
+                        metadata.MappingStatus,
+                        metadata.Difficulty,
+                        metadata.FinancialType
+                    );
 
-            Snackbar.Add("File uploaded successfully!", Severity.Success);
+                    ClearFile();
+                    Snackbar.Add("File uploaded and metadata saved successfully!", Severity.Success);
+                }
+            }
+            else
+            {
+                // Fichier existant - Uniquement SaveContext
+                uploadedFile = await SaveContext(
+                    metadata.FileName,
+                    metadata.MappingStatus,
+                    metadata.Difficulty,
+                    metadata.FinancialType
+                );
+
+                Snackbar.Add("Metadata updated successfully!", Severity.Success);
+            }
         }
         catch (Exception ex)
         {
-            errorMessage = $"Error uploading file: {ex.Message}";
+            errorMessage = $"Error saving file: {ex.Message}";
             Snackbar.Add(errorMessage, Severity.Error);
         }
         finally
@@ -634,87 +644,6 @@ else
         var json = System.Text.Json.JsonSerializer.Serialize(request);
         var response = await MindApi.UpdateFileUploadAsync(uploadedFile.Id, request);
         return response.Data;
-    }
-    private async Task SaveFileName(string newFileName)
-    {
-        if (uploadedFile != null && !string.IsNullOrWhiteSpace(newFileName))
-        {
-            try
-            {
-                // Ensure the file extension is preserved
-                string currentExtension = Path.GetExtension(uploadedFile.FileName);
-
-                if (!newFileName.EndsWith(currentExtension, StringComparison.OrdinalIgnoreCase))
-                {
-                    newFileName += currentExtension;
-                }
-
-                await SaveContext(newFileName, uploadedFile.MappingStatus, uploadedFile.Difficulty, uploadedFile.FinancialType);
-                uploadedFile.FileName = newFileName;
-                Snackbar.Add("File name updated successfully", Severity.Success);
-            }
-            catch (Exception ex)
-            {
-                Snackbar.Add($"Error updating file name: {ex.Message}", Severity.Error);
-            }
-        }
-    }
-
-    private async Task SaveStatus(MappingStatus newStatus)
-    {
-        if (uploadedFile != null)
-        {
-            try
-            {
-                await SaveContext(uploadedFile.FileName, newStatus, uploadedFile.Difficulty, uploadedFile.FinancialType);
-
-                uploadedFile.MappingStatus = newStatus;
-                uploadedFile.MappingStatusUpdatedAt = DateTime.UtcNow;
-                Snackbar.Add("Mapping status updated successfully", Severity.Success);
-            }
-            catch (Exception ex)
-            {
-                Snackbar.Add($"Error updating mapping status: {ex.Message}", Severity.Error);
-            }
-        }
-    }
-
-    private async Task SaveFinancialType(FinancialType newFinancialType)
-    {
-        if (uploadedFile != null)
-        {
-            try
-            {
-                await SaveContext(uploadedFile.FileName, uploadedFile.MappingStatus, uploadedFile.Difficulty, newFinancialType);
-
-                uploadedFile.FinancialType = newFinancialType;
-                Snackbar.Add("Financial type updated successfully", Severity.Success);
-            }
-            catch (Exception ex)
-            {
-                errorMessage = $"Error updating Financial type: {ex.Message}";
-                Snackbar.Add(errorMessage, Severity.Error);
-            }
-        }
-    }
-
-    private async Task SaveDifficulty(FileDifficulty newDifficulty)
-    {
-        if (uploadedFile != null)
-        {
-            try
-            {
-                await SaveContext(uploadedFile.FileName, uploadedFile.MappingStatus, newDifficulty, uploadedFile.FinancialType);
-                
-                uploadedFile.Difficulty = newDifficulty;
-                Snackbar.Add("File difficulty updated successfully", Severity.Success);
-            }
-            catch (Exception ex)
-            {
-                errorMessage = $"Error updating file difficulty: {ex.Message}";
-                Snackbar.Add(errorMessage, Severity.Error);
-            }
-        }
     }
 
     // Method to check if file is a spreadsheet
