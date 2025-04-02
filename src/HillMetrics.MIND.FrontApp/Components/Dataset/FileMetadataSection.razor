@@ -1,0 +1,195 @@
+﻿@using HillMetrics.Normalized.Domain.Contracts.AI.Dataset
+<MudList T="FileUpload" Dense="true">
+    <MudListItem>
+        <MudText><strong>File ID:</strong> @File.Id</MudText>
+    </MudListItem>
+    <MudListItem>
+        <div class="d-flex align-center">
+            <MudText><strong>File Name:</strong> @(IsEditingFileName ? "" : File.FileName)</MudText>
+            @if (!IsEditingFileName)
+            {
+                <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                               Size="Size.Small"
+                               Class="ml-2"
+                               OnClick="StartEditingFileName" />
+            }
+            else
+            {
+                <MudTextField @bind-Value="editedFileName"
+                              Label="File Name"
+                              Variant="Variant.Outlined"
+                              Immediate="true"
+                              Class="mr-2" />
+                <MudIconButton Icon="@Icons.Material.Filled.Check"
+                               Size="Size.Small"
+                               Color="Color.Success"
+                               OnClick="SaveFileName" />
+                <MudIconButton Icon="@Icons.Material.Filled.Close"
+                               Size="Size.Small"
+                               Color="Color.Error"
+                               OnClick="CancelEditingFileName" />
+            }
+        </div>
+    </MudListItem>
+    <MudListItem>
+        <MudText><strong>Type:</strong> @File.FileType</MudText>
+    </MudListItem>
+    <MudListItem>
+        <MudText><strong>Size:</strong> @FormatFileSize(File.FileSize)</MudText>
+    </MudListItem>
+    <MudListItem>
+        <MudText><strong>Uploaded:</strong> @File.UploadedAt.ToLocalTime().ToString("g")</MudText>
+    </MudListItem>
+    <MudListItem>
+        <div class="d-flex align-center">
+            <MudText>
+                <strong>Status:</strong>
+                @if (!IsEditingStatus)
+                {
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                   Size="Size.Small"
+                                   Class="ml-2"
+                                   OnClick="StartEditingStatus" />
+                }
+                else
+                {
+                    <MudSelect T="MappingStatus?" @bind-Value="editedStatus"
+                               Class="ml-2" Style="min-width: 150px;">
+                        @foreach (var status in Enum.GetValues(typeof(MappingStatus)))
+                        {
+                            <MudSelectItem T="MappingStatus?" Value="@((MappingStatus)status)">@status.ToString()</MudSelectItem>
+                        }
+                    </MudSelect>
+                    <MudIconButton Icon="@Icons.Material.Filled.Check"
+                                   Size="Size.Small"
+                                   Color="Color.Success"
+                                   OnClick="SaveStatus" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Close"
+                                   Size="Size.Small"
+                                   Color="Color.Error"
+                                   OnClick="CancelEditingStatus" />
+                }
+            </MudText>
+        </div>
+    </MudListItem>
+    <MudListItem>
+        <div class="d-flex align-center">
+            <MudText>
+                <strong>Difficulty:</strong>
+                @if (!IsEditingDifficulty)
+                {
+                    <MudChip Color="@GetDifficultyColor(File.Difficulty)" Size="Size.Small" Class="ml-2">
+                        @File.Difficulty.ToString()
+                    </MudChip>
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                   Size="Size.Small"
+                                   Class="ml-2"
+                                   OnClick="StartEditingDifficulty" />
+                }
+                else
+                {
+                    <MudSelect T="FileDifficulty" @bind-Value="editedDifficulty"
+                               Class="ml-2" Style="min-width: 150px;">
+                        @foreach (var difficulty in Enum.GetValues(typeof(FileDifficulty)))
+                        {
+                            <MudSelectItem Value="@((FileDifficulty)difficulty)">@difficulty.ToString()</MudSelectItem>
+                        }
+                    </MudSelect>
+                    <MudIconButton Icon="@Icons.Material.Filled.Check"
+                                   Size="Size.Small"
+                                   Color="Color.Success"
+                                   OnClick="SaveDifficulty" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Close"
+                                   Size="Size.Small"
+                                   Color="Color.Error"
+                                   OnClick="CancelEditingDifficulty" />
+                }
+            </MudText>
+        </div>
+    </MudListItem>
+</MudList>
+
+@code {
+    [Parameter] public FileUpload File { get; set; } = default!;
+    [Parameter] public EventCallback<string> OnFileNameUpdated { get; set; }
+    [Parameter] public EventCallback<MappingStatus> OnStatusUpdated { get; set; }
+    [Parameter] public EventCallback<FileDifficulty> OnDifficultyUpdated { get; set; }
+
+    private bool IsEditingFileName;
+    private string editedFileName = string.Empty;
+    private bool IsEditingStatus;
+    private MappingStatus? editedStatus;
+    private bool IsEditingDifficulty;
+    private FileDifficulty editedDifficulty;
+
+    private string FormatFileSize(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB", "TB" };
+        double len = bytes;
+        int order = 0;
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len = len / 1024;
+        }
+        return $"{len:0.##} {sizes[order]}";
+    }
+
+    private Color GetDifficultyColor(FileDifficulty difficulty) => difficulty switch
+    {
+        FileDifficulty.VeryEasy => Color.Success,
+        FileDifficulty.Simple => Color.Info,
+        FileDifficulty.Medium => Color.Primary,
+        FileDifficulty.Hard => Color.Warning,
+        FileDifficulty.VeryDifficult => Color.Error,
+        _ => Color.Default
+    };
+
+    private void StartEditingFileName()
+    {
+        editedFileName = File.FileName;
+        IsEditingFileName = true;
+    }
+
+    private void CancelEditingFileName() => IsEditingFileName = false;
+
+    private async Task SaveFileName()
+    {
+        if (!string.IsNullOrWhiteSpace(editedFileName))
+        {
+            await OnFileNameUpdated.InvokeAsync(editedFileName);
+            IsEditingFileName = false;
+        }
+    }
+
+    private void StartEditingStatus()
+    {
+        editedStatus = File.MappingStatus;
+        IsEditingStatus = true;
+    }
+
+    private void CancelEditingStatus() => IsEditingStatus = false;
+
+    private async Task SaveStatus()
+    {
+        if (editedStatus.HasValue)
+        {
+            await OnStatusUpdated.InvokeAsync(editedStatus.Value);
+            IsEditingStatus = false;
+        }
+    }
+
+    private void StartEditingDifficulty()
+    {
+        editedDifficulty = File.Difficulty;
+        IsEditingDifficulty = true;
+    }
+
+    private void CancelEditingDifficulty() => IsEditingDifficulty = false;
+
+    private async Task SaveDifficulty()
+    {
+        await OnDifficultyUpdated.InvokeAsync(editedDifficulty);
+        IsEditingDifficulty = false;
+    }
+}

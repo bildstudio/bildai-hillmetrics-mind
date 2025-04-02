@@ -1,0 +1,119 @@
+﻿@using HillMetrics.Normalized.Domain.Contracts.AI.Dataset
+@inject IMindAPI MindApi
+@inject ISnackbar Snackbar
+
+<MudCard Elevation="3" Class="mb-4">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">
+                <MudIcon Icon="@Icons.Material.Filled.InsertDriveFile" Class="mr-2" />
+                File Details
+            </MudText>
+        </CardHeaderContent>
+        <CardHeaderActions>
+            @if (IsEditMode && File != null)
+            {
+                <DownloadFile File="File" FileType="@File.FileType" />
+            }
+        </CardHeaderActions>
+    </MudCardHeader>
+    <MudCardContent>
+        @if (CanUploadFile)
+        {
+            <MudFileUpload T="IBrowserFile" Accept=".csv,.xls,.xlsx,.pdf,.xml,.json,.html"
+                           OnFilesChanged="@(e => HandleFileSelected(e.File))" MaximumFileCount="1">
+                <MudButton HtmlTag="label"
+                           Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.CloudUpload"
+                           FullWidth="true">
+                    Choose File
+                </MudButton>
+            </MudFileUpload>
+
+            <FileUploadSection 
+                OnFileSelected="HandleFileSelected"
+                OnFileClear="HandleFileClear" />
+        }
+        else if (!IsEditMode && SelectedFile != null)
+        {
+            <FileDetailsSection 
+                FileName="@SelectedFileName"
+                FileSize="@SelectedFileSize"
+                FileType="@SelectedFileContentType"
+                CustomFileName="@CustomFileName"
+                OnCustomFileNameChanged="@(v => CustomFileName = v)"
+                FileDifficulty="@FileDifficulty"
+                OnFileDifficultyChanged="@(v => FileDifficulty = v)"
+                OnClear="HandleFileClear"
+                OnUpload="HandleFileUpload"
+                IsUploading="IsUploading" />
+        }
+        else if (File != null)
+        {
+            <FileMetadataSection 
+                File="File"
+                OnFileNameUpdated="HandleFileNameUpdated"
+                OnStatusUpdated="HandleStatusUpdated"
+                OnDifficultyUpdated="HandleDifficultyUpdated" />
+        }
+
+        @if (DuplicateFileFound && !IsEditMode)
+        {
+            <MudAlert Severity="Severity.Warning" Class="mt-3" Dense="true">
+                This file already exists in the system.
+            </MudAlert>
+        }
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter] public bool IsEditMode { get; set; }
+    [Parameter] public FileUpload? File { get; set; }
+    [Parameter] public IBrowserFile? SelectedFile { get; set; }
+    [Parameter] public string SelectedFileName { get; set; } = string.Empty;
+    [Parameter] public long SelectedFileSize { get; set; }
+    [Parameter] public string SelectedFileContentType { get; set; } = string.Empty;
+    [Parameter] public string CustomFileName { get; set; } = string.Empty;
+    [Parameter] public FileDifficulty FileDifficulty { get; set; } = FileDifficulty.Medium;
+    [Parameter] public bool IsUploading { get; set; }
+    [Parameter] public bool DuplicateFileFound { get; set; }
+    [Parameter] public bool CanUploadFile { get; set; }
+
+    [Parameter] public EventCallback<IBrowserFile> OnFileSelected { get; set; }
+    [Parameter] public EventCallback OnFileClear { get; set; }
+    [Parameter] public EventCallback OnFileUpload { get; set; }
+    [Parameter] public EventCallback<string> OnFileNameUpdated { get; set; }
+    [Parameter] public EventCallback<MappingStatus> OnStatusUpdated { get; set; }
+    [Parameter] public EventCallback<FileDifficulty> OnDifficultyUpdated { get; set; }
+
+    private async Task HandleFileSelected(IBrowserFile file)
+    {
+        await OnFileSelected.InvokeAsync(file);
+    }
+
+    private async Task HandleFileClear()
+    {
+        await OnFileClear.InvokeAsync();
+    }
+
+    private async Task HandleFileUpload()
+    {
+        await OnFileUpload.InvokeAsync();
+    }
+
+    private async Task HandleFileNameUpdated(string newName)
+    {
+        await OnFileNameUpdated.InvokeAsync(newName);
+    }
+
+    private async Task HandleStatusUpdated(MappingStatus status)
+    {
+        await OnStatusUpdated.InvokeAsync(status);
+    }
+
+    private async Task HandleDifficultyUpdated(FileDifficulty difficulty)
+    {
+        await OnDifficultyUpdated.InvokeAsync(difficulty);
+    }
+}

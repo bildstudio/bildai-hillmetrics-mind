@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Refit;
 using HillMetrics.Normalized.Domain.Contracts.AI.Dataset;
 using System.Security.Cryptography;
+using HillMetrics.Normalized.Domain.Contracts.Repository;
 
 namespace HillMetrics.MIND.FrontApp.Services
 {
@@ -174,7 +175,40 @@ namespace HillMetrics.MIND.FrontApp.Services
             try
             {
                 var response = await _mindApi.GetFileUploadAsync(fileUploadId);
-                var fileStream = await _mindApi.GetFile(response.Data.FileMetadata.SourceId);
+                var fileUpload = response.Data;
+
+                if (fileUpload == null)
+                {
+                    _logger.LogError("File upload not found for ID: {FileUploadId}", fileUploadId);
+                    return null;
+                }
+
+                Stream fileStream;
+
+                if (fileUpload.FluxFetchingContentId.HasValue)
+                {
+                    // Si le fichier vient d'un FluxFetching
+                    _logger.LogInformation("Fetching file from FluxFetching with ID: {FluxFetchingContentId}",
+                        fileUpload.FluxFetchingContentId.Value);
+
+                    var fpcResponse = await _mindApi.GetFetchingContentAsync(fileUpload.FluxFetchingContentId.Value);
+
+                    fileStream = await _mindApi.GetFile(fpcResponse.Data.RawId!);
+                }
+                else if (fileUpload.FileMetadataId.HasValue)
+                {
+                    // Si le fichier vient d'un FileMetadata
+                    _logger.LogInformation("Fetching file from FileMetadata with ID: {FileMetadataId}",
+                        fileUpload.FileMetadataId.Value);
+                    fileStream = await _mindApi.DownloadStoredFile(fileUpload.FileMetadataId.Value);
+                }
+                else
+                {
+                    _logger.LogError("File has no source (neither FluxFetching nor FileMetadata) for ID: {FileUploadId}",
+                        fileUploadId);
+                    throw new InvalidOperationException("File has no source (neither FluxFetching nor FileMetadata)");
+                }
+
                 return fileStream;
             }
             catch (Exception ex)

@@ -116,6 +116,14 @@ namespace HillMetrics.MIND.API.SDK.V1
         [Delete("/api/v1/flux/fetching-history/{fetchingHistoryId}")]
         Task<ApiResponseBase<bool>> DeleteFetchingHistoryAsync(int fetchingHistoryId);
 
+        /// <summary>
+        /// Get the details of a specific fetching content
+        /// </summary>
+        /// <param name="fetchingContentId">The fetching content identifier</param>
+        /// <returns>Details of the fetching content</returns>
+        [Get("/api/v1/flux/fetching-history/content/{fetchingContentId}")]
+        Task<ApiResponseBase<FluxFetchingContentHistoryResponse>> GetFetchingContentAsync(int fetchingContentId);
+
         #endregion
 
         #region Processing
@@ -220,6 +228,14 @@ namespace HillMetrics.MIND.API.SDK.V1
         /// <returns>Stream of the raw content file</returns>
         [Get("/api/v1/raw/{id}")]
         Task<Stream> GetFile(string id);
+
+        /// <summary>
+        /// Download a file from FileMetadataRepository using its string ID
+        /// </summary>
+        /// <param name="id">File metadata string ID</param>
+        /// <returns>Stream of the file content</returns>
+        [Get("/api/v1/raw/stored-file/{id}")]
+        Task<Stream> DownloadStoredFile(int id);
         #endregion
 
         #region AI Dataset - File Upload

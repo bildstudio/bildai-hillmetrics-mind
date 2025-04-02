@@ -148,7 +148,7 @@
                             </MudItem>
                             <MudItem xs="6" md="4">
                                 <MudField Label="Processing Status" Variant="Variant.Outlined">
-                                    @if (flux.FluxProcessingHistory.Count > 0)
+                                    @if (flux.FluxProcessingHistory.Count > 0 && flux.FluxProcessingHistory[^1].FluxProcessingContentHistory.Count > 0)
                                     {
                                         <MudTooltip Text="@flux.FluxProcessingHistory[^1].FluxProcessingContentHistory[^1].EndedAt.ToString()">
                                             <MudIcon Icon="@GetStatusIcon(@flux.FluxProcessingHistory[^1].FluxProcessingContentHistory[^1].Status)"

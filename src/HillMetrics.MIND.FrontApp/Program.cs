@@ -7,6 +7,9 @@ using HillMetrics.Core.Monitoring.Logging;
 using HillMetrics.Core.Monitoring;
 using HillMetrics.Core.Http.Extensions;
 using HillMetrics.MIND.FrontApp.Services;
+using HillMetrics.Normalized.Domain.Contracts.Repository;
+using HillMetrics.Orchestrator.ServicesNames;
+using HillMetrics.Normalized.Infrastructure.Database.Repository;
 
 
 var builder = WebApplication.CreateBuilder(args);

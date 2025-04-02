@@ -183,6 +183,9 @@
                                         <MudMenuItem OnClick="@(() => ForceProcess(context))">
                                             <MudIcon Icon="@Icons.Material.Filled.Refresh" Class="mr-2" Size="Size.Small" /> Force Process
                                         </MudMenuItem>
+                                        <MudMenuItem OnClick="@(() => NavigateToMapping(context))">
+                                            <MudIcon Icon="@Icons.Material.Filled.Link" Class="mr-2" Size="Size.Small" /> Create Mapping
+                                        </MudMenuItem>
                                     </MudMenu>
                                 </MudTd>
                             </RowTemplate>
@@ -257,6 +260,9 @@
                                         }
                                         <MudButton OnClick="@(() => ForceProcess(selectedContent))">
                                             <MudIcon Icon="@Icons.Material.Filled.Refresh" Class="mr-2" /> Force Process
+                                        </MudButton>
+                                        <MudButton OnClick="@(() => NavigateToMapping(selectedContent))">
+                                            <MudIcon Icon="@Icons.Material.Filled.Link" Class="mr-2" /> Create Mapping
                                         </MudButton>
                                     </MudButtonGroup>
                                 </MudItem>
@@ -685,6 +691,11 @@
         }
 
         await base.OnAfterRenderAsync(firstRender);
+    }
+
+    private void NavigateToMapping(FluxFetchingContentHistoryResponse content)
+    {
+        NavigationManager.NavigateTo($"/file-data-mapping/flux/{content.Id}");
     }
 }
 

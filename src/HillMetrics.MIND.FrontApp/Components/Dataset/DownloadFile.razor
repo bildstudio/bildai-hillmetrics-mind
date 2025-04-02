@@ -1,0 +1,107 @@
+﻿@using HillMetrics.Normalized.Domain.Contracts.AI.Dataset
+@inject FileUploadService FileUploadService
+@inject ISnackbar Snackbar
+@inject IJSRuntime JSRuntime
+
+<MudTooltip Text="Download File">
+    <MudIconButton Icon="@GetFileIcon(FileType)"
+                   Color="Color.Primary"
+                   OnClick="HandleDownload" />
+</MudTooltip>
+
+@code {
+    [Parameter, EditorRequired]
+    public FileUpload File { get; set; } = default!;
+
+    [Parameter]
+    public string FileType { get; set; } = string.Empty;
+
+    private async Task HandleDownload()
+    {
+        try
+        {
+            // Récupérer le fichier depuis le service
+            var fileStream = await FileUploadService.GetFileStreamAsync(File.Id);
+            if (fileStream == null)
+            {
+                Snackbar.Add("File not found", Severity.Error);
+                return;
+            }
+
+            // Convertir le stream en base64 pour le téléchargement
+            using var memoryStream = new MemoryStream();
+            await fileStream.CopyToAsync(memoryStream);
+            var fileBytes = memoryStream.ToArray();
+            var base64 = Convert.ToBase64String(fileBytes);
+
+            // Déterminer le type MIME
+            var mimeType = GetMimeType(Path.GetExtension(File.FileName));
+
+            // Télécharger le fichier via JS
+            await JSRuntime.InvokeVoidAsync("downloadFileFromBase64", File.FileName, base64, mimeType);
+
+            Snackbar.Add("File download started", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error downloading file: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private string GetFileIcon(string fileType)
+    {
+        if (string.IsNullOrEmpty(fileType))
+            return Icons.Material.Filled.InsertDriveFile;
+
+        fileType = fileType.ToLowerInvariant();
+
+        return fileType switch
+        {
+            ".xlsx" or ".xls" => Icons.Custom.FileFormats.FileExcel,
+            ".csv" => Icons.Custom.FileFormats.FileExcel,
+            ".pdf" => Icons.Custom.FileFormats.FilePdf,
+            ".xml" => Icons.Custom.FileFormats.FileCode,
+            ".json" => Icons.Custom.FileFormats.FileCode,
+            _ => Icons.Material.Filled.InsertDriveFile
+        };
+    }
+
+    private string GetMimeType(string extension)
+    {
+        if (string.IsNullOrEmpty(extension))
+            return "application/octet-stream";
+
+        extension = extension.ToLowerInvariant();
+
+        return extension switch
+        {
+            ".xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            ".xls" => "application/vnd.ms-excel",
+            ".csv" => "text/csv",
+            ".pdf" => "application/pdf",
+            ".xml" => "application/xml",
+            ".json" => "application/json",
+            ".html" or ".htm" => "text/html",
+            _ => "application/octet-stream"
+        };
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JSRuntime.InvokeVoidAsync("eval", @"
+                window.downloadFileFromBase64 = function (fileName, base64, contentType) {
+                    const linkSource = `data:${contentType};base64,${base64}`;
+                    const downloadLink = document.createElement('a');
+                    document.body.appendChild(downloadLink);
+
+                    downloadLink.href = linkSource;
+                    downloadLink.download = fileName;
+                    downloadLink.click();
+                    document.body.removeChild(downloadLink);
+                }
+            ");
+        }
+    }
+}

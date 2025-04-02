@@ -18,24 +18,24 @@
         <MudItem xs="12" md="6">
             <MudText Typo="Typo.h6" Class="mb-3">Filter Options</MudText>
             <MudTextField @bind-Value="searchTerm"
-                         Label="Search by file name or data point"
-                         Adornment="Adornment.End"
-                         AdornmentIcon="@Icons.Material.Filled.Search"
-                         OnAdornmentClick="ApplyFilters"
-                         Class="mb-3" />
+            Label="Search by file name or data point"
+            Adornment="Adornment.End"
+            AdornmentIcon="@Icons.Material.Filled.Search"
+            OnAdornmentClick="ApplyFilters"
+            Class="mb-3" />
             <MudSelect T="MappingStatus?" Label="Filter by Status"
-                      @bind-Value="statusFilter"
-                      Clearable="true"
-                      AnchorOrigin="Origin.BottomCenter">
+            @bind-Value="statusFilter"
+            Clearable="true"
+            AnchorOrigin="Origin.BottomCenter">
                 @foreach (var status in Enum.GetValues(typeof(MappingStatus)))
                 {
                     <MudSelectItem T="MappingStatus?" Value="@((MappingStatus?)status)">@status.ToString()</MudSelectItem>
                 }
             </MudSelect>
             <MudSelect T="FileDifficulty?" Label="Filter by Difficulty"
-                      @bind-Value="difficultyFilter"
-                      Clearable="true"
-                      AnchorOrigin="Origin.BottomCenter">
+            @bind-Value="difficultyFilter"
+            Clearable="true"
+            AnchorOrigin="Origin.BottomCenter">
                 @foreach (var difficulty in Enum.GetValues(typeof(FileDifficulty)))
                 {
                     <MudSelectItem T="FileDifficulty?" Value="@((FileDifficulty?)difficulty)">@difficulty.ToString()</MudSelectItem>
@@ -45,17 +45,17 @@
         <MudItem xs="12" md="6">
             <MudText Typo="Typo.h6" Class="mb-3">Actions</MudText>
             <MudButton Variant="Variant.Filled"
-                      Color="Color.Primary"
-                      StartIcon="@Icons.Material.Filled.Add"
-                       OnClick="() => NavigationManager.NavigateTo(FileDataMappingUrl)"
-                      Class="mb-3 me-3">
+            Color="Color.Primary"
+            StartIcon="@Icons.Material.Filled.Add"
+            OnClick="() => NavigationManager.NavigateTo(FileDataMappingUrl)"
+            Class="mb-3 me-3">
                 Create New Mapping
             </MudButton>
             <MudButton Variant="Variant.Outlined"
-                      Color="Color.Primary"
-                      StartIcon="@Icons.Material.Filled.Refresh"
-                      OnClick="LoadMappings"
-                      Class="mb-3">
+            Color="Color.Primary"
+            StartIcon="@Icons.Material.Filled.Refresh"
+            OnClick="LoadMappings"
+            Class="mb-3">
                 Refresh
             </MudButton>
         </MudItem>
@@ -76,20 +76,20 @@ else if (files.Count == 0)
 else
 {
     <MudTable Items="@files"
-             Dense="true"
-             Hover="true"
-             Bordered="true"
-             Striped="true"
-             Filter="FilterFunc"
-             T="FileViewModel">
+    Dense="true"
+    Hover="true"
+    Bordered="true"
+    Striped="true"
+    Filter="FilterFunc"
+    T="FileViewModel">
         <ToolBarContent>
             <MudText Typo="Typo.h6">Files (@files.Count)</MudText>
             <MudSpacer />
             <MudButton Variant="Variant.Outlined"
-                      Color="Color.Primary"
-                      StartIcon="@Icons.Material.Filled.Download"
-                      OnClick="ExportAllMappings"
-                      Class="ml-2">
+            Color="Color.Primary"
+            StartIcon="@Icons.Material.Filled.Download"
+            OnClick="ExportAllMappings"
+            Class="ml-2">
                 Export All
             </MudButton>
         </ToolBarContent>
@@ -109,16 +109,16 @@ else
                 <div class="d-flex align-center">
                     <MudTooltip Text="@context.FileName">
                         <MudIconButton Icon="@GetFileIcon(context.FileType)"
-                                     Color="Color.Primary"
-                                     Size="Size.Small"
-                                     OnClick="() => DownloadFile(context.Id, context.FileName)"
-                                     Class="mr-2" />
+                        Color="Color.Primary"
+                        Size="Size.Small"
+                        OnClick="() => DownloadFile(context.Id, context.FileName)"
+                        Class="mr-2" />
                     </MudTooltip>
-                <MudTooltip Text="@context.FileName">
+                    <MudTooltip Text="@context.FileName">
                         <MudText Typo="Typo.body2" Style="max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                        @context.FileName
-                    </MudText>
-                </MudTooltip>
+                            @context.FileName
+                        </MudText>
+                    </MudTooltip>
                 </div>
             </MudTd>
             <MudTd DataLabel="Data Points">
@@ -126,9 +126,9 @@ else
                     @foreach (var mapping in context.Mappings)
                     {
                         <MudChip Size="Size.Small"
-                               Color="Color.Primary"
-                               OnClick="() => ShowDetails(mapping.Id)"
-                               Style="margin: 2px">
+                        Color="Color.Primary"
+                        OnClick="() => ShowDetails(mapping.Id)"
+                        Style="margin: 2px">
                             @mapping.DataPointName (@mapping.ElementCount)
                         </MudChip>
                     }
@@ -149,19 +149,19 @@ else
             <MudTd DataLabel="Actions">
                 <MudButtonGroup Size="Size.Small" Variant="Variant.Text">
                     <MudIconButton Icon="@Icons.Material.Filled.Visibility"
-                                 OnClick="() => NavigateToDetails(context.Id)"
-                                 Title="View Details" />
+                    OnClick="() => NavigateToDetails(context.Id)"
+                    Title="View Details" />
                     <MudIconButton Icon="@Icons.Material.Filled.Edit"
-                                 OnClick="() => NavigateToEditFile(context.Id)"
-                                 Title="Edit Data Points"
-                                 Color="Color.Primary" />
+                    OnClick="() => NavigateToEditFile(context.Id)"
+                    Title="Edit Data Points"
+                    Color="Color.Primary" />
                     <MudIconButton Icon="@Icons.Material.Filled.Download"
-                                 OnClick="() => ExportFileAllMappings(context.Id)"
-                                 Title="Export All" />
+                    OnClick="() => ExportFileAllMappings(context.Id)"
+                    Title="Export All" />
                     <MudIconButton Icon="@Icons.Material.Filled.Delete"
-                                 OnClick="() => DeleteFileMappings(context.Id)"
-                                 Title="Delete All"
-                                 Color="Color.Error" />
+                    OnClick="() => DeleteFileMappings(context.Id)"
+                    Title="Delete All"
+                    Color="Color.Error" />
                 </MudButtonGroup>
             </MudTd>
         </RowTemplate>
@@ -215,7 +215,7 @@ else
         @if (selectedMapping != null)
         {
             <MudButton Color="Color.Primary"
-                     OnClick="() => ExportMapping(selectedMapping.Id)">
+            OnClick="() => ExportMapping(selectedMapping.Id)">
                 Export
             </MudButton>
         }
@@ -420,14 +420,8 @@ else
 
     private async Task DeleteFileMappings(int fileUploadId)
     {
-        var fileMappings = allMappings.Where(m => m.FileUploadId == fileUploadId).ToList();
-        if (!fileMappings.Any())
-        {
-            Snackbar.Add("No mappings found for this file", Severity.Warning);
-            return;
-        }
-
-        var fileName = fileMappings.First().FileName;
+        var file = files.First(x => x.Id == fileUploadId);
+        var fileName = file.FileName;
 
         bool? result = await DialogService.ShowMessageBox(
             "Confirm Deletion",
@@ -441,15 +435,7 @@ else
         {
             try
             {
-                foreach (var mapping in fileMappings)
-                {
-                    var response = await MindApi.DeleteFileMappingAsync(mapping.Id);
-                    // if (!response.IsSuccess)
-                    // {
-                    //     Snackbar.Add($"Error deleting mapping {mapping.Id}: {response.Error}", Severity.Error);
-                    //     return;
-                    // }
-                }
+                var response = await MindApi.DeleteFileUploadAsync(fileUploadId);
 
                 Snackbar.Add("All mappings for this file deleted successfully", Severity.Success);
                 await LoadMappings();

@@ -399,6 +399,23 @@ namespace HillMetrics.MIND.API.Controllers
         }
 
         /// <summary>
+        /// Get the details of a specific fetching content
+        /// </summary>
+        /// <param name="fetchingContentId">The fetching content identifier</param>
+        /// <returns></returns>
+        [HttpGet("fetching-history/content/{fetchingContentId}")]
+        public async Task<ActionResult<ApiResponseBase<FluxFetchingContentHistoryResponse>>> GetFetchingContentAsync(int fetchingContentId)
+        {
+            var result = await Mediator.Send(new FluxFetchContentHistoryQuery(fetchingContentId));
+
+            if (result.IsFailed)
+                return new ErrorApiActionResult(result.Errors.ToApiResult());
+
+            return new ApiResponseBase<FluxFetchingContentHistoryResponse>(
+                mapper.Map<FluxFetchingContentHistoryResponse>(result.Value.FluxFetchingContent));
+        }
+
+        /// <summary>
         /// Delete a specific fetching history if it doesn't have any content with Success status
         /// </summary>
         /// <param name="fetchingHistoryId">The fetching history identifier to delete</param>
