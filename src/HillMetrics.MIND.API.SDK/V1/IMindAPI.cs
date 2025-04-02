@@ -241,13 +241,19 @@ namespace HillMetrics.MIND.API.SDK.V1
         #region AI Dataset - File Upload
 
         /// <summary>
-        /// Upload a new file for AI dataset processing
+        /// Create a new file upload from a direct file upload
         /// </summary>
+        /// <param name="file"></param>
+        /// <param name="difficulty"></param>
+        /// <param name="financialType"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         [Multipart]
         [Post("/api/v1/fluxcarac/file-upload")]
         Task<ApiResponseBase<FileUpload>> CreateFileUploadAsync(
             [AliasAs("file")] StreamPart file,
             [AliasAs("difficulty")] FileDifficulty difficulty = FileDifficulty.Medium,
+            [AliasAs("financialType")] FinancialType financialType = FinancialType.Undefined,
             CancellationToken cancellationToken = default);
 
         /// <summary>

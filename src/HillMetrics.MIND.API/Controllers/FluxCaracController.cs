@@ -26,12 +26,14 @@ public class FluxCaracController(IMediator mediator, IMapper mapper, ILogger<Flu
     /// </summary>
     /// <param name="file">File upload</param>
     /// <param name="difficulty">Difficulty</param>
+    /// <param name="financialType">Financial type</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Details of the uploaded file</returns>
     [HttpPost("file-upload")]
     public async Task<ActionResult<ApiResponseBase<FileUpload>>> CreateFileUpload(
         IFormFile file,
         FileDifficulty difficulty,
+        FinancialType financialType,
         CancellationToken cancellationToken)
     {
         logger.LogInformation("Handling file upload request for file: {FileName}", file.FileName);
@@ -45,7 +47,8 @@ public class FluxCaracController(IMediator mediator, IMapper mapper, ILogger<Flu
             FileMetadataId = 0,
             FluxFetchingContentId = null,
             Difficulty = difficulty,
-            MappingStatus = MappingStatus.NotMapped
+            MappingStatus = MappingStatus.NotMapped,
+            FinancialType = financialType
         };
 
         var result = await mediator.Send(command, cancellationToken);
@@ -72,10 +75,11 @@ public class FluxCaracController(IMediator mediator, IMapper mapper, ILogger<Flu
         var command = new CreateFileUploadCommand
         {
             FileName = request.FileName,
-            ContentType =request.ContentType,
+            ContentType = request.ContentType,
             FluxFetchingContentId = request.FluxFetchingContentId,
             Difficulty = request.Difficulty,
-            MappingStatus = MappingStatus.NotMapped
+            MappingStatus = MappingStatus.NotMapped,
+            FinancialType = request.FinancialType
         };
 
         var result = await mediator.Send(command, cancellationToken);
@@ -143,7 +147,8 @@ public class FluxCaracController(IMediator mediator, IMapper mapper, ILogger<Flu
             FileName = request.FileName,
             ContentType = null,
             Difficulty = request.Difficulty,
-            MappingStatus = request.MappingStatus
+            MappingStatus = request.MappingStatus,
+            FinancialType = request.FinancialType
         };
 
         var result = await mediator.Send(command, cancellationToken);

@@ -2,6 +2,7 @@
 @page "/file-data-mapping/file/{FileUploadId:int}"
 @page "/file-data-mapping/flux/{FluxFetchingHistoryContentId:int}"
 @using ExcelDataReader
+@using HillMetrics.Core.Financial
 @using HillMetrics.MIND.API.Contracts.Requests.AiDataset
 @using HillMetrics.MIND.FrontApp.Components.Dataset
 @using HillMetrics.Normalized.Domain.Contracts.AI.Dataset
@@ -35,56 +36,55 @@ else
     <MudGrid>
         <!-- File Information and Preview -->
         <MudItem xs="12" md="6">
-            <FileUploadCard 
-                IsEditMode="isEditMode"
-                File="uploadedFile"
-                SelectedFile="selectedFile"
-                SelectedFileName="selectedFileName"
-                SelectedFileSize="selectedFileSize"
-                SelectedFileContentType="selectedFileContentType"
-                CustomFileName="customFileName"
-                FileDifficulty="fileDifficulty"
-                IsUploading="isUploading"
-                DuplicateFileFound="duplicateFileFound"
-                CanUploadFile="CanUploadFile()"
-                OnFileSelected="OnFileChanged"
-                OnFileClear="ClearFile"
-                OnFileUpload="UploadFile"
-                OnFileNameUpdated="SaveFileName"
-                OnStatusUpdated="SaveStatus"
-                OnDifficultyUpdated="SaveDifficulty" />
+            <FileUploadCard IsEditMode="isEditMode"
+            File="uploadedFile"
+            SelectedFile="selectedFile"
+            SelectedFileName="@selectedFileName"
+            SelectedFileSize="@selectedFileSize"
+            SelectedFileContentType="selectedFileContentType"
+            CustomFileName="customFileName"
+            FileDifficulty="fileDifficulty"
+            IsUploading="isUploading"
+            DuplicateFileFound="duplicateFileFound"
+            CanUploadFile="CanUploadFile()"
+            OnFileSelected="OnFileChanged"
+            OnFileClear="ClearFile"
+            OnFileUpload="UploadFile"
+            OnFileNameUpdated="SaveFileName"
+            OnStatusUpdated="SaveStatus"
+            OnDifficultyUpdated="SaveDifficulty"
+            OnFinancialTypeUpdated="SaveFinancialType" />
 
             @if (uploadedFile != null && IsSpreadsheetFile(uploadedFile.FileType))
             {
                 <FilePreview IsLoadingPreview="isLoadingPreview"
-                             FilePreviewData="filePreviewData"
-                             FilePreviewHeaders="filePreviewHeaders"
-                             IsSelectingField="isSelectingField"
-                             SelectedFieldName="selectedFieldName"
-                             File="uploadedFile"
-                             Worksheets="worksheets"
-                             CurrentWorksheet="currentWorksheet"
-                             OnCellSelected="OnCellClick"
-                             OnCancelFieldSelection="CancelFieldSelection"
-                             OnRefreshPreview="LoadFilePreview"
-                             OnShowSheetSelector="ShowSheetSelector"
-                             OnZoomIn="ZoomIn"
-                             OnZoomOut="ZoomOut" />
+                FilePreviewData="filePreviewData"
+                FilePreviewHeaders="filePreviewHeaders"
+                IsSelectingField="isSelectingField"
+                SelectedFieldName="selectedFieldName"
+                File="uploadedFile"
+                Worksheets="worksheets"
+                CurrentWorksheet="currentWorksheet"
+                OnCellSelected="OnCellClick"
+                OnCancelFieldSelection="CancelFieldSelection"
+                OnRefreshPreview="LoadFilePreview"
+                OnShowSheetSelector="ShowSheetSelector"
+                OnZoomIn="ZoomIn"
+                OnZoomOut="ZoomOut" />
             }
         </MudItem>
 
         <!-- Data Mapping Card -->
         <MudItem xs="12" md="6">
-            <DataMappingCard 
-                IsEditMode="isEditMode"
-                File="uploadedFile"
-                AvailableDataPoints="availableDataPoints"
-                DataMappings="dataMappings"
-                OnAddDataPoint="AddDataPoint"
-                OnRemoveMapping="RemoveDataMapping"
-                OnFieldSelect="SelectField"
-                OnExpandAll="ExpandAllPanels"
-                OnCollapseAll="CollapseAllPanels" />
+            <DataMappingCard IsEditMode="isEditMode"
+            File="uploadedFile"
+            AvailableDataPoints="availableDataPoints"
+            DataMappings="dataMappings"
+            OnAddDataPoint="AddDataPoint"
+            OnRemoveMapping="RemoveDataMapping"
+            OnFieldSelect="SelectField"
+            OnExpandAll="ExpandAllPanels"
+            OnCollapseAll="CollapseAllPanels" />
         </MudItem>
 
         <!-- Action Buttons -->
@@ -169,9 +169,6 @@ else
     private MudExpansionPanels? expansionPanels;
     private string customFileName = string.Empty;
     private string editedFileName = string.Empty;
-    private bool isEditingFileName = false;
-    private bool isEditingStatus = false;
-    private MappingStatus? editedStatus;
 
     private List<HillMetrics.Core.Financial.FinancialDataPoint> availableDataPoints = new();
     // private List<DataMappingViewModel> dataMappings = new();
@@ -193,9 +190,9 @@ else
     private string currentWorksheet = "Sheet1";
     private double zoomLevel = 1.0;
 
-    private bool isEditingDifficulty = false;
-    private FileDifficulty editedDifficulty;
     private FileDifficulty fileDifficulty = FileDifficulty.Medium;
+
+    private readonly string DefaultRoute = "/file-data-mappings";
 
     protected override void OnParametersSet()
     {
@@ -238,26 +235,29 @@ else
                 if (existingFile != null)
                 {
                     // If FileUpload already exists, redirect to the page with FileUploadId
-                    NavigationManager.NavigateTo($"/file-data-mapping/file/{existingFile.Id}");
+                    NavigationManager.NavigateTo($"/file-data-mapping/file/{existingFile.Id}", forceLoad: true);
                     return;
                 }
 
+                var flux = await MindApi.GetFluxAsync(fetchingContentResponse.Data.FluxId);
                 // 3. If no FileUpload exists, create a new one with the correct ContentType
                 var createRequest = new CreateFileUploadFromFluxRequest
                     {
                         FluxFetchingContentId = FluxFetchingHistoryContentId.Value,
                         FileName = fetchingContentResponse.Data.ContentName ?? $"Flux_{FluxFetchingHistoryContentId.Value}",
                         ContentType = fetchingContentResponse.Data.ContentType != null
-                            ? HillMetrics.Core.Common.ContentTypeMapper.GetMimeType(fetchingContentResponse.Data.ContentType.Value)
-                            : "application/vnd.ms-excel", // Default type if ContentType is null
-                        Difficulty = FileDifficulty.Medium // Default difficulty
+                                        ? HillMetrics.Core.Common.ContentTypeMapper.GetMimeType(fetchingContentResponse.Data.ContentType.Value)
+                                        : "application/vnd.ms-excel", // Default type if ContentType is null
+                        Difficulty = FileDifficulty.Medium,
+                        FinancialType = flux.FinancialType!.Value
                     };
 
+                var request = System.Text.Json.JsonSerializer.Serialize(createRequest);
                 var response = await MindApi.CreateFileUploadFromFluxAsync(createRequest);
                 if (response.Data != null)
                 {
                     // Redirect to the page with the new FileUploadId
-                    NavigationManager.NavigateTo($"/file-data-mapping/file/{response.Data.Id}");
+                    NavigationManager.NavigateTo($"/file-data-mapping/file/{response.Data.Id}", forceLoad: true);
                     return;
                 }
                 else
@@ -282,6 +282,7 @@ else
         {
             errorMessage = $"Error during initialization: {ex.Message}";
             Snackbar.Add(errorMessage, Severity.Error);
+            NavigationManager.NavigateTo(DefaultRoute);
         }
         finally
         {
@@ -393,10 +394,10 @@ else
         {
             // Récupérer tous les PropertyDataTypes disponibles
             var propertyTypesResponse = await MindApi.SearchPropertyDataTypesAsync(
-                new SearchPropertyDataTypeRequest 
-                {
+                new SearchPropertyDataTypeRequest
+                    {
                         ContentType = HillMetrics.Core.Common.ContentTypeMapper.GetContentType(uploadedFile!.ContentType),
-                }, 
+                    },
                 CancellationToken.None);
 
 
@@ -404,30 +405,30 @@ else
 
             // Créer un nouveau mapping
             var newMapping = new FileDataMapping
-            {
-                FileUploadId = uploadedFile!.Id,
-                FinancialDataPointId = dataPointId,
-                FinancialDataPoint = availableDataPoints.First(x => x.Id == dataPointId),
-                InstanceName = instanceName,
-                ElementValues = dataPoint.Elements.Select(e => 
                 {
+                    FileUploadId = uploadedFile!.Id,
+                    FinancialDataPointId = dataPointId,
+                    FinancialDataPoint = availableDataPoints.First(x => x.Id == dataPointId),
+                    InstanceName = instanceName,
+                    ElementValues = dataPoint.Elements.Select(e =>
+                    {
                     // Trouver le PropertyDataType approprié en fonction du ContentType
                     // Par défaut, on prend le premier PropertyDataType de type "Column" si disponible
-                    var propertyType = propertyTypes.FirstOrDefault();
+                        var propertyType = propertyTypes.FirstOrDefault();
 
-                    if (propertyType == null)
-                    {
-                        throw new InvalidOperationException("No PropertyDataType available in the system");
-                    }
+                        if (propertyType == null)
+                        {
+                            throw new InvalidOperationException("No PropertyDataType available in the system");
+                        }
 
-                    return new FileDataElementValue
-                    {
-                        FinancialDataPointElementId = e.Id,
-                        ExtractedValue = string.Empty,
-                        PropertyDataTypeId = propertyType.Id
-                    };
-                }).ToList()
-            };
+                        return new FileDataElementValue
+                        {
+                            FinancialDataPointElementId = e.Id,
+                            ExtractedValue = string.Empty,
+                            PropertyDataTypeId = propertyType.Id
+                        };
+                    }).ToList()
+                };
 
             dataMappings.Add(newMapping);
             StateHasChanged();
@@ -507,13 +508,21 @@ else
 
     private void NavigateBack()
     {
-        if (isEditMode)
+        try
         {
-            NavigationManager.NavigateTo($"/file-details/{uploadedFile?.Id}");
+            if (isEditMode && uploadedFile?.Id > 0)
+            {
+                NavigationManager.NavigateTo($"/file-details/{uploadedFile.Id}");
+            }
+            else
+            {
+                NavigationManager.NavigateTo(DefaultRoute);
+            }
         }
-        else
+        catch (Exception ex)
         {
-            NavigationManager.NavigateTo("/file-data-mappings");
+            Snackbar.Add($"Navigation error: {ex.Message}", Severity.Error);
+            NavigationManager.NavigateTo(DefaultRoute);
         }
     }
 
@@ -611,32 +620,37 @@ else
         }
     }
 
-    private async Task SaveFileName()
+    private async Task<FileUpload> SaveContext(string fileName, MappingStatus status, FileDifficulty difficulty, FinancialType financialType)
     {
-        if (uploadedFile != null && !string.IsNullOrWhiteSpace(editedFileName))
+        var request = new UpdateFileUploadRequest
+            {
+                FileUploadId = uploadedFile!.Id,
+                FileName = fileName,
+                MappingStatus = status,
+                Difficulty = difficulty,
+                FinancialType = financialType
+            };
+
+        var json = System.Text.Json.JsonSerializer.Serialize(request);
+        var response = await MindApi.UpdateFileUploadAsync(uploadedFile.Id, request);
+        return response.Data;
+    }
+    private async Task SaveFileName(string newFileName)
+    {
+        if (uploadedFile != null && !string.IsNullOrWhiteSpace(newFileName))
         {
             try
             {
                 // Ensure the file extension is preserved
                 string currentExtension = Path.GetExtension(uploadedFile.FileName);
-                string newFileName = editedFileName;
 
                 if (!newFileName.EndsWith(currentExtension, StringComparison.OrdinalIgnoreCase))
                 {
                     newFileName += currentExtension;
                 }
 
-                var request = new UpdateFileUploadRequest
-                    {
-                        FileUploadId = uploadedFile.Id,
-                        FileName = newFileName,
-                        MappingStatus = uploadedFile.MappingStatus,
-                        Difficulty = uploadedFile.Difficulty
-                    };
-
-                var response = await MindApi.UpdateFileUploadAsync(uploadedFile.Id, request);
+                await SaveContext(newFileName, uploadedFile.MappingStatus, uploadedFile.Difficulty, uploadedFile.FinancialType);
                 uploadedFile.FileName = newFileName;
-                isEditingFileName = false;
                 Snackbar.Add("File name updated successfully", Severity.Success);
             }
             catch (Exception ex)
@@ -646,24 +660,16 @@ else
         }
     }
 
-    private async Task SaveStatus()
+    private async Task SaveStatus(MappingStatus newStatus)
     {
-        if (uploadedFile != null && editedStatus.HasValue)
+        if (uploadedFile != null)
         {
             try
             {
-                var request = new UpdateFileUploadRequest
-                    {
-                        FileUploadId = uploadedFile.Id,
-                        MappingStatus = editedStatus.Value,
-                        FileName = uploadedFile.FileName,
-                        Difficulty = uploadedFile.Difficulty
-                    };
+                await SaveContext(uploadedFile.FileName, newStatus, uploadedFile.Difficulty, uploadedFile.FinancialType);
 
-                var response = await MindApi.UpdateFileUploadAsync(uploadedFile.Id, request);
-                uploadedFile.MappingStatus = editedStatus.Value;
+                uploadedFile.MappingStatus = newStatus;
                 uploadedFile.MappingStatusUpdatedAt = DateTime.UtcNow;
-                isEditingStatus = false;
                 Snackbar.Add("Mapping status updated successfully", Severity.Success);
             }
             catch (Exception ex)
@@ -673,19 +679,34 @@ else
         }
     }
 
-    private async Task SaveDifficulty()
+    private async Task SaveFinancialType(FinancialType newFinancialType)
     {
         if (uploadedFile != null)
         {
             try
             {
-                var response = await MindApi.UpdateFileUploadDifficultyAsync(
-                    uploadedFile.Id,
-                    editedDifficulty,
-                    CancellationToken.None);
+                await SaveContext(uploadedFile.FileName, uploadedFile.MappingStatus, uploadedFile.Difficulty, newFinancialType);
 
-                uploadedFile.Difficulty = editedDifficulty;
-                isEditingDifficulty = false;
+                uploadedFile.FinancialType = newFinancialType;
+                Snackbar.Add("Financial type updated successfully", Severity.Success);
+            }
+            catch (Exception ex)
+            {
+                errorMessage = $"Error updating Financial type: {ex.Message}";
+                Snackbar.Add(errorMessage, Severity.Error);
+            }
+        }
+    }
+
+    private async Task SaveDifficulty(FileDifficulty newDifficulty)
+    {
+        if (uploadedFile != null)
+        {
+            try
+            {
+                await SaveContext(uploadedFile.FileName, uploadedFile.MappingStatus, newDifficulty, uploadedFile.FinancialType);
+                
+                uploadedFile.Difficulty = newDifficulty;
                 Snackbar.Add("File difficulty updated successfully", Severity.Success);
             }
             catch (Exception ex)

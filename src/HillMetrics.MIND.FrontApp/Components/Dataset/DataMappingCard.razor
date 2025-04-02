@@ -45,13 +45,20 @@
                             <MudSelect T="int" Label="Select Financial Data Point"
                                        @bind-Value="selectedDataPointId"
                                        Class="mb-2">
-                                @foreach (var dataPoint in AvailableDataPoints)
+                                @foreach (var dataPoint in FilteredDataPoints)
                                 {
                                     <MudSelectItem Value="@dataPoint.Id">
                                         @dataPoint.Name
                                     </MudSelectItem>
                                 }
                             </MudSelect>
+                            @if (FilteredDataPoints.Count == 0 && File != null)
+                            {
+                                <MudText Color="Color.Warning" Class="mt-2">
+                                    No data points available for @File.FinancialType.ToString() type.
+                                    <MudLink Href="/financial-data/create">Create one</MudLink>
+                                </MudText>
+                            }
                         </MudItem>
                         <MudItem xs="12" md="4" Class="d-flex align-center">
                             <MudButton Variant="Variant.Filled"
@@ -101,11 +108,25 @@
     private MudExpansionPanels? expansionPanels;
     private int selectedDataPointId;
 
+    private List<FinancialDataPoint> FilteredDataPoints => File == null
+        ? new List<FinancialDataPoint>()
+        : AvailableDataPoints
+            .Where(dp => dp.FinancialType == File.FinancialType)
+            .ToList();
+
     protected override void OnParametersSet()
     {
-        if (AvailableDataPoints.Count > 0 && selectedDataPointId == 0)
+        // Reset selection if current selection is not in filtered list
+        if (FilteredDataPoints.Count > 0)
         {
-            selectedDataPointId = AvailableDataPoints[0].Id;
+            if (!FilteredDataPoints.Any(dp => dp.Id == selectedDataPointId))
+            {
+                selectedDataPointId = FilteredDataPoints[0].Id;
+            }
+        }
+        else
+        {
+            selectedDataPointId = 0;
         }
     }
 }

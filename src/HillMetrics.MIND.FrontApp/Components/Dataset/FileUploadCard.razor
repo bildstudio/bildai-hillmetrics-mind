@@ -1,4 +1,5 @@
 ﻿@using HillMetrics.Normalized.Domain.Contracts.AI.Dataset
+@using HillMetrics.Core.Financial
 @inject IMindAPI MindApi
 @inject ISnackbar Snackbar
 
@@ -22,40 +23,62 @@
         {
             <MudFileUpload T="IBrowserFile" Accept=".csv,.xls,.xlsx,.pdf,.xml,.json,.html"
                            OnFilesChanged="@(e => HandleFileSelected(e.File))" MaximumFileCount="1">
-                <MudButton HtmlTag="label"
-                           Variant="Variant.Filled"
-                           Color="Color.Primary"
-                           StartIcon="@Icons.Material.Filled.CloudUpload"
-                           FullWidth="true">
-                    Choose File
-                </MudButton>
+                <ActivatorContent>
+                    <MudButton HtmlTag="label"
+                               Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.CloudUpload"
+                               FullWidth="true">
+                        Choose File
+                    </MudButton>
+                </ActivatorContent>
             </MudFileUpload>
+        }
+        else if (File != null || SelectedFile != null)
+        {
+            <FileMetadataSection File="@(File ?? new FileUpload
+                {
+                    FileName = SelectedFileName,
+                    FileSize = SelectedFileSize,
+                    FileType = Path.GetExtension(SelectedFileName),
+                    ContentType = SelectedFileContentType,
+                    Difficulty = FileDifficulty,
+                    MappingStatus = MappingStatus,
+                    UploadedAt = DateTime.Now,
+                    FinancialType = FinancialType
+                })"
+                                 OnFileNameUpdated="HandleFileNameUpdated"
+                                 OnStatusUpdated="HandleStatusUpdated"
+                                 OnDifficultyUpdated="HandleDifficultyUpdated"
+                                 OnFinancialTypeUpdated="HandleFinancialTypeUpdated" />
 
-            <FileUploadSection 
-                OnFileSelected="HandleFileSelected"
-                OnFileClear="HandleFileClear" />
-        }
-        else if (!IsEditMode && SelectedFile != null)
-        {
-            <FileDetailsSection 
-                FileName="@SelectedFileName"
-                FileSize="@SelectedFileSize"
-                FileType="@SelectedFileContentType"
-                CustomFileName="@CustomFileName"
-                OnCustomFileNameChanged="@(v => CustomFileName = v)"
-                FileDifficulty="@FileDifficulty"
-                OnFileDifficultyChanged="@(v => FileDifficulty = v)"
-                OnClear="HandleFileClear"
-                OnUpload="HandleFileUpload"
-                IsUploading="IsUploading" />
-        }
-        else if (File != null)
-        {
-            <FileMetadataSection 
-                File="File"
-                OnFileNameUpdated="HandleFileNameUpdated"
-                OnStatusUpdated="HandleStatusUpdated"
-                OnDifficultyUpdated="HandleDifficultyUpdated" />
+            @if (!IsEditMode)
+            {
+                <MudButton OnClick="HandleFileUpload"
+                           Color="Color.Primary"
+                           Variant="Variant.Filled"
+                           Disabled="@(IsUploading || FinancialType == FinancialType.Undefined)"
+                           FullWidth="true"
+                           Class="mt-4">
+                    @if (IsUploading)
+                    {
+                        <MudProgressCircular Class="mr-2" Size="Size.Small" Indeterminate="true" />
+                        <span>Uploading...</span>
+                    }
+                    else
+                    {
+                        <span>Upload File</span>
+                    }
+                </MudButton>
+
+                <MudButton OnClick="HandleFileClear"
+                           Color="Color.Secondary"
+                           Variant="Variant.Outlined"
+                           FullWidth="true"
+                           Class="mt-2">
+                    Cancel
+                </MudButton>
+            }
         }
 
         @if (DuplicateFileFound && !IsEditMode)
@@ -76,6 +99,8 @@
     [Parameter] public string SelectedFileContentType { get; set; } = string.Empty;
     [Parameter] public string CustomFileName { get; set; } = string.Empty;
     [Parameter] public FileDifficulty FileDifficulty { get; set; } = FileDifficulty.Medium;
+    [Parameter] public FinancialType FinancialType { get; set; } = FinancialType.Fund;
+    [Parameter] public MappingStatus MappingStatus { get; set; } = MappingStatus.NotMapped;
     [Parameter] public bool IsUploading { get; set; }
     [Parameter] public bool DuplicateFileFound { get; set; }
     [Parameter] public bool CanUploadFile { get; set; }
@@ -86,6 +111,7 @@
     [Parameter] public EventCallback<string> OnFileNameUpdated { get; set; }
     [Parameter] public EventCallback<MappingStatus> OnStatusUpdated { get; set; }
     [Parameter] public EventCallback<FileDifficulty> OnDifficultyUpdated { get; set; }
+    [Parameter] public EventCallback<FinancialType> OnFinancialTypeUpdated { get; set; }
 
     private async Task HandleFileSelected(IBrowserFile file)
     {
@@ -115,5 +141,11 @@
     private async Task HandleDifficultyUpdated(FileDifficulty difficulty)
     {
         await OnDifficultyUpdated.InvokeAsync(difficulty);
+    }
+
+    private async Task HandleFinancialTypeUpdated(FinancialType type)
+    {
+        FinancialType = type;
+        await OnFinancialTypeUpdated.InvokeAsync(type);
     }
 }

@@ -1,3 +1,4 @@
+using HillMetrics.Core.Financial;
 using HillMetrics.Normalized.Domain.Contracts.AI.Dataset;
 using Microsoft.AspNetCore.Http;
 using System;
@@ -29,6 +30,11 @@ namespace HillMetrics.MIND.API.Contracts.Requests.AiDataset
         /// The difficulty level of processing this file
         /// </summary>
         public FileDifficulty Difficulty { get; set; }
+
+        /// <summary>
+        /// The financial type
+        /// </summary>
+        public FinancialType FinancialType { get; set; }
     }
 
     public class FileUploadSearchRequest

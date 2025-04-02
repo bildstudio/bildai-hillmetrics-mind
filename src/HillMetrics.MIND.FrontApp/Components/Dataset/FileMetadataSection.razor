@@ -1,4 +1,5 @@
 ﻿@using HillMetrics.Normalized.Domain.Contracts.AI.Dataset
+@using HillMetrics.Core.Financial
 <MudList T="FileUpload" Dense="true">
     <MudListItem>
         <MudText><strong>File ID:</strong> @File.Id</MudText>
@@ -9,25 +10,25 @@
             @if (!IsEditingFileName)
             {
                 <MudIconButton Icon="@Icons.Material.Filled.Edit"
-                               Size="Size.Small"
-                               Class="ml-2"
-                               OnClick="StartEditingFileName" />
+                Size="Size.Small"
+                Class="ml-2"
+                OnClick="StartEditingFileName" />
             }
             else
             {
                 <MudTextField @bind-Value="editedFileName"
-                              Label="File Name"
-                              Variant="Variant.Outlined"
-                              Immediate="true"
-                              Class="mr-2" />
+                Label="File Name"
+                Variant="Variant.Outlined"
+                Immediate="true"
+                Class="mr-2" />
                 <MudIconButton Icon="@Icons.Material.Filled.Check"
-                               Size="Size.Small"
-                               Color="Color.Success"
-                               OnClick="SaveFileName" />
+                Size="Size.Small"
+                Color="Color.Success"
+                OnClick="SaveFileName" />
                 <MudIconButton Icon="@Icons.Material.Filled.Close"
-                               Size="Size.Small"
-                               Color="Color.Error"
-                               OnClick="CancelEditingFileName" />
+                Size="Size.Small"
+                Color="Color.Error"
+                OnClick="CancelEditingFileName" />
             }
         </div>
     </MudListItem>
@@ -46,28 +47,31 @@
                 <strong>Status:</strong>
                 @if (!IsEditingStatus)
                 {
+                    <MudChip Color="Color.Primary" Size="Size.Small" Class="ml-2">
+                        @File.MappingStatus.ToString()
+                    </MudChip>
                     <MudIconButton Icon="@Icons.Material.Filled.Edit"
-                                   Size="Size.Small"
-                                   Class="ml-2"
-                                   OnClick="StartEditingStatus" />
+                    Size="Size.Small"
+                    Class="ml-2"
+                    OnClick="StartEditingStatus" />
                 }
                 else
                 {
                     <MudSelect T="MappingStatus?" @bind-Value="editedStatus"
-                               Class="ml-2" Style="min-width: 150px;">
+                    Class="ml-2" Style="min-width: 150px;">
                         @foreach (var status in Enum.GetValues(typeof(MappingStatus)))
                         {
                             <MudSelectItem T="MappingStatus?" Value="@((MappingStatus)status)">@status.ToString()</MudSelectItem>
                         }
                     </MudSelect>
                     <MudIconButton Icon="@Icons.Material.Filled.Check"
-                                   Size="Size.Small"
-                                   Color="Color.Success"
-                                   OnClick="SaveStatus" />
+                    Size="Size.Small"
+                    Color="Color.Success"
+                    OnClick="SaveStatus" />
                     <MudIconButton Icon="@Icons.Material.Filled.Close"
-                                   Size="Size.Small"
-                                   Color="Color.Error"
-                                   OnClick="CancelEditingStatus" />
+                    Size="Size.Small"
+                    Color="Color.Error"
+                    OnClick="CancelEditingStatus" />
                 }
             </MudText>
         </div>
@@ -82,27 +86,75 @@
                         @File.Difficulty.ToString()
                     </MudChip>
                     <MudIconButton Icon="@Icons.Material.Filled.Edit"
-                                   Size="Size.Small"
-                                   Class="ml-2"
-                                   OnClick="StartEditingDifficulty" />
+                    Size="Size.Small"
+                    Class="ml-2"
+                    OnClick="StartEditingDifficulty" />
                 }
                 else
                 {
                     <MudSelect T="FileDifficulty" @bind-Value="editedDifficulty"
-                               Class="ml-2" Style="min-width: 150px;">
+                    Class="ml-2" Style="min-width: 150px;">
                         @foreach (var difficulty in Enum.GetValues(typeof(FileDifficulty)))
                         {
                             <MudSelectItem Value="@((FileDifficulty)difficulty)">@difficulty.ToString()</MudSelectItem>
                         }
                     </MudSelect>
                     <MudIconButton Icon="@Icons.Material.Filled.Check"
-                                   Size="Size.Small"
-                                   Color="Color.Success"
-                                   OnClick="SaveDifficulty" />
+                    Size="Size.Small"
+                    Color="Color.Success"
+                    OnClick="SaveDifficulty" />
                     <MudIconButton Icon="@Icons.Material.Filled.Close"
-                                   Size="Size.Small"
-                                   Color="Color.Error"
-                                   OnClick="CancelEditingDifficulty" />
+                    Size="Size.Small"
+                    Color="Color.Error"
+                    OnClick="CancelEditingDifficulty" />
+                }
+            </MudText>
+        </div>
+    </MudListItem>
+    <MudListItem>
+        <div class="d-flex align-center">
+            <MudText>
+                <strong>Financial Type:</strong>
+                @if (!IsEditingFinancialType)
+                {
+                    <MudChip Color="@(File.FinancialType == FinancialType.Undefined ? Color.Error : Color.Primary)"
+                    Size="Size.Small"
+                    Class="ml-2">
+                        @File.FinancialType.ToString()
+                    </MudChip>
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                    Size="Size.Small"
+                    Class="ml-2"
+                    OnClick="StartEditingFinancialType" />
+                    @if (File.FinancialType == FinancialType.Undefined)
+                    {
+                        <MudText Color="Color.Error" Class="ml-2" Typo="Typo.caption">
+                            Financial Type is required
+                        </MudText>
+                    }
+                }
+                else
+                {
+                    <MudSelect T="FinancialType"
+                    @bind-Value="editedFinancialType"
+                    Required="true"
+                    RequiredError="Financial Type is required"
+                    Class="ml-2"
+                    Style="min-width: 150px;">
+                        @foreach (var type in Enum.GetValues(typeof(FinancialType)).Cast<FinancialType>().Where(t => t != FinancialType.Undefined))
+                        {
+                            <MudSelectItem Value="@type">@type.ToString()</MudSelectItem>
+                        }
+                    </MudSelect>
+                    <MudIconButton Icon="@Icons.Material.Filled.Check"
+                    Size="Size.Small"
+                    Color="Color.Success"
+                    Disabled="@(editedFinancialType == FinancialType.Undefined)"
+                    OnClick="SaveFinancialType" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Close"
+                    Size="Size.Small"
+                    Color="Color.Error"
+                    OnClick="CancelEditingFinancialType" />
                 }
             </MudText>
         </div>
@@ -114,6 +166,7 @@
     [Parameter] public EventCallback<string> OnFileNameUpdated { get; set; }
     [Parameter] public EventCallback<MappingStatus> OnStatusUpdated { get; set; }
     [Parameter] public EventCallback<FileDifficulty> OnDifficultyUpdated { get; set; }
+    [Parameter] public EventCallback<FinancialType> OnFinancialTypeUpdated { get; set; }
 
     private bool IsEditingFileName;
     private string editedFileName = string.Empty;
@@ -121,6 +174,8 @@
     private MappingStatus? editedStatus;
     private bool IsEditingDifficulty;
     private FileDifficulty editedDifficulty;
+    private bool IsEditingFinancialType;
+    private FinancialType editedFinancialType;
 
     private string FormatFileSize(long bytes)
     {
@@ -176,6 +231,7 @@
         {
             await OnStatusUpdated.InvokeAsync(editedStatus.Value);
             IsEditingStatus = false;
+            StateHasChanged();
         }
     }
 
@@ -191,5 +247,19 @@
     {
         await OnDifficultyUpdated.InvokeAsync(editedDifficulty);
         IsEditingDifficulty = false;
+    }
+
+    private void StartEditingFinancialType()
+    {
+        editedFinancialType = File.FinancialType;
+        IsEditingFinancialType = true;
+    }
+
+    private void CancelEditingFinancialType() => IsEditingFinancialType = false;
+
+    private async Task SaveFinancialType()
+    {
+        await OnFinancialTypeUpdated.InvokeAsync(editedFinancialType);
+        IsEditingFinancialType = false;
     }
 }
