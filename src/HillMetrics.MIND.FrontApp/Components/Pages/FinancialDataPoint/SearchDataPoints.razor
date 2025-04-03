@@ -130,6 +130,15 @@
     private FinancialDataPointSearchResponse selectedItem = null;
     private TableState tableState;
 
+    [Parameter]
+    [SupplyParameterFromQuery(Name = "dataPointId")]
+    public int? DataPointIdParameter { get; set; }
+    
+    protected override async Task OnInitializedAsync()
+    {
+        await Search();
+    }
+
     private async Task<TableData<FinancialDataPointSearchResponse>> ServerReload(TableState state, CancellationToken token)
     {
         tableState = state;

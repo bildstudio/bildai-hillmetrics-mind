@@ -517,13 +517,13 @@
         try
         {
             loading = true;
-            var result = await MindApi.ForceFetchAsync(FluxId);
-            Snackbar.Add("Force fetch completed successfully", Severity.Success);
+            var result = await MindApi.ForceFetchBackgroundAsync(FluxId);
+            Snackbar.Add("Force fetch started in the background", Severity.Success);
             await LoadFluxData();
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Error during force fetch: {ex.Message}", Severity.Error);
+            Snackbar.Add($"Error starting force fetch: {ex.Message}", Severity.Error);
         }
         finally
         {
@@ -536,13 +536,13 @@
         try
         {
             loading = true;
-            var result = await MindApi.ForceProcessAsync(FluxId);
-            Snackbar.Add("Force process completed successfully", Severity.Success);
+            var result = await MindApi.ForceProcessBackgroundAsync(FluxId);
+            Snackbar.Add("Force process started in the background", Severity.Success);
             await LoadFluxData();
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Error during force process: {ex.Message}", Severity.Error);
+            Snackbar.Add($"Error starting force process: {ex.Message}", Severity.Error);
         }
         finally
         {

@@ -37,19 +37,19 @@ else
         <!-- File Information and Preview -->
         <MudItem xs="12" md="6">
             <FileUploadCard IsEditMode="isEditMode"
-                            File="uploadedFile"
-                            SelectedFile="selectedFile"
-                            SelectedFileName="@selectedFileName"
-                            SelectedFileSize="@selectedFileSize"
-                            SelectedFileContentType="selectedFileContentType"
-                            CustomFileName="customFileName"
-                            FileDifficulty="fileDifficulty"
-                            IsUploading="isUploading"
-                            DuplicateFileFound="duplicateFileFound"
-                            CanUploadFile="CanUploadFile()"
-                            OnFileSelected="OnFileChanged"
-                            OnFileClear="ClearFile"
-                            OnSave="HandleSave" />
+            File="uploadedFile"
+            SelectedFile="selectedFile"
+            SelectedFileName="@selectedFileName"
+            SelectedFileSize="@selectedFileSize"
+            SelectedFileContentType="selectedFileContentType"
+            CustomFileName="customFileName"
+            FileDifficulty="fileDifficulty"
+            IsUploading="isUploading"
+            DuplicateFileFound="duplicateFileFound"
+            CanUploadFile="CanUploadFile()"
+            OnFileSelected="OnFileChanged"
+            OnFileClear="ClearFile"
+            OnSave="HandleSave" />
 
             @if (uploadedFile != null && IsSpreadsheetFile(uploadedFile.FileType))
             {
@@ -91,12 +91,12 @@ else
                         @if (dataMappings.Count > 0)
                         {
                             <MudButton OnClick="SaveMappings"
-                            Color="Color.Primary"
-                            Variant="Variant.Filled"
-                            Disabled="isSaving || dataMappings.Count == 0"
-                            StartIcon="@Icons.Material.Filled.Save"
-                            Size="Size.Large"
-                            FullWidth="true">
+                                       Color="Color.Primary"
+                                       Variant="Variant.Filled"
+                                       Disabled="isSaving || dataMappings.Count == 0"
+                                       StartIcon="@Icons.Material.Filled.Save"
+                                       Size="Size.Large"
+                                       FullWidth="true">
                                 @if (isSaving)
                                 {
                                     <MudProgressCircular Class="mr-2" Size="Size.Small" Indeterminate="true" />
@@ -111,11 +111,11 @@ else
                     </MudItem>
                     <MudItem xs="12" md="6">
                         <MudButton OnClick="NavigateBack"
-                        Color="Color.Secondary"
-                        Variant="Variant.Outlined"
-                        StartIcon="@Icons.Material.Filled.ArrowBack"
-                        Size="Size.Large"
-                        FullWidth="true">
+                                   Color="Color.Secondary"
+                                   Variant="Variant.Outlined"
+                                   StartIcon="@Icons.Material.Filled.ArrowBack"
+                                   Size="Size.Large"
+                                   FullWidth="true">
                             Cancel
                         </MudButton>
                     </MudItem>
@@ -188,7 +188,7 @@ else
 
     private FileDifficulty fileDifficulty = FileDifficulty.Medium;
 
-    private readonly string DefaultRoute = "/file-data-mappings";
+    private readonly string DefaultRoute = "/flux-mappings/search";
 
     protected override void OnParametersSet()
     {
@@ -202,10 +202,10 @@ else
     protected override async Task OnInitializedAsync()
     {
         try
-        {
-            isLoading = true;
-            SetupBreadcrumbs();
-            await LoadFinancialDataPoints();
+    {
+        isLoading = true;
+        SetupBreadcrumbs();
+        await LoadFinancialDataPoints();
 
             // Handle the case when coming from a FluxFetchingHistoryContentId
             if (FluxFetchingHistoryContentId.HasValue)
@@ -264,9 +264,9 @@ else
             }
 
             // Normal case - loading an existing FileUpload
-            if (isEditMode)
-            {
-                await LoadExistingFile();
+        if (isEditMode)
+        {
+            await LoadExistingFile();
             }
 
             if (uploadedFile != null && IsSpreadsheetFile(uploadedFile.FileType))
@@ -293,16 +293,16 @@ else
         _breadcrumbs = new List<BreadcrumbItem>
         {
             new BreadcrumbItem("Home", "/"),
-            new BreadcrumbItem("File Data Mappings", "/file-data-mappings")
+            new BreadcrumbItem("Flux mapping search", "/flux-mappings/search")
         };
 
         if (isEditMode)
         {
-            _breadcrumbs.Add(new BreadcrumbItem($"Edit File Mappings", null, true));
+            _breadcrumbs.Add(new BreadcrumbItem($"Edit flux Mappings", null, true));
         }
         else if (FluxFetchingHistoryContentId.HasValue)
         {
-            _breadcrumbs.Add(new BreadcrumbItem("Create Mapping from Flux", null, true));
+            _breadcrumbs.Add(new BreadcrumbItem("Create Mapping from existing Flux", null, true));
         }
         else
         {
@@ -383,7 +383,7 @@ else
         if (string.IsNullOrEmpty(instanceName))
         {
             int instanceCount = dataMappings.Count(m => m.FinancialDataPointId == dataPointId) + 1;
-            instanceName = $"Instance {instanceCount}";
+                instanceName = $"Instance {instanceCount}";
         }
 
         try
@@ -570,9 +570,11 @@ else
         selectedFileContentType = string.Empty;
         customFileName = string.Empty;
 
+        if(streamFile != null)
+        {
         streamFile.Dispose();
-
         streamFile = null;
+        }
     }
 
     private async Task HandleSave(FileUploadCard.FileUploadMetadata metadata)
@@ -582,7 +584,7 @@ else
             if (uploadedFile == null)
             {
                 // Nouveau fichier - Upload puis SaveContext
-                isUploading = true;
+            isUploading = true;
 
                 if (selectedFile == null) return;
 
@@ -592,7 +594,7 @@ else
 
                 if (response.Data != null)
                 {
-                    uploadedFile = response.Data;
+            uploadedFile = response.Data;
 
                     // Mise à jour des métadonnées après l'upload
                     uploadedFile = await SaveContext(
@@ -617,10 +619,10 @@ else
                 );
 
                 Snackbar.Add("Metadata updated successfully!", Severity.Success);
+                }
             }
-        }
-        catch (Exception ex)
-        {
+            catch (Exception ex)
+            {
             errorMessage = $"Error saving file: {ex.Message}";
             Snackbar.Add(errorMessage, Severity.Error);
         }
@@ -631,9 +633,9 @@ else
     }
 
     private async Task<FileUpload> SaveContext(string fileName, MappingStatus status, FileDifficulty difficulty, FinancialType financialType)
-    {
-        var request = new UpdateFileUploadRequest
             {
+                var request = new UpdateFileUploadRequest
+                    {
                 FileUploadId = uploadedFile!.Id,
                 FileName = fileName,
                 MappingStatus = status,

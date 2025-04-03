@@ -178,7 +178,7 @@ else
         _breadcrumbs = new List<BreadcrumbItem>
         {
             new BreadcrumbItem("Home", "/"),
-            new BreadcrumbItem("File Data Mappings", "/file-data-mappings"),
+            new BreadcrumbItem("Flux Mappings search", "/flux-mappings/search"),
             new BreadcrumbItem("File Details", null, true)
         };
     }
@@ -297,7 +297,7 @@ else
         // }
     }
 
-    private void NavigateBack() => NavigationManager.NavigateTo("/file-data-mappings");
+    private void NavigateBack() => NavigationManager.NavigateTo("/flux-mappings/search");
 
     private void NavigateToEditFile(int fileId) =>
         NavigationManager.NavigateTo($"/file-data-mapping/file/{fileId}");

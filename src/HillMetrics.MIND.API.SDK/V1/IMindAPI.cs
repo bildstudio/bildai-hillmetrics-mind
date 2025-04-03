@@ -70,6 +70,22 @@ namespace HillMetrics.MIND.API.SDK.V1
         [Post("/api/v1/flux/force-financial-price-processing")]
         Task<ApiResponseBase<ForceFinancialPriceProcessingResponse>> ForceFinancialPriceProcessingAsync([Body] ForceFinancialPriceProcessingRequest request);
 
+        /// <summary>
+        /// Force the fetch of a flux in the background without waiting for completion
+        /// </summary>
+        /// <param name="id">The flux identifier</param>
+        /// <returns>Status message indicating that the operation has started</returns>
+        [Get("/api/v1/flux/{id}/force-fetch-async")]
+        Task<ApiResponseBase<string>> ForceFetchBackgroundAsync(int id);
+
+        /// <summary>
+        /// Force the process of a flux in the background without waiting for completion
+        /// </summary>
+        /// <param name="id">The flux identifier</param>
+        /// <returns>Status message indicating that the operation has started</returns>
+        [Get("/api/v1/flux/{id}/force-process-async")]
+        Task<ApiResponseBase<string>> ForceProcessBackgroundAsync(int id);
+
         #endregion
 
         #region Financial Data Point
@@ -239,6 +255,17 @@ namespace HillMetrics.MIND.API.SDK.V1
         #endregion
 
         #region AI Dataset - File Upload
+        /// <summary>
+        /// Search for file uploads following the given criteria
+        /// </summary>
+        /// <param name="request">Search criteria</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Paged list of file uploads</returns>
+        [Get("/api/v1/fluxcarac/file-uploads/search")]
+        Task<PagedApiResponseBase<FileUploadSearchResponse>> SearchFileUploadsAsync(
+            [Query] FileUploadSearchRequest request,
+            CancellationToken cancellationToken = default);
+
 
         /// <summary>
         /// Create a new file upload from a direct file upload
@@ -294,15 +321,6 @@ namespace HillMetrics.MIND.API.SDK.V1
         [Delete("/api/v1/fluxcarac/file-upload/{fileUploadId}")]
         Task<ApiResponseBase<bool>> DeleteFileUploadAsync(
             int fileUploadId,
-            CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Update file difficulty
-        /// </summary>
-        [Put("/api/v1/fluxcarac/file-upload/{fileUploadId}/difficulty")]
-        Task<ApiResponseBase<FileUpload>> UpdateFileUploadDifficultyAsync(
-            int fileUploadId,
-            [Body] FileDifficulty difficulty,
             CancellationToken cancellationToken = default);
         #endregion
 

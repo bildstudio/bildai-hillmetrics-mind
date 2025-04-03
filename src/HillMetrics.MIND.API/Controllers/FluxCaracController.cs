@@ -20,6 +20,24 @@ namespace HillMetrics.MIND.API.Controllers;
 public class FluxCaracController(IMediator mediator, IMapper mapper, ILogger<FluxCaracController> logger) : BaseHillMetricsController(mediator)
 {
     #region FileUpload
+    [HttpGet("file-uploads/search")]
+    public async Task<ActionResult<PagedApiResponseBase<FileUploadSearchResponse>>> SearchFileUpload(
+    [FromQuery] FileUploadSearchRequest request,
+    CancellationToken cancellationToken)
+    {
+        logger.LogInformation("Searching file uploads with criteria: {Criteria}",
+            System.Text.Json.JsonSerializer.Serialize(request));
+
+        var query = mapper.Map<SearchFileUploadQuery>(request);
+        var result = await mediator.Send(query, cancellationToken);
+
+        if (result.IsFailed)
+            return new ErrorApiActionResult(result.Errors.ToApiResult());
+
+        return new PagedApiResponseBase<FileUploadSearchResponse>(
+            mapper.Map<List<FileUploadSearchResponse>>(result.Value.Results),
+            result.Value.TotalRecords);
+    }
 
     /// <summary>
     /// Upload a new file for AI dataset processing
@@ -176,31 +194,6 @@ public class FluxCaracController(IMediator mediator, IMapper mapper, ILogger<Flu
             return new ErrorApiActionResult(result.Errors.ToApiResult());
 
         return new ApiResponseBase<bool>(true);
-    }
-
-    /// <summary>
-    /// Update a file upload's difficulty
-    /// </summary>
-    [HttpPut("file-upload/{fileUploadId}/difficulty")]
-    public async Task<ActionResult<ApiResponseBase<FileUpload>>> UpdateFileUploadDifficulty(
-        int fileUploadId,
-        [FromBody] FileDifficulty difficulty,
-        CancellationToken cancellationToken)
-    {
-        logger.LogInformation("Updating difficulty for file upload with ID: {FileUploadId}", fileUploadId);
-
-        var command = new UpdateFileUploadDifficultyCommand
-        {
-            FileUploadId = fileUploadId,
-            Difficulty = difficulty
-        };
-
-        var result = await mediator.Send(command, cancellationToken);
-
-        if (result.IsFailed)
-            return new ErrorApiActionResult(result.Errors.ToApiResult());
-
-        return new ApiResponseBase<FileUpload>(result.Value);
     }
     #endregion
 

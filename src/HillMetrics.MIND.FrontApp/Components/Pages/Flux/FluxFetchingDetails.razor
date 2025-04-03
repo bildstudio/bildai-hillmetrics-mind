@@ -451,14 +451,14 @@
         try
         {
             loading = true;
-            // Call the API to force process the content
-            await MindApi.ForceProcessAsync(content.Id);
-            Snackbar.Add($"Force process initiated for content: {content.ContentName}", Severity.Success);
+            // Appeler l'API pour forcer le traitement du contenu en arrière-plan
+            await MindApi.ForceProcessBackgroundAsync(content.Id);
+            Snackbar.Add($"Force process started in the background for content: {content.ContentName}", Severity.Success);
             await LoadProcessingHistories();
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Error during force process: {ex.Message}", Severity.Error);
+            Snackbar.Add($"Error starting force process: {ex.Message}", Severity.Error);
         }
         finally
         {

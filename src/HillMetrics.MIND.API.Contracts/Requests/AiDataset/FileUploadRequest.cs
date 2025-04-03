@@ -37,36 +37,36 @@ namespace HillMetrics.MIND.API.Contracts.Requests.AiDataset
         public FinancialType FinancialType { get; set; }
     }
 
-    public class FileUploadSearchRequest
-    {
-        /// <summary>
-        /// Filter by file name
-        /// </summary>
-        public string FileName { get; set; }
+    //public class FileUploadSearchRequest
+    //{
+    //    /// <summary>
+    //    /// Filter by file name
+    //    /// </summary>
+    //    public string FileName { get; set; }
 
-        /// <summary>
-        /// Filter by mapping status
-        /// </summary>
-        public string MappingStatus { get; set; }
+    //    /// <summary>
+    //    /// Filter by mapping status
+    //    /// </summary>
+    //    public string MappingStatus { get; set; }
 
-        /// <summary>
-        /// Filter by upload date range (start)
-        /// </summary>
-        public DateTime? UploadedFromDate { get; set; }
+    //    /// <summary>
+    //    /// Filter by upload date range (start)
+    //    /// </summary>
+    //    public DateTime? UploadedFromDate { get; set; }
 
-        /// <summary>
-        /// Filter by upload date range (end)
-        /// </summary>
-        public DateTime? UploadedToDate { get; set; }
+    //    /// <summary>
+    //    /// Filter by upload date range (end)
+    //    /// </summary>
+    //    public DateTime? UploadedToDate { get; set; }
 
-        /// <summary>
-        /// Pagination page number (1-based)
-        /// </summary>
-        public int Page { get; set; } = 1;
+    //    /// <summary>
+    //    /// Pagination page number (1-based)
+    //    /// </summary>
+    //    public int Page { get; set; } = 1;
 
-        /// <summary>
-        /// Number of items per page
-        /// </summary>
-        public int PageSize { get; set; } = 20;
-    }
+    //    /// <summary>
+    //    /// Number of items per page
+    //    /// </summary>
+    //    public int PageSize { get; set; } = 20;
+    //}
 }

@@ -68,10 +68,10 @@ namespace HillMetrics.MIND.FrontApp.Services
                     Elements = mapping.ElementValues.Select(e => new
                     {
                         ElementValueId = e.Id,
-                        //PropertyName = e.na.FinancialDataPointElement.PropertyName,
-                        //Value = e.Value,
-                        //DataType = e.PropertyDataType.ToString(),
-                        //Description = e.FinancialDataPointElement.Description
+                        PropertyName = e.FinancialDataPointElement.PropertyName,
+                        Value = e.ExtractedValue,
+                        DataType = e.PropertyDataType.ToString(),
+                        Description = e.FinancialDataPointElement.Description
                     }).ToList()
                 };
 

@@ -22,13 +22,13 @@
         @if (CanUploadFile)
         {
             <MudFileUpload T="IBrowserFile" Accept=".csv,.xls,.xlsx,.pdf,.xml,.json,.html"
-                           OnFilesChanged="@(e => HandleFileSelected(e.File))" MaximumFileCount="1">
+            OnFilesChanged="@(e => HandleFileSelected(e.File))" MaximumFileCount="1">
                 <ActivatorContent>
                     <MudButton HtmlTag="label"
-                               Variant="Variant.Filled"
-                               Color="Color.Primary"
-                               StartIcon="@Icons.Material.Filled.CloudUpload"
-                               FullWidth="true">
+                    Variant="Variant.Filled"
+                    Color="Color.Primary"
+                    StartIcon="@Icons.Material.Filled.CloudUpload"
+                    FullWidth="true">
                         Choose File
                     </MudButton>
                 </ActivatorContent>
@@ -36,30 +36,20 @@
         }
         else if (File != null || SelectedFile != null)
         {
-            <FileMetadataSection File="@(File ?? new FileUpload
-                {
-                    FileName = SelectedFileName,
-                    FileSize = SelectedFileSize,
-                    FileType = Path.GetExtension(SelectedFileName),
-                    ContentType = SelectedFileContentType,
-                    Difficulty = FileDifficulty,
-                    MappingStatus = MappingStatus,
-                    UploadedAt = DateTime.Now,
-                    FinancialType = FinancialType
-                })"
-                                 OnFileNameUpdated="HandleFileNameUpdated"
-                                 OnStatusUpdated="HandleStatusUpdated"
-                                 OnDifficultyUpdated="HandleDifficultyUpdated"
-                                 OnFinancialTypeUpdated="HandleFinancialTypeUpdated" />
+            <FileMetadataSection File="@File"
+            OnFileNameUpdated="HandleFileNameUpdated"
+            OnStatusUpdated="HandleStatusUpdated"
+            OnDifficultyUpdated="HandleDifficultyUpdated"
+            OnFinancialTypeUpdated="HandleFinancialTypeUpdated" />
 
-            @if (!IsEditMode)
+            @if (!IsEditMode || true)
             {
                 <MudButton OnClick="HandleSave"
-                           Color="Color.Primary"
-                           Variant="Variant.Filled"
-                           Disabled="@(IsUploading || FinancialType == FinancialType.Undefined)"
-                           FullWidth="true"
-                           Class="mt-4">
+                Color="Color.Primary"
+                Variant="Variant.Filled"
+                Disabled="@(IsUploading || FinancialType == FinancialType.Undefined)"
+                FullWidth="true"
+                Class="mt-4">
                     @if (IsUploading)
                     {
                         <MudProgressCircular Class="mr-2" Size="Size.Small" Indeterminate="true" />
@@ -72,10 +62,10 @@
                 </MudButton>
 
                 <MudButton OnClick="HandleFileClear"
-                           Color="Color.Secondary"
-                           Variant="Variant.Outlined"
-                           FullWidth="true"
-                           Class="mt-2">
+                Color="Color.Secondary"
+                Variant="Variant.Outlined"
+                FullWidth="true"
+                Class="mt-2">
                     Cancel
                 </MudButton>
             }
@@ -97,10 +87,12 @@
     [Parameter] public string SelectedFileName { get; set; } = string.Empty;
     [Parameter] public long SelectedFileSize { get; set; }
     [Parameter] public string SelectedFileContentType { get; set; } = string.Empty;
+
     [Parameter] public string CustomFileName { get; set; } = string.Empty;
     [Parameter] public FileDifficulty FileDifficulty { get; set; } = FileDifficulty.Medium;
     [Parameter] public FinancialType FinancialType { get; set; } = FinancialType.Fund;
     [Parameter] public MappingStatus MappingStatus { get; set; } = MappingStatus.NotMapped;
+
     [Parameter] public bool IsUploading { get; set; }
     [Parameter] public bool DuplicateFileFound { get; set; }
     [Parameter] public bool CanUploadFile { get; set; }
@@ -114,14 +106,28 @@
     [Parameter] public EventCallback<FinancialType> OnFinancialTypeUpdated { get; set; }
     [Parameter] public EventCallback<FileUploadMetadata> OnSave { get; set; }
 
+    protected override void OnInitialized()
+    {
+        File = File ?? new FileUpload
+            {
+                FileName = SelectedFileName,
+                FileSize = SelectedFileSize,
+                FileType = Path.GetExtension(SelectedFileName),
+                ContentType = SelectedFileContentType,
+                Difficulty = FileDifficulty,
+                MappingStatus = MappingStatus,
+                UploadedAt = DateTime.Now,
+                FinancialType = FinancialType
+            };
+    }
     private async Task HandleSave()
     {
         var metadata = new FileUploadMetadata
         {
-            FileName = SelectedFileName,
-            MappingStatus = MappingStatus,
-            Difficulty = FileDifficulty,
-            FinancialType = FinancialType
+            FileName = File!.FileName,
+            MappingStatus = File.MappingStatus,
+            Difficulty = File.Difficulty,
+            FinancialType = File.FinancialType
         };
 
         await OnSave.InvokeAsync(metadata);
@@ -152,22 +158,25 @@
 
     private async Task HandleFileNameUpdated(string newName)
     {
+        File!.FileName = newName;
         await OnFileNameUpdated.InvokeAsync(newName);
     }
 
     private async Task HandleStatusUpdated(MappingStatus status)
     {
+        File!.MappingStatus = status;
         await OnStatusUpdated.InvokeAsync(status);
     }
 
     private async Task HandleDifficultyUpdated(FileDifficulty difficulty)
     {
+        File!.Difficulty = difficulty;
         await OnDifficultyUpdated.InvokeAsync(difficulty);
     }
 
     private async Task HandleFinancialTypeUpdated(FinancialType type)
     {
-        FinancialType = type;
+        File!.FinancialType = type;
         await OnFinancialTypeUpdated.InvokeAsync(type);
     }
 }

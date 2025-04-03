@@ -245,6 +245,134 @@ namespace HillMetrics.MIND.API.Controllers
             }
         }
 
+        /// <summary>
+        /// Force the fetch of a flux asynchronously (non-blocking)
+        /// </summary>
+        /// <param name="id">The flux identifier</param>
+        /// <returns>Status indication that the operation has started</returns>
+        [HttpGet("{id}/force-fetch-async")]
+        public ActionResult<ApiResponseBase<string>> ForceFetchBackgroundAsync(int id)
+        {
+            try
+            {
+                // Capture services from the current request context
+                var serviceProvider = HttpContext.RequestServices;
+
+                // Start the background processing task without awaiting it
+                _ = Task.Run(async () =>
+                {
+                    // Create a new scope for the long-running operation
+                    using var scope = serviceProvider.CreateScope();
+                    
+                    try
+                    {
+                        // Resolve required services from the new scope
+                        var scopedMediator = scope.ServiceProvider.GetRequiredService<IMediator>();
+                        var scopedLogger = scope.ServiceProvider.GetRequiredService<ILogger<FluxController>>();
+                        
+                        scopedLogger.LogInformation("Starting asynchronous fetch for flux {FluxId}", id);
+                        
+                        // Execute the operation with services from the new scope
+                        var command = FetchFluxCommand.Create(id, Task.FromResult(new List<Mail>()));
+                        command.CalledManually = true;
+                        var result = await scopedMediator.Send(command);
+                        
+                        if (result.IsSuccess)
+                        {
+                            scopedLogger.LogInformation("Async fetch completed successfully for flux {FluxId}", id);
+                        }
+                        else
+                        {
+                            scopedLogger.LogWarning("Async fetch failed for flux {FluxId}: {Errors}", 
+                                id, string.Join(", ", result.Errors.Select(e => e.Message)));
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        // Use logger from the scope
+                        var scopedLogger = scope.ServiceProvider.GetRequiredService<ILogger<FluxController>>();
+                        scopedLogger.LogError(ex, "Error in asynchronous flux fetch for flux {FluxId}", id);
+                    }
+                });
+                
+                // Return success immediately
+                return new ApiResponseBase<string>(
+                    $"Flux fetch operation started for flux {id}. The operation will continue in the background.");
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error initiating asynchronous flux fetch for flux {FluxId}", id);
+                return new ErrorApiActionResult(
+                    new ErrorApiResponse(
+                        new Core.API.Exceptions.ApiException($"Error starting asynchronous flux fetch: {ex.Message}"), 
+                        System.Net.HttpStatusCode.InternalServerError));
+            }
+        }
+
+        /// <summary>
+        /// Force the process of a flux asynchronously (non-blocking)
+        /// </summary>
+        /// <param name="id">The flux identifier</param>
+        /// <returns>Status indication that the operation has started</returns>
+        [HttpGet("{id}/force-process-async")]
+        public ActionResult<ApiResponseBase<string>> ForceProcessBackgroundAsync(int id)
+        {
+            try
+            {
+                // Capture services from the current request context
+                var serviceProvider = HttpContext.RequestServices;
+
+                // Start the background processing task without awaiting it
+                _ = Task.Run(async () =>
+                {
+                    // Create a new scope for the long-running operation
+                    using var scope = serviceProvider.CreateScope();
+                    
+                    try
+                    {
+                        // Resolve required services from the new scope
+                        var scopedMediator = scope.ServiceProvider.GetRequiredService<IMediator>();
+                        var scopedLogger = scope.ServiceProvider.GetRequiredService<ILogger<FluxController>>();
+                        
+                        scopedLogger.LogInformation("Starting asynchronous process for flux {FluxId}", id);
+                        
+                        // Execute the operation with services from the new scope
+                        var result = await scopedMediator.Send(new ProcessFluxCommand() {
+                            FluxId = id,
+                            CalledManually = true
+                        });
+                        
+                        if (result.IsSuccess)
+                        {
+                            scopedLogger.LogInformation("Async process completed successfully for flux {FluxId}", id);
+                        }
+                        else
+                        {
+                            scopedLogger.LogWarning("Async process failed for flux {FluxId}: {Errors}", 
+                                id, string.Join(", ", result.Errors.Select(e => e.Message)));
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        // Use logger from the scope
+                        var scopedLogger = scope.ServiceProvider.GetRequiredService<ILogger<FluxController>>();
+                        scopedLogger.LogError(ex, "Error in asynchronous flux process for flux {FluxId}", id);
+                    }
+                });
+                
+                // Return success immediately
+                return new ApiResponseBase<string>(
+                    $"Flux process operation started for flux {id}. The operation will continue in the background.");
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error initiating asynchronous flux process for flux {FluxId}", id);
+                return new ErrorApiActionResult(
+                    new ErrorApiResponse(
+                        new Core.API.Exceptions.ApiException($"Error starting asynchronous flux process: {ex.Message}"), 
+                        System.Net.HttpStatusCode.InternalServerError));
+            }
+        }
         #endregion
 
         #region FinancialDataPoint

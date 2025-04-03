@@ -15,8 +15,11 @@ namespace HillMetrics.MIND.API.Mappers
     {
         public AiDatasetMappingProfile()
         {
+            CreateMap<FileUploadSearchRequest, SearchFileUploadQuery>();
+            CreateMap<SearchFileUploadQueryItemResult, FileUploadSearchResponse>();
+            CreateMap<DataPointInfo, DataPointInfoResponse>();
+
             // FileUpload mappings
-            CreateMap<FileUpload, FileUploadResponse>();
             CreateMap<FileUploadRequest, CreateFileUploadCommand>()
                 .ForMember(dest => dest.FileName, opt => opt.MapFrom(src => src.File.FileName))
                 .ForMember(dest => dest.ContentType, opt => opt.MapFrom(src => src.File.ContentType))
