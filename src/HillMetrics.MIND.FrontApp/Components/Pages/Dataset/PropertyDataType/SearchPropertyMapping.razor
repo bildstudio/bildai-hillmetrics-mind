@@ -1,14 +1,16 @@
-﻿@page "/property-data-types/search"
-@using HillMetrics.MIND.API.Contracts.Requests.AiDataset
+﻿@page "/property-mapping/search"
+@using HillMetrics.Core.Common;
+@using HillMetrics.Core.Financial
 @using HillMetrics.Core.Search
-@using HillMetrics.Core.Common
+@using HillMetrics.MIND.API.Contracts.Requests.AiDataset
 @using HillMetrics.MIND.API.Contracts.Responses.AiDataset
 @using HillMetrics.MIND.API.SDK.V1
+@using HillMetrics.Normalized.Domain.Contracts.AI.Dataset
+t
 @inject IMindAPI MindApi
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
-@inject HttpClient Http
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
     <Documentation
@@ -23,7 +25,7 @@
             <MudButton Variant="Variant.Filled"
                       Color="Color.Primary"
                       StartIcon="@Icons.Material.Filled.Add"
-                      Href="/property-data-types/create"
+                       Href="/property-mapping/create"
                       Class="align-self-start">
                 Create New Property Type
             </MudButton>
@@ -35,7 +37,7 @@
             <MudForm @ref="form" @bind-IsValid="@isValid">
                 <MudGrid Spacing="1">
                     <!-- Name -->
-                    <MudItem xs="12" md="6">
+                    <MudItem xs="12" md="4">
                         <MudTextField @bind-Value="searchRequest.Name"
                                     Label="Property Type Name"
                                     Variant="Variant.Outlined"
@@ -48,13 +50,25 @@
                     </MudItem>
 
                     <!-- Content Type -->
-                    <MudItem xs="12" md="6">
+                    <MudItem xs="12" md="4">
                         <MudSelect T="ContentType?" @bind-Value="searchRequest.ContentType"
                                  Label="Content Type" Variant="Variant.Outlined" Dense="true" Margin="Margin.Dense">
                             <MudSelectItem Value="@((ContentType?)null)">All</MudSelectItem>
                             @foreach (var type in Enum.GetValues<ContentType>())
                             {
                                 <MudSelectItem T="ContentType?" Value="@type">@type</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+
+                    <!-- Mapping Primitive Type -->
+                    <MudItem xs="12" md="4">
+                        <MudSelect T="MappingTypePrimitive?" @bind-Value="searchRequest.MappingPrimitiveValue"
+                                 Label="Primitive Data Type" Variant="Variant.Outlined" Dense="true" Margin="Margin.Dense">
+                            <MudSelectItem Value="@((MappingTypePrimitive?)null)">All</MudSelectItem>
+                            @foreach (var type in Enum.GetValues<MappingTypePrimitive>())
+                            {
+                                <MudSelectItem T="MappingTypePrimitive?" Value="@type">@type</MudSelectItem>
                             }
                         </MudSelect>
                     </MudItem>
@@ -76,7 +90,7 @@
         <MudTable ServerData="@ServerReload"
                   Hover="true" Bordered="true" Striped="true"
                   Dense="true" @bind-SelectedItem="selectedItem"
-                  T="PropertyDataTypeResponse"
+                  T="PropertyMappingResponse"
                   Breakpoint="Breakpoint.Sm">
             <ToolBarContent>
                 <MudText Typo="Typo.h6" Class="ml-2">Property Types List</MudText>
@@ -132,7 +146,7 @@
     private bool isValid = false;
     private MudForm form;
     private string searchString = "";
-    private PropertyDataTypeResponse selectedItem = null;
+    private PropertyMappingResponse selectedItem = null;
     private TableState tableState;
 
     protected override async Task OnInitializedAsync()
@@ -140,7 +154,7 @@
         await base.OnInitializedAsync();
     }
 
-    private async Task<TableData<PropertyDataTypeResponse>> ServerReload(TableState state, CancellationToken token)
+    private async Task<TableData<PropertyMappingResponse>> ServerReload(TableState state, CancellationToken token)
     {
         tableState = state;
         loading = true;
@@ -152,7 +166,7 @@
 
             var response = await MindApi.SearchPropertyDataTypesAsync(searchRequest);
 
-            return new TableData<PropertyDataTypeResponse>
+            return new TableData<PropertyMappingResponse>
             {
                 Items = response.Data,
                 TotalItems = (int)response.TotalRecords
@@ -161,9 +175,9 @@
         catch (Exception ex)
         {
             Snackbar.Add($"Error searching property types: {ex.Message}", Severity.Error);
-            return new TableData<PropertyDataTypeResponse>
+            return new TableData<PropertyMappingResponse>
             {
-                Items = new List<PropertyDataTypeResponse>(),
+                Items = new List<PropertyMappingResponse>(),
                 TotalItems = 0
             };
         }
@@ -197,7 +211,7 @@
 
     private void EditPropertyType(int id)
     {
-        NavigationManager.NavigateTo($"/property-data-types/edit/{id}");
+        NavigationManager.NavigateTo($"/property-mapping/edit/{id}");
     }
 
     private async Task DeletePropertyType(int id)

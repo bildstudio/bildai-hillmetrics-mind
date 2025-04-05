@@ -7,7 +7,7 @@ namespace HillMetrics.MIND.API.Contracts.Responses.AiDataset
     {
         public int Id { get; set; }
         public string? ExtractedValue { get; set; }
-        public PropertyDataType PropertyDataType { get; set; }
+        public PropertyMapping PropertyDataType { get; set; }
         public int FileDataMappingId { get; set; }
         public FileDataMapping FileDataMapping { get; set; } = null!;
         public int FinancialDataPointElementId { get; set; }

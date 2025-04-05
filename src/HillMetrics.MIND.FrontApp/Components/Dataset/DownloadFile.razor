@@ -1,10 +1,11 @@
 ﻿@using HillMetrics.Normalized.Domain.Contracts.AI.Dataset
+@using HillMetrics.Core.Common
 @inject FileUploadService FileUploadService
 @inject ISnackbar Snackbar
 @inject IJSRuntime JSRuntime
 
 <MudTooltip Text="Download File">
-    <MudIconButton Icon="@GetFileIcon(FileType)"
+    <MudIconButton Icon="@GetFileIcon(File.ContentType)"
                    Color="Color.Primary"
                    OnClick="HandleDownload" />
 </MudTooltip>
@@ -34,8 +35,8 @@
             var fileBytes = memoryStream.ToArray();
             var base64 = Convert.ToBase64String(fileBytes);
 
-            // Déterminer le type MIME
-            var mimeType = GetMimeType(Path.GetExtension(File.FileName));
+            // Déterminer le type MIME à partir du ContentType
+            var mimeType = ContentTypeMapper.GetMimeType(File.ContentType);
 
             // Télécharger le fichier via JS
             await JSRuntime.InvokeVoidAsync("downloadFileFromBase64", File.FileName, base64, mimeType);
@@ -48,41 +49,19 @@
         }
     }
 
-    private string GetFileIcon(string fileType)
+    private string GetFileIcon(ContentType contentType)
     {
-        if (string.IsNullOrEmpty(fileType))
-            return Icons.Material.Filled.InsertDriveFile;
-
-        fileType = fileType.ToLowerInvariant();
-
-        return fileType switch
+        return contentType switch
         {
-            ".xlsx" or ".xls" => Icons.Custom.FileFormats.FileExcel,
-            ".csv" => Icons.Custom.FileFormats.FileExcel,
-            ".pdf" => Icons.Custom.FileFormats.FilePdf,
-            ".xml" => Icons.Custom.FileFormats.FileCode,
-            ".json" => Icons.Custom.FileFormats.FileCode,
+            ContentType.Xlsx => Icons.Custom.FileFormats.FileExcel,
+            ContentType.Xls => Icons.Custom.FileFormats.FileExcel,
+            ContentType.Csv => Icons.Custom.FileFormats.FileExcel,
+            ContentType.Pdf => Icons.Custom.FileFormats.FilePdf,
+            ContentType.Xml => Icons.Custom.FileFormats.FileCode,
+            ContentType.Json => Icons.Custom.FileFormats.FileCode,
+            ContentType.Html => Icons.Material.Filled.InsertDriveFile,
+            ContentType.Text => Icons.Material.Filled.Description,
             _ => Icons.Material.Filled.InsertDriveFile
-        };
-    }
-
-    private string GetMimeType(string extension)
-    {
-        if (string.IsNullOrEmpty(extension))
-            return "application/octet-stream";
-
-        extension = extension.ToLowerInvariant();
-
-        return extension switch
-        {
-            ".xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            ".xls" => "application/vnd.ms-excel",
-            ".csv" => "text/csv",
-            ".pdf" => "application/pdf",
-            ".xml" => "application/xml",
-            ".json" => "application/json",
-            ".html" or ".htm" => "text/html",
-            _ => "application/octet-stream"
         };
     }
 

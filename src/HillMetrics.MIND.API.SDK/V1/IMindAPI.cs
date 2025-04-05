@@ -3,11 +3,13 @@ using HillMetrics.MIND.API.Contracts.Requests.AiDataset;
 using HillMetrics.MIND.API.Contracts.Requests.Flux;
 using HillMetrics.MIND.API.Contracts.Requests.Prices;
 using HillMetrics.MIND.API.Contracts.Requests.Source;
+using HillMetrics.MIND.API.Contracts.Requests.TradingVenue;
 using HillMetrics.MIND.API.Contracts.Responses;
 using HillMetrics.MIND.API.Contracts.Responses.AiDataset;
 using HillMetrics.MIND.API.Contracts.Responses.Flux;
 using HillMetrics.MIND.API.Contracts.Responses.Prices;
 using HillMetrics.MIND.API.Contracts.Responses.Source;
+using HillMetrics.MIND.API.Contracts.Responses.TradingVenue;
 using HillMetrics.Normalized.Domain.Contracts.AI.Dataset;
 using HillMetrics.Normalized.Domain.Contracts.AI.Dataset.Cqrs.ElementValue;
 using HillMetrics.Normalized.Domain.Contracts.AI.Dataset.Cqrs.FinancialDataPoint;
@@ -465,16 +467,16 @@ namespace HillMetrics.MIND.API.SDK.V1
         /// <summary>
         /// Create a new property data type
         /// </summary>
-        [Post("/api/v1/fluxcarac/property-data-type")]
-        Task<ApiResponseBase<PropertyDataTypeResponse>> CreatePropertyDataTypeAsync(
+        [Post("/api/v1/fluxcarac/property-mapping")]
+        Task<ApiResponseBase<PropertyMappingResponse>> CreatePropertyDataTypeAsync(
             [Body] CreatePropertyDataTypeRequest request,
             CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Update an existing property data type
         /// </summary>
-        [Put("/api/v1/fluxcarac/property-data-type/{id}")]
-        Task<ApiResponseBase<PropertyDataTypeResponse>> UpdatePropertyDataTypeAsync(
+        [Put("/api/v1/fluxcarac/property-mapping/{id}")]
+        Task<ApiResponseBase<PropertyMappingResponse>> UpdatePropertyDataTypeAsync(
             int id,
             [Body] CreatePropertyDataTypeRequest request,
             CancellationToken cancellationToken = default);
@@ -482,15 +484,15 @@ namespace HillMetrics.MIND.API.SDK.V1
         /// <summary>
         /// Get a specific property data type
         /// </summary>
-        [Get("/api/v1/fluxcarac/property-data-type/{id}")]
-        Task<ApiResponseBase<PropertyDataTypeResponse>> GetPropertyDataTypeAsync(
+        [Get("/api/v1/fluxcarac/property-mapping/{id}")]
+        Task<ApiResponseBase<PropertyMappingResponse>> GetPropertyDataTypeAsync(
             int id,
             CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Delete a property data type
         /// </summary>
-        [Delete("/api/v1/fluxcarac/property-data-type/{id}")]
+        [Delete("/api/v1/fluxcarac/property-mapping/{id}")]
         Task<ApiResponseBase<bool>> DeletePropertyDataTypeAsync(
             int id,
             CancellationToken cancellationToken = default);
@@ -498,8 +500,8 @@ namespace HillMetrics.MIND.API.SDK.V1
         /// <summary>
         /// Search property data types
         /// </summary>
-        [Get("/api/v1/fluxcarac/property-data-types/search")]
-        Task<PagedApiResponseBase<PropertyDataTypeResponse>> SearchPropertyDataTypesAsync(
+        [Get("/api/v1/fluxcarac/property-mapping/search")]
+        Task<PagedApiResponseBase<PropertyMappingResponse>> SearchPropertyDataTypesAsync(
             [Query] SearchPropertyDataTypeRequest request,
             CancellationToken cancellationToken = default);
 
@@ -528,5 +530,44 @@ namespace HillMetrics.MIND.API.SDK.V1
         /// <returns>Paged list of financial data points</returns>
         [Get("/api/v1/fluxcarac/financial-data-points/search")]
         Task<PagedApiResponseBase<FinancialDataPointSearchResponse>> SearchFinancialDataPointsAsync([Query] SearchFinancialDataPointRequest request);
+
+        #region TradingVenue
+
+        /// <summary>
+        /// Get a trading venue by ID or MIC
+        /// </summary>
+        /// <param name="request">Request with either ID or MIC</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Trading venue details</returns>
+        [Get("/api/v1/tradingvenue")]
+        Task<ApiResponseBase<TradingVenueResponse>> GetTradingVenueAsync(
+            [Query] GetTradingVenueRequest request,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Search for trading venues based on criteria
+        /// </summary>
+        /// <param name="request">Search criteria</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Paged list of trading venues</returns>
+        [Get("/api/v1/tradingvenue/search")]
+        Task<PagedApiResponseBase<TradingVenueSearchResponse>> SearchTradingVenuesAsync(
+            [Query] SearchTradingVenueRequest request,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Edit a trading venue
+        /// </summary>
+        /// <param name="id">ID of the trading venue to edit</param>
+        /// <param name="request">Edit request with updated values</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Updated trading venue details</returns>
+        [Put("/api/v1/tradingvenue/{id}")]
+        Task<ApiResponseBase<TradingVenueResponse>> EditTradingVenueAsync(
+            int id,
+            [Body] EditTradingVenueRequest request,
+            CancellationToken cancellationToken = default);
+
+        #endregion
     }
 }

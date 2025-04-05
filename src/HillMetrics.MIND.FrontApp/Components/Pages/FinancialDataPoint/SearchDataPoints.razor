@@ -4,6 +4,7 @@
 @using HillMetrics.Core.Financial
 @using HillMetrics.MIND.API.Contracts.Responses.AiDataset
 @using HillMetrics.MIND.API.SDK.V1
+@using HillMetrics.Normalized.Domain.Contracts.AI.Dataset
 @inject IMindAPI MindApi
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
@@ -30,7 +31,7 @@
             <MudForm @ref="form" @bind-IsValid="@isValid">
                 <MudGrid Spacing="1">
                     <!-- Name -->
-                    <MudItem xs="12" md="6">
+                    <MudItem xs="12" md="4">
                         <MudTextField @bind-Value="searchRequest.Name"
                                      Label="Data Point Name"
                                      Variant="Variant.Outlined"
@@ -43,7 +44,7 @@
                     </MudItem>
 
                     <!-- Financial Type -->
-                    <MudItem xs="12" md="6">
+                    <MudItem xs="12" md="4">
                         <MudSelect T="FinancialType?" @bind-Value="searchRequest.FinancialType"
                         Label="Financial Type" Variant="Variant.Outlined" Dense="true" Margin="Margin.Dense">
                             <MudSelectItem Value="@((FinancialType?)null)">All</MudSelectItem>
@@ -133,7 +134,7 @@
     [Parameter]
     [SupplyParameterFromQuery(Name = "dataPointId")]
     public int? DataPointIdParameter { get; set; }
-    
+
     protected override async Task OnInitializedAsync()
     {
         await Search();

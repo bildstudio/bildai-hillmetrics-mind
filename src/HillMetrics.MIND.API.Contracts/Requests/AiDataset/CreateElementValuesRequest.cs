@@ -19,6 +19,6 @@ public class CreateElementValuesRequest
         public string? ExtractedValue { get; set; }
 
         [Required]
-        public PropertyDataType PropertyDataType { get; set; }
+        public PropertyMapping PropertyDataType { get; set; }
     }
 }

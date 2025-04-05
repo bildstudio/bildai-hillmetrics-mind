@@ -10,8 +10,8 @@
             <MudText><strong>File Name:</strong></MudText>
             @if (!IsEditingFileName)
             {
-                <MudChip Color="Color.Primary" 
-                Size="Size.Small" 
+                <MudChip Color="Color.Primary"
+                Size="Size.Small"
                 Class="ml-2"
                 OnClick="@(() => StartEditingFileName())">
                     @File.FileName
@@ -44,8 +44,8 @@
             <MudText><strong>Status:</strong></MudText>
             @if (!IsEditingStatus)
             {
-                <MudChip Color="Color.Primary" 
-                Size="Size.Small" 
+                <MudChip Color="Color.Primary"
+                Size="Size.Small"
                 Class="ml-2"
                 OnClick="@(() => IsEditingStatus = true)">
                     @File.MappingStatus.ToString()
@@ -53,11 +53,11 @@
             }
             else
             {
-                <MudSelect T="MappingStatus" 
+                <MudSelect T="MappingStatus"
                 Value="File.MappingStatus"
                 ValueChanged="OnStatusChanged"
                 Immediate="true"
-                Class="ml-2" 
+                Class="ml-2"
                 Style="min-width: 150px;"
                 OnBlur="@(() => IsEditingStatus = false)"
                 SelectedValuesChanged="@(() => IsEditingStatus = false)">
@@ -74,8 +74,8 @@
             <MudText><strong>Difficulty:</strong></MudText>
             @if (!IsEditingDifficulty)
             {
-                <MudChip Color="@GetDifficultyColor(File.Difficulty)" 
-                Size="Size.Small" 
+                <MudChip Color="@GetDifficultyColor(File.Difficulty)"
+                Size="Size.Small"
                 Class="ml-2"
                 OnClick="@(() => IsEditingDifficulty = true)">
                     @File.Difficulty.ToString()
@@ -83,11 +83,11 @@
             }
             else
             {
-                <MudSelect T="FileDifficulty" 
+                <MudSelect T="FileDifficulty"
                 Value="File.Difficulty"
                 ValueChanged="OnDifficultyChanged"
                 Immediate="true"
-                Class="ml-2" 
+                Class="ml-2"
                 Style="min-width: 150px;"
                 OnBlur="@(() => IsEditingDifficulty = false)"
                 SelectedValuesChanged="@(() => IsEditingDifficulty = false)">

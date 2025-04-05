@@ -2,15 +2,6 @@
 @inject NavigationManager NavigationManager
 
 <MudNavMenu>
-    <MudText Typo="Typo.h6" Class="px-4 py-2">
-        <MudStack Row="true" AlignItems="AlignItems.Center">
-            <MudIcon Icon="@Icons.Material.Filled.Analytics" />
-            <MudText>HillMetrics MIND</MudText>
-        </MudStack>
-    </MudText>
-
-    <MudDivider Class="my-2" />
-
     <MudNav>
         <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard">
             Dashboard
@@ -23,6 +14,34 @@
             <MudNavLink Href="/flux/create" Icon="@Icons.Material.Filled.Add">
                 Create Flux
             </MudNavLink>
+            
+            <MudNavGroup Title="Flux Caracs" Icon="@Icons.Material.Filled.Category" Expanded="false">
+                <MudNavLink Href="/financial-data/search" Icon="@Icons.Material.Filled.Search">
+                    Search Data Points
+                </MudNavLink>
+                <MudNavLink Href="/financial-data/create" Icon="@Icons.Material.Filled.Add">
+                    Create Data Point
+                </MudNavLink>
+                <MudNavLink Href="/property-mapping/search" Icon="@Icons.Material.Filled.Search">
+                    Search Property Types
+                </MudNavLink>
+                <MudNavLink Href="/property-mapping/create" Icon="@Icons.Material.Filled.Add">
+                    Create Property Type
+                </MudNavLink>
+            </MudNavGroup>
+            
+            <MudNavGroup Title="Flux / Sandbox mapping" Icon="@Icons.Material.Filled.Storage" Expanded="false">
+                <MudNavLink Href="/flux-mappings/search" Icon="@Icons.Material.Filled.List">
+                    Mapping Search
+                </MudNavLink>
+                <MudNavLink Href="/file-data-mapping" Icon="@Icons.Material.Filled.Add">
+                    Create Mapping
+                </MudNavLink>
+                <MudNavLink Href="/flux-sandbox" Icon="@Icons.Material.Filled.Science">
+                    Sandbox
+                </MudNavLink>
+            </MudNavGroup>
+            
             <MudNavGroup Title="History" Icon="@Icons.Material.Filled.History" Expanded="false">
                 <MudNavLink Href="/flux/fetching-history" Icon="@Icons.Material.Filled.CloudDownload">
                     Fetching History
@@ -36,36 +55,12 @@
             </MudNavLink>
         </MudNavGroup>
 
-        <MudNavGroup Title="Data Points" Icon="@Icons.Material.Filled.DataUsage" Expanded="false">
-            <MudNavLink Href="/financial-data/search" Icon="@Icons.Material.Filled.Search">
-                Search Data Points
-            </MudNavLink>
-            <MudNavLink Href="/financial-data/create" Icon="@Icons.Material.Filled.Add">
-                Create Data Point
-            </MudNavLink>
-        </MudNavGroup>
-
-        <MudNavGroup Title="Data Mapping" Icon="@Icons.Material.Filled.Storage" Expanded="false">
-            <MudNavLink Href="/flux-mappings/search" Icon="@Icons.Material.Filled.List">
-                Mapping List
-            </MudNavLink>
-            <MudNavLink Href="/file-data-mapping" Icon="@Icons.Material.Filled.Add">
-                Create Mapping
-            </MudNavLink>
-        </MudNavGroup>
-
-        <MudNavGroup Title="Property Types" Icon="@Icons.Material.Filled.Category" Expanded="false">
-            <MudNavLink Href="/property-data-types/search" Icon="@Icons.Material.Filled.Search">
-                Search Property Types
-            </MudNavLink>
-            <MudNavLink Href="/property-data-types/create" Icon="@Icons.Material.Filled.Add">
-                Create Property Type
-            </MudNavLink>
-        </MudNavGroup>
-
-        <MudNavGroup Title="Financial Data" Icon="@Icons.Material.Filled.MonetizationOn" Expanded="false">
+        <MudNavGroup Title="Market" Icon="@Icons.Material.Filled.MonetizationOn" Expanded="false">
             <MudNavLink Href="/prices/search" Icon="@Icons.Material.Filled.PriceChange">
                 Search Prices
+            </MudNavLink>
+            <MudNavLink Href="/trading-venue/search" Icon="@Icons.Material.Filled.Business">
+                Search Trading Venues
             </MudNavLink>
         </MudNavGroup>
     </MudNav>

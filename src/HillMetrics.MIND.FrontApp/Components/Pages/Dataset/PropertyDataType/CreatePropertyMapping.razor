@@ -1,8 +1,10 @@
-﻿@page "/property-data-types/create"
-@page "/property-data-types/edit/{Id:int?}"
-@using HillMetrics.MIND.API.Contracts.Requests.AiDataset
+﻿@page "/property-mapping/create"
+@page "/property-mapping/edit/{Id:int?}"
 @using HillMetrics.Core.Common
+@using HillMetrics.Core.Financial
+@using HillMetrics.MIND.API.Contracts.Requests.AiDataset
 @using HillMetrics.MIND.API.SDK.V1
+@using HillMetrics.Normalized.Domain.Contracts.AI.Dataset
 @inject IMindAPI MindApi
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
@@ -122,7 +124,7 @@ else
                 if (result.Data != null)
                 {
                     Snackbar.Add("Property data type updated successfully", Severity.Success);
-                    NavigationManager.NavigateTo("/property-data-types/search");
+                    NavigationManager.NavigateTo("/property-mapping/search");
                 }
                 else
                 {
@@ -135,7 +137,7 @@ else
                 if (result.Data != null)
                 {
                     Snackbar.Add("Property data type created successfully", Severity.Success);
-                    NavigationManager.NavigateTo("/property-data-types/search");
+                    NavigationManager.NavigateTo("/property-mapping/search");
                 }
                 else
                 {
@@ -151,6 +153,6 @@ else
 
     private void Cancel()
     {
-        NavigationManager.NavigateTo("/property-data-types/search");
+        NavigationManager.NavigateTo("/property-mapping/search");
     }
 }

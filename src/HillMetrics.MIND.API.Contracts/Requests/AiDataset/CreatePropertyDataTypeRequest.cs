@@ -1,4 +1,6 @@
 ﻿using HillMetrics.Core.Common;
+using HillMetrics.Core.Financial;
+using HillMetrics.Normalized.Domain.Contracts.AI.Dataset;
 using System;
 using System.Collections.Generic;
 using System.Linq;

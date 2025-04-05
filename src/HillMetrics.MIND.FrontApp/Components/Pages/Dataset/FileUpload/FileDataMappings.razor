@@ -37,50 +37,50 @@ else
         <!-- File Information and Preview -->
         <MudItem xs="12" md="6">
             <FileUploadCard IsEditMode="isEditMode"
-            File="uploadedFile"
-            SelectedFile="selectedFile"
-            SelectedFileName="@selectedFileName"
-            SelectedFileSize="@selectedFileSize"
-            SelectedFileContentType="selectedFileContentType"
-            CustomFileName="customFileName"
-            FileDifficulty="fileDifficulty"
-            IsUploading="isUploading"
-            DuplicateFileFound="duplicateFileFound"
-            CanUploadFile="CanUploadFile()"
-            OnFileSelected="OnFileChanged"
-            OnFileClear="ClearFile"
-            OnSave="HandleSave" />
+                            File="uploadedFile"
+                            SelectedFile="selectedFile"
+                            SelectedFileName="@selectedFileName"
+                            SelectedFileSize="@selectedFileSize"
+                            SelectedFileContentType="@selectedFileContentType"
+                            CustomFileName="@customFileName"
+                            FileDifficulty="fileDifficulty"
+                            IsUploading="isUploading"
+                            DuplicateFileFound="duplicateFileFound"
+                            CanUploadFile="CanUploadFile()"
+                            OnFileSelected="OnFileChanged"
+                            OnFileClear="ClearFile"
+                            OnSave="HandleSave" />
 
             @if (uploadedFile != null && IsSpreadsheetFile(uploadedFile.FileType))
             {
                 <FilePreview IsLoadingPreview="isLoadingPreview"
-                FilePreviewData="filePreviewData"
-                FilePreviewHeaders="filePreviewHeaders"
-                IsSelectingField="isSelectingField"
-                SelectedFieldName="selectedFieldName"
-                File="uploadedFile"
-                Worksheets="worksheets"
-                CurrentWorksheet="currentWorksheet"
-                OnCellSelected="OnCellClick"
-                OnCancelFieldSelection="CancelFieldSelection"
-                OnRefreshPreview="LoadFilePreview"
-                OnShowSheetSelector="ShowSheetSelector"
-                OnZoomIn="ZoomIn"
-                OnZoomOut="ZoomOut" />
+                             FilePreviewData="filePreviewData"
+                             FilePreviewHeaders="filePreviewHeaders"
+                             IsSelectingField="isSelectingField"
+                             SelectedFieldName="selectedFieldName"
+                             File="uploadedFile"
+                             Worksheets="worksheets"
+                             CurrentWorksheet="currentWorksheet"
+                             OnCellSelected="OnCellClick"
+                             OnCancelFieldSelection="CancelFieldSelection"
+                             OnRefreshPreview="LoadFilePreview"
+                             OnShowSheetSelector="ShowSheetSelector"
+                             OnZoomIn="ZoomIn"
+                             OnZoomOut="ZoomOut" />
             }
         </MudItem>
 
         <!-- Data Mapping Card -->
         <MudItem xs="12" md="6">
             <DataMappingCard IsEditMode="isEditMode"
-            File="uploadedFile"
-            AvailableDataPoints="availableDataPoints"
-            DataMappings="dataMappings"
-            OnAddDataPoint="AddDataPoint"
-            OnRemoveMapping="RemoveDataMapping"
-            OnFieldSelect="SelectField"
-            OnExpandAll="ExpandAllPanels"
-            OnCollapseAll="CollapseAllPanels" />
+                             File="uploadedFile"
+                             AvailableDataPoints="availableDataPoints"
+                             DataMappings="dataMappings"
+                             OnAddDataPoint="AddDataPoint"
+                             OnRemoveMapping="RemoveDataMapping"
+                             OnFieldSelect="SelectField"
+                             OnExpandAll="ExpandAllPanels"
+                             OnCollapseAll="CollapseAllPanels" />
         </MudItem>
 
         <!-- Action Buttons -->
@@ -202,10 +202,10 @@ else
     protected override async Task OnInitializedAsync()
     {
         try
-    {
-        isLoading = true;
-        SetupBreadcrumbs();
-        await LoadFinancialDataPoints();
+        {
+            isLoading = true;
+            SetupBreadcrumbs();
+            await LoadFinancialDataPoints();
 
             // Handle the case when coming from a FluxFetchingHistoryContentId
             if (FluxFetchingHistoryContentId.HasValue)
@@ -242,8 +242,8 @@ else
                         FluxFetchingContentId = FluxFetchingHistoryContentId.Value,
                         FileName = fetchingContentResponse.Data.ContentName ?? $"Flux_{FluxFetchingHistoryContentId.Value}",
                         ContentType = fetchingContentResponse.Data.ContentType != null
-                                        ? HillMetrics.Core.Common.ContentTypeMapper.GetMimeType(fetchingContentResponse.Data.ContentType.Value)
-                                        : "application/vnd.ms-excel", // Default type if ContentType is null
+                                            ? HillMetrics.Core.Common.ContentTypeMapper.GetMimeType(fetchingContentResponse.Data.ContentType.Value)
+                                            : "application/vnd.ms-excel", // Default type if ContentType is null
                         Difficulty = FileDifficulty.Medium,
                         FinancialType = flux.FinancialType!.Value
                     };
@@ -264,9 +264,9 @@ else
             }
 
             // Normal case - loading an existing FileUpload
-        if (isEditMode)
-        {
-            await LoadExistingFile();
+            if (isEditMode)
+            {
+                await LoadExistingFile();
             }
 
             if (uploadedFile != null && IsSpreadsheetFile(uploadedFile.FileType))
@@ -355,11 +355,6 @@ else
         {
             var res = await MindApi.GetAllFinancialDataPointsAsync();
             availableDataPoints = res.Data;
-
-            // availableDataPoints = await DbContext.FinancialDataPoints
-            //     .Include(dp => dp.Elements)
-            //     .OrderBy(dp => dp.Name)
-            //     .ToListAsync();
         }
         catch (Exception ex)
         {
@@ -383,7 +378,7 @@ else
         if (string.IsNullOrEmpty(instanceName))
         {
             int instanceCount = dataMappings.Count(m => m.FinancialDataPointId == dataPointId) + 1;
-                instanceName = $"Instance {instanceCount}";
+            instanceName = $"Instance {instanceCount}";
         }
 
         try
@@ -392,7 +387,7 @@ else
             var propertyTypesResponse = await MindApi.SearchPropertyDataTypesAsync(
                 new SearchPropertyDataTypeRequest
                     {
-                        ContentType = HillMetrics.Core.Common.ContentTypeMapper.GetContentType(uploadedFile!.ContentType),
+                        ContentType = uploadedFile!.ContentType,
                     },
                 CancellationToken.None);
 
@@ -570,10 +565,10 @@ else
         selectedFileContentType = string.Empty;
         customFileName = string.Empty;
 
-        if(streamFile != null)
+        if (streamFile != null)
         {
-        streamFile.Dispose();
-        streamFile = null;
+            streamFile.Dispose();
+            streamFile = null;
         }
     }
 
@@ -584,7 +579,7 @@ else
             if (uploadedFile == null)
             {
                 // Nouveau fichier - Upload puis SaveContext
-            isUploading = true;
+                isUploading = true;
 
                 if (selectedFile == null) return;
 
@@ -594,7 +589,7 @@ else
 
                 if (response.Data != null)
                 {
-            uploadedFile = response.Data;
+                    uploadedFile = response.Data;
 
                     // Mise à jour des métadonnées après l'upload
                     uploadedFile = await SaveContext(
@@ -619,10 +614,10 @@ else
                 );
 
                 Snackbar.Add("Metadata updated successfully!", Severity.Success);
-                }
             }
-            catch (Exception ex)
-            {
+        }
+        catch (Exception ex)
+        {
             errorMessage = $"Error saving file: {ex.Message}";
             Snackbar.Add(errorMessage, Severity.Error);
         }
@@ -633,9 +628,9 @@ else
     }
 
     private async Task<FileUpload> SaveContext(string fileName, MappingStatus status, FileDifficulty difficulty, FinancialType financialType)
+    {
+        var request = new UpdateFileUploadRequest
             {
-                var request = new UpdateFileUploadRequest
-                    {
                 FileUploadId = uploadedFile!.Id,
                 FileName = fileName,
                 MappingStatus = status,

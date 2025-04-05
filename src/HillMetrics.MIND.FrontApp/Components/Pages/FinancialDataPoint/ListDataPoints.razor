@@ -51,7 +51,14 @@ else
                         </CardHeaderActions>
                     </MudCardHeader>
                     <MudCardContent>
-                        <MudText Typo="Typo.subtitle2" Class="mb-2">
+                        <MudGrid>
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.subtitle2" Class="mb-1">Financial Type:</MudText>
+                                <MudChip T="Color" Color="Color.Primary" Size="Size.Small">@dataPoint.FinancialType</MudChip>
+                            </MudItem>
+                        </MudGrid>
+
+                        <MudText Typo="Typo.subtitle2" Class="mb-2 mt-3">
                             Elements (@dataPoint.Elements.Count)
                         </MudText>
 
@@ -77,6 +84,10 @@ else
                                                     @element.Description
                                                 </MudText>
                                             }
+
+                                            <MudText Typo="Typo.body2" Class="mb-2">
+                                                @element.MappingPrimitiveValue.ToString()
+                                            </MudText>
 
                                             <MudText Typo="Typo.caption" Class="mb-1">Potential Values:</MudText>
                                             @if (element.PotentialValues.Count == 0)

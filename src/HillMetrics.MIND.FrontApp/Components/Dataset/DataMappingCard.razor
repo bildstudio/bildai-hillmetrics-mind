@@ -84,7 +84,7 @@
                             <InteractiveDataPointMappingItem Mapping="mapping"
                                                              OnRemove="() => OnRemoveMapping.InvokeAsync(mapping.Id)"
                                                              OnFieldSelect="OnFieldSelect"
-                                                             ContentType="@(HillMetrics.Core.Common.ContentTypeMapper.GetContentType(File!.ContentType))" />
+                                                             ContentType="@File!.ContentType" />
                         }
                     </MudExpansionPanels>
                 }

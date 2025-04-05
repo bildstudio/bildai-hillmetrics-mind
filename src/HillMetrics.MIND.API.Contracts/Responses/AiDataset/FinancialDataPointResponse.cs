@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using HillMetrics.Core.Financial;
+using HillMetrics.Normalized.Domain.Contracts.AI.Dataset;
 
 namespace HillMetrics.MIND.API.Contracts.Responses.AiDataset
 {
@@ -19,6 +21,11 @@ namespace HillMetrics.MIND.API.Contracts.Responses.AiDataset
         /// The date when the financial data point was created
         /// </summary>
         public DateTime CreatedAt { get; set; }
+
+        /// <summary>
+        /// The primitive data type of this financial data point for mapping
+        /// </summary>
+        public MappingTypePrimitive MappingPrimitiveValue { get; set; }
     }
 
     public class FinancialDataPointListResponse

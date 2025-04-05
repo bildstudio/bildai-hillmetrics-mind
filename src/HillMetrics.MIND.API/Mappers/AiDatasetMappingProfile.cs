@@ -50,11 +50,11 @@ namespace HillMetrics.MIND.API.Mappers
             CreateMap<List<FinancialDataPointElement>, DataPointElementListResponse>()
                 .ForMember(dest => dest.Elements, opt => opt.MapFrom(src => src));
 
-            CreateMap<SearchPropertyDataTypeRequest, SearchPropertyDataTypeQuery>();
-            CreateMap<CreatePropertyDataTypeRequest, CreatePropertyDataTypeCommand>();
-            CreateMap<CreatePropertyDataTypeRequest, CreatePropertyDataTypeCommand>();
-            CreateMap<PropertyDataType, PropertyDataTypeResponse>();
-            CreateMap<SearchPropertyDataTypeQueryItem, PropertyDataTypeResponse>();
+            CreateMap<SearchPropertyDataTypeRequest, SearchPropertyMappingQuery>();
+            CreateMap<CreatePropertyDataTypeRequest, CreatePropertyMappingCommand>();
+            CreateMap<CreatePropertyDataTypeRequest, CreatePropertyMappingCommand>();
+            CreateMap<PropertyMapping, PropertyMappingResponse>();
+            CreateMap<SearchPropertyDataTypeQueryItem, PropertyMappingResponse>();
         }
     }
 }

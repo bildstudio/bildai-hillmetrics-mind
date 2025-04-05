@@ -38,7 +38,7 @@ else
                         }
                     </MudSelect>
                 </MudItem>
-                <MudItem xs="12">
+                <MudItem xs="12" md="6">
                     <MudTextField @bind-Value="dataPoint.Description"
                                  Label="Description"
                                  Lines="3"
@@ -56,61 +56,80 @@ else
         </MudText>
     </div>
 
-    <MudDragDropZone T="FinancialDataPointElementRequest"
-                     Items="elements"
-                     ItemDraggable="true"
-                     ItemDropped="ItemDropped"
-                     Class="mud-height-full">
-        <ChildContent>
-            @foreach (var element in dataPoint.Elements)
+    <MudPaper Class="pa-4 mb-4">
+        <MudDragDropZone T="FinancialDataPointElementRequest"
+                         Items="dataPoint.Elements"
+                         ItemDraggable="true"
+                         ItemDropped="ItemDropped"
+                         Class="d-flex flex-column gap-4">
+            @if (dataPoint.Elements.Count == 0)
             {
-                <MudDragDropItem T="FinancialDataPointElementRequest"
-                                 Item="element"
-                                 Class="mb-4">
-                    <MudCard Elevation="2">
-                        <MudCardHeader>
-                            <CardHeaderAvatar>
-                                <MudAvatar Color="Color.Primary" Size="Size.Small">@(element.Position)</MudAvatar>
-                            </CardHeaderAvatar>
-                            <CardHeaderContent>
-                                <MudText Typo="Typo.body1">
-                                    @(string.IsNullOrEmpty(element.PropertyName) ? "New Element" : element.PropertyName)
-                                </MudText>
-                            </CardHeaderContent>
-                            <CardHeaderActions>
-                                <MudIconButton Icon="@Icons.Material.Filled.DragIndicator"
-                                               Size="Size.Small"
-                                               Class="drag-handle" />
-                            </CardHeaderActions>
-                        </MudCardHeader>
-                        <MudCardContent>
-                            <MudGrid>
-                                <MudItem xs="12" md="4">
-                                    <MudTextField @bind-Value="element.PropertyName"
-                                                  Label="Property Name"
-                                                  Required="true" />
-                                </MudItem>
-                                <MudItem xs="12" md="8">
-                                    <MudTextField @bind-Value="element.Description"
-                                                  Label="Description" />
-                                </MudItem>
-                            </MudGrid>
-                        </MudCardContent>
-                        <MudCardActions>
-                            <MudButton OnClick="() => RemoveElement(element)"
-                                       Color="Color.Error"
-                                       StartIcon="@Icons.Material.Filled.Delete">
-                                Remove Element
-                            </MudButton>
-                        </MudCardActions>
-                    </MudCard>
-                </MudDragDropItem>
+                <MudAlert Severity="Severity.Info">No elements added yet. Click "Add Element" to start.</MudAlert>
             }
-        </ChildContent>
-        <EmptyZoneContent>
-            <MudAlert Severity="Severity.Info">No elements added yet. Click "Add Element" to start.</MudAlert>
-        </EmptyZoneContent>
-    </MudDragDropZone>
+            else
+            {
+                @foreach (var element in dataPoint.Elements)
+                {
+                    <MudPaper Elevation="2" Class="pa-2">
+                        <MudDragDropItem T="FinancialDataPointElementRequest"
+                                        Item="element"
+                                        Class="mud-width-full">
+                            <MudCard Elevation="0">
+                                <MudCardHeader Class="py-1">
+                                    <CardHeaderAvatar>
+                                        <MudAvatar Color="Color.Primary" Size="Size.Small">@(element.Position)</MudAvatar>
+                                    </CardHeaderAvatar>
+                                    <CardHeaderContent>
+                                        <MudText Typo="Typo.body1">
+                                            @(string.IsNullOrEmpty(element.PropertyName) ? "New Element" : element.PropertyName)
+                                        </MudText>
+                                    </CardHeaderContent>
+                                    <CardHeaderActions>
+                                        <MudIconButton Icon="@Icons.Material.Filled.DragIndicator"
+                                                      Size="Size.Small"
+                                                      Class="mud-drag-handle" />
+                                    </CardHeaderActions>
+                                </MudCardHeader>
+                                <MudCardContent>
+                                    <MudGrid>
+                                        <MudItem xs="12" md="4">
+                                            <MudTextField @bind-Value="element.PropertyName"
+                                                         Label="Property Name"
+                                                         Required="true" />
+                                        </MudItem>
+                                        <MudItem xs="12" md="3">
+                                            <MudSelect T="MappingTypePrimitive"
+                                                      @bind-Value="element.MappingPrimitiveValue"
+                                                      Label="Primitive Data Type"
+                                                      Required="true"
+                                                      RequiredError="Primitive Type is required"
+                                                      AnchorOrigin="Origin.BottomCenter">
+                                                @foreach (var type in Enum.GetValues<MappingTypePrimitive>())
+                                                {
+                                                    <MudSelectItem Value="@type">@type</MudSelectItem>
+                                                }
+                                            </MudSelect>
+                                        </MudItem>
+                                        <MudItem xs="12" md="5">
+                                            <MudTextField @bind-Value="element.Description"
+                                                         Label="Description" />
+                                        </MudItem>
+                                    </MudGrid>
+                                </MudCardContent>
+                                <MudCardActions>
+                                    <MudButton OnClick="() => RemoveElement(element)"
+                                              Color="Color.Error"
+                                              StartIcon="@Icons.Material.Filled.Delete">
+                                        Remove Element
+                                    </MudButton>
+                                </MudCardActions>
+                            </MudCard>
+                        </MudDragDropItem>
+                    </MudPaper>
+                }
+            }
+        </MudDragDropZone>
+    </MudPaper>
 
     <MudButton OnClick="AddElement"
                Color="Color.Primary"
@@ -131,16 +150,6 @@ else
     </MudButton>
 }
 
-<style>
-    .mud-card.mud-drag-item {
-        cursor: move;
-    }
-
-    .drag-handle {
-        cursor: move;
-    }
-</style>
-
 @code {
     [Parameter]
     public int? Id { get; set; }
@@ -148,17 +157,6 @@ else
     private bool IsEditMode => Id.HasValue;
     private CreateFinancialDataPointRequest dataPoint = new();
     private bool isLoading = true;
-
-    private class ElementViewModel
-    {
-        public int? ElementId { get; set; }
-        public string PropertyName { get; set; } = string.Empty;
-        public string? Description { get; set; }
-        public List<string> PotentialValues { get; set; } = new();
-        public MudChip<ElementViewModel>[] ChipValues { get; set; } = Array.Empty<MudChip<ElementViewModel>>();
-        public string NewValue { get; set; } = string.Empty;
-        public int Position { get; set; }
-    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -187,7 +185,8 @@ else
                         PropertyName = e.PropertyName,
                         Description = e.Description,
                         PotentialValues = e.PotentialValues.ToList(),
-                        Position = e.Position
+                        Position = e.Position,
+                        MappingPrimitiveValue = e.MappingPrimitiveValue
                     }).ToList(),
                     FinancialType = result.Data.FinancialType,
                     Id = result.Data.Id,
@@ -206,21 +205,37 @@ else
 
     private void AddElement()
     {
-        int nextPosition = dataPoint.Elements.Count > 0 ? (int)dataPoint.Elements.Max(e => e.Position) + 1 : 1;
-        dataPoint.Elements.Add(new FinancialDataPointElementRequest { Position = nextPosition });
+        int nextPosition = dataPoint.Elements.Count > 0 ? dataPoint.Elements.Max(e => e.Position ?? 0) + 1 : 1;
+        dataPoint.Elements.Add(new FinancialDataPointElementRequest {
+            Position = nextPosition,
+            MappingPrimitiveValue = MappingTypePrimitive.String // Valeur par défaut
+        });
+        StateHasChanged();
     }
 
     private void RemoveElement(FinancialDataPointElementRequest element)
     {
         dataPoint.Elements.Remove(element);
         UpdateElementPositions();
+        StateHasChanged();
     }
 
     private void ItemDropped(MudItemDropInfo<FinancialDataPointElementRequest> dropInfo)
     {
-        dataPoint.Elements.Remove(dropInfo.Item);
-        dataPoint.Elements.Insert(dropInfo.IndexInZone, dropInfo.Item);
+        // Récupérer l'élément
+        var item = dropInfo.Item;
+
+        // Enlever l'élément de sa position actuelle
+        dataPoint.Elements.Remove(item);
+
+        // Insérer l'élément à sa nouvelle position
+        dataPoint.Elements.Insert(dropInfo.IndexInZone, item);
+
+        // Mettre à jour les positions
         UpdateElementPositions();
+
+        // Rafraîchir l'UI
+        StateHasChanged();
     }
 
     private void UpdateElementPositions()
@@ -229,22 +244,6 @@ else
         {
             dataPoint.Elements[i].Position = i + 1;
         }
-    }
-
-    private void AddValue(ElementViewModel element)
-    {
-        if (!string.IsNullOrWhiteSpace(element.NewValue) &&
-            !element.PotentialValues.Contains(element.NewValue))
-        {
-            element.PotentialValues.Add(element.NewValue);
-            element.NewValue = string.Empty;
-        }
-    }
-
-    private void RemoveValue(ElementViewModel element)
-    {
-        var selectedValues = element.ChipValues.Select(c => c.Text).ToList();
-        element.PotentialValues.RemoveAll(v => selectedValues.Contains(v));
     }
 
     private bool CanSave()
@@ -289,3 +288,9 @@ else
         }
     }
 }
+
+<style>
+    .mud-drag-handle {
+        cursor: move;
+    }
+</style>

@@ -60,7 +60,7 @@ public class FluxCaracController(IMediator mediator, IMapper mapper, ILogger<Flu
         var command = new CreateFileUploadCommand
         {
             FileName = file.FileName,
-            ContentType = file.ContentType,
+            ContentType = Core.Common.ContentTypeMapper.GetContentType(file.ContentType),
             FileStream = stream,
             FileMetadataId = 0,
             FluxFetchingContentId = null,
@@ -93,7 +93,7 @@ public class FluxCaracController(IMediator mediator, IMapper mapper, ILogger<Flu
         var command = new CreateFileUploadCommand
         {
             FileName = request.FileName,
-            ContentType = request.ContentType,
+            ContentType = Core.Common.ContentTypeMapper.GetContentType(request.ContentType),
             FluxFetchingContentId = request.FluxFetchingContentId,
             Difficulty = request.Difficulty,
             MappingStatus = MappingStatus.NotMapped,
@@ -163,7 +163,7 @@ public class FluxCaracController(IMediator mediator, IMapper mapper, ILogger<Flu
         {
             FileUploadId = fileUploadId,
             FileName = request.FileName,
-            ContentType = null,
+            ContentType = Core.Common.ContentType.Unknown,
             Difficulty = request.Difficulty,
             MappingStatus = request.MappingStatus,
             FinancialType = request.FinancialType
@@ -398,7 +398,8 @@ public class FluxCaracController(IMediator mediator, IMapper mapper, ILogger<Flu
                     Id = x.Id,
                     FinancialDataPointId = 0,
                     Position = x.Position,
-                    PotentialValues = x.PotentialValues
+                    PotentialValues = x.PotentialValues,
+                    MappingPrimitiveValue = x.MappingPrimitiveValue
                 }).ToList()
             }
         };
@@ -441,7 +442,8 @@ public class FluxCaracController(IMediator mediator, IMapper mapper, ILogger<Flu
                     Id = x.Id,
                     FinancialDataPointId = dataPointId,
                     Position = x.Position,
-                    PotentialValues = x.PotentialValues
+                    PotentialValues = x.PotentialValues,
+                    MappingPrimitiveValue = x.MappingPrimitiveValue
                 }).ToList()
             }
         };
@@ -510,16 +512,16 @@ public class FluxCaracController(IMediator mediator, IMapper mapper, ILogger<Flu
     /// <summary>
     /// Create a new property data type
     /// </summary>
-    [HttpPost("property-data-type")]
-    public async Task<ActionResult<ApiResponseBase<PropertyDataTypeResponse>>> CreatePropertyDataType(
+    [HttpPost("property-mapping")]
+    public async Task<ActionResult<ApiResponseBase<PropertyMappingResponse>>> CreatePropertyDataType(
         [FromBody] CreatePropertyDataTypeRequest request,
         CancellationToken cancellationToken)
     {
         logger.LogInformation("Creating property data type with name: {Name}", request.Name);
 
-        var command = new CreatePropertyDataTypeCommand
+        var command = new CreatePropertyMappingCommand
         {
-            PropertyDataType = new PropertyDataType
+            PropertyDataType = new PropertyMapping
             {
                 Name = request.Name,
                 Description = request.Description,
@@ -532,23 +534,23 @@ public class FluxCaracController(IMediator mediator, IMapper mapper, ILogger<Flu
         if (result.IsFailed)
             return new ErrorApiActionResult(result.Errors.ToApiResult());
 
-        return new ApiResponseBase<PropertyDataTypeResponse>(mapper.Map<PropertyDataTypeResponse>(result.Value));
+        return new ApiResponseBase<PropertyMappingResponse>(mapper.Map<PropertyMappingResponse>(result.Value));
     }
 
     /// <summary>
     /// Update an existing property data type
     /// </summary>
-    [HttpPut("property-data-type/{id}")]
-    public async Task<ActionResult<ApiResponseBase<PropertyDataTypeResponse>>> UpdatePropertyDataType(
+    [HttpPut("property-mapping/{id}")]
+    public async Task<ActionResult<ApiResponseBase<PropertyMappingResponse>>> UpdatePropertyDataType(
         int id,
         [FromBody] CreatePropertyDataTypeRequest request,
         CancellationToken cancellationToken)
     {
         logger.LogInformation("Updating property data type with ID: {Id}", id);
 
-        var command = new CreatePropertyDataTypeCommand
+        var command = new CreatePropertyMappingCommand
         {
-            PropertyDataType = new PropertyDataType
+            PropertyDataType = new PropertyMapping
             {
                 Id = id,
                 Name = request.Name,
@@ -562,39 +564,39 @@ public class FluxCaracController(IMediator mediator, IMapper mapper, ILogger<Flu
         if (result.IsFailed)
             return new ErrorApiActionResult(result.Errors.ToApiResult());
 
-        return new ApiResponseBase<PropertyDataTypeResponse>(mapper.Map<PropertyDataTypeResponse>(result.Value));
+        return new ApiResponseBase<PropertyMappingResponse>(mapper.Map<PropertyMappingResponse>(result.Value));
     }
 
     /// <summary>
     /// Get a specific property data type
     /// </summary>
-    [HttpGet("property-data-type/{id}")]
-    public async Task<ActionResult<ApiResponseBase<PropertyDataTypeResponse>>> GetPropertyDataType(
+    [HttpGet("property-mapping/{id}")]
+    public async Task<ActionResult<ApiResponseBase<PropertyMappingResponse>>> GetPropertyDataType(
         int id,
         CancellationToken cancellationToken)
     {
         logger.LogInformation("Getting property data type with ID: {Id}", id);
 
-        var query = new GetPropertyDataTypeQuery { PropertyDataTypeId = id };
+        var query = new GetPropertyMappingQuery { PropertyDataTypeId = id };
         var result = await mediator.Send(query, cancellationToken);
 
         if (result.IsFailed)
             return new ErrorApiActionResult(result.Errors.ToApiResult());
 
-        return new ApiResponseBase<PropertyDataTypeResponse>(mapper.Map<PropertyDataTypeResponse>(result.Value));
+        return new ApiResponseBase<PropertyMappingResponse>(mapper.Map<PropertyMappingResponse>(result.Value));
     }
 
     /// <summary>
     /// Delete a property data type
     /// </summary>
-    [HttpDelete("property-data-type/{id}")]
+    [HttpDelete("property-mapping/{id}")]
     public async Task<ActionResult<ApiResponseBase<bool>>> DeletePropertyDataType(
         int id,
         CancellationToken cancellationToken)
     {
         logger.LogInformation("Deleting property data type with ID: {Id}", id);
 
-        var command = new DeletePropertyDataTypeCommand { PropertyDataTypeId = id };
+        var command = new DeletePropertyMappingCommand { PropertyDataTypeId = id };
         var result = await mediator.Send(command, cancellationToken);
 
         if (result.IsFailed)
@@ -606,21 +608,21 @@ public class FluxCaracController(IMediator mediator, IMapper mapper, ILogger<Flu
     /// <summary>
     /// Search property data types
     /// </summary>
-    [HttpGet("property-data-types/search")]
-    public async Task<ActionResult<PagedApiResponseBase<PropertyDataTypeResponse>>> SearchPropertyDataTypes(
+    [HttpGet("property-mapping/search")]
+    public async Task<ActionResult<PagedApiResponseBase<PropertyMappingResponse>>> SearchPropertyDataTypes(
         [FromQuery] SearchPropertyDataTypeRequest request,
         CancellationToken cancellationToken)
     {
         logger.LogInformation("Searching property data types");
 
-        var query = mapper.Map<SearchPropertyDataTypeQuery>(request);
+        var query = mapper.Map<SearchPropertyMappingQuery>(request);
         var result = await mediator.Send(query, cancellationToken);
 
         if (result.IsFailed)
             return new ErrorApiActionResult(result.Errors.ToApiResult());
 
-        return new PagedApiResponseBase<PropertyDataTypeResponse>(
-            mapper.Map<List<PropertyDataTypeResponse>>(result.Value.Results),
+        return new PagedApiResponseBase<PropertyMappingResponse>(
+            mapper.Map<List<PropertyMappingResponse>>(result.Value.Results),
             result.Value.TotalRecords);
     }
 

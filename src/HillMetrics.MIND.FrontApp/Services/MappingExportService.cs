@@ -70,7 +70,7 @@ namespace HillMetrics.MIND.FrontApp.Services
                         ElementValueId = e.Id,
                         PropertyName = e.FinancialDataPointElement.PropertyName,
                         Value = e.ExtractedValue,
-                        DataType = e.PropertyDataType.ToString(),
+                        DataType = e.PropertyDataType.Name.ToString(),
                         Description = e.FinancialDataPointElement.Description
                     }).ToList()
                 };
@@ -166,7 +166,8 @@ namespace HillMetrics.MIND.FrontApp.Services
                 {
                     elementsDictionary[element.PropertyName] = new
                     {
-                        DataType = elementValue.PropertyDataType.ToString(),
+                        DataType = elementValue.PropertyDataType.Name.ToString(),
+                        MappingType = element.MappingPrimitiveValue.ToString(),
                         Value = elementValue.ExtractedValue
                     };
                 }

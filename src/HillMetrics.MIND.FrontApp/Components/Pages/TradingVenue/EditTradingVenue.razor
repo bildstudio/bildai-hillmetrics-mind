@@ -1,0 +1,310 @@
+﻿@page "/trading-venue/edit/{Id:int}"
+@page "/trading-venue/create"
+@using HillMetrics.MIND.API.Contracts.Requests.TradingVenue
+@using HillMetrics.MIND.API.Contracts.Responses.TradingVenue
+@using HillMetrics.Normalized.Domain.Contracts.Market
+@inject IMindAPI MindApi
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+
+<PageTitle>@(isNew ? "Create Trading Venue" : "Edit Trading Venue")</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudBreadcrumbs Items="breadcrumbs" Separator=">"></MudBreadcrumbs>
+    
+    <MudPaper Elevation="3" Class="pa-4 mt-4">
+        <MudText Typo="Typo.h5" Class="mb-4">
+            @(isNew ? "Create New Trading Venue" : $"Edit Trading Venue - {venue?.Name}")
+        </MudText>
+        
+        @if (loading)
+        {
+            <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+        }
+        else if (venue != null || isNew)
+        {
+            <MudForm @ref="form" @bind-IsValid="@isValid">
+                <MudGrid>
+                    <!-- Basic Information -->
+                    <MudItem xs="12">
+                        <MudCard Elevation="0" Outlined="true" Class="mb-4">
+                            <MudCardHeader>
+                                <CardHeaderContent>
+                                    <MudText Typo="Typo.h6">Basic Information</MudText>
+                                </CardHeaderContent>
+                            </MudCardHeader>
+                            <MudCardContent>
+                                <MudGrid>
+                                    <!-- Name -->
+                                    <MudItem xs="12" md="6">
+                                        <MudTextField @bind-Value="editRequest.Name" 
+                                                     Label="Venue Name" 
+                                                     Required="true" 
+                                                     RequiredError="Name is required"
+                                                     Variant="Variant.Outlined" />
+                                    </MudItem>
+
+                                    <!-- Acronym -->
+                                    <MudItem xs="12" md="3">
+                                        <MudTextField @bind-Value="editRequest.Acronym" 
+                                                     Label="Acronym" 
+                                                     Variant="Variant.Outlined" />
+                                    </MudItem>
+
+                                    <!-- Is Main -->
+                                    <MudItem xs="12" md="3" Class="d-flex align-center">
+                                        <MudCheckBox T="bool" @bind-Checked="isMain" 
+                                                    Label="Main Venue for Country" 
+                                                    Color="Color.Primary" />
+                                    </MudItem>
+
+                                    <!-- Legal Entity Name -->
+                                    <MudItem xs="12" md="6">
+                                        <MudTextField @bind-Value="editRequest.LegalEntityName" 
+                                                     Label="Legal Entity Name" 
+                                                     Variant="Variant.Outlined" />
+                                    </MudItem>
+
+                                    <!-- LEI -->
+                                    <MudItem xs="12" md="6">
+                                        <MudTextField @bind-Value="editRequest.Lei" 
+                                                     Label="Legal Entity Identifier (LEI)" 
+                                                     Variant="Variant.Outlined" 
+                                                     HelperText="LEI should be 20 characters long"
+                                                     MaxLength="20" />
+                                    </MudItem>
+
+                                    <!-- City -->
+                                    <MudItem xs="12" md="6">
+                                        <MudTextField @bind-Value="editRequest.City" 
+                                                     Label="City" 
+                                                     Variant="Variant.Outlined" />
+                                    </MudItem>
+                                </MudGrid>
+                            </MudCardContent>
+                        </MudCard>
+                    </MudItem>
+
+                    <!-- Trading Hours -->
+                    <MudItem xs="12">
+                        <MudCard Elevation="0" Outlined="true">
+                            <MudCardHeader>
+                                <CardHeaderContent>
+                                    <MudText Typo="Typo.h6">Trading Hours</MudText>
+                                </CardHeaderContent>
+                                <CardHeaderActions>
+                                    <MudIconButton Icon="@Icons.Material.Filled.Add" Color="Color.Primary" Size="Size.Small" OnClick="AddTradingHour" />
+                                </CardHeaderActions>
+                            </MudCardHeader>
+                            <MudCardContent>
+                                @if (tradingHours.Count == 0)
+                                {
+                                    <MudAlert Severity="Severity.Info">No trading hours defined. Click the + button to add trading hours.</MudAlert>
+                                }
+                                else
+                                {
+                                    <MudTable Items="tradingHours" Hover="true" Dense="true">
+                                        <HeaderContent>
+                                            <MudTh>Day of Week</MudTh>
+                                            <MudTh>Open Time</MudTh>
+                                            <MudTh>Close Time</MudTh>
+                                            <MudTh Style="width: 50px;">Actions</MudTh>
+                                        </HeaderContent>
+                                        <RowTemplate>
+                                            <MudTd DataLabel="Day of Week">
+                                                <MudSelect T="DayOfWeek" @bind-Value="@context.DayOfWeek" Label="Day" Variant="Variant.Outlined" Dense="true" Margin="Margin.Dense">
+                                                    <MudSelectItem Value="@DayOfWeek.Monday">Monday</MudSelectItem>
+                                                    <MudSelectItem Value="@DayOfWeek.Tuesday">Tuesday</MudSelectItem>
+                                                    <MudSelectItem Value="@DayOfWeek.Wednesday">Wednesday</MudSelectItem>
+                                                    <MudSelectItem Value="@DayOfWeek.Thursday">Thursday</MudSelectItem>
+                                                    <MudSelectItem Value="@DayOfWeek.Friday">Friday</MudSelectItem>
+                                                    <MudSelectItem Value="@DayOfWeek.Saturday">Saturday</MudSelectItem>
+                                                    <MudSelectItem Value="@DayOfWeek.Sunday">Sunday</MudSelectItem>
+                                                </MudSelect>
+                                            </MudTd>
+                                            <MudTd DataLabel="Open Time">
+                                                <MudTextField @bind-Value="@context.OpenTime" Label="Open" Variant="Variant.Outlined" Dense="true" Margin="Margin.Dense" Placeholder="HH:MM" />
+                                            </MudTd>
+                                            <MudTd DataLabel="Close Time">
+                                                <MudTextField @bind-Value="@context.CloseTime" Label="Close" Variant="Variant.Outlined" Dense="true" Margin="Margin.Dense" Placeholder="HH:MM" />
+                                            </MudTd>
+                                            <MudTd>
+                                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" OnClick="@(() => RemoveTradingHour(context))" />
+                                            </MudTd>
+                                        </RowTemplate>
+                                    </MudTable>
+                                }
+                            </MudCardContent>
+                        </MudCard>
+                    </MudItem>
+                </MudGrid>
+            </MudForm>
+
+            <MudDivider Class="my-4" />
+
+            <MudGrid>
+                <MudItem xs="12" Class="d-flex justify-end">
+                    <MudButton Variant="Variant.Text" Color="Color.Secondary" OnClick="GoBack" Class="mr-2">
+                        Cancel
+                    </MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveTradingVenue" Disabled="!isValid || isSaving">
+                        @if(isSaving)
+                        {
+                            <MudProgressCircular Class="mr-2" Size="Size.Small" Indeterminate="true" />
+                            <span>Saving...</span>
+                        }
+                        else
+                        {
+                            <span>Save Trading Venue</span>
+                        }
+                    </MudButton>
+                </MudItem>
+            </MudGrid>
+        }
+        else
+        {
+            <MudAlert Severity="Severity.Error">Trading venue not found</MudAlert>
+        }
+    </MudPaper>
+</MudContainer>
+
+@code {
+    [Parameter]
+    public int? Id { get; set; }
+
+    private bool isNew => Id == null;
+    private TradingVenueResponse venue;
+    private EditTradingVenueRequest editRequest = new();
+    private bool loading = false;
+    private bool isSaving = false;
+    private bool isValid = false;
+    private MudForm form;
+    private bool isMain = false;
+    private List<TradingHourRequestDto> tradingHours = new();
+
+    private List<BreadcrumbItem> breadcrumbs = new List<BreadcrumbItem>
+    {
+        new BreadcrumbItem("Home", "/"),
+        new BreadcrumbItem("Trading Venues", "/trading-venue/search"),
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (isNew)
+        {
+            breadcrumbs.Add(new BreadcrumbItem("Create", null, true));
+            editRequest = new EditTradingVenueRequest();
+            tradingHours = new List<TradingHourRequestDto>();
+        }
+        else
+        {
+            breadcrumbs.Add(new BreadcrumbItem("Edit", null, true));
+            await LoadTradingVenue();
+        }
+    }
+
+    private async Task LoadTradingVenue()
+    {
+        try
+        {
+            loading = true;
+            var request = new GetTradingVenueRequest { Id = Id };
+            var response = await MindApi.GetTradingVenueAsync(request);
+            venue = response.Data;
+
+            // Initialize form with venue data
+            editRequest = new EditTradingVenueRequest
+            {
+                Name = venue.Name,
+                LegalEntityName = venue.LegalEntityName,
+                Acronym = venue.Acronym,
+                Lei = venue.Lei,
+                City = venue.City.Name
+            };
+
+            isMain = venue.IsMain;
+
+            // Initialize trading hours
+            tradingHours = venue.TradingHours.Select(th => new TradingHourRequestDto
+            {
+                DayOfWeek = th.DayOfWeek,
+                OpenTime = th.OpenTimeFormatted,
+                CloseTime = th.CloseTimeFormatted
+            }).ToList();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading trading venue: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private void AddTradingHour()
+    {
+        tradingHours.Add(new TradingHourRequestDto
+        {
+            DayOfWeek = DayOfWeek.Monday,
+            OpenTime = "09:00",
+            CloseTime = "17:30"
+        });
+    }
+
+    private void RemoveTradingHour(TradingHourRequestDto tradingHour)
+    {
+        tradingHours.Remove(tradingHour);
+    }
+
+    private async Task SaveTradingVenue()
+    {
+        if (!form.IsValid)
+        {
+            Snackbar.Add("Please fix validation errors before saving", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            isSaving = true;
+            
+            // Set IsMain property
+            editRequest.IsMain = isMain;
+            
+            // Set trading hours
+            editRequest.TradingHours = tradingHours;
+
+            if (isNew)
+            {
+                // In a real implementation, you would have a CreateTradingVenue API endpoint
+                Snackbar.Add("Create functionality not implemented - would call API here", Severity.Warning);
+                // Uncomment when you have the create endpoint:
+                // var createResult = await MindApi.CreateTradingVenueAsync(editRequest);
+                // id = createResult.Data.Id;
+            }
+            else
+            {
+                var updateResult = await MindApi.EditTradingVenueAsync(Id.Value, editRequest);
+                if (updateResult.Data != null)
+                {
+                    Snackbar.Add("Trading venue updated successfully", Severity.Success);
+                    NavigationManager.NavigateTo("/trading-venue/search");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error saving trading venue: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private void GoBack()
+    {
+        NavigationManager.NavigateTo("/trading-venue/search");
+    }
+}
