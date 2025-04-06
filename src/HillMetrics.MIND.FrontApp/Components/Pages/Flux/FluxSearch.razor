@@ -273,12 +273,12 @@
                     }
                 </MudTd>
                 <MudTd DataLabel="Fetch Errors">
-                    @if (context.LastFetchingErrorCount > 0)
+                    @if (context.LastFetchingId.HasValue && context.LastFetchingErrorCount > 0)
                     {
                         <MudChip T="int"
                                 Color="Color.Error"
                                 Size="Size.Small"
-                                OnClick="@(() => NavigateToErrorsPage(context.FluxId, FluxActionType.Fetching))"
+                                OnClick="@(() => NavigateToErrorsPage(context.FluxId, FluxActionType.Fetching, fetchingId: context.LastFetchingId.Value))"
                                 Style="cursor: pointer;">
                             @context.LastFetchingErrorCount
                         </MudChip>
@@ -319,12 +319,12 @@
                     }
                 </MudTd>
                 <MudTd DataLabel="Process Errors">
-                    @if (context.LastProcessingErrorCount > 0)
+                    @if (context.LastProcessingId.HasValue && context.LastProcessingErrorCount > 0)
                     {
                         <MudChip T="int"
                                 Color="Color.Error"
                                 Size="Size.Small"
-                                OnClick="@(() => NavigateToErrorsPage(context.FluxId, FluxActionType.ProcessFlux))"
+                                OnClick="@(() => NavigateToErrorsPage(context.FluxId, FluxActionType.ProcessFlux, processingId: context.LastProcessingId.Value))"
                                 Style="cursor: pointer;">
                             @context.LastProcessingErrorCount
                         </MudChip>
@@ -710,7 +710,11 @@
         workflowRefreshTimer?.Dispose();
     }
 
-    private void NavigateToErrorsPage(int fluxId, FluxActionType? actionType = null)
+    private void NavigateToErrorsPage(
+        int fluxId,
+        FluxActionType? actionType = null,
+        int? fetchingId = null,
+        int? processingId = null)
     {
         // Construction d'une chaîne de requête pour passer les paramètres
         var query = $"?fluxId={fluxId}";
@@ -718,6 +722,16 @@
         if (actionType.HasValue)
         {
             query += $"&actionType={actionType.Value}";
+        }
+
+        if (fetchingId.HasValue)
+        {
+            query += $"&fetchingId={fetchingId.Value}";
+        }
+
+        if (processingId.HasValue)
+        {
+            query += $"&processingId={processingId.Value}";
         }
 
         // Naviguer vers la page de recherche d'erreurs avec les paramètres

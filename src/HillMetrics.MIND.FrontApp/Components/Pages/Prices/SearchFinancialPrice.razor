@@ -26,8 +26,8 @@
             </MudItem>
             <MudItem xs="12" md="3">
                 <SearchCriteriaComponent T="int"
-                                       SearchCriteria="@financialIdSearchCriteria"
-                                       SearchCriteriaChanged="@((criteria) => financialIdSearchCriteria = criteria)"
+                                       SearchCriteria="@searchRequest.FinancialId"
+                                       SearchCriteriaChanged="@((criteria) => searchRequest.FinancialId = criteria)"
                                        Label="Financial ID" />
             </MudItem>
             <MudItem xs="12" md="3">
@@ -48,20 +48,26 @@
             </MudItem>
             <MudItem xs="12" md="3">
                 <SearchCriteriaComponent T="int"
-                                       SearchCriteria="@fluxIdSearchCriteria"
-                                       SearchCriteriaChanged="@((criteria) => fluxIdSearchCriteria = criteria)"
+                                       SearchCriteria="@searchRequest.FluxId"
+                                       SearchCriteriaChanged="@((criteria) => searchRequest.FluxId = criteria)"
                                        Label="Flux ID" />
             </MudItem>
             <MudItem xs="12" md="3">
+                <SearchCriteriaComponent T="int"
+                                         SearchCriteria="@searchRequest.FluxProcessingContentId"
+                                         SearchCriteriaChanged="@((criteria) => searchRequest.FluxProcessingContentId = criteria)"
+                                         Label="Processing ID" />
+            </MudItem>
+            <MudItem xs="12" md="3">
                 <SearchCriteriaComponent T="DateTime"
-                                       SearchCriteria="@fromDateSearchCriteria"
-                                       SearchCriteriaChanged="@((criteria) => fromDateSearchCriteria = criteria)"
+                                       SearchCriteria="@searchRequest.From"
+                                       SearchCriteriaChanged="@((criteria) => searchRequest.From = criteria)"
                                        Label="From Date" />
             </MudItem>
             <MudItem xs="12" md="3">
                 <SearchCriteriaComponent T="DateTime"
-                                       SearchCriteria="@toDateSearchCriteria"
-                                       SearchCriteriaChanged="@((criteria) => toDateSearchCriteria = criteria)"
+                                       SearchCriteria="@searchRequest.To"
+                                       SearchCriteriaChanged="@((criteria) => searchRequest.To = criteria)"
                                        Label="To Date" />
             </MudItem>
             <MudItem xs="12" md="3" Class="d-flex align-center">
@@ -194,10 +200,10 @@
     private TableState tableState;
 
     // SearchCriteria pour chaque champ
-    private SearchCriteria<int> financialIdSearchCriteria = new();
-    private SearchCriteria<int> fluxIdSearchCriteria = new();
-    private SearchCriteria<DateTime> fromDateSearchCriteria = new();
-    private SearchCriteria<DateTime> toDateSearchCriteria = new();
+    // private SearchCriteria<int> financialIdSearchCriteria = new();
+    // private SearchCriteria<int> fluxIdSearchCriteria = new();
+    // private SearchCriteria<DateTime> fromDateSearchCriteria = new();
+    // private SearchCriteria<DateTime> toDateSearchCriteria = new();
 
     private SearchPricesRequest searchRequest = new()
     {
@@ -274,11 +280,14 @@
             Sorting = new Sorting("Date", Core.Search.SortDirection.Descending)
         };
 
-        financialIdSearchCriteria = new();
-        fluxIdSearchCriteria = new();
-        fromDateSearchCriteria = new();
-        toDateSearchCriteria = new();
-        searchString = "";
+        searchRequest.FinancialId = new SearchCriteria<int>();
+        searchRequest.FluxId = new SearchCriteria<int>();
+        searchRequest.FluxProcessingContentId = new SearchCriteria<int>();
+        searchRequest.From = new SearchCriteria<DateTime>();
+        searchRequest.To = new SearchCriteria<DateTime>();
+        searchRequest.Code = null;
+        searchRequest.CurrencyCode = null;
+        searchRequest.FinancialType = FinancialType.Fund;
 
         await Search();
     }

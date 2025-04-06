@@ -1,0 +1,20 @@
+﻿@using System.Collections.Generic
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.h6" Class="mb-3">@Title</MudText>
+        <FluxMetadataDictionaryComponent MetadataDictionary="@Metadata" ReadOnly="true" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+
+    [Parameter] public Dictionary<string, object> Metadata { get; set; }
+    [Parameter] public string Title { get; set; } = "Flux Metadata";
+
+    private void Close() => MudDialog.Close();
+}

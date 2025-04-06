@@ -12,6 +12,7 @@
 @using HillMetrics.MIND.API.Contracts.Requests.Flux
 @using HillMetrics.Core.Common
 @using System.Text.Json
+@using HillMetrics.MIND.FrontApp.Components.Flux.Metadata
 @inject IMindAPI MindApi
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
@@ -48,6 +49,9 @@
                         </MudButton>
                         <MudButton OnClick="@ForceProcess" Disabled="@(loading || flux.FluxState != FluxState.Active)">
                             <MudIcon Icon="@Icons.Material.Filled.PlayArrow" Class="mr-2" /> Force Process
+                        </MudButton>
+                        <MudButton OnClick="@ShowMetadataDialog">
+                            <MudIcon Icon="@Icons.Material.Filled.Info" Class="mr-2" /> Metadata
                         </MudButton>
                         <MudButton
                             OnClick="@(async () => await ShowDeleteConfirmDialog())"
@@ -226,38 +230,12 @@
                                     </MudField>
                                 </MudItem>
 
-                                @* @if (flux.EmailMetadata.FluxRuleSettings != null)
+                                @if (flux.EmailMetadata.Metadata != null && flux.EmailMetadata.Metadata.Count > 0)
                                 {
                                     <MudItem xs="12">
-                                        <MudField Label="From" Variant="Variant.Outlined">
-                                            @flux.EmailMetadata.FluxRuleSettings.From
-                                        </MudField>
-                                    </MudItem>
-                                    <MudItem xs="12">
-                                        <MudField Label="Subject" Variant="Variant.Outlined">
-                                            @flux.EmailMetadata.FluxRuleSettings.Subject
-                                        </MudField>
-                                    </MudItem>
-                                    <MudItem xs="12">
-                                        <MudField Label="Body Contains" Variant="Variant.Outlined">
-                                            @flux.EmailMetadata.FluxRuleSettings.BodyContains
-                                        </MudField>
+                                        <FluxMetadataDictionaryComponent MetadataDictionary="@flux.EmailMetadata.Metadata" ReadOnly="true" />
                                     </MudItem>
                                 }
-
-                                @if (flux.EmailMetadata.FluxAttachmentRule != null && flux.EmailMetadata.ContentLocation == FluxMailContentLocation.Attachment)
-                                {
-                                    <MudItem xs="12">
-                                        <MudField Label="File Name Pattern" Variant="Variant.Outlined">
-                                            @flux.EmailMetadata.FluxAttachmentRule.FileName
-                                        </MudField>
-                                    </MudItem>
-                                    <MudItem xs="12">
-                                        <MudField Label="Extension" Variant="Variant.Outlined">
-                                            @flux.EmailMetadata.FluxAttachmentRule.Extension
-                                        </MudField>
-                                    </MudItem>
-                                } *@
                             </MudGrid>
                         </MudCardContent>
                     </MudCard>
@@ -316,6 +294,13 @@
                                         <MudField Label="Protocol" Variant="Variant.Outlined">@protocol</MudField>
                                     </MudItem>
                                 }
+
+                                @if (flux.FileLocationMetadata.Metadata != null && flux.FileLocationMetadata.Metadata.Count > 0)
+                                {
+                                    <MudItem xs="12">
+                                        <FluxMetadataDictionaryComponent MetadataDictionary="@flux.FileLocationMetadata.Metadata" ReadOnly="true" />
+                                    </MudItem>
+                                }
                             </MudGrid>
                         </MudCardContent>
                     </MudCard>
@@ -348,34 +333,9 @@
 
                                 @if (flux.ApiMetadata.Metadata != null && flux.ApiMetadata.Metadata.Count > 0)
                                 {
-                                    @if (flux.ApiMetadata.Metadata.TryGetValue("ContentType", out var contentType))
-                                    {
-                                        <MudItem xs="12" md="6">
-                                            <MudField Label="Content Type" Variant="Variant.Outlined">@contentType</MudField>
-                                        </MudItem>
-                                    }
-
-                                    @if (flux.ApiMetadata.Metadata.TryGetValue("Method", out var method))
-                                    {
-                                        <MudItem xs="12" md="6">
-                                            <MudField Label="HTTP Method" Variant="Variant.Outlined">@method</MudField>
-                                        </MudItem>
-                                    }
-
-                                    @if (flux.ApiMetadata.Metadata.TryGetValue("RequiresAuthentication", out var requiresAuth) &&
-                                        requiresAuth.ToString().ToLower() == "true")
-                                    {
-                                        <MudItem xs="12">
-                                            <MudField Label="Authentication" Variant="Variant.Outlined">Required</MudField>
-                                        </MudItem>
-
-                                        @if (flux.ApiMetadata.Metadata.TryGetValue("Username", out var apiUsername))
-                                        {
-                                            <MudItem xs="12" md="6">
-                                                <MudField Label="Username" Variant="Variant.Outlined">@apiUsername</MudField>
-                                            </MudItem>
-                                        }
-                                    }
+                                    <MudItem xs="12">
+                                        <FluxMetadataDictionaryComponent MetadataDictionary="@flux.ApiMetadata.Metadata" ReadOnly="true" />
+                                    </MudItem>
                                 }
                             </MudGrid>
                         </MudCardContent>
@@ -401,10 +361,64 @@
                                 <MudItem xs="6">
                                     <MudField Label="Content Type" Variant="Variant.Outlined">@flux.DownloadMetadata.ContentType</MudField>
                                 </MudItem>
+
+                                @if (flux.DownloadMetadata.Metadata != null && flux.DownloadMetadata.Metadata.Count > 0)
+                                {
+                                    <MudItem xs="12">
+                                        <FluxMetadataDictionaryComponent MetadataDictionary="@flux.DownloadMetadata.Metadata" ReadOnly="true" />
+                                    </MudItem>
+                                }
                             </MudGrid>
                         </MudCardContent>
                     </MudCard>
                 }
+            </MudItem>
+
+            <!-- Fetching History -->
+            <MudItem xs="12">
+                <MudCard Elevation="3" Class="mb-4">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Recent Fetching History</MudText>
+                        </CardHeaderContent>
+                        <CardHeaderActions>
+                            <MudTooltip Text="View full history">
+                                <MudIconButton Icon="@Icons.Material.Filled.OpenInNew" Color="Color.Primary"
+                                             OnClick="@(() => NavigationManager.NavigateTo($"/flux/fetching-history?fluxId={FluxId}"))" />
+                            </MudTooltip>
+                        </CardHeaderActions>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <FluxFetchingHistoryTable
+                            ServerReload="@LoadFetchingHistory"
+                            ShowFluxId="false"
+                            Loading="@loadingFetchingHistory"
+                            OnForceProcess="@ForceProcess" />
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+
+            <!-- Processing History -->
+            <MudItem xs="12">
+                <MudCard Elevation="3" Class="mb-4">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Recent Processing History</MudText>
+                        </CardHeaderContent>
+                        <CardHeaderActions>
+                            <MudTooltip Text="View full history">
+                                <MudIconButton Icon="@Icons.Material.Filled.OpenInNew" Color="Color.Primary"
+                                             OnClick="@(() => NavigationManager.NavigateTo($"/flux/processing-history?fluxId={FluxId}"))" />
+                            </MudTooltip>
+                        </CardHeaderActions>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <FluxProcessingHistoryTable
+                            ServerReload="@LoadProcessingHistory"
+                            ShowFluxId="false"
+                            Loading="@loadingProcessingHistory" />
+                    </MudCardContent>
+                </MudCard>
             </MudItem>
 
             <!-- Quick Links and History -->
@@ -458,6 +472,8 @@
 
     private FluxResponseWrapper? flux;
     private bool loading = true;
+    private bool loadingFetchingHistory = false;
+    private bool loadingProcessingHistory = false;
     private TriggerPeriod fetchTriggerPeriod;
     private TriggerPeriod processTriggerPeriod;
 
@@ -512,6 +528,74 @@
         }
     }
 
+    private async Task<TableData<FluxFetchingSearchResponse>> LoadFetchingHistory(TableState state, CancellationToken token)
+    {
+        loadingFetchingHistory = true;
+        try
+        {
+            var request = new FluxFetchingSearchRequest
+            {
+                FluxId = new SearchCriteria<int> { Operator = Operator.Equal, Value = FluxId },
+                Pagination = new Pagination(state.PageSize, state.Page + 1)
+            };
+
+            var response = await MindApi.SearchFetchingHistoryAsync(request);
+            return new TableData<FluxFetchingSearchResponse>
+            {
+                Items = response.Data.ToList(),
+                TotalItems = (int)response.TotalRecords
+            };
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading fetching history: {ex.Message}", Severity.Error);
+            return new TableData<FluxFetchingSearchResponse>
+            {
+                Items = new List<FluxFetchingSearchResponse>(),
+                TotalItems = 0
+            };
+        }
+        finally
+        {
+            loadingFetchingHistory = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task<TableData<FluxProcessingSearchReponse>> LoadProcessingHistory(TableState state, CancellationToken token)
+    {
+        loadingProcessingHistory = true;
+        try
+        {
+            var request = new FluxProcessingSearchRequest
+            {
+                FluxId = new SearchCriteria<int> { Operator = Operator.Equal, Value = FluxId },
+                Pagination = new Pagination(state.PageSize, state.Page + 1)
+            };
+
+            var response = await MindApi.SearchProcessingHistoryAsync(request);
+            return new TableData<FluxProcessingSearchReponse>
+            {
+                Items = response.Data.ToList(),
+                TotalItems = (int)response.TotalRecords
+            };
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading processing history: {ex.Message}", Severity.Error);
+            return new TableData<FluxProcessingSearchReponse>
+            {
+                Items = new List<FluxProcessingSearchReponse>(),
+                TotalItems = 0
+            };
+        }
+        finally
+        {
+            loadingProcessingHistory = false;
+            StateHasChanged();
+        }
+    }
+
     private async Task ForceFetch()
     {
         try
@@ -557,12 +641,12 @@
         parameters.Add("ItemValue", flux?.FluxName ?? $"#{FluxId}");
 
         var options = new DialogOptions()
-        {
-            CloseOnEscapeKey = true,
-            MaxWidth = MaxWidth.Small,
-            FullWidth = true,
-            Position = DialogPosition.Center
-        };
+            {
+                CloseOnEscapeKey = true,
+                MaxWidth = MaxWidth.Small,
+                FullWidth = true,
+                Position = DialogPosition.Center
+            };
 
         var dialog = await DialogService.ShowAsync<ConfirmDeleteDialog>("Confirm Deletion", parameters, options);
         var result = await dialog.Result;
@@ -594,6 +678,51 @@
         }
     }
 
+    private async Task ShowMetadataDialog()
+    {
+        if (flux == null)
+            return;
+
+        var parameters = new DialogParameters();
+        var options = new DialogOptions()
+        {
+            CloseOnEscapeKey = true,
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true,
+            Position = DialogPosition.Center
+        };
+
+        // Créez un composant personnalisé pour afficher les métadonnées
+        if (flux.FluxType == FluxType.Email && flux.EmailMetadata?.Metadata != null)
+        {
+            parameters.Add("Metadata", flux.EmailMetadata.Metadata);
+            parameters.Add("Title", "Email Flux Metadata");
+            await DialogService.ShowAsync<FluxMetadataViewDialog>("Email Flux Metadata", parameters, options);
+        }
+        else if (flux.FluxType == FluxType.Api && flux.ApiMetadata?.Metadata != null)
+        {
+            parameters.Add("Metadata", flux.ApiMetadata.Metadata);
+            parameters.Add("Title", "API Flux Metadata");
+            await DialogService.ShowAsync<FluxMetadataViewDialog>("API Flux Metadata", parameters, options);
+        }
+        else if ((flux.FluxType == FluxType.HttpDownload || flux.FluxType == FluxType.Scraping) && flux.DownloadMetadata?.Metadata != null)
+        {
+            parameters.Add("Metadata", flux.DownloadMetadata.Metadata);
+            parameters.Add("Title", "Download Flux Metadata");
+            await DialogService.ShowAsync<FluxMetadataViewDialog>("Download Flux Metadata", parameters, options);
+        }
+        else if (flux.FluxType == FluxType.Sftp && flux.FileLocationMetadata?.Metadata != null)
+        {
+            parameters.Add("Metadata", flux.FileLocationMetadata.Metadata);
+            parameters.Add("Title", "SFTP Flux Metadata");
+            await DialogService.ShowAsync<FluxMetadataViewDialog>("SFTP Flux Metadata", parameters, options);
+        }
+        else
+        {
+            Snackbar.Add("No metadata available for this flux type", Severity.Info);
+        }
+    }
+
     // Helper methods for icons and colors
     private string GetStatusIcon(StatusProcess status)
     {
@@ -620,45 +749,6 @@
             _ => Color.Default
         };
     }
-
-    // private Color GetFluxTypeColor(FluxType fluxType)
-    // {
-    //     return fluxType switch
-    //     {
-    //         FluxType.ApiPull => Color.Primary,
-    //         FluxType.ApiPush => Color.Secondary,
-    //         FluxType.Email => Color.Info,
-    //         FluxType.FileLocation => Color.Success,
-    //         FluxType.Download => Color.Warning,
-    //         _ => Color.Default
-    //     };
-    // }
-
-    // private string GetFluxTypeIcon(FluxType fluxType)
-    // {
-    //     return fluxType switch
-    //     {
-    //         FluxType.ApiPull => Icons.Material.Filled.Api,
-    //         FluxType.ApiPush => Icons.Material.Filled.Api,
-    //         FluxType.Email => Icons.Material.Filled.Email,
-    //         FluxType.FileLocation => Icons.Material.Filled.Folder,
-    //         FluxType.Download => Icons.Material.Filled.CloudDownload,
-    //         _ => Icons.Material.Filled.Help
-    //     };
-    // }
-
-    // private Color GetFinancialTypeColor(FinancialType financialType)
-    // {
-    //     return financialType switch
-    //     {
-    //         FinancialType.Equity => Color.Primary,
-    //         FinancialType.Bond => Color.Secondary,
-    //         FinancialType.Fund => Color.Tertiary,
-    //         FinancialType.Index => Color.Info,
-    //         FinancialType.Derivative => Color.Warning,
-    //         _ => Color.Default
-    //     };
-    // }
 
     private Color GetFluxStateColor(FluxState fluxState)
     {
