@@ -1,6 +1,7 @@
 ﻿using HillMetrics.Core.API.Contracts;
 using HillMetrics.Core.API.Extensions;
 using HillMetrics.Core.API.Responses;
+using HillMetrics.Core.Authentication;
 using HillMetrics.Core.Authentication.Contracts;
 using HillMetrics.Core.Authentication.Objects;
 using HillMetrics.MIND.API.Contracts.Requests;
@@ -50,7 +51,7 @@ namespace HillMetrics.MIND.API.Controllers
         }
         
         [HttpPost(InternalRoutes.Authentication.Refresh)]
-        public async Task<ActionResult<TokenResponse>> RefreshToken([FromBody] RefreshTokenRequest request)
+        public async Task<ActionResult<TokenResponse>> RefreshToken([FromBody] Contracts.Requests.RefreshTokenRequest request)
         {
             var tokenResult = await _authenticationService.RefreshTokenAsync(request.RefreshToken);
             if (tokenResult.IsFailed)
@@ -67,7 +68,9 @@ namespace HillMetrics.MIND.API.Controllers
             if (!_redirectUrlValidator.IsValidRedirectUrl(redirectUrl))
                 return Forbid();
 
-            string idToken = Request.Cookies.ContainsKey("id_token") ? Request.Cookies["id_token"]!.ToString() : string.Empty;
+            Request.Cookies.TryGetValue(AuthConstants.Cookie.IdToken, out string? idToken);
+
+            //string idToken = Request.Cookies.ContainsKey(Constants.Cookie.IdToken) ? Request.Cookies[Constants.Cookie.IdToken]!.ToString() : string.Empty;
 
             string authorizationUrl = _authenticationService.GetLogoutUrl(idToken, redirectUrl);
             return Redirect(authorizationUrl);

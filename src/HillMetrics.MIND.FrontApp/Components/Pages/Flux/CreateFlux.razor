@@ -17,6 +17,8 @@
 @inject ISnackbar Snackbar
 @inject IHttpClientFactory HttpClientFactory;
 
+@attribute [Authorize]
+
 <MudContainer MaxWidth="MaxWidth.Large" Class="py-4">
     <MudPaper Elevation="3" Class="pa-4">
         <MudText Typo="Typo.h4" Class="mb-4">@(FluxId.HasValue ? "Edit Flux" : "Create New Flux")</MudText>

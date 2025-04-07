@@ -1,18 +1,24 @@
-﻿@using MudBlazor
+﻿@using Microsoft.AspNetCore.Components.Authorization
+@using MudBlazor
+@using System.Security.Claims
 @inherits LayoutComponentBase
+@inject NavigationManager NavigationManager
 
 <MudThemeProvider Theme="myCustomTheme" />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
 
+@*Refresh authentication*@
+<RefreshAuthComponent />
+
 <MudLayout>
     <MudAppBar Elevation="1" Color="Color.Primary">
         <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@((e) => DrawerToggle())" />
         <MudText Typo="Typo.h6" Class="ml-3">HillMetrics MIND</MudText>
         <MudSpacer />
-        <MudIconButton Icon="@Icons.Material.Filled.Notifications" Color="Color.Inherit" Edge="Edge.End" />
-        <MudIconButton Icon="@Icons.Material.Filled.Person" Color="Color.Inherit" Edge="Edge.End" />
+        @*authentication component*@
+        <AuthMudAppBarComponent />
     </MudAppBar>
 
     <MudDrawer @bind-Open="_drawerOpen" Elevation="2" ClipMode="DrawerClipMode.Always">
@@ -78,6 +84,19 @@
     {
         _drawerOpen = !_drawerOpen;
     }
+
+    // private void LoginClick(MouseEventArgs args)
+    // {
+    //     string returnUrl = NavigationManager.Uri.ToString();
+    //     string callBackUrl = NavigationManager.ToAbsoluteUri("/Auth/LoginCallback").ToString();
+
+    //     NavigationManager.NavigateTo($"/Auth/Login?returnUrl={returnUrl}&callBackUrl={callBackUrl}", forceLoad: true);
+    // }
+
+    // private void LogoutClick(MouseEventArgs args)
+    // {
+    //     NavigationManager.NavigateTo("/Auth/Logout", forceLoad: true);
+    // }
 }
 
 <div id="blazor-error-ui">
