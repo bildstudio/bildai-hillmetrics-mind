@@ -46,7 +46,7 @@ namespace HillMetrics.MIND.API.Controllers
         {
             try
             {
-                _logger.LogInformation("Callback received: code: {code}, state: {state}", code, state);
+                //_logger.LogInformation("Callback received: code: {code}, state: {state}", code, state);
                 var tokenResult = await _authenticationService.ExhangeCodeForTokenAsync(code);
                 if (tokenResult.IsFailed)
                 {
@@ -58,7 +58,7 @@ namespace HillMetrics.MIND.API.Controllers
                 tokenResult.Value.SaveTokensInCookies(HttpContext.Response.Cookies);
 
 
-                return RedirectPermanent(state);
+                return Redirect(state);
             }
             catch (Exception ex)
             {
