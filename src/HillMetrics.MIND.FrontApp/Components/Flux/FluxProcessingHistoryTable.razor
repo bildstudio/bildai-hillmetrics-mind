@@ -1,0 +1,192 @@
+﻿@using HillMetrics.MIND.API.Contracts.Responses.Flux
+@using HillMetrics.MIND.API.Contracts.Responses
+@using HillMetrics.Core
+@using HillMetrics.Normalized.Domain.Contracts.Providing.Flux
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+
+<MudTable ServerData="@ServerReload"
+          Hover="true" Bordered="true" Striped="true"
+          Dense="true" @bind-SelectedItem="selectedItem" T="FluxProcessingSearchReponse"
+          Breakpoint="Breakpoint.Sm"
+          Loading="@Loading"
+          LoadingProgressColor="Color.Primary">
+    <ToolBarContent>
+        <MudText Typo="Typo.h6" Class="ml-2">Processing History</MudText>
+        <MudSpacer />
+        <MudTextField T="string" @bind-Value="searchString" Placeholder="Search" Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium"
+                      Class="mt-0 mb-3" Margin="Margin.Dense" Dense="true"></MudTextField>
+    </ToolBarContent>
+    <HeaderContent>
+        <MudTh>ID</MudTh>
+        <MudTh>Flux ID</MudTh>
+        <MudTh>Start Date</MudTh>
+        <MudTh>End Date</MudTh>
+        <MudTh>Processed Items</MudTh>
+        <MudTh>Status</MudTh>
+        <MudTh>Duration</MudTh>
+        <MudTh>Actions</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="ID">@context.Id</MudTd>
+        <MudTd DataLabel="Flux ID">
+            @if (ShowFluxId)
+            {
+                <MudLink Href="@($"/flux/details/{context.FluxId}")">@context.FluxId</MudLink>
+            }
+            else
+            {
+                <span>@context.FluxId</span>
+            }
+        </MudTd>
+        <MudTd DataLabel="Start Date">
+            <MudTooltip Text="@context.ProcessingDateStart.ToString("yyyy-MM-dd HH:mm:ss")">
+                <div>@FormatDateTime(context.ProcessingDateStart)</div>
+            </MudTooltip>
+        </MudTd>
+        <MudTd DataLabel="End Date">
+            @if (context.ProcessingDateEnd.HasValue)
+            {
+                <MudTooltip Text="@context.ProcessingDateEnd.Value.ToString("yyyy-MM-dd HH:mm:ss")">
+                    <div>@FormatDateTime(context.ProcessingDateEnd.Value)</div>
+                </MudTooltip>
+            }
+            else
+            {
+                <span>-</span>
+            }
+        </MudTd>
+        <MudTd DataLabel="Processed Items">
+            <MudBadge Content="@context.NbContent" Color="Color.Primary" Overlap="true" Class="d-flex justify-center"></MudBadge>
+        </MudTd>
+        <MudTd DataLabel="Status">
+            @if (context.Status.HasValue)
+            {
+                <MudTooltip Text="@context.Status.Value.ToString()">
+                    <MudIcon Icon="@GetStatusIcon(context.Status.Value)"
+                             Color="@GetStatusColor(context.Status.Value)" />
+                </MudTooltip>
+            }
+            else
+            {
+                <span>-</span>
+            }
+        </MudTd>
+        <MudTd DataLabel="Duration">
+            @if (context.ProcessingDateEnd.HasValue)
+            {
+                var duration = context.ProcessingDateEnd.Value - context.ProcessingDateStart;
+                <span>@FormatDuration(duration)</span>
+            }
+            else if (context.Status == StatusProcess.Processing)
+            {
+                var duration = DateTime.Now - context.ProcessingDateStart;
+                <MudChip T="TimeSpan" Color="Color.Info" Size="Size.Small">@FormatDuration(duration) (ongoing)</MudChip>
+            }
+            else
+            {
+                <span>-</span>
+            }
+        </MudTd>
+        <MudTd DataLabel="Actions">
+            <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true">
+                <MudMenuItem OnClick="@(() => ViewDetails(context.Id))">
+                    <MudIcon Icon="@Icons.Material.Filled.Visibility" Class="mr-2" Size="Size.Small" /> View Details
+                </MudMenuItem>
+                @if (ShowFluxId)
+                {
+                    <MudMenuItem OnClick="@(() => ViewFluxDetails(context.FluxId))">
+                        <MudIcon Icon="@Icons.Material.Filled.Assignment" Class="mr-2" Size="Size.Small" /> View Flux
+                    </MudMenuItem>
+                }
+            </MudMenu>
+        </MudTd>
+    </RowTemplate>
+    <PagerContent>
+        <MudTablePager PageSizeOptions="new int[] { 10, 25, 50, 100 }" />
+    </PagerContent>
+    <NoRecordsContent>
+        <MudAlert Severity="Severity.Info" Class="my-2">No processing history found.</MudAlert>
+    </NoRecordsContent>
+</MudTable>
+
+@code {
+    [Parameter]
+    public bool ShowFluxId { get; set; } = true;
+
+    [Parameter]
+    public bool Loading { get; set; } = false;
+
+    [Parameter]
+    public Func<TableState, CancellationToken, Task<TableData<FluxProcessingSearchReponse>>> ServerReload { get; set; }
+
+    private string searchString = "";
+    private FluxProcessingSearchReponse selectedItem = null;
+
+    private void ViewDetails(int id)
+    {
+        NavigationManager.NavigateTo($"/flux/processing-details/{id}");
+    }
+
+    private void ViewFluxDetails(int id)
+    {
+        NavigationManager.NavigateTo($"/flux/details/{id}");
+    }
+
+    // Helper methods for icons and colors
+    private string GetStatusIcon(StatusProcess status)
+    {
+        return status switch
+        {
+            StatusProcess.Success => Icons.Material.Filled.CheckCircle,
+            StatusProcess.Failure => Icons.Material.Filled.Error,
+            StatusProcess.Processing => Icons.Material.Filled.Refresh,
+            StatusProcess.Paused => Icons.Material.Filled.Pending,
+            StatusProcess.Partially => Icons.Material.Filled.Warning,
+            _ => Icons.Material.Filled.HelpOutline
+        };
+    }
+
+    private Color GetStatusColor(StatusProcess status)
+    {
+        return status switch
+        {
+            StatusProcess.Success => Color.Success,
+            StatusProcess.Failure => Color.Error,
+            StatusProcess.Processing => Color.Info,
+            StatusProcess.Paused => Color.Warning,
+            StatusProcess.Partially => Color.Secondary,
+            _ => Color.Default
+        };
+    }
+
+    private string FormatDateTime(DateTime dateTime)
+    {
+        var now = DateTime.Now;
+        var diff = now - dateTime;
+
+        if (diff.TotalMinutes < 1)
+            return "Just now";
+        if (diff.TotalHours < 1)
+            return $"{(int)diff.TotalMinutes}m ago";
+        if (diff.TotalDays < 1)
+            return $"{(int)diff.TotalHours}h ago";
+        if (diff.TotalDays < 7)
+            return $"{(int)diff.TotalDays}d ago";
+
+        return dateTime.ToString("MMM dd, HH:mm");
+    }
+
+    private string FormatDuration(TimeSpan duration)
+    {
+        if (duration.TotalDays >= 1)
+            return $"{duration.Days}d {duration.Hours}h {duration.Minutes}m";
+        if (duration.TotalHours >= 1)
+            return $"{duration.Hours}h {duration.Minutes}m {duration.Seconds}s";
+        if (duration.TotalMinutes >= 1)
+            return $"{duration.Minutes}m {duration.Seconds}s";
+
+        return $"{duration.Seconds}.{duration.Milliseconds}s";
+    }
+}

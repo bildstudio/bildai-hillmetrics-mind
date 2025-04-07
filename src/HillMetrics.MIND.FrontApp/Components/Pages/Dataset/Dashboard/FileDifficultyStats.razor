@@ -1,0 +1,121 @@
+﻿@page "/file-difficulty-stats"
+@using HillMetrics.Normalized.Domain.Contracts.AI.Dataset
+@using HillMetrics.MIND.API.SDK.V1
+@inject IMindAPI MindApi
+
+<MudText Typo="Typo.h4" Class="mb-4">File Difficulty Statistics</MudText>
+
+<MudGrid>
+    <MudItem xs="12" md="6">
+        <MudCard>
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h6">Files by Difficulty Level</MudText>
+                </CardHeaderContent>
+            </MudCardHeader>
+            <MudCardContent>
+                <MudChart ChartType="ChartType.Pie"
+                         Width="300px"
+                         Height="300px"
+                         InputData="@difficultyData"
+                         InputLabels="@difficultyLabels">
+                </MudChart>
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+
+    <MudItem xs="12" md="6">
+        <MudCard>
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h6">Difficulty Distribution</MudText>
+                </CardHeaderContent>
+            </MudCardHeader>
+            <MudCardContent>
+                <MudSimpleTable>
+                    <thead>
+                        <tr>
+                            <th>Difficulty Level</th>
+                            <th>Number of Files</th>
+                            <th>Percentage</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (int i = 0; i < difficultyLabels.Length; i++)
+                        {
+                            <tr>
+                                <td>
+                                    <MudChip T="Color" Color="@GetDifficultyColor((FileDifficulty)i)" Size="Size.Small">
+                                        @difficultyLabels[i]
+                                    </MudChip>
+                                </td>
+                                <td>@difficultyCount[i]</td>
+                                <td>@($"{difficultyData[i]:P1}")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+</MudGrid>
+
+@code {
+    private double[] difficultyData = new double[5];
+    private string[] difficultyLabels = new string[] { "Very Easy", "Simple", "Medium", "Hard", "Very Difficult" };
+    private int[] difficultyCount = new int[5];
+    private int totalFiles = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDifficultyStats();
+    }
+
+    private async Task LoadDifficultyStats()
+    {
+        try
+        {
+            // Get all file uploads
+            var result = await MindApi.GetAllFileUploadsAsync();
+
+            // if (!result.IsSuccess)
+            //     return;
+
+            var files = result.Data;
+            totalFiles = files.Count;
+
+            if (totalFiles == 0)
+                return;
+
+            // Calculate difficulty distribution
+            foreach (var file in files)
+            {
+                var difficultyIndex = (int)file.Difficulty;
+                difficultyCount[difficultyIndex]++;
+            }
+
+            // Calculate percentages
+            for (int i = 0; i < 5; i++)
+            {
+                difficultyData[i] = (double)difficultyCount[i] / totalFiles;
+            }
+        }
+        catch (Exception ex)
+        {
+            // Handle error
+        }
+    }
+
+    private Color GetDifficultyColor(FileDifficulty difficulty)
+    {
+        return difficulty switch
+        {
+            FileDifficulty.VeryEasy => Color.Success,
+            FileDifficulty.Simple => Color.Info,
+            FileDifficulty.Medium => Color.Primary,
+            FileDifficulty.Hard => Color.Warning,
+            FileDifficulty.VeryDifficult => Color.Error,
+            _ => Color.Default
+        };
+    }
+}

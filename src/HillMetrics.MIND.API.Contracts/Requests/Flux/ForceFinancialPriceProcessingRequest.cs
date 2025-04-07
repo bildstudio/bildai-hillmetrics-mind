@@ -17,14 +17,14 @@ namespace HillMetrics.MIND.API.Contracts.Requests.Flux
         public List<int> FinancialIds { get; set; } = new();
 
         /// <summary>
-        /// Flux identifier
+        /// Optional flux identifier. If not provided, the system will use the flux associated with the most recent price data.
         /// </summary>
-        public int FluxId { get; set; }
+        public int? FluxId { get; set; }
 
         /// <summary>
-        /// Currency code (e.g., EUR, USD)
+        /// Optional currency code (e.g., EUR, USD). If not provided, the currency will be determined from the financial identifier.
         /// </summary>
-        public string Currency { get; set; } = string.Empty;
+        public string? Currency { get; set; }
 
         /// <summary>
         /// List of price dates to process

@@ -1,0 +1,1028 @@
+﻿@page "/file-data-mapping"
+@page "/file-data-mapping/file/{FileUploadId:int}"
+@page "/file-data-mapping/flux/{FluxFetchingHistoryContentId:int}"
+@using ExcelDataReader
+@using HillMetrics.Core.Financial
+@using HillMetrics.MIND.API.Contracts.Requests.AiDataset
+@using HillMetrics.MIND.FrontApp.Components.Dataset
+@using HillMetrics.Normalized.Domain.Contracts.AI.Dataset
+@using Microsoft.EntityFrameworkCore
+@using System.IO
+@using Refit
+@inject FileUploadService FileUploadService
+@inject ISnackbar Snackbar
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@inject IDialogService dialogService
+@inject IMindAPI MindApi
+
+<MudBreadcrumbs Items="_breadcrumbs"></MudBreadcrumbs>
+
+<MudText Typo="Typo.h4" Class="mb-4">
+    @(isEditMode ? "Edit File Data Mappings" : "File Upload & Data Mapping")
+</MudText>
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <MudAlert Severity="Severity.Error" Class="mb-3" Dismissable="true">@errorMessage</MudAlert>
+}
+
+@if (isLoading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-7" />
+}
+else
+{
+    <MudGrid>
+        <!-- File Information and Preview -->
+        <MudItem xs="12" md="6">
+            <FileUploadCard IsEditMode="isEditMode"
+                            File="uploadedFile"
+                            SelectedFile="selectedFile"
+                            SelectedFileName="@selectedFileName"
+                            SelectedFileSize="@selectedFileSize"
+                            SelectedFileContentType="@selectedFileContentType"
+                            CustomFileName="@customFileName"
+                            FileDifficulty="fileDifficulty"
+                            IsUploading="isUploading"
+                            DuplicateFileFound="duplicateFileFound"
+                            CanUploadFile="CanUploadFile()"
+                            OnFileSelected="OnFileChanged"
+                            OnFileClear="ClearFile"
+                            OnSave="HandleSave" />
+
+            @if (uploadedFile != null && IsSpreadsheetFile(uploadedFile.FileType))
+            {
+                <FilePreview IsLoadingPreview="isLoadingPreview"
+                             FilePreviewData="filePreviewData"
+                             FilePreviewHeaders="filePreviewHeaders"
+                             IsSelectingField="isSelectingField"
+                             SelectedFieldName="selectedFieldName"
+                             File="uploadedFile"
+                             Worksheets="worksheets"
+                             CurrentWorksheet="currentWorksheet"
+                             OnCellSelected="OnCellClick"
+                             OnCancelFieldSelection="CancelFieldSelection"
+                             OnRefreshPreview="LoadFilePreview"
+                             OnShowSheetSelector="ShowSheetSelector"
+                             OnZoomIn="ZoomIn"
+                             OnZoomOut="ZoomOut" />
+            }
+        </MudItem>
+
+        <!-- Data Mapping Card -->
+        <MudItem xs="12" md="6">
+            <DataMappingCard IsEditMode="isEditMode"
+                             File="uploadedFile"
+                             AvailableDataPoints="availableDataPoints"
+                             DataMappings="dataMappings"
+                             OnAddDataPoint="AddDataPoint"
+                             OnRemoveMapping="RemoveDataMapping"
+                             OnFieldSelect="SelectField"
+                             OnExpandAll="ExpandAllPanels"
+                             OnCollapseAll="CollapseAllPanels" />
+        </MudItem>
+
+        <!-- Action Buttons -->
+        <MudItem xs="12">
+            <MudPaper Class="pa-4" Elevation="3">
+                <MudGrid>
+                    <MudItem xs="12" md="6">
+                        @if (dataMappings.Count > 0)
+                        {
+                            <MudButton OnClick="SaveMappings"
+                                       Color="Color.Primary"
+                                       Variant="Variant.Filled"
+                                       Disabled="isSaving || dataMappings.Count == 0"
+                                       StartIcon="@Icons.Material.Filled.Save"
+                                       Size="Size.Large"
+                                       FullWidth="true">
+                                @if (isSaving)
+                                {
+                                    <MudProgressCircular Class="mr-2" Size="Size.Small" Indeterminate="true" />
+                                    <span>Saving...</span>
+                                }
+                                else
+                                {
+                                    <span>@(isEditMode ? "Update Data Mappings" : "Save Data Mappings")</span>
+                                }
+                            </MudButton>
+                        }
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudButton OnClick="NavigateBack"
+                                   Color="Color.Secondary"
+                                   Variant="Variant.Outlined"
+                                   StartIcon="@Icons.Material.Filled.ArrowBack"
+                                   Size="Size.Large"
+                                   FullWidth="true">
+                            Cancel
+                        </MudButton>
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    [Parameter]
+    public int? FileUploadId { get; set; }
+
+    [Parameter]
+    public int? FluxFetchingHistoryContentId { get; set; }
+
+    [Parameter]
+    public bool IsLoadingPreview { get; set; }
+
+    [Parameter]
+    public List<List<string>> FilePreviewData { get; set; } = new();
+
+    [Parameter]
+    public List<string> FilePreviewHeaders { get; set; } = new();
+
+    [Parameter]
+    public bool IsSelectingField { get; set; }
+
+    [Parameter]
+    public string SelectedFieldName { get; set; } = string.Empty;
+
+    private HillMetrics.Normalized.Domain.Contracts.AI.Dataset.FileUpload? uploadedFile;
+    private IBrowserFile? selectedFile;
+
+    private MemoryStream? streamFile;
+    private string selectedFileName = string.Empty;
+    private long selectedFileSize;
+    private string selectedFileContentType = string.Empty;
+    private string errorMessage = string.Empty;
+    private bool isLoading = true;
+    private bool isSaving = false;
+    private bool isUploading = false;
+    private bool duplicateFileFound;
+    private bool isEditMode => FileUploadId.HasValue;
+    private List<BreadcrumbItem> _breadcrumbs = new();
+    private int selectedDataPointId;
+    private MudExpansionPanels? expansionPanels;
+    private string customFileName = string.Empty;
+    private string editedFileName = string.Empty;
+
+    private List<HillMetrics.Core.Financial.FinancialDataPoint> availableDataPoints = new();
+    // private List<DataMappingViewModel> dataMappings = new();
+    private List<FileDataMapping> dataMappings = new();
+    private int nextMappingId = 1;
+
+    // New properties for file preview
+    private bool isLoadingPreview = false;
+    private List<List<string>> filePreviewData = new();
+    private List<string> filePreviewHeaders = new();
+
+    // Properties for field selection
+    private bool isSelectingField = false;
+    private string selectedFieldName = string.Empty;
+    private Action<string>? selectedFieldCallback;
+
+    // Propriétés pour la visualisation Excel
+    private List<string> worksheets = new();
+    private string currentWorksheet = "Sheet1";
+    private double zoomLevel = 1.0;
+
+    private FileDifficulty fileDifficulty = FileDifficulty.Medium;
+
+    private readonly string DefaultRoute = "/flux-mappings/search";
+
+    protected override void OnParametersSet()
+    {
+        // Initialiser selectedDataPointId avec le premier élément de la liste
+        if (availableDataPoints.Count > 0 && selectedDataPointId == 0)
+        {
+            selectedDataPointId = availableDataPoints[0].Id;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            isLoading = true;
+            SetupBreadcrumbs();
+            await LoadFinancialDataPoints();
+
+            // Handle the case when coming from a FluxFetchingHistoryContentId
+            if (FluxFetchingHistoryContentId.HasValue)
+            {
+                // 1. Get the fetching content details to get the ContentType
+                var fetchingContentResponse = await MindApi.GetFetchingContentAsync(FluxFetchingHistoryContentId.Value);
+                if (fetchingContentResponse.Data == null)
+                {
+                    errorMessage = "Failed to get fetching content details";
+                    return;
+                }
+
+                if (fetchingContentResponse.Data.ContentType == null)
+                {
+                    errorMessage = "Failed to get ContentType from fetching content";
+                    return;
+                }
+
+                // 2. Check if a FileUpload already exists for this FluxFetchingHistoryContentId
+                var existingFiles = await MindApi.GetAllFileUploadsAsync();
+                var existingFile = existingFiles.Data?.FirstOrDefault(f => f.FluxFetchingContentId == FluxFetchingHistoryContentId);
+
+                if (existingFile != null)
+                {
+                    // If FileUpload already exists, redirect to the page with FileUploadId
+                    NavigationManager.NavigateTo($"/file-data-mapping/file/{existingFile.Id}", forceLoad: true);
+                    return;
+                }
+
+                var flux = await MindApi.GetFluxAsync(fetchingContentResponse.Data.FluxId);
+                // 3. If no FileUpload exists, create a new one with the correct ContentType
+                var createRequest = new CreateFileUploadFromFluxRequest
+                    {
+                        FluxFetchingContentId = FluxFetchingHistoryContentId.Value,
+                        FileName = fetchingContentResponse.Data.ContentName ?? $"Flux_{FluxFetchingHistoryContentId.Value}",
+                        ContentType = fetchingContentResponse.Data.ContentType != null
+                                            ? HillMetrics.Core.Common.ContentTypeMapper.GetMimeType(fetchingContentResponse.Data.ContentType.Value)
+                                            : "application/vnd.ms-excel", // Default type if ContentType is null
+                        Difficulty = FileDifficulty.Medium,
+                        FinancialType = flux.FinancialType!.Value
+                    };
+
+                var request = System.Text.Json.JsonSerializer.Serialize(createRequest);
+                var response = await MindApi.CreateFileUploadFromFluxAsync(createRequest);
+                if (response.Data != null)
+                {
+                    // Redirect to the page with the new FileUploadId
+                    NavigationManager.NavigateTo($"/file-data-mapping/file/{response.Data.Id}", forceLoad: true);
+                    return;
+                }
+                else
+                {
+                    errorMessage = "Failed to create FileUpload from Flux content";
+                    return;
+                }
+            }
+
+            // Normal case - loading an existing FileUpload
+            if (isEditMode)
+            {
+                await LoadExistingFile();
+            }
+
+            if (uploadedFile != null && IsSpreadsheetFile(uploadedFile.FileType))
+            {
+                await LoadFilePreview();
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error during initialization: {ex.Message}";
+            Snackbar.Add(errorMessage, Severity.Error);
+            NavigationManager.NavigateTo(DefaultRoute);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private bool CanUploadFile() => !isEditMode && selectedFile == null && uploadedFile == null;
+
+    private void SetupBreadcrumbs()
+    {
+        _breadcrumbs = new List<BreadcrumbItem>
+        {
+            new BreadcrumbItem("Home", "/"),
+            new BreadcrumbItem("Flux mapping search", "/flux-mappings/search")
+        };
+
+        if (isEditMode)
+        {
+            _breadcrumbs.Add(new BreadcrumbItem($"Edit flux Mappings", null, true));
+        }
+        else if (FluxFetchingHistoryContentId.HasValue)
+        {
+            _breadcrumbs.Add(new BreadcrumbItem("Create Mapping from existing Flux", null, true));
+        }
+        else
+        {
+            _breadcrumbs.Add(new BreadcrumbItem("Create New Mapping", null, true));
+        }
+    }
+
+    private async Task LoadExistingFile()
+    {
+        try
+        {
+            if (!FileUploadId.HasValue) return;
+
+            var response = await MindApi.GetFileUploadAsync(FileUploadId.Value);
+
+            uploadedFile = response.Data;
+            if (uploadedFile == null)
+            {
+                errorMessage = $"File with ID {FileUploadId.Value} not found.";
+                return;
+            }
+
+            _breadcrumbs[2] = new BreadcrumbItem($"Edit Mappings: {uploadedFile.FileName}", null, true);
+            await LoadMappingsForFile(FileUploadId.Value);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading file: {ex.Message}";
+        }
+    }
+
+    private async Task LoadMappingsForFile(int fileUploadId)
+    {
+        try
+        {
+            var response = await MindApi.GetMappingsByFileUploadAsync(fileUploadId);
+
+            dataMappings = response.Data;
+            nextMappingId = 1;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading mappings: {ex.Message}";
+        }
+    }
+
+    private async Task LoadFinancialDataPoints()
+    {
+        try
+        {
+            var res = await MindApi.GetAllFinancialDataPointsAsync();
+            availableDataPoints = res.Data;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading financial data points: {ex.Message}";
+            Console.WriteLine($"Exception in LoadFinancialDataPoints: {ex}");
+        }
+    }
+
+    private async Task AddDataPoint((int, string) callback)
+    {
+        int dataPointId = callback.Item1;
+        string instanceName = callback.Item2;
+
+        var dataPoint = availableDataPoints.FirstOrDefault(dp => dp.Id == dataPointId);
+        if (dataPoint == null)
+        {
+            return;
+        }
+
+        // Générer un nom d'instance unique pour ce data point si non fourni
+        if (string.IsNullOrEmpty(instanceName))
+        {
+            int instanceCount = dataMappings.Count(m => m.FinancialDataPointId == dataPointId) + 1;
+            instanceName = $"Instance {instanceCount}";
+        }
+
+        try
+        {
+            // Récupérer tous les PropertyDataTypes disponibles
+            var propertyTypesResponse = await MindApi.SearchPropertyDataTypesAsync(
+                new SearchPropertyDataTypeRequest
+                    {
+                        ContentType = uploadedFile!.ContentType,
+                    },
+                CancellationToken.None);
+
+
+            var propertyTypes = propertyTypesResponse.Data;
+
+            // Créer un nouveau mapping
+            var newMapping = new FileDataMapping
+                {
+                    FileUploadId = uploadedFile!.Id,
+                    FinancialDataPointId = dataPointId,
+                    FinancialDataPoint = availableDataPoints.First(x => x.Id == dataPointId),
+                    InstanceName = instanceName,
+                    ElementValues = dataPoint.Elements.Select(e =>
+                    {
+                    // Trouver le PropertyDataType approprié en fonction du ContentType
+                    // Par défaut, on prend le premier PropertyDataType de type "Column" si disponible
+                        var propertyType = propertyTypes.FirstOrDefault();
+
+                        if (propertyType == null)
+                        {
+                            throw new InvalidOperationException("No PropertyDataType available in the system");
+                        }
+
+                        return new FileDataElementValue
+                        {
+                            FinancialDataPointElementId = e.Id,
+                            ExtractedValue = string.Empty,
+                            PropertyDataTypeId = propertyType.Id
+                        };
+                    }).ToList()
+                };
+
+            dataMappings.Add(newMapping);
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error adding data point: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void RemoveDataMapping(int mappingId)
+    {
+        dataMappings.RemoveAll(m => m.Id == mappingId);
+    }
+
+    private async Task SaveMappings()
+    {
+        if (uploadedFile == null || dataMappings.Count == 0) return;
+
+        try
+        {
+            isSaving = true;
+
+            var mappingToSave = dataMappings.Select(m => new CreateFileMappingRequest()
+                {
+                    Id = m.Id,
+                    FileUploadId = uploadedFile.Id,
+                    FinancialDataPointId = m.FinancialDataPointId,
+                    InstanceName = m.InstanceName,
+                    ElementValues = m.ElementValues.Select(ev => new ElementValueRequest()
+                    {
+                        Id = ev.Id,
+                        ExtractedValue = ev.ExtractedValue,
+                        PropertyDataTypeId = ev.PropertyDataTypeId,
+                        FileDataMappingId = ev.FileDataMappingId,
+                        FinancialDataPointElementId = ev.FinancialDataPointElementId,
+
+                    }).ToList()
+                }).ToList();
+
+
+            foreach (var mapping in mappingToSave)
+            {
+                Console.WriteLine($"Request payload: {System.Text.Json.JsonSerializer.Serialize(mapping)}");
+                var response = await MindApi.CreateFileMappingAsync(mapping);
+            }
+
+            Snackbar.Add(isEditMode ? "Mappings updated successfully!" : "Data mappings saved successfully!", Severity.Success);
+            NavigateBack();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error {(isEditMode ? "updating" : "saving")} data mappings: {ex.Message}";
+            Snackbar.Add(errorMessage, Severity.Error);
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private async Task ExpandAllPanels()
+    {
+        if (expansionPanels != null)
+        {
+            await expansionPanels.ExpandAllAsync();
+        }
+    }
+
+    private async Task CollapseAllPanels()
+    {
+        if (expansionPanels != null)
+        {
+            await expansionPanels.CollapseAllAsync();
+        }
+    }
+
+    private void NavigateBack()
+    {
+        try
+        {
+            if (isEditMode && uploadedFile?.Id > 0)
+            {
+                NavigationManager.NavigateTo($"/file-details/{uploadedFile.Id}");
+            }
+            else
+            {
+                NavigationManager.NavigateTo(DefaultRoute);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Navigation error: {ex.Message}", Severity.Error);
+            NavigationManager.NavigateTo(DefaultRoute);
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JSRuntime.InvokeVoidAsync("eval", @"
+                window.downloadFileFromBase64 = function (fileName, base64, contentType) {
+                    const linkSource = `data:${contentType};base64,${base64}`;
+                    const downloadLink = document.createElement('a');
+                    document.body.appendChild(downloadLink);
+
+                    downloadLink.href = linkSource;
+                    downloadLink.download = fileName;
+                    downloadLink.click();
+                    document.body.removeChild(downloadLink);
+                }
+            ");
+        }
+    }
+
+    private async Task OnFileChanged(IBrowserFile file)
+    {
+        if (file == null)
+        {
+            ClearFile();
+            return;
+        }
+
+        selectedFile = file;
+        selectedFileName = file.Name;
+        selectedFileSize = file.Size;
+        selectedFileContentType = file.ContentType;
+
+        using var stream = file.OpenReadStream(maxAllowedSize: 10485760); // 10 MB max
+
+        streamFile = new MemoryStream();
+        await stream.CopyToAsync(streamFile);
+        streamFile.Position = 0;
+        errorMessage = string.Empty;
+    }
+
+    private void ClearFile()
+    {
+        selectedFile = null;
+        selectedFileName = string.Empty;
+        selectedFileSize = 0;
+        selectedFileContentType = string.Empty;
+        customFileName = string.Empty;
+
+        if (streamFile != null)
+        {
+            streamFile.Dispose();
+            streamFile = null;
+        }
+    }
+
+    private async Task HandleSave(FileUploadCard.FileUploadMetadata metadata)
+    {
+        try
+        {
+            if (uploadedFile == null)
+            {
+                // Nouveau fichier - Upload puis SaveContext
+                isUploading = true;
+
+                if (selectedFile == null) return;
+
+                // Upload du fichier
+                var fileContent = new StreamPart(streamFile!, metadata.FileName, selectedFile.ContentType);
+                var response = await MindApi.CreateFileUploadAsync(fileContent, metadata.Difficulty);
+
+                if (response.Data != null)
+                {
+                    uploadedFile = response.Data;
+
+                    // Mise à jour des métadonnées après l'upload
+                    uploadedFile = await SaveContext(
+                        metadata.FileName,
+                        metadata.MappingStatus,
+                        metadata.Difficulty,
+                        metadata.FinancialType
+                    );
+
+                    ClearFile();
+                    Snackbar.Add("File uploaded and metadata saved successfully!", Severity.Success);
+                }
+            }
+            else
+            {
+                // Fichier existant - Uniquement SaveContext
+                uploadedFile = await SaveContext(
+                    metadata.FileName,
+                    metadata.MappingStatus,
+                    metadata.Difficulty,
+                    metadata.FinancialType
+                );
+
+                Snackbar.Add("Metadata updated successfully!", Severity.Success);
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error saving file: {ex.Message}";
+            Snackbar.Add(errorMessage, Severity.Error);
+        }
+        finally
+        {
+            isUploading = false;
+        }
+    }
+
+    private async Task<FileUpload> SaveContext(string fileName, MappingStatus status, FileDifficulty difficulty, FinancialType financialType)
+    {
+        var request = new UpdateFileUploadRequest
+            {
+                FileUploadId = uploadedFile!.Id,
+                FileName = fileName,
+                MappingStatus = status,
+                Difficulty = difficulty,
+                FinancialType = financialType
+            };
+
+        var json = System.Text.Json.JsonSerializer.Serialize(request);
+        var response = await MindApi.UpdateFileUploadAsync(uploadedFile.Id, request);
+        return response.Data;
+    }
+
+    // Method to check if file is a spreadsheet
+    private bool IsSpreadsheetFile(string? fileType)
+    {
+        if (string.IsNullOrEmpty(fileType))
+            return false;
+
+        fileType = fileType.ToLowerInvariant();
+        return (fileType == "csv" || fileType == ".csv") || (fileType == "xlsx" || fileType == ".xlsx") || (fileType == "xls" || fileType == ".xls");
+    }
+
+    // Method to load file preview
+    private async Task LoadFilePreview()
+    {
+        if (uploadedFile == null || !IsSpreadsheetFile(uploadedFile.FileType))
+            return;
+
+        try
+        {
+            isLoadingPreview = true;
+
+            Stream? fileStream = await FileUploadService.GetFileStreamAsync(uploadedFile.Id);
+            if (fileStream == null)
+            {
+                Snackbar.Add("File not found", Severity.Error);
+                return;
+            }
+
+            // Parse file based on type
+            if (uploadedFile.FileType.ToLowerInvariant() == "csv")
+            {
+                await ParseCsvFile(fileStream);
+            }
+            else
+            {
+                await ParseExcelFile(fileStream);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading file preview: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoadingPreview = false;
+        }
+    }
+
+    // Method to parse CSV file
+    private async Task ParseCsvFile(Stream fileStream)
+    {
+        using var reader = new StreamReader(fileStream);
+
+        // Read header
+        var headerLine = await reader.ReadLineAsync();
+        if (headerLine != null)
+        {
+            filePreviewHeaders = headerLine.Split(',').Select(h => h.Trim('"')).ToList();
+        }
+
+        // Read data (limit to 100 rows for performance)
+        filePreviewData.Clear();
+        int rowCount = 0;
+        while (!reader.EndOfStream && rowCount < 100)
+        {
+            var line = await reader.ReadLineAsync();
+            if (line != null)
+            {
+                filePreviewData.Add(line.Split(',').Select(c => c.Trim('"')).ToList());
+                rowCount++;
+            }
+        }
+    }
+
+    // Method to parse Excel file using ExcelDataReader
+    private async Task ParseExcelFile(Stream fileStream)
+    {
+        try
+        {
+            // Assurez-vous d'avoir installé les packages NuGet suivants:
+            // dotnet add package ExcelDataReader
+            // dotnet add package ExcelDataReader.DataSet
+            // dotnet add package System.Text.Encoding.CodePages
+
+            // Enregistrer les encodages (nécessaire pour ExcelDataReader)
+            System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+
+            // Créer un reader pour le fichier Excel
+            using var reader = ExcelDataReader.ExcelReaderFactory.CreateReader(fileStream);
+
+            // Récupérer toutes les feuilles de calcul
+            var result = reader.AsDataSet(new ExcelDataReader.ExcelDataSetConfiguration()
+                {
+                    ConfigureDataTable = (_) => new ExcelDataReader.ExcelDataTableConfiguration()
+                    {
+                        UseHeaderRow = true
+                    }
+                });
+
+            // Récupérer la liste des noms de feuilles
+            worksheets.Clear();
+            for (int i = 0; i < result.Tables.Count; i++)
+            {
+                worksheets.Add(result.Tables[i].TableName);
+            }
+
+            // Utiliser la première feuille par défaut
+            var dataTable = result.Tables[0];
+            currentWorksheet = dataTable.TableName;
+
+            if (dataTable.Rows.Count == 0)
+            {
+                Snackbar.Add("Excel file is empty or has no data", Severity.Warning);
+                return;
+            }
+
+            filePreviewHeaders.Clear();
+            filePreviewData.Clear();
+
+            // Récupérer les en-têtes (noms de colonnes)
+            foreach (System.Data.DataColumn column in dataTable.Columns)
+            {
+                filePreviewHeaders.Add(string.IsNullOrWhiteSpace(column.ColumnName)
+                ? $"Column {column.Ordinal + 1}"
+                : column.ColumnName);
+            }
+
+            // Récupérer les données (limiter à 100 lignes)
+            int maxRows = Math.Min(dataTable.Rows.Count, 100);
+            for (int i = 0; i < maxRows; i++)
+            {
+                var rowData = new List<string>
+                    ();
+                for (int j = 0; j < dataTable.Columns.Count; j++)
+                {
+                    var value = dataTable.Rows[i][j];
+                    string cellValue;
+
+                    if (value == null || value == DBNull.Value)
+                    {
+                        cellValue = string.Empty;
+                    }
+                    else if (value is DateTime dateTime)
+                    {
+                        cellValue = dateTime.ToString("yyyy-MM-dd");
+                    }
+                    else if (value is double number && number >= 0 && number <= 1)
+                    {
+                        cellValue = (number * 100).ToString("0.##") + "%";
+                    }
+                    else
+                    {
+                        cellValue = value.ToString();
+                    }
+
+                    rowData.Add(cellValue);
+                }
+                filePreviewData.Add(rowData);
+            }
+
+            // Si aucune donnée n'a été trouvée
+            if (filePreviewData.Count == 0)
+            {
+                Snackbar.Add("No data found in the Excel file", Severity.Warning);
+            }
+
+            // Initialiser le zoom
+            await JSRuntime.InvokeVoidAsync("eval", @"
+            window.applyExcelZoom = function(zoomLevel) {
+            const container = document.querySelector('.excel-container');
+            if (container) {
+            container.style.fontSize = (14 * zoomLevel) + 'px';
+
+            const cells = document.querySelectorAll('.excel-cell, .excel-header-cell');
+            cells.forEach(cell => {
+            cell.style.minWidth = (120 * zoomLevel) + 'px';
+            cell.style.padding = (8 * zoomLevel) + 'px';
+            });
+
+            const rowHeaders = document.querySelectorAll('.excel-row-header, .excel-corner-cell');
+            rowHeaders.forEach(header => {
+            header.style.minWidth = (40 * zoomLevel) + 'px';
+            });
+            }
+            }
+            ");
+        }
+        catch (Exception ex)
+        {
+            // Gérer les erreurs
+            Snackbar.Add($"Error parsing Excel file: {ex.Message}", Severity.Error);
+
+            // Ajouter des données factices en cas d'erreur pour que l'interface reste fonctionnelle
+            filePreviewHeaders = new List<string>
+                { "Column A", "Column B", "Column C" };
+            filePreviewData = new List<List<string>>
+            {
+                new List<string> { "Error", "Parsing", "File" },
+                new List<string> { "Please", "Check", "Format" }
+            };
+        }
+
+        await Task.CompletedTask;
+    }
+
+    // Method to handle cell click in the preview
+    private void OnCellClick(string cellValue)
+    {
+        if (isSelectingField && selectedFieldCallback != null)
+        {
+            selectedFieldCallback(cellValue);
+            CancelFieldSelection();
+        }
+    }
+
+    // Method to select a field for mapping
+    private void SelectField((string fieldName, Action<string> callback) cb)
+    {
+        isSelectingField = true;
+        selectedFieldName = cb.fieldName;
+        selectedFieldCallback = cb.callback;
+    }
+
+    // Method to cancel field selection
+    private void CancelFieldSelection()
+    {
+        isSelectingField = false;
+        selectedFieldName = string.Empty;
+        selectedFieldCallback = null;
+    }
+
+    // Méthode pour obtenir le nom de colonne Excel (A, B, C, ..., AA, AB, etc.)
+    private string GetExcelColumnName(int columnIndex)
+    {
+        string columnName = "";
+        int dividend = columnIndex + 1;
+        int modulo;
+
+        while (dividend > 0)
+        {
+            modulo = (dividend - 1) % 26;
+            columnName = Convert.ToChar(65 + modulo) + columnName;
+            dividend = (dividend - modulo) / 26;
+        }
+
+        return columnName;
+    }
+
+    // Méthode pour afficher le sélecteur de feuilles
+    private async Task ShowSheetSelector()
+    {
+        if (worksheets.Count <= 1) return;
+
+        var parameters = new DialogParameters
+            {
+                ["Worksheets"] = worksheets,
+                ["CurrentWorksheet"] = currentWorksheet
+            };
+
+        var dialog = await dialogService.ShowAsync<WorksheetSelectorDialog>("Select Worksheet", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled && result.Data is string selectedSheet)
+        {
+            currentWorksheet = (string)result.Data;
+            await LoadWorksheet((string)result.Data);
+        }
+    }
+
+    // Méthode pour charger une feuille spécifique
+    private async Task LoadWorksheet(string sheetName)
+    {
+        if (uploadedFile == null) return;
+
+        try
+        {
+            isLoadingPreview = true;
+
+            // Récupérer le fichier
+            var fileStream = await FileUploadService.GetFileStreamAsync(uploadedFile.Id);
+            if (fileStream == null)
+            {
+                Snackbar.Add("File not found", Severity.Error);
+                return;
+            }
+
+            // Enregistrer les encodages
+            System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+
+            // Créer un reader pour le fichier Excel
+            using var reader = ExcelDataReader.ExcelReaderFactory.CreateReader(fileStream);
+
+            // Récupérer toutes les feuilles
+            var result = reader.AsDataSet(new ExcelDataReader.ExcelDataSetConfiguration()
+                {
+                    ConfigureDataTable = (_) => new ExcelDataReader.ExcelDataTableConfiguration()
+                    {
+                        UseHeaderRow = true
+                    }
+                });
+
+            // Trouver la feuille demandée
+            var dataTable = result.Tables[sheetName];
+            if (dataTable == null)
+            {
+                Snackbar.Add($"Worksheet '{sheetName}' not found", Severity.Error);
+                return;
+            }
+
+            currentWorksheet = sheetName;
+
+            filePreviewHeaders.Clear();
+            filePreviewData.Clear();
+
+            // Récupérer les en-têtes
+            foreach (System.Data.DataColumn column in dataTable.Columns)
+            {
+                filePreviewHeaders.Add(string.IsNullOrWhiteSpace(column.ColumnName)
+                    ? $"Column {column.Ordinal + 1}"
+                    : column.ColumnName);
+            }
+
+            // Récupérer les données (limiter à 100 lignes)
+            int maxRows = Math.Min(dataTable.Rows.Count, 100);
+            for (int i = 0; i < maxRows; i++)
+            {
+                var rowData = new List<string>();
+                for (int j = 0; j < dataTable.Columns.Count; j++)
+                {
+                    var value = dataTable.Rows[i][j];
+                    string cellValue;
+
+                    if (value == null || value == DBNull.Value)
+                    {
+                        cellValue = string.Empty;
+                    }
+                    else if (value is DateTime dateTime)
+                    {
+                        cellValue = dateTime.ToString("yyyy-MM-dd");
+                    }
+                    else if (value is double number && number >= 0 && number <= 1)
+                    {
+                        cellValue = (number * 100).ToString("0.##") + "%";
+                    }
+                    else
+                    {
+                        cellValue = value.ToString();
+                    }
+
+                    rowData.Add(cellValue);
+                }
+                filePreviewData.Add(rowData);
+            }
+
+            Snackbar.Add($"Loaded worksheet: {sheetName}", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading worksheet: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoadingPreview = false;
+        }
+    }
+
+    // Méthodes pour le zoom
+    private void ZoomIn()
+    {
+        zoomLevel = Math.Min(zoomLevel + 0.1, 2.0);
+        ApplyZoom();
+    }
+
+    private void ZoomOut()
+    {
+        zoomLevel = Math.Max(zoomLevel - 0.1, 0.5);
+        ApplyZoom();
+    }
+
+    private async Task ApplyZoom()
+    {
+        await JSRuntime.InvokeVoidAsync("applyExcelZoom", zoomLevel);
+    }
+}

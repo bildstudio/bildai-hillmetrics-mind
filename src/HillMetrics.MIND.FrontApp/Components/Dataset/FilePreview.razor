@@ -1,0 +1,253 @@
+﻿@using MudBlazor
+@using HillMetrics.Normalized.Domain.Contracts.AI.Dataset
+
+<MudCard Elevation="3" Class="mb-4">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <div class="d-flex align-center">
+                <MudText Typo="Typo.h6">
+                    <MudIcon Icon="@Icons.Material.Filled.TableChart" Class="mr-2" />
+                    File Preview
+                </MudText>
+                @if (IsSelectingField)
+                {
+                    <MudChip T="Color" Color="Color.Secondary" Size="Size.Small" Class="ml-4">
+                        Click on a cell to set value for: @SelectedFieldName
+                    </MudChip>
+                    <MudIconButton Icon="@Icons.Material.Filled.Close"
+                                 Size="Size.Small"
+                                 Color="Color.Error"
+                                 OnClick="OnCancelFieldSelection" />
+                }
+            </div>
+        </CardHeaderContent>
+        <CardHeaderActions>
+            <MudTooltip Text="Refresh Preview">
+                <MudIconButton Icon="@Icons.Material.Filled.Refresh"
+                             OnClick="OnRefreshPreview" />
+            </MudTooltip>
+            @if (File != null)
+            {
+                <DownloadFile File="File" FileType="@File.FileType" />
+            }
+        </CardHeaderActions>
+    </MudCardHeader>
+    <MudCardContent>
+        @if (IsLoadingPreview)
+        {
+            <MudProgressLinear Color="Color.Secondary" Indeterminate="true" Class="my-7" />
+        }
+        else if (FilePreviewData.Count > 0)
+        {
+            <div class="excel-container">
+                <div class="excel-header">
+                    <div class="excel-corner-cell"></div>
+                    @for (int col = 0; col < FilePreviewHeaders.Count; col++)
+                    {
+                        <div class="excel-header-cell">
+                            <div class="excel-column-letter">@GetExcelColumnName(col)</div>
+                            <div class="excel-header-text">@FilePreviewHeaders[col]</div>
+                        </div>
+                    }
+                </div>
+                <div class="excel-body">
+                    @for (int row = 0; row < FilePreviewData.Count; row++)
+                    {
+                        <div class="excel-row">
+                            <div class="excel-row-header">@(row + 1)</div>
+                            @for (int col = 0; col < FilePreviewData[row].Count; col++)
+                            {
+                                string cellValue = FilePreviewData[row][col];
+                                string cellAddress = $"{GetExcelColumnName(col)}{row + 1}";
+                                <div class="excel-cell @(IsSelectingField ? "selectable" : "")"
+                                     @onclick="() => OnCellClick(cellValue)">
+                                    <div class="excel-cell-content" title="@cellValue">
+                                        @cellValue
+                                    </div>
+                                    <div class="excel-cell-address">@cellAddress</div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+        else
+        {
+            <MudAlert Severity="Severity.Info">
+                No preview available. The file may be empty or in an unsupported format.
+            </MudAlert>
+        }
+    </MudCardContent>
+    <MudCardActions>
+        <MudButton Variant="Variant.Text"
+                   Color="Color.Primary"
+                   OnClick="OnShowSheetSelector"
+                   Disabled="@(Worksheets.Count <= 1)">
+            <MudIcon Icon="@Icons.Material.Filled.ViewList" Class="mr-2" />
+            @CurrentWorksheet
+        </MudButton>
+        <MudSpacer />
+        <MudButton Variant="Variant.Text"
+                   StartIcon="@Icons.Material.Filled.ZoomIn"
+                   OnClick="OnZoomIn">
+            Zoom In
+        </MudButton>
+        <MudButton Variant="Variant.Text"
+                   StartIcon="@Icons.Material.Filled.ZoomOut"
+                   OnClick="OnZoomOut">
+            Zoom Out
+        </MudButton>
+    </MudCardActions>
+</MudCard>
+
+<style>
+    .excel-container {
+        border: 1px solid #e0e0e0;
+        border-radius: 4px;
+        overflow: auto;
+        height: 400px;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        font-size: 14px;
+        position: relative;
+        background-color: white;
+    }
+
+    .excel-header {
+        display: flex;
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background-color: #f5f5f5;
+        border-bottom: 2px solid #e0e0e0;
+    }
+
+    .excel-corner-cell {
+        min-width: 40px;
+        border-right: 1px solid #e0e0e0;
+        background-color: #f5f5f5;
+        position: sticky;
+        left: 0;
+        z-index: 3;
+    }
+
+    .excel-header-cell {
+        min-width: 120px;
+        padding: 8px;
+        text-align: center;
+        font-weight: bold;
+        border-right: 1px solid #e0e0e0;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .excel-column-letter {
+        color: #666;
+        font-size: 12px;
+        margin-bottom: 4px;
+    }
+
+    .excel-header-text {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .excel-body {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .excel-row {
+        display: flex;
+        border-bottom: 1px solid #e0e0e0;
+    }
+
+    .excel-row-header {
+        min-width: 40px;
+        padding: 8px 0;
+        text-align: center;
+        background-color: #f5f5f5;
+        border-right: 1px solid #e0e0e0;
+        position: sticky;
+        left: 0;
+        z-index: 1;
+    }
+
+    .excel-cell {
+        min-width: 120px;
+        padding: 8px;
+        border-right: 1px solid #e0e0e0;
+        position: relative;
+    }
+
+    .excel-cell.selectable {
+        cursor: pointer;
+    }
+
+    .excel-cell.selectable:hover {
+        background-color: rgba(25, 118, 210, 0.1);
+    }
+
+    .excel-cell-content {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .excel-cell-address {
+        position: absolute;
+        bottom: 2px;
+        right: 2px;
+        font-size: 9px;
+        color: #999;
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+
+    .excel-cell:hover .excel-cell-address {
+        opacity: 1;
+    }
+</style>
+
+@code {
+    [Parameter] public bool IsLoadingPreview { get; set; }
+    [Parameter] public List<List<string>> FilePreviewData { get; set; } = new();
+    [Parameter] public List<string> FilePreviewHeaders { get; set; } = new();
+    [Parameter] public bool IsSelectingField { get; set; }
+    [Parameter] public string SelectedFieldName { get; set; } = string.Empty;
+    [Parameter] public List<string> Worksheets { get; set; } = new();
+    [Parameter] public string CurrentWorksheet { get; set; } = "Sheet1";
+    [Parameter] public FileUpload? File { get; set; }
+
+    [Parameter] public EventCallback<string> OnCellSelected { get; set; }
+    [Parameter] public EventCallback OnCancelFieldSelection { get; set; }
+    [Parameter] public EventCallback OnRefreshPreview { get; set; }
+    [Parameter] public EventCallback OnShowSheetSelector { get; set; }
+    [Parameter] public EventCallback OnZoomIn { get; set; }
+    [Parameter] public EventCallback OnZoomOut { get; set; }
+
+    private async Task OnCellClick(string cellValue)
+    {
+        if (IsSelectingField)
+        {
+            await OnCellSelected.InvokeAsync(cellValue);
+        }
+    }
+
+    private string GetExcelColumnName(int columnIndex)
+    {
+        string columnName = "";
+        int dividend = columnIndex + 1;
+        int modulo;
+
+        while (dividend > 0)
+        {
+            modulo = (dividend - 1) % 26;
+            columnName = Convert.ToChar(65 + modulo) + columnName;
+            dividend = (dividend - modulo) / 26;
+        }
+
+        return columnName;
+    }
+}

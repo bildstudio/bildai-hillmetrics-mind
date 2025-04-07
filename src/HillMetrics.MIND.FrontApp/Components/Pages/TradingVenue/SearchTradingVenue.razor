@@ -1,0 +1,305 @@
+﻿@page "/trading-venue/search"
+@using HillMetrics.MIND.API.Contracts.Requests.TradingVenue
+@using HillMetrics.MIND.API.Contracts.Responses.TradingVenue
+@using HillMetrics.Core.Search
+@inject IMindAPI MindApi
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>Search Trading Venues</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudGrid>
+        <MudItem xs="6">
+            <MudText Typo="Typo.h4" Class="mb-4">Trading Venues</MudText>
+        </MudItem>
+        <MudItem xs="6" Class="d-flex justify-end">
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       Href="/trading-venue/create"
+                       Class="align-self-start">
+                Create New Trading Venue
+            </MudButton>
+        </MudItem>
+    </MudGrid>
+
+    <MudCard Class="mb-4">
+        <MudCardContent>
+            <MudForm @ref="form" @bind-IsValid="@isValid">
+                <MudGrid Spacing="1">
+                    <!-- Search Term -->
+                    <MudItem xs="12" md="4">
+                        <MudTextField @bind-Value="searchRequest.SearchTerm"
+                                     Label="Search Term"
+                                     Variant="Variant.Outlined"
+                                     Placeholder="Search by name, MIC or acronym..."
+                                     Immediate="true"
+                                     DebounceInterval="500"
+                                     OnDebounceIntervalElapsed="Search"
+                                     Adornment="Adornment.Start"
+                                     AdornmentIcon="@Icons.Material.Filled.Search"/>
+                    </MudItem>
+
+                    <!-- Country Code -->
+                    <MudItem xs="12" md="4">
+                        <MudTextField @bind-Value="searchRequest.CountryCode"
+                                     Label="Country Code"
+                                     Variant="Variant.Outlined"
+                                     Placeholder="e.g. US, FR, GB..."
+                                     MaxLength="2"/>
+                    </MudItem>
+
+                    <!-- Main Venues Only -->
+                    <MudItem xs="12" md="4">
+                        <MudCheckBox T="bool" @bind-Checked="isOnlyMain" 
+                                     Label="Main Venues Only" 
+                                     Color="Color.Primary"
+                                     Dense="true"
+                                     Class="mt-4"/>
+                    </MudItem>
+                </MudGrid>
+            </MudForm>
+        </MudCardContent>
+        <MudCardActions>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Search" Size="Size.Small">Search</MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="Reset" Size="Size.Small">Reset</MudButton>
+        </MudCardActions>
+    </MudCard>
+
+    @if (loading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-2" />
+    }
+    else
+    {
+        <MudTable ServerData="@ServerReload"
+                 Hover="true" 
+                 Bordered="true" 
+                 Striped="true"
+                 Dense="true" 
+                 @bind-SelectedItem="selectedItem"
+                 T="TradingVenueSearchResponse"
+                 Breakpoint="Breakpoint.Sm">
+            <ToolBarContent>
+                <MudText Typo="Typo.h6" Class="ml-2">Trading Venues List</MudText>
+                <MudSpacer />
+                <MudTextField @bind-Value="searchString" Placeholder="Filter"
+                            Adornment="Adornment.Start"
+                            AdornmentIcon="@Icons.Material.Filled.Search"
+                            IconSize="Size.Medium"
+                            Class="mt-0 mb-3" Margin="Margin.Dense" Dense="true" />
+            </ToolBarContent>
+            <HeaderContent>
+                <MudTh>
+                    <MudTableSortLabel SortLabel="Id" T="TradingVenueSearchResponse">ID</MudTableSortLabel>
+                </MudTh>
+                <MudTh>
+                    <MudTableSortLabel SortLabel="Name" T="TradingVenueSearchResponse">Name</MudTableSortLabel>
+                </MudTh>
+                <MudTh>
+                    <MudTableSortLabel SortLabel="Mic" T="TradingVenueSearchResponse">MIC</MudTableSortLabel>
+                </MudTh>
+                <MudTh>
+                    <MudTableSortLabel SortLabel="Acronym" T="TradingVenueSearchResponse">Acronym</MudTableSortLabel>
+                </MudTh>
+                <MudTh>
+                    <MudTableSortLabel SortLabel="Country" T="TradingVenueSearchResponse">Country</MudTableSortLabel>
+                </MudTh>
+                <MudTh>
+                    <MudTableSortLabel SortLabel="City" T="TradingVenueSearchResponse">City</MudTableSortLabel>
+                </MudTh>
+                <MudTh>
+                    <MudTableSortLabel SortLabel="Currency" T="TradingVenueSearchResponse">Currency</MudTableSortLabel>
+                </MudTh>
+                <MudTh>
+                    <MudTableSortLabel SortLabel="IsMain" T="TradingVenueSearchResponse">Main</MudTableSortLabel>
+                </MudTh>
+                <MudTh>
+                    <MudTableSortLabel SortLabel="IsActive" T="TradingVenueSearchResponse">Status</MudTableSortLabel>
+                </MudTh>
+                <MudTh>Actions</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="ID">@context.Id</MudTd>
+                <MudTd DataLabel="Name">@context.Name</MudTd>
+                <MudTd DataLabel="MIC">@context.Mic</MudTd>
+                <MudTd DataLabel="Acronym">@(context.Acronym ?? "-")</MudTd>
+                <MudTd DataLabel="Country">@context.Country.Name (@context.Country.Code)</MudTd>
+                <MudTd DataLabel="City">@context.City.Name</MudTd>
+                <MudTd DataLabel="Currency">@context.Currency.Code</MudTd>
+                <MudTd DataLabel="Main">
+                    @if (context.IsMain)
+                    {
+                        <MudIcon Icon="@Icons.Material.Filled.Star" Color="Color.Warning" Title="Main venue for country" />
+                    }
+                    else
+                    {
+                        <MudIcon Icon="@Icons.Material.Filled.StarBorder" Color="Color.Default" />
+                    }
+                </MudTd>
+                <MudTd DataLabel="Status">
+                    @if (context.IsActive)
+                    {
+                        <MudChip T="Color" Color="Color.Success" Size="Size.Small">Active</MudChip>
+                    }
+                    else
+                    {
+                        <MudChip T="Color" Color="Color.Error" Size="Size.Small">Inactive</MudChip>
+                    }
+                </MudTd>
+                <MudTd DataLabel="Actions">
+                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true">
+                        <MudMenuItem OnClick="@(() => ViewDetails(context.Id))">
+                            <MudIcon Icon="@Icons.Material.Filled.Visibility" Class="mr-2" Size="Size.Small" /> View
+                        </MudMenuItem>
+                        <MudMenuItem OnClick="@(() => EditTradingVenue(context.Id))">
+                            <MudIcon Icon="@Icons.Material.Filled.Edit" Class="mr-2" Size="Size.Small" /> Edit
+                        </MudMenuItem>
+                        <MudMenuItem OnClick="@(() => SetMainStatus(context.Id, !context.IsMain))" Disabled="@(context.IsMain)">
+                            <MudIcon Icon="@Icons.Material.Filled.Star" Class="mr-2" Size="Size.Small" Color="Color.Warning" /> Set as Main
+                        </MudMenuItem>
+                    </MudMenu>
+                </MudTd>
+            </RowTemplate>
+            <PagerContent>
+                <MudTablePager PageSizeOptions="new int[] { 10, 25, 50, 100 }" />
+            </PagerContent>
+            <NoRecordsContent>
+                <MudAlert Severity="Severity.Info" Class="my-2">No trading venues found matching your search criteria.</MudAlert>
+            </NoRecordsContent>
+        </MudTable>
+    }
+</MudContainer>
+
+@code {
+    private SearchTradingVenueRequest searchRequest = new();
+    private bool loading = false;
+    private bool isValid = false;
+    private MudForm form;
+    private string searchString = "";
+    private TradingVenueSearchResponse selectedItem = null;
+    private TableState tableState;
+    private bool isOnlyMain = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Search();
+    }
+
+    private async Task<TableData<TradingVenueSearchResponse>> ServerReload(TableState state, CancellationToken token)
+    {
+        tableState = state;
+        loading = true;
+
+        try
+        {
+            ApplySearchCriteria();
+            searchRequest.Pagination = new Pagination(state.PageSize, state.Page + 1);
+            
+            // Apply sorting if provided
+            if (!string.IsNullOrEmpty(state.SortLabel))
+            {
+                searchRequest.Sorting = new Sorting(
+                    state.SortLabel,
+                    state.SortDirection == MudBlazor.SortDirection.Descending
+                        ? Core.Search.SortDirection.Descending
+                        : Core.Search.SortDirection.Ascending
+                );
+            }
+
+            var response = await MindApi.SearchTradingVenuesAsync(searchRequest, token);
+
+            return new TableData<TradingVenueSearchResponse>
+            {
+                Items = response.Data,
+                TotalItems = (int)response.TotalRecords
+            };
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error searching trading venues: {ex.Message}", Severity.Error);
+            return new TableData<TradingVenueSearchResponse>
+            {
+                Items = new List<TradingVenueSearchResponse>(),
+                TotalItems = 0
+            };
+        }
+        finally
+        {
+            loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void ApplySearchCriteria()
+    {
+        searchRequest.OnlyMain = isOnlyMain ? true : null;
+    }
+
+    private async Task Search()
+    {
+        await ServerReload(tableState ?? new TableState
+        {
+            Page = 0,
+            PageSize = 10
+        }, CancellationToken.None);
+    }
+
+    private async Task Reset()
+    {
+        searchRequest = new SearchTradingVenueRequest();
+        searchString = "";
+        isOnlyMain = false;
+
+        if (tableState != null)
+        {
+            tableState.Page = 0;
+            await ServerReload(tableState, CancellationToken.None);
+        }
+    }
+
+    private void ViewDetails(int id)
+    {
+        NavigationManager.NavigateTo($"/trading-venue/details/{id}");
+    }
+
+    private void EditTradingVenue(int id)
+    {
+        NavigationManager.NavigateTo($"/trading-venue/edit/{id}");
+    }
+
+    private async Task SetMainStatus(int id, bool isMain)
+    {
+        if (!isMain) return; // We only support setting a venue as main, not removing main status
+
+        var dialog = await DialogService.ShowMessageBox(
+            "Confirm Setting as Main",
+            "Are you sure you want to set this trading venue as the main venue for its country? This will remove main status from any other venue in the same country.",
+            yesText: "Confirm",
+            cancelText: "Cancel"
+        );
+
+        if (dialog == true)
+        {
+            try
+            {
+                var result = await MindApi.EditTradingVenueAsync(id, new EditTradingVenueRequest { IsMain = true });
+                if (result.Data != null)
+                {
+                    Snackbar.Add("Trading venue set as main successfully", Severity.Success);
+                    await Search();
+                }
+                else
+                {
+                    Snackbar.Add("Failed to set trading venue as main", Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error setting venue as main: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+}

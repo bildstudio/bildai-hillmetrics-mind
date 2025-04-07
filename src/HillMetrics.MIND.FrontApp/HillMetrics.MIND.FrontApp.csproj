@@ -7,7 +7,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="MudBlazor" Version="7.7.0" />
+    <PackageReference Include="MudBlazor" Version="7.8.0" />
+    <PackageReference Include="MudBlazor.Markdown" Version="7.8.0" />
   </ItemGroup>
 
   <ItemGroup>
@@ -16,6 +17,7 @@
     <ProjectReference Include="..\..\..\HillMetrics.Core\src\HillMetrics.Core.Http\HillMetrics.Core.Http.csproj" />
     <ProjectReference Include="..\..\..\HillMetrics.Core\src\HillMetrics.Core.Monitoring\HillMetrics.Core.Monitoring.csproj" />
     <ProjectReference Include="..\..\..\HillMetrics.Core\src\HillMetrics.Core\HillMetrics.Core.csproj" />
+    <ProjectReference Include="..\..\..\HillMetrics.FinancialData\src\HillMetrics.Normalized.Infrastructure.Database\HillMetrics.Normalized.Infrastructure.Database.csproj" />
     <ProjectReference Include="..\..\..\HillMetrics.Orchestrator\HillMetrics.Orchestrator.ServiceDefaults\HillMetrics.Orchestrator.ServiceDefaults.csproj" />
     <ProjectReference Include="..\HillMetrics.MIND.API.Contracts\HillMetrics.MIND.API.Contracts.csproj" />
     <ProjectReference Include="..\HillMetrics.MIND.API.SDK\HillMetrics.MIND.API.SDK.csproj" />
@@ -23,6 +25,12 @@
 
   <ItemGroup>
     <Folder Include="Models\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Update="wwwroot\markdown\property-data-type-info.md">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
 </Project>

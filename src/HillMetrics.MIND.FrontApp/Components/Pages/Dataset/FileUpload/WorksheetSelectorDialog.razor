@@ -1,0 +1,30 @@
+﻿@inject MudDialogInstance MudDialog
+
+<MudDialog>
+    <DialogContent>
+        <MudList T="string" Clickable="true">
+            @foreach (var sheet in Worksheets)
+            {
+                <MudListItem Text="@sheet"
+                           Icon="@Icons.Material.Filled.TableChart"
+                           Selected="sheet == CurrentWorksheet"
+                           OnClick="() => SelectWorksheet(sheet)" />
+            }
+        </MudList>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter] public List<string> Worksheets { get; set; } = new();
+    [Parameter] public string CurrentWorksheet { get; set; } = "";
+
+    private void SelectWorksheet(string sheet)
+    {
+        MudDialog.Close(DialogResult.Ok(sheet));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

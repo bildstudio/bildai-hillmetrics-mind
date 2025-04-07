@@ -1,0 +1,68 @@
+﻿@using Microsoft.AspNetCore.Components.Forms
+
+<MudFileUpload T="IBrowserFile"
+               @ref="_fileUpload"
+               OnFilesChanged="HandleFileChanged"
+               Accept=".csv,.xls,.xlsx,.pdf,.xml,.json,.html"
+               MaximumFileCount="1"
+               Hidden="false"
+               InputClass="absolute mud-width-full mud-height-full overflow-hidden z-10"
+               InputStyle="opacity:0"
+               @ondrop="@ClearDragClass"
+               @ondragenter="@SetDragClass"
+               @ondragleave="@ClearDragClass"
+               @ondragend="@ClearDragClass">
+    <ActivatorContent>
+        <MudPaper Height="200px"
+                  Outlined="true"
+                  Class="@DragClass">
+            <MudIcon Icon="@Icons.Material.Filled.CloudUpload" Size="Size.Large" />
+            <MudText Typo="Typo.h6">
+                Drag and drop files here or click to browse
+            </MudText>
+        </MudPaper>
+    </ActivatorContent>
+</MudFileUpload>
+
+<MudToolBar DisableGutters="true" Class="gap-4 mt-4">
+    @if (_hasFile)
+    {
+        <MudButton Color="Color.Error"
+                   OnClick="HandleClear"
+                   StartIcon="@Icons.Material.Filled.Clear"
+                   Variant="Variant.Filled">
+            Clear
+        </MudButton>
+    }
+</MudToolBar>
+
+@code {
+    [Parameter] public EventCallback<IBrowserFile> OnFileSelected { get; set; }
+    [Parameter] public EventCallback OnFileClear { get; set; }
+
+    private MudFileUpload<IBrowserFile>? _fileUpload;
+    private bool _hasFile;
+    private string DragClass => $"{_dragClass} d-flex align-center justify-center flex-column gap-4";
+    private string _dragClass = string.Empty;
+
+    private void SetDragClass() => _dragClass = "mud-border-primary";
+    private void ClearDragClass() => _dragClass = string.Empty;
+
+    private async Task HandleFileChanged(InputFileChangeEventArgs e)
+    {
+        if (e.FileCount > 0)
+        {
+            _hasFile = true;
+            await OnFileSelected.InvokeAsync(e.File);
+        }
+    }
+
+    private async Task HandleClear()
+    {
+        if (_fileUpload != null)
+            await _fileUpload.ClearAsync();
+
+        _hasFile = false;
+        await OnFileClear.InvokeAsync();
+    }
+}

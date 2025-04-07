@@ -60,6 +60,10 @@ public partial class Program
 
         builder.Services.AddAutoMapper(typeof(FluxMappingProfile));
         builder.Services.AddAutoMapper(typeof(GicsMappingProfile));
+        builder.Services.AddAutoMapper(typeof(AiDatasetMappingProfile));
+        builder.Services.AddAutoMapper(typeof(FinancialMappingProfile));
+        builder.Services.AddAutoMapper(typeof(LlmMappingProfile));
+        builder.Services.AddAutoMapper(typeof(FinancialDataPointMappingProfile));
 
         //add cors
         builder.AddHillMetricsCorsSettings();

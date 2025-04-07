@@ -40,10 +40,15 @@
                 <MudGrid Spacing="1">
                     <!-- Flux Name -->
                     <MudItem xs="12" md="6">
-                        <SearchCriteriaComponent T="string"
-                        SearchCriteria="@nameSearchCriteria"
-                        SearchCriteriaChanged="@((criteria) => nameSearchCriteria = criteria)"
-                        Label="Flux Name" />
+                        <MudTextField @bind-Value="searchRequest.Name"
+                                     Label="Flux Name"
+                                     Variant="Variant.Outlined"
+                                     Placeholder="Search by name..."
+                                     Immediate="true"
+                                     DebounceInterval="500"
+                                     OnDebounceIntervalElapsed="Search"
+                                     Adornment="Adornment.Start"
+                                     AdornmentIcon="@Icons.Material.Filled.Search"/>
                     </MudItem>
 
                     <!-- Flux ID -->
@@ -145,6 +150,14 @@
                             }
                         </MudSelect>
                     </MudItem>
+
+                    <!-- Nouveau filtre pour le nombre de mappings -->
+                    <MudItem xs="12" md="6">
+                        <SearchCriteriaComponent T="int"
+                        SearchCriteria="@mappingsCountSearchCriteria"
+                        SearchCriteriaChanged="@((criteria) => mappingsCountSearchCriteria = criteria)"
+                        Label="Mappings Count" />
+                    </MudItem>
                 </MudGrid>
             </MudForm>
         </MudCardContent>
@@ -184,6 +197,7 @@
                 <MudTh>Last Processing</MudTh>
                 <MudTh>Processing Status</MudTh>
                 <MudTh>Process Errors</MudTh>
+                <MudTh>Mappings</MudTh>
                 <MudTh>Actions</MudTh>
             </HeaderContent>
             <RowTemplate>
@@ -234,7 +248,7 @@
                     @if (context.LastFetching.HasValue)
                     {
                         <MudTooltip Text="@context.LastFetching.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")">
-                            <div style="cursor: pointer;" 
+                            <div style="cursor: pointer;"
                                  @onclick="@(() => NavigateToFetchingHistoryPage(context.FluxId))">
                                 @FormatDateTime(context.LastFetching.Value.ToLocalTime())
                             </div>
@@ -261,12 +275,12 @@
                     }
                 </MudTd>
                 <MudTd DataLabel="Fetch Errors">
-                    @if (context.LastFetchingErrorCount > 0)
+                    @if (context.LastFetchingId.HasValue && context.LastFetchingErrorCount > 0)
                     {
-                        <MudChip T="int" 
-                                Color="Color.Error" 
-                                Size="Size.Small" 
-                                OnClick="@(() => NavigateToErrorsPage(context.FluxId, FluxActionType.Fetching))" 
+                        <MudChip T="int"
+                                Color="Color.Error"
+                                Size="Size.Small"
+                                OnClick="@(() => NavigateToErrorsPage(context.FluxId, FluxActionType.Fetching, fetchingId: context.LastFetchingId.Value))"
                                 Style="cursor: pointer;">
                             @context.LastFetchingErrorCount
                         </MudChip>
@@ -280,7 +294,7 @@
                     @if (context.LastProcessing.HasValue)
                     {
                         <MudTooltip Text="@context.LastProcessing.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")">
-                            <div style="cursor: pointer;" 
+                            <div style="cursor: pointer;"
                                  @onclick="@(() => NavigateToProcessingHistoryPage(context.FluxId))">
                                 @FormatDateTime(context.LastProcessing.Value.ToLocalTime())
                             </div>
@@ -307,12 +321,12 @@
                     }
                 </MudTd>
                 <MudTd DataLabel="Process Errors">
-                    @if (context.LastProcessingErrorCount > 0)
+                    @if (context.LastProcessingId.HasValue && context.LastProcessingErrorCount > 0)
                     {
-                        <MudChip T="int" 
-                                Color="Color.Error" 
-                                Size="Size.Small" 
-                                OnClick="@(() => NavigateToErrorsPage(context.FluxId, FluxActionType.ProcessFlux))" 
+                        <MudChip T="int"
+                                Color="Color.Error"
+                                Size="Size.Small"
+                                OnClick="@(() => NavigateToErrorsPage(context.FluxId, FluxActionType.ProcessFlux, processingId: context.LastProcessingId.Value))"
                                 Style="cursor: pointer;">
                             @context.LastProcessingErrorCount
                         </MudChip>
@@ -320,6 +334,20 @@
                     else
                     {
                         <span>@context.LastProcessingErrorCount</span>
+                    }
+                </MudTd>
+                <MudTd DataLabel="Mappings">
+                    @if (context.MappingsCount > 0)
+                    {
+                        <MudLink Href="@($"/flux-mappings/search?fluxId={context.FluxId}")">
+                            <MudBadge Content="@context.MappingsCount" Color="Color.Primary" Overlap="true" Max="99" Dot="false">
+                                <MudIcon Icon="@Icons.Material.Filled.StackedLineChart" />
+                            </MudBadge>
+                        </MudLink>
+                    }
+                    else
+                    {
+                        <MudText>0</MudText>
                     }
                 </MudTd>
                 <MudTd DataLabel="Actions">
@@ -356,12 +384,12 @@
     private FluxSearchRequest searchRequest = new();
 
     // SearchCriteria for each field
-    private SearchCriteria<string> nameSearchCriteria = new();
     private SearchCriteria<int> idSearchCriteria = new();
     private SearchCriteria<DateTime> lastFetchingDateSearchCriteria = new();
     private SearchCriteria<DateTime> lastProcessingDateSearchCriteria = new();
     private SearchCriteria<int> fetchingErrorCountSearchCriteria = new();
     private SearchCriteria<int> processingErrorCountSearchCriteria = new();
+    private SearchCriteria<int> mappingsCountSearchCriteria = new();
 
     private List<FluxSearchResponse>? fluxes;
     private bool loading = false;
@@ -392,7 +420,7 @@
     {
         await LoadSourcesAsync();
         await LoadActiveWorkflows();
-        
+
         // Configure a timer to refresh workflows every 10 seconds
         // workflowRefreshTimer = new System.Threading.Timer(
         //     async _ => await InvokeAsync(async () =>
@@ -462,20 +490,11 @@
 
     private void ApplySearchCriteria()
     {
-        // Apply Name SearchCriteria
-        if (nameSearchCriteria.IsSet())
-        {
-            searchRequest.Name = nameSearchCriteria.Value;
-        }
-        else
-        {
-            searchRequest.Name = null;
-        }
-
         searchRequest.LastFetching = lastFetchingDateSearchCriteria.IsSet() ? lastFetchingDateSearchCriteria : null;
         searchRequest.LastProcessing = lastProcessingDateSearchCriteria.IsSet() ? lastProcessingDateSearchCriteria : null;
         searchRequest.LastFetchingErrorCount = fetchingErrorCountSearchCriteria.IsSet() ? fetchingErrorCountSearchCriteria : null;
         searchRequest.LastProcessingErrorCount = processingErrorCountSearchCriteria.IsSet() ? processingErrorCountSearchCriteria : null;
+        searchRequest.MappingsCount = mappingsCountSearchCriteria.IsSet() ? mappingsCountSearchCriteria : null;
 
         // La pagination est configurée dans ServerReload
     }
@@ -493,14 +512,14 @@
     private async Task Reset()
     {
         searchRequest = new FluxSearchRequest();
-        nameSearchCriteria = new SearchCriteria<string>();
         idSearchCriteria = new SearchCriteria<int>();
         lastFetchingDateSearchCriteria = new SearchCriteria<DateTime>();
         lastProcessingDateSearchCriteria = new SearchCriteria<DateTime>();
         fetchingErrorCountSearchCriteria = new SearchCriteria<int>();
         processingErrorCountSearchCriteria = new SearchCriteria<int>();
+        mappingsCountSearchCriteria = new SearchCriteria<int>();
         searchString = "";
-        
+
         if (tableState != null)
         {
             tableState.Page = 0;
@@ -518,13 +537,13 @@
         try
         {
             loading = true;
-            var result = await MindApi.ForceFetchAsync(id);
-            Snackbar.Add("Force fetch completed successfully", Severity.Success);
+            var result = await MindApi.ForceFetchBackgroundAsync(id);
+            Snackbar.Add("Force fetch started in the background", Severity.Success);
             await Search();
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Error during force fetch: {ex.Message}", Severity.Error);
+            Snackbar.Add($"Error starting force fetch: {ex.Message}", Severity.Error);
         }
         finally
         {
@@ -537,13 +556,13 @@
         try
         {
             loading = true;
-            var result = await MindApi.ForceProcessAsync(id);
-            Snackbar.Add("Force process completed successfully", Severity.Success);
+            var result = await MindApi.ForceProcessBackgroundAsync(id);
+            Snackbar.Add("Force process started in the background", Severity.Success);
             await Search();
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Error during force process: {ex.Message}", Severity.Error);
+            Snackbar.Add($"Error starting force process: {ex.Message}", Severity.Error);
         }
         finally
         {
@@ -693,16 +712,30 @@
         workflowRefreshTimer?.Dispose();
     }
 
-    private void NavigateToErrorsPage(int fluxId, FluxActionType? actionType = null)
+    private void NavigateToErrorsPage(
+        int fluxId,
+        FluxActionType? actionType = null,
+        int? fetchingId = null,
+        int? processingId = null)
     {
         // Construction d'une chaîne de requête pour passer les paramètres
         var query = $"?fluxId={fluxId}";
-        
+
         if (actionType.HasValue)
         {
             query += $"&actionType={actionType.Value}";
         }
-        
+
+        if (fetchingId.HasValue)
+        {
+            query += $"&fetchingId={fetchingId.Value}";
+        }
+
+        if (processingId.HasValue)
+        {
+            query += $"&processingId={processingId.Value}";
+        }
+
         // Naviguer vers la page de recherche d'erreurs avec les paramètres
         NavigationManager.NavigateTo($"/flux/errors{query}");
     }

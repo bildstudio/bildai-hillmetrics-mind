@@ -1,0 +1,224 @@
+﻿@page "/financial-data/list"
+@using HillMetrics.Normalized.Domain.Contracts.AI.Dataset
+@using HillMetrics.MIND.API.SDK.V1
+@inject IMindAPI MindApi
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@implements IDisposable
+
+<MudText Typo="Typo.h4" Class="mb-4">Financial Data Points</MudText>
+
+<MudButton OnClick="() => NavigationManager.NavigateTo(FinancialDataCreateRoute)"
+           Color="Color.Primary"
+           Variant="Variant.Filled"
+           StartIcon="@Icons.Material.Filled.Add"
+           Class="mb-4">
+    Create New Data Point
+</MudButton>
+
+@if (isLoading)
+{
+    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+}
+else if (dataPoints.Count == 0)
+{
+    <MudAlert Severity="Severity.Info">No financial data points found. Create your first one!</MudAlert>
+}
+else
+{
+    <MudGrid>
+        @foreach (var dataPoint in dataPoints)
+        {
+            <MudItem xs="12" md="6" lg="4">
+                <MudCard Elevation="3" Class="mb-4">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">@dataPoint.Name</MudText>
+                            <MudText Typo="Typo.caption">ID: @dataPoint.Id</MudText>
+                        </CardHeaderContent>
+                        <CardHeaderActions>
+                            <MudMenu Icon="@Icons.Material.Filled.MoreVert" AnchorOrigin="Origin.BottomRight">
+                                <MudMenuItem OnClick="() => EditDataPoint(dataPoint.Id)">
+                                    <MudIcon Icon="@Icons.Material.Filled.Edit" Class="mr-2" Size="Size.Small" />
+                                    Edit
+                                </MudMenuItem>
+                                <MudMenuItem OnClick="() => DeleteDataPoint(dataPoint.Id)">
+                                    <MudIcon Icon="@Icons.Material.Filled.Delete" Class="mr-2" Size="Size.Small" Color="Color.Error" />
+                                    Delete
+                                </MudMenuItem>
+                            </MudMenu>
+                        </CardHeaderActions>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudGrid>
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.subtitle2" Class="mb-1">Financial Type:</MudText>
+                                <MudChip T="Color" Color="Color.Primary" Size="Size.Small">@dataPoint.FinancialType</MudChip>
+                            </MudItem>
+                        </MudGrid>
+
+                        <MudText Typo="Typo.subtitle2" Class="mb-2 mt-3">
+                            Elements (@dataPoint.Elements.Count)
+                        </MudText>
+
+                        @if (dataPoint.Elements.Count == 0)
+                        {
+                            <MudText Typo="Typo.body2">No elements defined.</MudText>
+                        }
+                        else
+                        {
+                            <MudExpansionPanels>
+                                @foreach (var element in dataPoint.Elements.OrderBy(e => e.Position))
+                                {
+                                    <MudExpansionPanel>
+                                        <TitleContent>
+                                            <div class="d-flex align-center">
+                                                <MudText Typo="Typo.body1">@element.PropertyName</MudText>
+                                            </div>
+                                        </TitleContent>
+                                        <ChildContent>
+                                            @if (!string.IsNullOrEmpty(element.Description))
+                                            {
+                                                <MudText Typo="Typo.body2" Class="mb-2">
+                                                    @element.Description
+                                                </MudText>
+                                            }
+
+                                            <MudText Typo="Typo.body2" Class="mb-2">
+                                                @element.MappingPrimitiveValue.ToString()
+                                            </MudText>
+
+                                            <MudText Typo="Typo.caption" Class="mb-1">Potential Values:</MudText>
+                                            @if (element.PotentialValues.Count == 0)
+                                            {
+                                                <MudText Typo="Typo.body2">No potential values defined.</MudText>
+                                            }
+                                            else
+                                            {
+                                                <MudChipSet T="string" ReadOnly="true">
+                                                    @foreach (var value in element.PotentialValues)
+                                                    {
+                                                        <MudChip Color="Color.Primary"
+                                                                Variant="Variant.Outlined"
+                                                                Size="Size.Small">
+                                                            @value
+                                                        </MudChip>
+                                                    }
+                                                </MudChipSet>
+                                            }
+                                        </ChildContent>
+                                    </MudExpansionPanel>
+                                }
+                            </MudExpansionPanels>
+                        }
+                    </MudCardContent>
+                    <MudCardActions>
+                        <MudButton Variant="Variant.Text"
+                                  Color="Color.Primary"
+                                  OnClick="() => EditDataPoint(dataPoint.Id)">
+                            Edit Data Point
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+        }
+    </MudGrid>
+}
+
+@code {
+    private List<HillMetrics.Core.Financial.FinancialDataPoint> dataPoints = new();
+    private bool isLoading = true;
+    private System.Timers.Timer? refreshTimer;
+
+    private string FinancialDataCreateRoute => "/financial-data/create";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataPoints();
+
+        // Set up a timer to refresh the data every 30 seconds
+        // refreshTimer = new System.Timers.Timer(30000);
+        // refreshTimer.Elapsed += async (sender, e) => await RefreshData();
+        // refreshTimer.AutoReset = true;
+        // refreshTimer.Enabled = true;
+    }
+
+    private async Task LoadDataPoints()
+    {
+        try
+        {
+            isLoading = true;
+            var result = await MindApi.GetAllFinancialDataPointsAsync();
+            dataPoints = result.Data;
+            // if (result.IsSuccess)
+            // {
+            //     dataPoints = result.Data;
+            // }
+            // else
+            // {
+            //     Snackbar.Add(result.Error ?? "Failed to load data points", Severity.Error);
+            // }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading data: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task RefreshData()
+    {
+        await InvokeAsync(async () =>
+        {
+            await LoadDataPoints();
+        });
+    }
+
+    private async Task DeleteDataPoint(int id)
+    {
+        var dialog = await DialogService.ShowMessageBox(
+            "Confirm Deletion",
+            "Are you sure you want to delete this financial data point? This action cannot be undone.",
+            yesText: "Delete",
+            cancelText: "Cancel"
+        );
+
+        if (dialog == true)
+        {
+            try
+            {
+                var result = await MindApi.DeleteFinancialDataPointAsync(id);
+                Snackbar.Add("Financial data point deleted successfully", Severity.Success);
+                await LoadDataPoints();
+                // if (result.IsSuccess)
+                // {
+                //     Snackbar.Add("Financial data point deleted successfully", Severity.Success);
+                //     await LoadDataPoints();
+                // }
+                // else
+                // {
+                //     Snackbar.Add(result.Error ?? "Failed to delete data point", Severity.Error);
+                // }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error deleting data point: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private void EditDataPoint(int id)
+    {
+        NavigationManager.NavigateTo($"/financial-data/edit/{id}");
+    }
+
+    public void Dispose()
+    {
+        refreshTimer?.Dispose();
+    }
+}

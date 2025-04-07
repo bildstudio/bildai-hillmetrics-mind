@@ -27,28 +27,37 @@
                         <HeaderContent>
                             <MudTh>Key</MudTh>
                             <MudTh>Value</MudTh>
-                            <MudTh Style="width: 80px;"></MudTh>
+                            @if (!ReadOnly)
+                            {
+                                <MudTh Style="width: 80px;"></MudTh>
+                            }
                         </HeaderContent>
                         <RowTemplate>
                             <MudTd DataLabel="Key">@context.Key</MudTd>
                             <MudTd DataLabel="Value">@context.Value</MudTd>
-                            <MudTd>
-                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
-                                Color="Color.Primary" OnClick="@(async () => await EditItem(context.Key))" />
-                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
-                                Color="Color.Error" OnClick="@(async () => await RemoveItem(context.Key))" />
-                            </MudTd>
+                            @if (!ReadOnly)
+                            {
+                                <MudTd>
+                                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                                        Color="Color.Primary" OnClick="@(async () => await EditItem(context.Key))" />
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
+                                        Color="Color.Error" OnClick="@(async () => await RemoveItem(context.Key))" />
+                                </MudTd>
+                            }
                         </RowTemplate>
                     </MudTable>
                 }
 
-                <MudButton Variant="Variant.Outlined" 
-                StartIcon="@Icons.Material.Filled.Add" 
-                Color="Color.Primary" 
-                OnClick="@(async () => await AddNewItem())"
-                Class="mt-2">
-                    Add Metadata
-                </MudButton>
+                @if (!ReadOnly)
+                {
+                    <MudButton Variant="Variant.Outlined"
+                        StartIcon="@Icons.Material.Filled.Add"
+                        Color="Color.Primary"
+                        OnClick="@(async () => await AddNewItem())"
+                        Class="mt-2">
+                        Add Metadata
+                    </MudButton>
+                }
             </MudItem>
         </MudGrid>
     </MudCardContent>
@@ -61,42 +70,47 @@
     [Parameter]
     public EventCallback<Dictionary<string, object>> MetadataDictionaryChanged { get; set; }
 
+    [Parameter]
+    public bool ReadOnly { get; set; } = false;
+
     private string currentKey = string.Empty;
     private string currentValue = string.Empty;
     private bool editingExistingItem = false;
 
     private async Task AddNewItem()
     {
+        if (ReadOnly) return;
+
         currentKey = string.Empty;
         currentValue = string.Empty;
         editingExistingItem = false;
-        
+
         var parameters = new DialogParameters();
         parameters.Add("CurrentKey", currentKey);
         parameters.Add("CurrentValue", currentValue);
         parameters.Add("EditingExistingItem", editingExistingItem);
-        
-        var options = new DialogOptions() 
-        { 
-            CloseOnEscapeKey = true, 
+
+        var options = new DialogOptions()
+        {
+            CloseOnEscapeKey = true,
             MaxWidth = MaxWidth.Small,
             FullWidth = true,
             Position = DialogPosition.Center
         };
-        
+
         var dialog = await DialogService.ShowAsync<MetadataDialog>("Add Metadata", parameters, options);
         var result = await dialog.Result;
-        
+
         if (!result.Canceled)
         {
             var data = (Tuple<string, string>)result.Data;
             currentKey = data.Item1;
             currentValue = data.Item2;
-            
+
             if (!string.IsNullOrWhiteSpace(currentKey) && !string.IsNullOrWhiteSpace(currentValue))
             {
                 object typedValue = DetermineValueType(currentValue);
-                
+
                 if (MetadataDictionary.ContainsKey(currentKey))
                 {
                     MetadataDictionary[currentKey] = typedValue;
@@ -105,7 +119,7 @@
                 {
                     MetadataDictionary.Add(currentKey, typedValue);
                 }
-                
+
                 await MetadataDictionaryChanged.InvokeAsync(MetadataDictionary);
             }
         }
@@ -113,33 +127,35 @@
 
     private async Task EditItem(string key)
     {
+        if (ReadOnly) return;
+
         if (MetadataDictionary.TryGetValue(key, out var value))
         {
             currentKey = key;
             currentValue = value?.ToString() ?? string.Empty;
             editingExistingItem = true;
-            
+
             var parameters = new DialogParameters();
             parameters.Add("CurrentKey", currentKey);
             parameters.Add("CurrentValue", currentValue);
             parameters.Add("EditingExistingItem", editingExistingItem);
-            
-            var options = new DialogOptions() 
-            { 
-                CloseOnEscapeKey = true, 
+
+            var options = new DialogOptions()
+            {
+                CloseOnEscapeKey = true,
                 MaxWidth = MaxWidth.Small,
                 FullWidth = true,
                 Position = DialogPosition.Center
             };
-            
+
             var dialog = await DialogService.ShowAsync<MetadataDialog>("Edit Metadata", parameters, options);
             var result = await dialog.Result;
-            
+
             if (!result.Canceled)
             {
                 var data = (Tuple<string, string>)result.Data;
                 currentValue = data.Item2;
-                
+
                 if (!string.IsNullOrWhiteSpace(currentValue))
                 {
                     object typedValue = DetermineValueType(currentValue);
@@ -152,29 +168,31 @@
 
     private async Task RemoveItem(string key)
     {
+        if (ReadOnly) return;
+
         if (MetadataDictionary.ContainsKey(key))
         {
             MetadataDictionary.Remove(key);
             await MetadataDictionaryChanged.InvokeAsync(MetadataDictionary);
         }
     }
-    
+
     private object DetermineValueType(string value)
     {
         // Essayez de convertir la valeur en différents types courants
         if (int.TryParse(value, out int intValue))
             return intValue;
-        
+
         if (double.TryParse(value, out double doubleValue))
             return doubleValue;
-        
+
         if (bool.TryParse(value, out bool boolValue))
             return boolValue;
-        
+
         if (DateTime.TryParse(value, out DateTime dateValue))
             return dateValue;
-        
+
         // Si aucune conversion ne fonctionne, retourne la valeur en tant que chaîne
         return value;
     }
-} 
+}

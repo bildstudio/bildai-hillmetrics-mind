@@ -1,14 +1,15 @@
 using HillMetrics.MIND.FrontApp.Components;
-using HillMetrics.MIND.FrontApp.Services;
 using MudBlazor.Services;
 using MudBlazor;
-using HillMetrics.MIND.FrontApp.Services.Base;
 using HillMetrics.MIND.API.SDK;
 using HillMetrics.Core;
 using HillMetrics.Core.Monitoring.Logging;
 using HillMetrics.Core.Monitoring;
-using HillMetrics.MIND.API.SDK.V1;
 using HillMetrics.Core.Http.Extensions;
+using HillMetrics.MIND.FrontApp.Services;
+using HillMetrics.Normalized.Domain.Contracts.Repository;
+using HillMetrics.Orchestrator.ServicesNames;
+using HillMetrics.Normalized.Infrastructure.Database.Repository;
 using HillMetrics.Core.Blazor.AuthModule.AuthHandler;
 using HillMetrics.Core.Blazor.AuthModule;
 
@@ -32,6 +33,9 @@ builder.Services.AddHillMetricsHttpClient("MindAPI", client =>
     client.Timeout = TimeSpan.FromMinutes(5);
 });
 
+builder.Services.AddTransient<FileUploadService>();
+builder.Services.AddTransient<MappingExportService>();
+
 builder.Services.AddHillMetricsBlazorCookieAuth(mindApi, "HillMetrics_MIND", "HillMetrics_MIND");
 
 builder.Services.AddMindApiSDK<AuthenticationHttpHandler>(mindApi, "Mind-frontend");
@@ -53,10 +57,7 @@ builder.Services.AddMudServices(config =>
     config.SnackbarConfiguration.HideTransitionDuration = 500;
     config.SnackbarConfiguration.ShowTransitionDuration = 200;
 });
-
-// Register services for API communication
-builder.Services.AddScoped<IFluxService, FluxService>();
-builder.Services.AddScoped<ISourceService, SourceService>();
+builder.Services.AddMudMarkdownServices();
 
 
 

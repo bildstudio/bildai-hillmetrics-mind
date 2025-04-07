@@ -185,6 +185,9 @@
                                         <MudMenuItem OnClick="@(() => ForceProcess(context))">
                                             <MudIcon Icon="@Icons.Material.Filled.Refresh" Class="mr-2" Size="Size.Small" /> Force Process
                                         </MudMenuItem>
+                                        <MudMenuItem OnClick="@(() => NavigateToMapping(context))">
+                                            <MudIcon Icon="@Icons.Material.Filled.Link" Class="mr-2" Size="Size.Small" /> Create Mapping
+                                        </MudMenuItem>
                                     </MudMenu>
                                 </MudTd>
                             </RowTemplate>
@@ -259,6 +262,9 @@
                                         }
                                         <MudButton OnClick="@(() => ForceProcess(selectedContent))">
                                             <MudIcon Icon="@Icons.Material.Filled.Refresh" Class="mr-2" /> Force Process
+                                        </MudButton>
+                                        <MudButton OnClick="@(() => NavigateToMapping(selectedContent))">
+                                            <MudIcon Icon="@Icons.Material.Filled.Link" Class="mr-2" /> Create Mapping
                                         </MudButton>
                                     </MudButtonGroup>
                                 </MudItem>
@@ -447,14 +453,14 @@
         try
         {
             loading = true;
-            // Call the API to force process the content
-            await MindApi.ForceProcessAsync(content.Id);
-            Snackbar.Add($"Force process initiated for content: {content.ContentName}", Severity.Success);
+            // Appeler l'API pour forcer le traitement du contenu en arrière-plan
+            await MindApi.ForceProcessBackgroundAsync(content.Id);
+            Snackbar.Add($"Force process started in the background for content: {content.ContentName}", Severity.Success);
             await LoadProcessingHistories();
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Error during force process: {ex.Message}", Severity.Error);
+            Snackbar.Add($"Error starting force process: {ex.Message}", Severity.Error);
         }
         finally
         {
@@ -687,6 +693,11 @@
         }
 
         await base.OnAfterRenderAsync(firstRender);
+    }
+
+    private void NavigateToMapping(FluxFetchingContentHistoryResponse content)
+    {
+        NavigationManager.NavigateTo($"/file-data-mapping/flux/{content.Id}");
     }
 }
 

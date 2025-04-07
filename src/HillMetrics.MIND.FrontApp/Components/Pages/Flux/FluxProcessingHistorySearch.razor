@@ -7,6 +7,7 @@
 @using HillMetrics.Core
 @using HillMetrics.Normalized.Domain.Contracts.Providing.Flux
 @using HillMetrics.MIND.FrontApp.Components.Shared
+@using HillMetrics.MIND.FrontApp.Components.Flux
 @using HillMetrics.MIND.API.SDK.V1
 @inject IMindAPI MindApi
 @inject NavigationManager NavigationManager
@@ -24,39 +25,47 @@
                     <!-- Flux ID -->
                     <MudItem xs="12" md="6">
                         <SearchCriteriaComponent T="int"
-                                                 SearchCriteria="@fluxIdSearchCriteria"
-                                                 SearchCriteriaChanged="@((criteria) => fluxIdSearchCriteria = criteria)"
-                                                 Label="Flux ID" />
+                                               SearchCriteria="@fluxIdSearchCriteria"
+                                               SearchCriteriaChanged="@((criteria) => fluxIdSearchCriteria = criteria)"
+                                               Label="Flux ID" />
+                    </MudItem>
+
+                    <!-- Fetching ID -->
+                    <MudItem xs="12" md="6">
+                        <SearchCriteriaComponent T="int"
+                                               SearchCriteria="@fetchingIdSearchCriteria"
+                                               SearchCriteriaChanged="@((criteria) => fetchingIdSearchCriteria = criteria)"
+                                               Label="Fetching History ID" />
                     </MudItem>
 
                     <!-- Number of Contents -->
                     <MudItem xs="12" md="6">
                         <SearchCriteriaComponent T="int"
-                                                 SearchCriteria="@nbContentSearchCriteria"
-                                                 SearchCriteriaChanged="@((criteria) => nbContentSearchCriteria = criteria)"
-                                                 Label="Number of Contents" />
+                                               SearchCriteria="@nbContentSearchCriteria"
+                                               SearchCriteriaChanged="@((criteria) => nbContentSearchCriteria = criteria)"
+                                               Label="Number of Contents" />
                     </MudItem>
 
                     <!-- Processing Start Date -->
                     <MudItem xs="12" md="6">
                         <SearchCriteriaComponent T="DateTime"
-                                                 SearchCriteria="@processingDateStartSearchCriteria"
-                                                 SearchCriteriaChanged="@((criteria) => processingDateStartSearchCriteria = criteria)"
-                                                 Label="Processing Start Date" />
+                                               SearchCriteria="@processingDateStartSearchCriteria"
+                                               SearchCriteriaChanged="@((criteria) => processingDateStartSearchCriteria = criteria)"
+                                               Label="Processing Start Date" />
                     </MudItem>
 
                     <!-- Processing End Date -->
                     <MudItem xs="12" md="6">
                         <SearchCriteriaComponent T="DateTime"
-                                                 SearchCriteria="@processingDateEndSearchCriteria"
-                                                 SearchCriteriaChanged="@((criteria) => processingDateEndSearchCriteria = criteria)"
-                                                 Label="Processing End Date" />
+                                               SearchCriteria="@processingDateEndSearchCriteria"
+                                               SearchCriteriaChanged="@((criteria) => processingDateEndSearchCriteria = criteria)"
+                                               Label="Processing End Date" />
                     </MudItem>
 
                     <!-- Processing Status -->
                     <MudItem xs="12" md="6">
                         <MudSelect T="StatusProcess?" @bind-Value="searchRequest.Status"
-                                   Label="Processing Status" Variant="Variant.Outlined" Dense="true" Margin="Margin.Dense">
+                                 Label="Processing Status" Variant="Variant.Outlined" Dense="true" Margin="Margin.Dense">
                             <MudSelectItem Value="@((StatusProcess?)null)">All</MudSelectItem>
                             @foreach (var status in Enum.GetValues<StatusProcess>())
                             {
@@ -73,106 +82,9 @@
         </MudCardActions>
     </MudCard>
 
-    @if (loading)
-    {
-        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-2" />
-    }
-    else
-    {
-        <MudTable ServerData="@ServerReload"
-                 Hover="true" Bordered="true" Striped="true"
-                 Dense="true" @bind-SelectedItem="selectedItem" T="FluxProcessingSearchReponse"
-                 Breakpoint="Breakpoint.Sm">
-            <ToolBarContent>
-                <MudText Typo="Typo.h6" Class="ml-2">Processing History</MudText>
-                <MudSpacer />
-                <MudTextField T="string" @bind-Value="searchString" Placeholder="Search" Adornment="Adornment.Start"
-                              AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium"
-                              Class="mt-0 mb-3" Margin="Margin.Dense" Dense="true"></MudTextField>
-            </ToolBarContent>
-            <HeaderContent>
-                <MudTh>ID</MudTh>
-                <MudTh>Flux ID</MudTh>
-                <MudTh>Start Date</MudTh>
-                <MudTh>End Date</MudTh>
-                <MudTh>Processed Items</MudTh>
-                <MudTh>Status</MudTh>
-                <MudTh>Duration</MudTh>
-                <MudTh>Actions</MudTh>
-            </HeaderContent>
-            <RowTemplate>
-                <MudTd DataLabel="ID">@context.Id</MudTd>
-                <MudTd DataLabel="Flux ID">
-                    <MudLink Href="@($"/flux/details/{context.FluxId}")">@context.FluxId</MudLink>
-                </MudTd>
-                <MudTd DataLabel="Start Date">
-                    <MudTooltip Text="@context.ProcessingDateStart.ToString("yyyy-MM-dd HH:mm:ss")">
-                        <div>@FormatDateTime(context.ProcessingDateStart)</div>
-                    </MudTooltip>
-                </MudTd>
-                <MudTd DataLabel="End Date">
-                    @if (context.ProcessingDateEnd.HasValue)
-                    {
-                        <MudTooltip Text="@context.ProcessingDateEnd.Value.ToString("yyyy-MM-dd HH:mm:ss")">
-                            <div>@FormatDateTime(context.ProcessingDateEnd.Value)</div>
-                        </MudTooltip>
-                    }
-                    else
-                    {
-                        <span>-</span>
-                    }
-                </MudTd>
-                <MudTd DataLabel="Processed Items">
-                    <MudBadge Content="@context.NbContent" Color="Color.Primary" Overlap="true" Class="d-flex justify-center"></MudBadge>
-                </MudTd>
-                <MudTd DataLabel="Status">
-                    @if (context.Status.HasValue)
-                    {
-                        <MudTooltip Text="@context.Status.Value.ToString()">
-                            <MudIcon Icon="@GetStatusIcon(context.Status.Value)"
-                                     Color="@GetStatusColor(context.Status.Value)" />
-                        </MudTooltip>
-                    }
-                    else
-                    {
-                        <span>-</span>
-                    }
-                </MudTd>
-                <MudTd DataLabel="Duration">
-                    @if (context.ProcessingDateEnd.HasValue)
-                    {
-                        var duration = context.ProcessingDateEnd.Value - context.ProcessingDateStart;
-                        <span>@FormatDuration(duration)</span>
-                    }
-                    else if (context.Status == StatusProcess.Processing)
-                    {
-                        var duration = DateTime.Now - context.ProcessingDateStart;
-                        <MudChip T="TimeSpan" Color="Color.Info" Size="Size.Small">@FormatDuration(duration) (ongoing)</MudChip>
-                    }
-                    else
-                    {
-                        <span>-</span>
-                    }
-                </MudTd>
-                <MudTd DataLabel="Actions">
-                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true">
-                        <MudMenuItem OnClick="@(() => ViewDetails(context.Id))">
-                            <MudIcon Icon="@Icons.Material.Filled.Visibility" Class="mr-2" Size="Size.Small" /> View Details
-                        </MudMenuItem>
-                        <MudMenuItem OnClick="@(() => ViewFluxDetails(context.FluxId))">
-                            <MudIcon Icon="@Icons.Material.Filled.Assignment" Class="mr-2" Size="Size.Small" /> View Flux
-                        </MudMenuItem>
-                    </MudMenu>
-                </MudTd>
-            </RowTemplate>
-            <PagerContent>
-                <MudTablePager PageSizeOptions="new int[] { 10, 25, 50, 100 }" />
-            </PagerContent>
-            <NoRecordsContent>
-                <MudAlert Severity="Severity.Info" Class="my-2">No processing history found matching your search criteria.</MudAlert>
-            </NoRecordsContent>
-        </MudTable>
-    }
+    <FluxProcessingHistoryTable
+        ServerReload="@ServerReload"
+        Loading="@loading" />
 </MudContainer>
 
 @code {
@@ -187,6 +99,7 @@
     // SearchCriteria for each field
     private SearchCriteria<int> fluxIdSearchCriteria = new();
     private SearchCriteria<int> nbContentSearchCriteria = new();
+    private SearchCriteria<int> fetchingIdSearchCriteria = new();
     private SearchCriteria<DateTime> processingDateStartSearchCriteria = new();
     private SearchCriteria<DateTime> processingDateEndSearchCriteria = new();
 
@@ -195,6 +108,10 @@
     [Parameter]
     [SupplyParameterFromQuery(Name = "fluxId")]
     public string FluxIdParameter { get; set; }
+
+    [Parameter]
+    [SupplyParameterFromQuery(Name = "fetchingId")]
+    public string FetchingIdParameter { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
@@ -208,7 +125,18 @@
                 Value = fluxId
             };
         }
-        
+
+        // Vérifier si le paramètre fetchingId est fourni
+        if (!string.IsNullOrEmpty(FetchingIdParameter) && int.TryParse(FetchingIdParameter, out int fetchingId))
+        {
+            // Initialiser le critère de recherche pour fetchingId
+            fetchingIdSearchCriteria = new SearchCriteria<int>
+            {
+                Operator = Operator.Equal,
+                Value = fetchingId
+            };
+        }
+
         await Search();
     }
 
@@ -255,11 +183,12 @@
         // Apply numerical SearchCriteria
         searchRequest.FluxId = fluxIdSearchCriteria.IsSet() ? fluxIdSearchCriteria : null;
         searchRequest.NbContent = nbContentSearchCriteria.IsSet() ? nbContentSearchCriteria : null;
-        
+        searchRequest.FetchingHistoryId = fetchingIdSearchCriteria.IsSet() ? fetchingIdSearchCriteria : null;
+
         // Apply datetime SearchCriteria
         searchRequest.ProcessingDateStart = processingDateStartSearchCriteria.IsSet() ? processingDateStartSearchCriteria : null;
         searchRequest.ProcessingDateEnd = processingDateEndSearchCriteria.IsSet() ? processingDateEndSearchCriteria : null;
-        
+
         // La pagination est configurée dans ServerReload
     }
 
@@ -278,95 +207,15 @@
         searchRequest = new FluxProcessingSearchRequest();
         fluxIdSearchCriteria = new SearchCriteria<int>();
         nbContentSearchCriteria = new SearchCriteria<int>();
+        fetchingIdSearchCriteria = new SearchCriteria<int>();
         processingDateStartSearchCriteria = new SearchCriteria<DateTime>();
         processingDateEndSearchCriteria = new SearchCriteria<DateTime>();
         searchString = "";
-        
+
         if (tableState != null)
         {
             tableState.Page = 0;
             await ServerReload(tableState, CancellationToken.None);
         }
     }
-
-    private void ViewDetails(int id)
-    {
-        NavigationManager.NavigateTo($"/flux/processing-details/{id}");
-    }
-
-    private void ViewFluxDetails(int id)
-    {
-        NavigationManager.NavigateTo($"/flux/details/{id}");
-    }
-
-    // Helper methods for icons and colors
-    private string GetStatusIcon(StatusProcess status)
-    {
-        return status switch
-        {
-            StatusProcess.Success => Icons.Material.Filled.CheckCircle,
-            StatusProcess.Failure => Icons.Material.Filled.Error,
-            StatusProcess.Processing => Icons.Material.Filled.Refresh,
-            StatusProcess.Paused => Icons.Material.Filled.Pending,
-            StatusProcess.Partially => Icons.Material.Filled.Warning,
-            _ => Icons.Material.Filled.HelpOutline
-        };
-    }
-
-    private Color GetStatusColor(StatusProcess status)
-    {
-        return status switch
-        {
-            StatusProcess.Success => Color.Success,
-            StatusProcess.Failure => Color.Error,
-            StatusProcess.Processing => Color.Info,
-            StatusProcess.Paused => Color.Warning,
-            StatusProcess.Partially => Color.Secondary,
-            _ => Color.Default
-        };
-    }
-
-    private string FormatDateTime(DateTime dateTime)
-    {
-        var now = DateTime.Now;
-        var diff = now - dateTime;
-
-        if (diff.TotalMinutes < 1)
-            return "Just now";
-        if (diff.TotalHours < 1)
-            return $"{(int)diff.TotalMinutes}m ago";
-        if (diff.TotalDays < 1)
-            return $"{(int)diff.TotalHours}h ago";
-        if (diff.TotalDays < 7)
-            return $"{(int)diff.TotalDays}d ago";
-
-        return dateTime.ToString("MMM dd, HH:mm");
-    }
-
-    private string FormatDuration(TimeSpan duration)
-    {
-        if (duration.TotalDays >= 1)
-            return $"{duration.Days}d {duration.Hours}h {duration.Minutes}m";
-        if (duration.TotalHours >= 1)
-            return $"{duration.Hours}h {duration.Minutes}m {duration.Seconds}s";
-        if (duration.TotalMinutes >= 1)
-            return $"{duration.Minutes}m {duration.Seconds}s";
-
-        return $"{duration.Seconds}.{duration.Milliseconds}s";
-    }
-
-    // Filter function for MudTable
-    private bool FilterFunc(FluxProcessingSearchReponse item)
-    {
-        if (string.IsNullOrWhiteSpace(searchString))
-            return true;
-
-        return
-            item.Id.ToString().Contains(searchString) ||
-            item.FluxId.ToString().Contains(searchString) ||
-            item.NbContent.ToString().Contains(searchString) ||
-            (item.Status?.ToString().Contains(searchString, StringComparison.OrdinalIgnoreCase) ?? false) ||
-            item.ProcessingDateStart.ToString().Contains(searchString) ||
-            (item.ProcessingDateEnd?.ToString().Contains(searchString) ?? false);
-    }
-} 
+}

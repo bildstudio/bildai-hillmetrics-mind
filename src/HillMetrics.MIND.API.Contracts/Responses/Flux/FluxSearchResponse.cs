@@ -22,5 +22,8 @@ namespace HillMetrics.MIND.API.Contracts.Responses.Flux
         public DateTime? LastProcessing { get; set; }
         public StatusProcess? LastProcessingStatus { get; set; }
         public int LastProcessingErrorCount { get; set; }
+        public int MappingsCount { get; set; }
+        public int? LastFetchingId { get; set; }
+        public int? LastProcessingId { get; set; }
     }
 }

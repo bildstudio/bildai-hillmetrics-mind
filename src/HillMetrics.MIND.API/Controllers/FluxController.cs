@@ -197,56 +197,42 @@ namespace HillMetrics.MIND.API.Controllers
         /// <summary>
         /// Force the processing of normalized financial prices, triggering the same flow as when prices are automatically inserted
         /// </summary>
-        /// <param name="request">Request parameters including FinancialIds, FluxId, Currency, and Dates</param>
+        /// <param name="request">Request parameters including FinancialIds and Dates (FluxId and Currency are optional)</param>
         /// <returns>Operation status</returns>
         [HttpPost("force-financial-price-processing")]
         public async Task<ActionResult<ApiResponseBase<ForceFinancialPriceProcessingResponse>>> ForceFinancialPriceProcessingAsync(ForceFinancialPriceProcessingRequest request)
         {
-            // Basic validation
-            if (request.FinancialIds == null || !request.FinancialIds.Any())
-                return BadRequest("At least one FinancialId must be provided");
-
-            if (request.FinancialIds.Any(id => id <= 0))
-                return BadRequest("All FinancialIds must be greater than 0");
-
-            if (request.FluxId <= 0)
-                return BadRequest("FluxId must be greater than 0");
-
-            if (string.IsNullOrWhiteSpace(request.Currency))
-                return BadRequest("Currency is required");
-
             try
             {
-                // Verify that the flux exists
-                var fluxResult = await Mediator.Send(new FluxQuery() { FluxId = request.FluxId });
-                if (fluxResult.IsFailed)
-                    return new ErrorApiActionResult(fluxResult.Errors.ToApiResult());
+                // Basic validation
+                if (request.FinancialIds == null || !request.FinancialIds.Any())
+                    return BadRequest("At least one FinancialId must be provided");
 
-                // Get MassTransit publish endpoint
-                var busPublisher = HttpContext.RequestServices.GetRequiredService<IBusPublisher>();
+                if (request.FinancialIds.Any(id => id <= 0))
+                    return BadRequest("All FinancialIds must be greater than 0");
 
-                // Publish an event for each financial ID
-                foreach (var financialId in request.FinancialIds)
+                // Map request to command
+                var command = new ForceFinancialPriceProcessingCommand
                 {
-                    await busPublisher.PublishAsync(
-                        new FinancialNormalizedPriceAdded(
-                            financialId,
-                            request.FluxId,
-                            request.Currency,
-                            request.Dates
-                        )
-                    );
-
-                    logger.LogInformation("Published FinancialNormalizedPriceAdded event for FinancialId: {financialId}, FluxId: {fluxId}, Currency: {currency}, Dates Count: {datesCount}",
-                        financialId, request.FluxId, request.Currency, request.Dates.Count);
-                }
-
+                    FinancialIds = request.FinancialIds,
+                    FluxId = request.FluxId,
+                    Currency = request.Currency,
+                    Dates = request.Dates
+                };
+                
+                // Send the command to the handler
+                var result = await Mediator.Send(command);
+                
+                if (result.IsFailed)
+                    return new ErrorApiActionResult(result.Errors.ToApiResult());
+                
+                // Map the result to response
                 return new ApiResponseBase<ForceFinancialPriceProcessingResponse>(
                     new ForceFinancialPriceProcessingResponse
                     {
-                        Success = true,
-                        FinancialIdCount = request.FinancialIds.Count,
-                        DatesCount = request.Dates.Count
+                        Success = result.Value.Success,
+                        FinancialIdCount = result.Value.FinancialIdCount,
+                        DatesCount = result.Value.DatesCount
                     }
                 );
             }
@@ -259,6 +245,134 @@ namespace HillMetrics.MIND.API.Controllers
             }
         }
 
+        /// <summary>
+        /// Force the fetch of a flux asynchronously (non-blocking)
+        /// </summary>
+        /// <param name="id">The flux identifier</param>
+        /// <returns>Status indication that the operation has started</returns>
+        [HttpGet("{id}/force-fetch-async")]
+        public ActionResult<ApiResponseBase<string>> ForceFetchBackgroundAsync(int id)
+        {
+            try
+            {
+                // Capture services from the current request context
+                var serviceProvider = HttpContext.RequestServices;
+
+                // Start the background processing task without awaiting it
+                _ = Task.Run(async () =>
+                {
+                    // Create a new scope for the long-running operation
+                    using var scope = serviceProvider.CreateScope();
+                    
+                    try
+                    {
+                        // Resolve required services from the new scope
+                        var scopedMediator = scope.ServiceProvider.GetRequiredService<IMediator>();
+                        var scopedLogger = scope.ServiceProvider.GetRequiredService<ILogger<FluxController>>();
+                        
+                        scopedLogger.LogInformation("Starting asynchronous fetch for flux {FluxId}", id);
+                        
+                        // Execute the operation with services from the new scope
+                        var command = FetchFluxCommand.Create(id, Task.FromResult(new List<Mail>()));
+                        command.CalledManually = true;
+                        var result = await scopedMediator.Send(command);
+                        
+                        if (result.IsSuccess)
+                        {
+                            scopedLogger.LogInformation("Async fetch completed successfully for flux {FluxId}", id);
+                        }
+                        else
+                        {
+                            scopedLogger.LogWarning("Async fetch failed for flux {FluxId}: {Errors}", 
+                                id, string.Join(", ", result.Errors.Select(e => e.Message)));
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        // Use logger from the scope
+                        var scopedLogger = scope.ServiceProvider.GetRequiredService<ILogger<FluxController>>();
+                        scopedLogger.LogError(ex, "Error in asynchronous flux fetch for flux {FluxId}", id);
+                    }
+                });
+                
+                // Return success immediately
+                return new ApiResponseBase<string>(
+                    $"Flux fetch operation started for flux {id}. The operation will continue in the background.");
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error initiating asynchronous flux fetch for flux {FluxId}", id);
+                return new ErrorApiActionResult(
+                    new ErrorApiResponse(
+                        new Core.API.Exceptions.ApiException($"Error starting asynchronous flux fetch: {ex.Message}"), 
+                        System.Net.HttpStatusCode.InternalServerError));
+            }
+        }
+
+        /// <summary>
+        /// Force the process of a flux asynchronously (non-blocking)
+        /// </summary>
+        /// <param name="id">The flux identifier</param>
+        /// <returns>Status indication that the operation has started</returns>
+        [HttpGet("{id}/force-process-async")]
+        public ActionResult<ApiResponseBase<string>> ForceProcessBackgroundAsync(int id)
+        {
+            try
+            {
+                // Capture services from the current request context
+                var serviceProvider = HttpContext.RequestServices;
+
+                // Start the background processing task without awaiting it
+                _ = Task.Run(async () =>
+                {
+                    // Create a new scope for the long-running operation
+                    using var scope = serviceProvider.CreateScope();
+                    
+                    try
+                    {
+                        // Resolve required services from the new scope
+                        var scopedMediator = scope.ServiceProvider.GetRequiredService<IMediator>();
+                        var scopedLogger = scope.ServiceProvider.GetRequiredService<ILogger<FluxController>>();
+                        
+                        scopedLogger.LogInformation("Starting asynchronous process for flux {FluxId}", id);
+                        
+                        // Execute the operation with services from the new scope
+                        var result = await scopedMediator.Send(new ProcessFluxCommand() {
+                            FluxId = id,
+                            CalledManually = true
+                        });
+                        
+                        if (result.IsSuccess)
+                        {
+                            scopedLogger.LogInformation("Async process completed successfully for flux {FluxId}", id);
+                        }
+                        else
+                        {
+                            scopedLogger.LogWarning("Async process failed for flux {FluxId}: {Errors}", 
+                                id, string.Join(", ", result.Errors.Select(e => e.Message)));
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        // Use logger from the scope
+                        var scopedLogger = scope.ServiceProvider.GetRequiredService<ILogger<FluxController>>();
+                        scopedLogger.LogError(ex, "Error in asynchronous flux process for flux {FluxId}", id);
+                    }
+                });
+                
+                // Return success immediately
+                return new ApiResponseBase<string>(
+                    $"Flux process operation started for flux {id}. The operation will continue in the background.");
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error initiating asynchronous flux process for flux {FluxId}", id);
+                return new ErrorApiActionResult(
+                    new ErrorApiResponse(
+                        new Core.API.Exceptions.ApiException($"Error starting asynchronous flux process: {ex.Message}"), 
+                        System.Net.HttpStatusCode.InternalServerError));
+            }
+        }
         #endregion
 
         #region FinancialDataPoint
@@ -413,6 +527,23 @@ namespace HillMetrics.MIND.API.Controllers
         }
 
         /// <summary>
+        /// Get the details of a specific fetching content
+        /// </summary>
+        /// <param name="fetchingContentId">The fetching content identifier</param>
+        /// <returns></returns>
+        [HttpGet("fetching-history/content/{fetchingContentId}")]
+        public async Task<ActionResult<ApiResponseBase<FluxFetchingContentHistoryResponse>>> GetFetchingContentAsync(int fetchingContentId)
+        {
+            var result = await Mediator.Send(new FluxFetchContentHistoryQuery(fetchingContentId));
+
+            if (result.IsFailed)
+                return new ErrorApiActionResult(result.Errors.ToApiResult());
+
+            return new ApiResponseBase<FluxFetchingContentHistoryResponse>(
+                mapper.Map<FluxFetchingContentHistoryResponse>(result.Value.FluxFetchingContent));
+        }
+
+        /// <summary>
         /// Delete a specific fetching history if it doesn't have any content with Success status
         /// </summary>
         /// <param name="fetchingHistoryId">The fetching history identifier to delete</param>
@@ -517,6 +648,32 @@ namespace HillMetrics.MIND.API.Controllers
                 return new ErrorApiActionResult(result.Errors.ToApiResult());
 
             return new ApiResponseBase<FluxErrorResponse>(mapper.Map<FluxErrorResponse>(result.Value));
+        }
+
+        /// <summary>
+        /// Delete multiple flux errors
+        /// </summary>
+        /// <param name="errorIds">List of error IDs to delete</param>
+        /// <returns>True if all errors were deleted successfully</returns>
+        [HttpDelete("errors")]
+        public async Task<ActionResult<ApiResponseBase<bool>>> DeleteFluxErrorsAsync([FromBody] List<int> errorIds)
+        {
+            try
+            {
+                var result = await Mediator.Send(new DeleteFluxErrorCommand(errorIds));
+
+                if (result.IsFailed)
+                    return new ErrorApiActionResult(result.Errors.ToApiResult());
+
+                return new ApiResponseBase<bool>(true);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error deleting flux errors: {ErrorIds}", string.Join(", ", errorIds));
+                return new ErrorApiActionResult(new ErrorApiResponse(
+                    new Core.API.Exceptions.ApiException($"Error deleting flux errors: {ex.Message}"), 
+                    System.Net.HttpStatusCode.InternalServerError));
+            }
         }
         #endregion
 

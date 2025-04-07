@@ -57,6 +57,11 @@ namespace HillMetrics.MIND.API.Contracts.Requests.Flux
         /// </summary>
         public SearchCriteria<int>? LastProcessingErrorCount { get; set; }
 
+        /// <summary>
+        /// The number of mapping associated
+        /// </summary>
+        public SearchCriteria<int>? MappingsCount { get; set; }
+
         public Pagination Pagination { get; set; } = Pagination.Default;
         public Sorting Sorting { get; set; } = new Sorting(nameof(Name), SortDirection.Ascending);
     }

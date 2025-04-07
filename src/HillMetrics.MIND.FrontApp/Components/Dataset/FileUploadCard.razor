@@ -1,0 +1,280 @@
+﻿@using HillMetrics.Core.Common
+@using HillMetrics.Normalized.Domain.Contracts.AI.Dataset
+@using HillMetrics.Core.Financial
+@inject IMindAPI MindApi
+@inject ISnackbar Snackbar
+
+<MudCard Elevation="3" Class="mb-4">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">
+                <MudIcon Icon="@Icons.Material.Filled.InsertDriveFile" Class="mr-2" />
+                File Details
+            </MudText>
+        </CardHeaderContent>
+        <CardHeaderActions>
+            @if (File != null && File.Id > 0)
+            {
+                <DownloadFile File="File" FileType="@File.FileType" />
+            }
+        </CardHeaderActions>
+    </MudCardHeader>
+    <MudCardContent>
+        @if (CanUploadFile)
+        {
+            <MudFileUpload T="IBrowserFile" Accept=".csv,.xls,.xlsx,.pdf,.xml,.json,.html"
+            OnFilesChanged="@(e => HandleFileSelected(e.File))" MaximumFileCount="1">
+                <ActivatorContent>
+                    <MudButton HtmlTag="label"
+                    Variant="Variant.Filled"
+                    Color="Color.Primary"
+                    StartIcon="@Icons.Material.Filled.CloudUpload"
+                    FullWidth="true">
+                        Choose File
+                    </MudButton>
+                </ActivatorContent>
+            </MudFileUpload>
+        }
+        else if (File != null)
+        {
+            @if (File.Id > 0)
+            {
+                <!-- Fichier existant - afficher les options d'édition -->
+                <FileMetadataSection File="@File"
+                OnFileNameUpdated="HandleFileNameUpdatedAndSave"
+                OnStatusUpdated="HandleStatusUpdatedAndSave"
+                OnDifficultyUpdated="HandleDifficultyUpdatedAndSave"
+                OnFinancialTypeUpdated="HandleFinancialTypeUpdatedAndSave" />
+            }
+            else
+            {
+                <!-- Nouveau fichier - afficher juste les informations basiques -->
+                <MudList T="FileUpload" Dense="true">
+                    <MudListItem>
+                        <MudText><strong>File Name:</strong> @File.FileName</MudText>
+                    </MudListItem>
+                    <MudListItem>
+                        <MudText><strong>Type:</strong> @File.FileType</MudText>
+                    </MudListItem>
+                    <MudListItem>
+                        <MudText><strong>Size:</strong> @FormatFileSize(File.FileSize)</MudText>
+                    </MudListItem>
+                    <MudListItem>
+                        <div class="d-flex align-center">
+                            <MudText><strong>Financial Type:</strong></MudText>
+                            <MudSelect T="FinancialType"
+                                      @bind-Value="File.FinancialType"
+                                      Immediate="true"
+                                      Class="ml-2"
+                                      Style="min-width: 150px;">
+                                @foreach (var type in Enum.GetValues<FinancialType>().Where(t => t != FinancialType.Undefined))
+                                {
+                                    <MudSelectItem Value="@type">@type.ToString()</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </div>
+                    </MudListItem>
+                </MudList>
+
+                <MudButton OnClick="HandleUpload"
+                Color="Color.Primary"
+                Variant="Variant.Filled"
+                Disabled="@(IsUploading || File.FinancialType == FinancialType.Undefined)"
+                FullWidth="true"
+                Class="mt-4">
+                    @if (IsUploading)
+                    {
+                        <MudProgressCircular Class="mr-2" Size="Size.Small" Indeterminate="true" />
+                        <span>Uploading...</span>
+                    }
+                    else
+                    {
+                        <span>Upload</span>
+                    }
+                </MudButton>
+            }
+
+            @if (File.Id == 0)
+            {
+                <MudButton OnClick="HandleFileClear"
+                Color="Color.Secondary"
+                Variant="Variant.Outlined"
+                FullWidth="true"
+                Class="mt-2">
+                    Cancel
+                </MudButton>
+            }
+        }
+
+        @if (DuplicateFileFound && File?.Id == 0)
+        {
+            <MudAlert Severity="Severity.Warning" Class="mt-3" Dense="true">
+                This file already exists in the system.
+            </MudAlert>
+        }
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter] public bool IsEditMode { get; set; }
+    [Parameter] public FileUpload? File { get; set; }
+    [Parameter] public IBrowserFile? SelectedFile { get; set; }
+    [Parameter] public string SelectedFileName { get; set; } = string.Empty;
+    [Parameter] public long SelectedFileSize { get; set; }
+    [Parameter] public string SelectedFileContentType { get; set; } = string.Empty;
+
+    [Parameter] public string CustomFileName { get; set; } = string.Empty;
+    [Parameter] public FileDifficulty FileDifficulty { get; set; } = FileDifficulty.Medium;
+    [Parameter] public FinancialType FinancialType { get; set; } = FinancialType.Fund;
+    [Parameter] public MappingStatus MappingStatus { get; set; } = MappingStatus.NotMapped;
+
+    [Parameter] public bool IsUploading { get; set; }
+    [Parameter] public bool DuplicateFileFound { get; set; }
+    [Parameter] public bool CanUploadFile { get; set; }
+
+    [Parameter] public EventCallback<IBrowserFile> OnFileSelected { get; set; }
+    [Parameter] public EventCallback OnFileClear { get; set; }
+    [Parameter] public EventCallback OnFileUpload { get; set; }
+    [Parameter] public EventCallback<string> OnFileNameUpdated { get; set; }
+    [Parameter] public EventCallback<MappingStatus> OnStatusUpdated { get; set; }
+    [Parameter] public EventCallback<FileDifficulty> OnDifficultyUpdated { get; set; }
+    [Parameter] public EventCallback<FinancialType> OnFinancialTypeUpdated { get; set; }
+    [Parameter] public EventCallback<FileUploadMetadata> OnSave { get; set; }
+
+    protected override void OnInitialized()
+    {
+        InitializeFileFromSelectedFile();
+    }
+
+    protected override void OnParametersSet()
+    {
+        InitializeFileFromSelectedFile();
+    }
+
+    private void InitializeFileFromSelectedFile()
+    {
+        if (File == null && SelectedFile != null)
+        {
+            string fileName = !string.IsNullOrEmpty(CustomFileName) ? CustomFileName : SelectedFileName;
+            string fileExtension = Path.GetExtension(fileName).TrimStart('.');
+
+            ContentType contentType = ContentTypeMapper.GetContentType(SelectedFileContentType);
+
+            File = new FileUpload
+                {
+                    Id = 0, // Indique que c'est un nouveau fichier pas encore uploadé
+                    FileName = fileName,
+                    FileSize = SelectedFileSize,
+                    FileType = fileExtension,
+                    ContentType = contentType,
+                    Difficulty = FileDifficulty,
+                    MappingStatus = MappingStatus,
+                    UploadedAt = DateTime.Now,
+                    FinancialType = FinancialType
+                };
+        }
+    }
+
+    private string FormatFileSize(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB", "TB" };
+        double len = bytes;
+        int order = 0;
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len = len / 1024;
+        }
+        return $"{len:0.##} {sizes[order]}";
+    }
+
+    private async Task HandleUpload()
+    {
+        // Pour le premier upload, on utilise toujours OnSave
+        var metadata = new FileUploadMetadata
+        {
+            FileName = File!.FileName,
+            MappingStatus = File.MappingStatus,
+            Difficulty = File.Difficulty,
+            FinancialType = File.FinancialType
+        };
+
+        await OnSave.InvokeAsync(metadata);
+    }
+
+    public class FileUploadMetadata
+    {
+        public string FileName { get; set; } = string.Empty;
+        public MappingStatus MappingStatus { get; set; }
+        public FileDifficulty Difficulty { get; set; }
+        public FinancialType FinancialType { get; set; }
+    }
+
+    private async Task HandleFileSelected(IBrowserFile file)
+    {
+        await OnFileSelected.InvokeAsync(file);
+
+        InitializeFileFromSelectedFile();
+    }
+
+    private async Task HandleFileClear()
+    {
+        File = null; // Reset local File
+        await OnFileClear.InvokeAsync();
+    }
+
+    // Méthodes pour les mises à jour immédiates (pour les fichiers existants)
+    private async Task HandleFileNameUpdatedAndSave(string newName)
+    {
+        File!.FileName = newName;
+        await OnFileNameUpdated.InvokeAsync(newName);
+
+        // Sauvegarde immédiate
+        await SaveUpdatedFile();
+    }
+
+    private async Task HandleStatusUpdatedAndSave(MappingStatus status)
+    {
+        File!.MappingStatus = status;
+        await OnStatusUpdated.InvokeAsync(status);
+
+        // Sauvegarde immédiate
+        await SaveUpdatedFile();
+    }
+
+    private async Task HandleDifficultyUpdatedAndSave(FileDifficulty difficulty)
+    {
+        File!.Difficulty = difficulty;
+        await OnDifficultyUpdated.InvokeAsync(difficulty);
+
+        // Sauvegarde immédiate
+        await SaveUpdatedFile();
+    }
+
+    private async Task HandleFinancialTypeUpdatedAndSave(FinancialType type)
+    {
+        File!.FinancialType = type;
+        await OnFinancialTypeUpdated.InvokeAsync(type);
+
+        // Sauvegarde immédiate
+        await SaveUpdatedFile();
+    }
+
+    private async Task SaveUpdatedFile()
+    {
+        // Cette méthode sauvegarde immédiatement les changements pour un fichier existant
+        if (File?.Id > 0)
+        {
+            var metadata = new FileUploadMetadata
+            {
+                FileName = File.FileName,
+                MappingStatus = File.MappingStatus,
+                Difficulty = File.Difficulty,
+                FinancialType = File.FinancialType
+            };
+
+            await OnSave.InvokeAsync(metadata);
+            Snackbar.Add("File updated successfully", Severity.Success);
+        }
+    }
+}
