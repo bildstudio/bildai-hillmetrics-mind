@@ -101,7 +101,7 @@ public partial class Program
         //validation for JWT token authentication
         builder.AddKeycloakBearerAuthenticationValidator<KeycloakConfigMind>(serviceName: Services.Keycloak);
 
-        builder.Services.AddMindAuthenticationServices();
+        builder.Services.AddMindAuthenticationServices(builder.Configuration);
 
         builder.Services.AddMindAiServices(builder.Configuration);
 

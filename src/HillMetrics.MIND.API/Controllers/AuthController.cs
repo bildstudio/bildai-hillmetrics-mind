@@ -18,15 +18,18 @@ namespace HillMetrics.MIND.API.Controllers
     {
         private readonly IAuthenticationService _authenticationService;
         private readonly IRedirectUrlValidator _redirectUrlValidator;
+        private readonly ITokenExchangeService _tokenExchangeService;
         private readonly ILogger<AuthController> _logger;
         public AuthController(
             IAuthenticationService authenticationService,
             IRedirectUrlValidator redirectUrlValidator,
-            ILogger<AuthController> logger)
+            ILogger<AuthController> logger,
+            ITokenExchangeService tokenExchangeService)
         {
             _authenticationService = authenticationService;
             _redirectUrlValidator = redirectUrlValidator;
             _logger = logger;
+            _tokenExchangeService = tokenExchangeService;
         }
 
         [HttpGet(InternalRoutes.Authentication.Login)]
@@ -54,9 +57,12 @@ namespace HillMetrics.MIND.API.Controllers
                     return new ErrorApiActionResult(tokenResult.Errors.ToApiResult());
                 }
 
-                _logger.LogInformation("Code exchanged for token");
+                string exchangeCode = await _tokenExchangeService.SaveTokenForCodeAsync(tokenResult.Value, TimeSpan.FromMinutes(1));
+
+                _logger.LogInformation("Exchange code saved: {exchangeCode}", exchangeCode);
+                TokenExtensions.SaveExchangeCodeInCookie(exchangeCode, HttpContext.Response.Cookies);
                 //tokenResult.Value.SaveTokensInCookies(HttpContext.Response.Cookies);
-                _logger.LogInformation("Cookies saved");
+                //_logger.LogInformation("Cookies saved");
 
                 return Redirect(state);
             }
@@ -77,6 +83,19 @@ namespace HillMetrics.MIND.API.Controllers
             tokenResult.Value.SaveTokensInCookies(HttpContext.Response.Cookies);
 
             return tokenResult.Value;
+        }
+
+        [HttpPost(InternalRoutes.Authentication.ExchangeCode)]
+        public async Task<ActionResult<TokenResponse>> ExchangeCode([FromBody] Contracts.Requests.ExchangeCodeRequest request)
+        {
+            if (request == null || string.IsNullOrEmpty(request.ExchangeCode))
+                return Unauthorized();
+
+            var tokenResponse = await _tokenExchangeService.GetTokenByCodeAsync(request.ExchangeCode);
+            if (tokenResponse == null)
+                return Unauthorized();
+
+            return tokenResponse;
         }
 
         [HttpGet(InternalRoutes.Authentication.Logout)]

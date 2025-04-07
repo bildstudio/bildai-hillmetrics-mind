@@ -18,6 +18,7 @@
             public const string Logout = "auth/logout";
             public const string LogoutCallback = "auth/logoutcallback";
             public const string Refresh = "auth/refresh";
+            public const string ExchangeCode = "auth/exchangecode";
         }
 
         public static class Flux
