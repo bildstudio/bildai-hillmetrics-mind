@@ -60,7 +60,7 @@ namespace HillMetrics.MIND.API.Controllers
                 string exchangeCode = await _tokenExchangeService.SaveTokenForCodeAsync(tokenResult.Value, TimeSpan.FromMinutes(1));
 
                 _logger.LogInformation("Exchange code saved: {exchangeCode}", exchangeCode);
-                TokenExtensions.SaveExchangeCodeInCookie(exchangeCode, HttpContext.Response.Cookies);
+                TokenExtensions.SaveExchangeCodeInCookie(exchangeCode, HttpContext.Response.Cookies, new Uri(state));
                 //tokenResult.Value.SaveTokensInCookies(HttpContext.Response.Cookies);
                 //_logger.LogInformation("Cookies saved");
 
@@ -80,7 +80,7 @@ namespace HillMetrics.MIND.API.Controllers
             if (tokenResult.IsFailed)
                 return new ErrorApiActionResult(tokenResult.Errors.ToApiResult());
 
-            tokenResult.Value.SaveTokensInCookies(HttpContext.Response.Cookies);
+            //tokenResult.Value.SaveTokensInCookies(HttpContext.Response.Cookies);
 
             return tokenResult.Value;
         }
