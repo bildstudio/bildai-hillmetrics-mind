@@ -18,12 +18,15 @@ namespace HillMetrics.MIND.API.Controllers
     {
         private readonly IAuthenticationService _authenticationService;
         private readonly IRedirectUrlValidator _redirectUrlValidator;
+        private readonly ILogger<AuthController> _logger;
         public AuthController(
-            IAuthenticationService authenticationService, 
-            IRedirectUrlValidator redirectUrlValidator)
+            IAuthenticationService authenticationService,
+            IRedirectUrlValidator redirectUrlValidator,
+            ILogger<AuthController> logger)
         {
             _authenticationService = authenticationService;
             _redirectUrlValidator = redirectUrlValidator;
+            _logger = logger;
         }
 
         [HttpGet(InternalRoutes.Authentication.Login)]
@@ -41,13 +44,27 @@ namespace HillMetrics.MIND.API.Controllers
         [HttpGet(InternalRoutes.Authentication.Callback)]
         public async Task<IActionResult> Callback([FromQuery] string code, [FromQuery] string state)
         {
-            var tokenResult = await _authenticationService.ExhangeCodeForTokenAsync(code);
-            if (tokenResult.IsFailed)
-                return new ErrorApiActionResult(tokenResult.Errors.ToApiResult());
+            try
+            {
+                _logger.LogInformation("Callback received: code: {code}, state: {state}", code, state);
+                var tokenResult = await _authenticationService.ExhangeCodeForTokenAsync(code);
+                if (tokenResult.IsFailed)
+                {
+                    _logger.LogError("Failed to exchange code for token");
+                    return new ErrorApiActionResult(tokenResult.Errors.ToApiResult());
+                }
 
-            tokenResult.Value.SaveTokensInCookies(HttpContext.Response.Cookies);
+                _logger.LogInformation("Code exchanged for token");
+                tokenResult.Value.SaveTokensInCookies(HttpContext.Response.Cookies);
 
-            return RedirectPermanent(state);
+
+                return RedirectPermanent(state);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Callback error: {ExceptionMessage}", ex.Message);
+                throw;
+            }
         }
         
         [HttpPost(InternalRoutes.Authentication.Refresh)]
