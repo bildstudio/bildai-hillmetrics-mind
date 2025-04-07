@@ -22,9 +22,5 @@
     <ProjectReference Include="..\..\..\HillMetrics.Core\src\HillMetrics.Core\HillMetrics.Core.csproj" />
     <ProjectReference Include="..\HillMetrics.MIND.API.Contracts\HillMetrics.MIND.API.Contracts.csproj" />
   </ItemGroup>
-  
-  <ItemGroup>
-    <Folder Include="V1\" />
-  </ItemGroup>
 
 </Project>

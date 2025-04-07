@@ -9,6 +9,8 @@ using HillMetrics.Core.Monitoring.Logging;
 using HillMetrics.Core.Monitoring;
 using HillMetrics.MIND.API.SDK.V1;
 using HillMetrics.Core.Http.Extensions;
+using HillMetrics.Core.Blazor.AuthModule.AuthHandler;
+using HillMetrics.Core.Blazor.AuthModule;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -22,7 +24,7 @@ builder.AddHillMetricsServiceDefaults();
 builder.Services.ConfigureHillMetricsDefaultHttpClient();
 
 var mindApi = builder.Configuration.GetValue<string>("Services:MindApi", $"https+http://{HillMetrics.Orchestrator.ServicesNames.Services.MindAPI}");
-builder.Services.AddMindApiSDK(mindApi);
+
 
 builder.Services.AddHillMetricsHttpClient("MindAPI", client =>
 {
@@ -30,9 +32,15 @@ builder.Services.AddHillMetricsHttpClient("MindAPI", client =>
     client.Timeout = TimeSpan.FromMinutes(5);
 });
 
+builder.Services.AddHillMetricsBlazorCookieAuth(mindApi, "HillMetrics_MIND", "HillMetrics_MIND");
+
+builder.Services.AddMindApiSDK<AuthenticationHttpHandler>(mindApi, "Mind-frontend");
+
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+
+builder.Services.AddRazorPages();
 
 // Ajouter services MudBlazor
 builder.Services.AddMudServices(config =>
@@ -49,6 +57,12 @@ builder.Services.AddMudServices(config =>
 // Register services for API communication
 builder.Services.AddScoped<IFluxService, FluxService>();
 builder.Services.AddScoped<ISourceService, SourceService>();
+
+
+
+builder.Services.AddAuthorization();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddCascadingAuthenticationState();
 
 var app = builder.Build();
 
@@ -67,7 +81,12 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseAntiforgery();
 
+app.UseAuthentication();
+app.UseAuthorization();
+
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+
+app.MapRazorPages();
 
 app.Run();

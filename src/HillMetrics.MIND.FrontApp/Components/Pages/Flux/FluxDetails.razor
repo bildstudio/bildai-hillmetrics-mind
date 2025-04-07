@@ -17,6 +17,8 @@
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
 
+@attribute [Authorize]
+
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
     @if (loading)
     {
