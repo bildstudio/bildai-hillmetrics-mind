@@ -1,0 +1,132 @@
+﻿@using HillMetrics.Normalized.Domain.Contracts.AI.Dataset
+@using HillMetrics.Core.Financial
+
+<MudCard Elevation="3" Class="mb-4">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">
+                <MudIcon Icon="@Icons.Material.Filled.DataObject" Class="mr-2" />
+                @(IsEditMode ? "Edit Data Mappings" : "Map Financial Data")
+            </MudText>
+        </CardHeaderContent>
+        <CardHeaderActions>
+            @if (DataMappings.Count > 0)
+            {
+                <MudTooltip Text="Expand All">
+                    <MudIconButton Icon="@Icons.Material.Filled.UnfoldMore"
+                                   OnClick="OnExpandAll" />
+                </MudTooltip>
+                <MudTooltip Text="Collapse All">
+                    <MudIconButton Icon="@Icons.Material.Filled.UnfoldLess"
+                                   OnClick="OnCollapseAll" />
+                </MudTooltip>
+            }
+        </CardHeaderActions>
+    </MudCardHeader>
+    <MudCardContent>
+        @if (File == null && !IsEditMode)
+        {
+            <MudAlert Severity="Severity.Info">Upload a file first to map financial data.</MudAlert>
+        }
+        else
+        {
+            @if (AvailableDataPoints.Count == 0)
+            {
+                <MudAlert Severity="Severity.Warning">
+                    No financial data points available.
+                    <MudLink Href="/financial-data/create">Create some first</MudLink>.
+                </MudAlert>
+            }
+            else
+            {
+                <MudPaper Class="pa-4 mb-4" Elevation="0">
+                    <MudGrid>
+                        <MudItem xs="12" md="8">
+                            <MudSelect T="int" Label="Select Financial Data Point"
+                                       @bind-Value="selectedDataPointId"
+                                       Class="mb-2">
+                                @foreach (var dataPoint in FilteredDataPoints)
+                                {
+                                    <MudSelectItem Value="@dataPoint.Id">
+                                        @dataPoint.Name
+                                    </MudSelectItem>
+                                }
+                            </MudSelect>
+                            @if (FilteredDataPoints.Count == 0 && File != null)
+                            {
+                                <MudText Color="Color.Warning" Class="mt-2">
+                                    No data points available for @File.FinancialType.ToString() type.
+                                    <MudLink Href="/financial-data/create">Create one</MudLink>
+                                </MudText>
+                            }
+                        </MudItem>
+                        <MudItem xs="12" md="4" Class="d-flex align-center">
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       OnClick="() => OnAddDataPoint.InvokeAsync((selectedDataPointId, string.Empty))"
+                                       Disabled="selectedDataPointId == 0"
+                                       FullWidth="true">
+                                Add Data Point
+                            </MudButton>
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+
+                @if (DataMappings.Count == 0)
+                {
+                    <MudText Class="my-4">No data points mapped yet. Select data points to map from the dropdown above.</MudText>
+                }
+                else
+                {
+                    <MudExpansionPanels @ref="expansionPanels" MultiExpansion="true" Class="mb-4">
+                        @foreach (var mapping in DataMappings)
+                        {
+                            <InteractiveDataPointMappingItem Mapping="mapping"
+                                                             OnRemove="() => OnRemoveMapping.InvokeAsync(mapping.Id)"
+                                                             OnFieldSelect="OnFieldSelect"
+                                                             ContentType="@File!.ContentType" />
+                        }
+                    </MudExpansionPanels>
+                }
+            }
+        }
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter] public bool IsEditMode { get; set; }
+    [Parameter] public FileUpload? File { get; set; }
+    [Parameter] public List<FinancialDataPoint> AvailableDataPoints { get; set; } = new();
+    [Parameter] public List<FileDataMapping> DataMappings { get; set; } = new();
+
+    [Parameter] public EventCallback<(int, string)> OnAddDataPoint { get; set; }
+    [Parameter] public EventCallback<int> OnRemoveMapping { get; set; }
+    [Parameter] public EventCallback<(string, Action<string>)> OnFieldSelect { get; set; }
+    [Parameter] public EventCallback OnExpandAll { get; set; }
+    [Parameter] public EventCallback OnCollapseAll { get; set; }
+
+    private MudExpansionPanels? expansionPanels;
+    private int selectedDataPointId;
+
+    private List<FinancialDataPoint> FilteredDataPoints => File == null
+        ? new List<FinancialDataPoint>()
+        : AvailableDataPoints
+            .Where(dp => dp.FinancialType == File.FinancialType)
+            .ToList();
+
+    protected override void OnParametersSet()
+    {
+        // Reset selection if current selection is not in filtered list
+        if (FilteredDataPoints.Count > 0)
+        {
+            if (!FilteredDataPoints.Any(dp => dp.Id == selectedDataPointId))
+            {
+                selectedDataPointId = FilteredDataPoints[0].Id;
+            }
+        }
+        else
+        {
+            selectedDataPointId = 0;
+        }
+    }
+}

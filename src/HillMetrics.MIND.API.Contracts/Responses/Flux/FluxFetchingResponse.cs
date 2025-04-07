@@ -1,4 +1,5 @@
 ﻿using HillMetrics.Core;
+using HillMetrics.Core.Common;
 
 namespace HillMetrics.MIND.API.Contracts.Responses.Flux
 {
@@ -48,6 +49,11 @@ namespace HillMetrics.MIND.API.Contracts.Responses.Flux
         public int Id { get; set; }
 
         /// <summary>
+        /// Flux id
+        /// </summary>
+        public int FluxId { get; set; }
+
+        /// <summary>
         /// Flux matching history foreign key
         /// </summary>
         public int FluxIdentificationHistoryId { get; set; }
@@ -76,5 +82,10 @@ namespace HillMetrics.MIND.API.Contracts.Responses.Flux
         /// The datetime when the flux has identify external data
         /// </summary>
         public DateTime IdentifiedAt { get; set; }
+
+        // <summary>
+        /// The content type of the fetched file
+        /// </summary>
+        public ContentType? ContentType { get; set; }
     }
 }

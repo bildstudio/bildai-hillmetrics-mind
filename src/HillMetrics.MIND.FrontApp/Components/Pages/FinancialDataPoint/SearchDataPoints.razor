@@ -1,0 +1,239 @@
+@page "/financial-data/search"
+@using HillMetrics.MIND.API.Contracts.Requests.AiDataset
+@using HillMetrics.Core.Search
+@using HillMetrics.Core.Financial
+@using HillMetrics.MIND.API.Contracts.Responses.AiDataset
+@using HillMetrics.MIND.API.SDK.V1
+@using HillMetrics.Normalized.Domain.Contracts.AI.Dataset
+@inject IMindAPI MindApi
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudGrid>
+        <MudItem xs="6">
+            <MudText Typo="Typo.h4" Class="mb-4">Financial Data Points</MudText>
+        </MudItem>
+        <MudItem xs="6" Class="d-flex justify-end">
+            <MudButton Variant="Variant.Filled"
+            Color="Color.Primary"
+            StartIcon="@Icons.Material.Filled.Add"
+            Href="/financial-data/create"
+            Class="align-self-start">
+                Create New Data Point
+            </MudButton>
+        </MudItem>
+    </MudGrid>
+
+    <MudCard Class="mb-4">
+        <MudCardContent>
+            <MudForm @ref="form" @bind-IsValid="@isValid">
+                <MudGrid Spacing="1">
+                    <!-- Name -->
+                    <MudItem xs="12" md="4">
+                        <MudTextField @bind-Value="searchRequest.Name"
+                                     Label="Data Point Name"
+                                     Variant="Variant.Outlined"
+                                     Placeholder="Search by name..."
+                                     Immediate="true"
+                                     DebounceInterval="500"
+                                     OnDebounceIntervalElapsed="Search"
+                                     Adornment="Adornment.Start"
+                                     AdornmentIcon="@Icons.Material.Filled.Search"/>
+                    </MudItem>
+
+                    <!-- Financial Type -->
+                    <MudItem xs="12" md="4">
+                        <MudSelect T="FinancialType?" @bind-Value="searchRequest.FinancialType"
+                        Label="Financial Type" Variant="Variant.Outlined" Dense="true" Margin="Margin.Dense">
+                            <MudSelectItem Value="@((FinancialType?)null)">All</MudSelectItem>
+                            @foreach (var type in Enum.GetValues<FinancialType>())
+                            {
+                                <MudSelectItem T="FinancialType?" Value="@type">@type</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                </MudGrid>
+            </MudForm>
+        </MudCardContent>
+        <MudCardActions>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Search" Size="Size.Small">Search</MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="Reset" Size="Size.Small">Reset</MudButton>
+        </MudCardActions>
+    </MudCard>
+
+    @if (loading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-2" />
+    }
+    else
+    {
+        <MudTable ServerData="@ServerReload"
+        Hover="true" Bordered="true" Striped="true"
+        Dense="true" @bind-SelectedItem="selectedItem"
+        T="FinancialDataPointSearchResponse"
+        Breakpoint="Breakpoint.Sm">
+            <ToolBarContent>
+                <MudText Typo="Typo.h6" Class="ml-2">Data Points List</MudText>
+                <MudSpacer />
+                <MudTextField @bind-Value="searchString" Placeholder="Search"
+                Adornment="Adornment.Start"
+                AdornmentIcon="@Icons.Material.Filled.Search"
+                IconSize="Size.Medium"
+                Class="mt-0 mb-3" Margin="Margin.Dense" Dense="true" />
+            </ToolBarContent>
+            <HeaderContent>
+                <MudTh>ID</MudTh>
+                <MudTh>Name</MudTh>
+                <MudTh>Description</MudTh>
+                <MudTh>Financial Type</MudTh>
+                <MudTh>Elements Count</MudTh>
+                <MudTh>Actions</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="ID">@context.Id</MudTd>
+                <MudTd DataLabel="Name">@context.Name</MudTd>
+                <MudTd DataLabel="Description">@context.Description</MudTd>
+                <MudTd DataLabel="Financial Type">
+                    <MudChip T="Color" Color="Color.Primary" Size="Size.Small">
+                        @context.FinancialType
+                    </MudChip>
+                </MudTd>
+                <MudTd DataLabel="Elements Count">@context.ElementsCount</MudTd>
+                <MudTd DataLabel="Actions">
+                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true">
+                        <MudMenuItem OnClick="@(() => EditDataPoint(context.Id))">
+                            <MudIcon Icon="@Icons.Material.Filled.Edit" Class="mr-2" Size="Size.Small" /> Edit
+                        </MudMenuItem>
+                        <MudMenuItem OnClick="@(() => DeleteDataPoint(context.Id))">
+                            <MudIcon Icon="@Icons.Material.Filled.Delete" Class="mr-2" Size="Size.Small" Color="Color.Error" /> Delete
+                        </MudMenuItem>
+                    </MudMenu>
+                </MudTd>
+            </RowTemplate>
+            <PagerContent>
+                <MudTablePager PageSizeOptions="new int[] { 10, 25, 50, 100 }" />
+            </PagerContent>
+            <NoRecordsContent>
+                <MudAlert Severity="Severity.Info" Class="my-2">No data points found matching your search criteria.</MudAlert>
+            </NoRecordsContent>
+        </MudTable>
+    }
+</MudContainer>
+
+@code {
+    private SearchFinancialDataPointRequest searchRequest = new();
+    private bool loading = false;
+    private bool isValid = false;
+    private MudForm form;
+    private string searchString = "";
+    private FinancialDataPointSearchResponse selectedItem = null;
+    private TableState tableState;
+
+    [Parameter]
+    [SupplyParameterFromQuery(Name = "dataPointId")]
+    public int? DataPointIdParameter { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Search();
+    }
+
+    private async Task<TableData<FinancialDataPointSearchResponse>> ServerReload(TableState state, CancellationToken token)
+    {
+        tableState = state;
+        loading = true;
+
+        try
+        {
+            ApplySearchCriteria();
+            searchRequest.Pagination = new Pagination(state.PageSize, state.Page + 1);
+            searchRequest.Sorting = new Sorting("Name", Core.Search.SortDirection.Descending);
+
+            var response = await MindApi.SearchFinancialDataPointsAsync(searchRequest);
+
+            return new TableData<FinancialDataPointSearchResponse>
+            {
+                Items = response.Data,
+                TotalItems = (int)response.TotalRecords
+            };
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error searching data points: {ex.Message}", Severity.Error);
+            return new TableData<FinancialDataPointSearchResponse>
+            {
+                Items = new List<FinancialDataPointSearchResponse>(),
+                TotalItems = 0
+            };
+        }
+        finally
+        {
+            loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void ApplySearchCriteria()
+    {
+        // No need to apply search criteria as we're using searchRequest.Name directly
+    }
+
+    private async Task Search()
+    {
+        await ServerReload(tableState ?? new TableState
+        {
+            Page = 0,
+            PageSize = 10
+        }, CancellationToken.None);
+    }
+
+    private async Task Reset()
+    {
+        searchRequest = new SearchFinancialDataPointRequest();
+        searchString = "";
+
+        if (tableState != null)
+        {
+            tableState.Page = 0;
+            await ServerReload(tableState, CancellationToken.None);
+        }
+    }
+
+    private void EditDataPoint(int id)
+    {
+        NavigationManager.NavigateTo($"/financial-data/edit/{id}");
+    }
+
+    private async Task DeleteDataPoint(int id)
+    {
+        var dialog = await DialogService.ShowMessageBox(
+            "Confirm Deletion",
+            "Are you sure you want to delete this financial data point? This action cannot be undone.",
+            yesText: "Delete",
+            cancelText: "Cancel"
+        );
+
+        if (dialog == true)
+        {
+            try
+            {
+                var result = await MindApi.DeleteFinancialDataPointAsync(id);
+                if (result.Data)
+                {
+                    Snackbar.Add("Financial data point deleted successfully", Severity.Success);
+                    await Search();
+                }
+                else
+                {
+                    Snackbar.Add("Failed to delete data point", Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error deleting data point: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+}

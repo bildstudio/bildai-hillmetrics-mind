@@ -1,0 +1,200 @@
+﻿@using HillMetrics.Core.Financial
+@using HillMetrics.MIND.API.Contracts.Requests.AiDataset
+@using HillMetrics.Normalized.Domain.Contracts.AI.Dataset
+@using HillMetrics.Normalized.Domain.Contracts.AI.Dataset.Cqrs.FileDataMapping
+@using HillMetrics.MIND.API.SDK.V1
+@inject IMindAPI MindApi
+@inject ISnackbar Snackbar
+
+<MudText Typo="Typo.h6" Class="mb-3">
+    @(IsEditMode ? "Edit Data Mappings" : "Map Financial Data")
+</MudText>
+
+@if (UploadedFile == null && !IsEditMode)
+{
+    <MudAlert Severity="Severity.Info">Upload a file first to map financial data.</MudAlert>
+}
+else
+{
+    @if (AvailableDataPoints.Count == 0)
+    {
+        <MudAlert Severity="Severity.Warning">
+            No financial data points available.
+            <MudLink Href="/financial-data/create">Create some first</MudLink>.
+        </MudAlert>
+    }
+    else
+    {
+        <MudGrid>
+            <MudItem xs="8">
+                <MudSelect T="int" Label="Select Financial Data Point"
+                           @bind-Value="selectedDataPointId"
+                           Class="mb-4">
+                    @foreach (var dataPoint in AvailableDataPoints)
+                    {
+                        <MudSelectItem Value="@dataPoint.Id">
+                            @dataPoint.Name
+                        </MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="4" Class="d-flex align-center">
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           OnClick="AddDataPoint"
+                           Disabled="selectedDataPointId == 0"
+                           FullWidth="true">
+                    Add Data Point
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+
+        @if (DataMappings.Count == 0)
+        {
+            <MudText Class="my-4">No data points mapped yet. Select data points to map from the dropdown above.</MudText>
+        }
+        else
+        {
+            <MudExpansionPanels MultiExpansion="true" Class="mb-4">
+                @foreach (var mapping in DataMappings)
+                {
+                    <DataPointMappingItem Mapping="mapping"
+                                          OnRemove="RemoveMapping" />
+                }
+            </MudExpansionPanels>
+
+            <MudButton OnClick="SaveMappings"
+                       Color="Color.Primary"
+                       Variant="Variant.Filled"
+                       Disabled="isSaving || DataMappings.Count == 0"
+                       StartIcon="@(IsEditMode ? Icons.Material.Filled.Save : Icons.Material.Filled.Save)"
+                       FullWidth="true">
+                @if (isSaving)
+                {
+                    <MudProgressCircular Class="mr-2" Size="Size.Small" Indeterminate="true" />
+                    <span>Saving...</span>
+                }
+                else
+                {
+                    <span>@(IsEditMode ? "Update Mappings" : "Save Mappings")</span>
+                }
+            </MudButton>
+
+            @if (IsEditMode)
+            {
+                <MudButton OnClick="Cancel"
+                           Color="Color.Secondary"
+                           Variant="Variant.Outlined"
+                           StartIcon="@Icons.Material.Filled.ArrowBack"
+                           FullWidth="true"
+                           Class="mt-2">
+                    Cancel
+                </MudButton>
+            }
+        }
+    }
+}
+
+@code {
+    [Parameter]
+    public FileUpload? UploadedFile { get; set; }
+
+    [Parameter]
+    public List<FileDataMapping> DataMappings { get; set; } = new();
+
+    [Parameter]
+    public List<FinancialDataPoint> AvailableDataPoints { get; set; } = new();
+
+    [Parameter]
+    public bool IsEditMode { get; set; }
+
+    [Parameter]
+    public EventCallback OnSave { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    private int selectedDataPointId;
+    private bool isSaving;
+
+    protected override void OnParametersSet()
+    {
+        if (AvailableDataPoints.Count > 0 && selectedDataPointId == 0)
+        {
+            selectedDataPointId = AvailableDataPoints[0].Id;
+        }
+    }
+
+    private async Task AddDataPoint()
+    {
+        if (selectedDataPointId == 0 || UploadedFile == null)
+            return;
+
+        try
+        {
+            var command = new CreateFileMappingRequest
+                {
+                    FileUploadId = UploadedFile.Id,
+                    FinancialDataPointId = selectedDataPointId,
+                    InstanceName = "",
+                    ElementValues = new List<ElementValueRequest>()
+                };
+
+            var result = await MindApi.CreateFileMappingAsync(command);
+
+            DataMappings.Add(result.Data);
+            Snackbar.Add("Data point mapping added successfully", Severity.Success);
+            selectedDataPointId = 0;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error adding data point mapping: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task RemoveMapping(int mappingId)
+    {
+        try
+        {
+            var result = await MindApi.DeleteFileMappingAsync(mappingId);
+
+            DataMappings.RemoveAll(m => m.Id == mappingId);
+            Snackbar.Add("Mapping removed successfully", Severity.Success);
+
+            // if (result.IsSuccess)
+            // {
+            //     DataMappings.RemoveAll(m => m.FileDataMappingId == mappingId);
+            //     Snackbar.Add("Mapping removed successfully", Severity.Success);
+            // }
+            // else
+            // {
+            //     Snackbar.Add(result.Error ?? "Failed to remove mapping", Severity.Error);
+            // }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error removing mapping: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task SaveMappings()
+    {
+        if (UploadedFile == null || DataMappings.Count == 0)
+            return;
+
+        try
+        {
+            isSaving = true;
+            await OnSave.InvokeAsync();
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private async Task Cancel()
+    {
+        await OnCancel.InvokeAsync();
+    }
+}

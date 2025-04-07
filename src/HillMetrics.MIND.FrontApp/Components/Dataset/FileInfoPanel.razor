@@ -1,0 +1,66 @@
+﻿@using HillMetrics.Normalized.Domain.Contracts.AI.Dataset
+
+<MudText Typo="Typo.h6" Class="mb-3">File Information</MudText>
+
+@if (UploadedFile != null)
+{
+    <MudPaper Class="pa-4" Elevation="3">
+        <MudText Typo="Typo.h6" Class="mb-2">
+            <MudIcon Icon="@Icons.Material.Filled.InsertDriveFile"
+                     Color="Color.Primary"
+                     Class="mr-2" />
+            File Details
+        </MudText>
+        <MudList T="FileUpload">
+            <MudListItem>
+                <MudText Typo="Typo.body1">
+                    <strong>File ID:</strong> @UploadedFile.Id
+                </MudText>
+            </MudListItem>
+            <MudListItem>
+                <MudText Typo="Typo.body1">
+                    <strong>File Name:</strong> @UploadedFile.FileName
+                </MudText>
+            </MudListItem>
+            <MudListItem>
+                <MudText Typo="Typo.body1">
+                    <strong>Type:</strong> @UploadedFile.FileType
+                </MudText>
+            </MudListItem>
+            <MudListItem>
+                <MudText Typo="Typo.body1">
+                    <strong>Size:</strong> @FormatFileSize(UploadedFile.FileSize)
+                </MudText>
+            </MudListItem>
+            <MudListItem>
+                <MudText Typo="Typo.body1">
+                    <strong>Uploaded:</strong> @UploadedFile.UploadedAt.ToLocalTime().ToString("g")
+                </MudText>
+            </MudListItem>
+        </MudList>
+    </MudPaper>
+}
+else
+{
+    <MudAlert Severity="Severity.Warning">File information not available.</MudAlert>
+}
+
+@code {
+    [Parameter]
+    public FileUpload? UploadedFile { get; set; }
+
+    private string FormatFileSize(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB", "TB" };
+        int order = 0;
+        double size = bytes;
+
+        while (size >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            size /= 1024;
+        }
+
+        return $"{size:0.##} {sizes[order]}";
+    }
+}

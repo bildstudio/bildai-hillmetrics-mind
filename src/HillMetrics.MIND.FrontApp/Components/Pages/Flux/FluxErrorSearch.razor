@@ -23,51 +23,51 @@
                     <!-- Flux ID -->
                     <MudItem xs="12" md="6">
                         <SearchCriteriaComponent T="int"
-                                                 SearchCriteria="@fluxIdSearchCriteria"
-                                                 SearchCriteriaChanged="@((criteria) => fluxIdSearchCriteria = criteria)"
-                                                 Label="Flux ID" />
+                        SearchCriteria="@fluxIdSearchCriteria"
+                        SearchCriteriaChanged="@((criteria) => fluxIdSearchCriteria = criteria)"
+                        Label="Flux ID" />
                     </MudItem>
 
                     <!-- Error Type -->
                     <MudItem xs="12" md="6">
                         <SearchCriteriaComponent T="string"
-                                                 SearchCriteria="@errorTypeSearchCriteria"
-                                                 SearchCriteriaChanged="@((criteria) => errorTypeSearchCriteria = criteria)"
-                                                 Label="Error Type" />
+                        SearchCriteria="@errorTypeSearchCriteria"
+                        SearchCriteriaChanged="@((criteria) => errorTypeSearchCriteria = criteria)"
+                        Label="Error Type" />
                     </MudItem>
 
                     <!-- External ID -->
                     <MudItem xs="12" md="6">
                         <SearchCriteriaComponent T="string"
-                                                 SearchCriteria="@externalIdSearchCriteria"
-                                                 SearchCriteriaChanged="@((criteria) => externalIdSearchCriteria = criteria)"
-                                                 Label="External ID" />
+                        SearchCriteria="@externalIdSearchCriteria"
+                        SearchCriteriaChanged="@((criteria) => externalIdSearchCriteria = criteria)"
+                        Label="External ID" />
                     </MudItem>
 
                     <!-- Error Message -->
                     <MudItem xs="12" md="6">
                         <SearchCriteriaComponent T="string"
-                                                 SearchCriteria="@messageSearchCriteria"
-                                                 SearchCriteriaChanged="@((criteria) => messageSearchCriteria = criteria)"
-                                                 Label="Error Message" />
+                        SearchCriteria="@messageSearchCriteria"
+                        SearchCriteriaChanged="@((criteria) => messageSearchCriteria = criteria)"
+                        Label="Error Message" />
                     </MudItem>
 
                     <!-- Metadata -->
                     <MudItem xs="12" md="6">
                         <SearchCriteriaComponent T="string"
-                                                 SearchCriteria="@metadataSearchCriteria"
-                                                 SearchCriteriaChanged="@((criteria) => metadataSearchCriteria = criteria)"
-                                                 Label="Metadata" />
+                        SearchCriteria="@metadataSearchCriteria"
+                        SearchCriteriaChanged="@((criteria) => metadataSearchCriteria = criteria)"
+                        Label="Metadata" />
                     </MudItem>
 
                     <!-- Action Type -->
                     <MudItem xs="12" md="6">
                         <MudSelect T="FluxActionType?" @bind-Value="searchRequest.ActionType"
-                                   Label="Action Type" Variant="Variant.Outlined" Dense="true" Margin="Margin.Dense">
+                        Label="Action Type" Variant="Variant.Outlined" Dense="true" Margin="Margin.Dense">
                             <MudSelectItem Value="@((FluxActionType?)null)">All</MudSelectItem>
                             @foreach (var type in Enum.GetValues<FluxActionType>())
                             {
-                            <MudSelectItem T="FluxActionType?" Value="@type">@type</MudSelectItem>
+                                <MudSelectItem T="FluxActionType?" Value="@type">@type</MudSelectItem>
                             }
                         </MudSelect>
                     </MudItem>
@@ -75,9 +75,9 @@
                     <!-- Created Date -->
                     <MudItem xs="12" md="6">
                         <SearchCriteriaComponent T="DateTime"
-                                                 SearchCriteria="@createdAtSearchCriteria"
-                                                 SearchCriteriaChanged="@((criteria) => createdAtSearchCriteria = criteria)"
-                                                 Label="Created Date" />
+                        SearchCriteria="@createdAtSearchCriteria"
+                        SearchCriteriaChanged="@((criteria) => createdAtSearchCriteria = criteria)"
+                        Label="Created Date" />
                     </MudItem>
                 </MudGrid>
             </MudForm>
@@ -95,17 +95,34 @@
     else
     {
         <MudTable ServerData="@ServerReload"
-                 Hover="true" Bordered="true" Striped="true"
-                 Dense="true" @bind-SelectedItem="selectedItem" T="FluxErrorSearchResponse"
-                 Breakpoint="Breakpoint.Sm">
+        Hover="true" Bordered="true" Striped="true"
+        Dense="true" @bind-SelectedItems="selectedItems" MultiSelection="true"
+        T="FluxErrorSearchResponse"
+        Breakpoint="Breakpoint.Sm">
             <ToolBarContent>
                 <MudText Typo="Typo.h6" Class="ml-2">Flux Errors</MudText>
                 <MudSpacer />
+                @if (selectedItems.Any())
+                {
+                    <MudButton Color="Color.Error" 
+                    OnClick="DeleteSelectedErrors" 
+                    StartIcon="@Icons.Material.Filled.Delete"
+                    Size="Size.Small">
+                        Delete Selected (@selectedItems.Count)
+                    </MudButton>
+                }
                 <MudTextField T="string" @bind-Value="searchString" Placeholder="Search" Adornment="Adornment.Start"
-                              AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium"
-                              Class="mt-0 mb-3" Margin="Margin.Dense" Dense="true"></MudTextField>
+                AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium"
+                Class="mt-0 mb-3" Margin="Margin.Dense" Dense="true"></MudTextField>
             </ToolBarContent>
             <HeaderContent>
+                <MudTh>
+                    <MudTableSortLabel T="FluxErrorSearchResponse">
+                        <MudCheckBox T="bool"
+                                     ValueChanged="@(b => SelectAllItems(b))"
+                        Color="Color.Primary"/>
+                    </MudTableSortLabel>
+                </MudTh>
                 <MudTh>Flux ID</MudTh>
                 <MudTh>Error Type</MudTh>
                 <MudTh>External ID</MudTh>
@@ -115,6 +132,11 @@
                 <MudTh>Actions</MudTh>
             </HeaderContent>
             <RowTemplate>
+                <MudTd>
+                    <MudCheckBox T="bool"
+                                 ValueChanged="@(b => OnRowChecked(b, context))"
+                    Color="Color.Primary" />
+                </MudTd>
                 <MudTd DataLabel="Flux ID">
                     <MudLink Href="@($"/flux/details/{context.FluxId}")">@context.FluxId</MudLink>
                 </MudTd>
@@ -133,10 +155,10 @@
                     <MudTooltip Text="@(context.Message ?? string.Empty)" Placement="Placement.Top">
                         <div class="mud-text-truncate" style="max-width: 300px;">
                             @(string.IsNullOrEmpty(context.Message)
-                                ? "-"
-                                : (context.Message.Length > 200
-                                    ? context.Message.Substring(0, 200) + "..."
-                                    : context.Message))
+                                    ? "-"
+                                    : (context.Message.Length > 200
+                                        ? context.Message.Substring(0, 200) + "..."
+                                        : context.Message))
                         </div>
                     </MudTooltip>
                 </MudTd>
@@ -176,7 +198,9 @@
     private bool isValid = false;
     private MudForm form;
     private string searchString = "";
-    private FluxErrorSearchResponse selectedItem = null;
+    private HashSet<FluxErrorSearchResponse> selectedItems = new();
+
+    private bool selectedAll;
 
     // SearchCriteria for each field
     private SearchCriteria<int> fluxIdSearchCriteria = new();
@@ -414,5 +438,71 @@
             error.ActionType.ToString().Contains(searchString, StringComparison.OrdinalIgnoreCase) ||
             error.Message.Contains(searchString, StringComparison.OrdinalIgnoreCase) ||
             (error.Metadata?.Contains(searchString, StringComparison.OrdinalIgnoreCase) ?? false);
+    }
+
+    private async Task DeleteSelectedErrors()
+    {
+        var parameters = new DialogParameters
+        {
+            { "ContentText", $"Are you sure you want to delete {selectedItems.Count} selected errors?" },
+            { "ButtonText", "Delete" },
+            { "CancelText", "Cancel" },
+            { "Color", Color.Error }
+        };
+
+        var dialog = DialogService.Show<MudMessageBox>("Confirm Delete", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            try
+            {
+                var errorIds = selectedItems.Select(e => e.Id).ToList();
+                var response = await MindApi.DeleteFluxErrorsAsync(errorIds);
+
+                if (response.Data != null)
+                {
+                    Snackbar.Add($"Successfully deleted {selectedItems.Count} errors", Severity.Success);
+                    selectedItems.Clear();
+                    await Search(); // Refresh the table
+                }
+                else
+                {
+                    Snackbar.Add("Failed to delete errors", Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error deleting errors: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private void SelectAllItems(bool selected)
+    {
+        if (selected && errors != null)
+        {
+            selectedItems.Clear();
+            foreach (var error in errors)
+            {
+                selectedItems.Add(error);
+            }
+        }
+        else
+        {
+            selectedItems.Clear();
+        }
+    }
+
+    private void OnRowChecked(bool selected, FluxErrorSearchResponse error)
+    {
+        if (selected)
+        {
+            selectedItems.Add(error);
+        }
+        else
+        {
+            selectedItems.Remove(error);
+        }
     }
 }

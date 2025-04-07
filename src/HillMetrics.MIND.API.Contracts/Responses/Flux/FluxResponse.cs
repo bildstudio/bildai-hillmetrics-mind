@@ -30,6 +30,8 @@ namespace HillMetrics.MIND.API.Contracts.Responses.Flux
         public List<FluxIdentificationHistoryDto> FluxIdentificationHistory { get; set; } = new();
         public List<FluxErrorsDto> FluxErrors { get; set; } = new();
         public List<FluxFinancialDataPointDto> FinancialDataPoints { get; set; } = new();
+        public bool HasCustomFetching { get; set; }
+        public bool HasCustomProcessing { get; set; }
     }
 
     public class TriggerPeriodDto

@@ -1,0 +1,296 @@
+﻿@page "/financial-data/create"
+@page "/financial-data/edit/{Id:int?}"
+@using HillMetrics.MIND.API.Contracts.Requests.AiDataset
+@using HillMetrics.Normalized.Domain.Contracts.AI.Dataset
+@using HillMetrics.MIND.API.SDK.V1
+@using HillMetrics.Core.Financial
+@inject IMindAPI MindApi
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+
+<MudText Typo="Typo.h4" Class="mb-4">@(IsEditMode ? "Edit" : "Create") Financial Data Point</MudText>
+
+@if (isLoading)
+{
+    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+}
+else
+{
+    <MudCard Class="mb-6">
+        <MudCardContent>
+            <MudGrid>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="dataPoint.Name"
+                                Label="Data Point Name"
+                                Required="true"
+                                RequiredError="Name is required" />
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudSelect T="FinancialType"
+                              @bind-Value="dataPoint.FinancialType"
+                              Label="Financial Type"
+                              Required="true"
+                              RequiredError="Financial Type is required"
+                              AnchorOrigin="Origin.BottomCenter">
+                        @foreach (var type in Enum.GetValues<FinancialType>())
+                        {
+                            <MudSelectItem Value="@type">@type</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="dataPoint.Description"
+                                 Label="Description"
+                                 Lines="3"
+                                 Variant="Variant.Outlined" />
+                </MudItem>
+            </MudGrid>
+        </MudCardContent>
+    </MudCard>
+
+    <div class="d-flex justify-space-between align-center mb-4">
+        <MudText Typo="Typo.h5">Elements</MudText>
+        <MudText Typo="Typo.caption" Color="Color.Info">
+            <MudIcon Icon="@Icons.Material.Filled.DragIndicator" Size="Size.Small" Class="mr-1" />
+            Drag elements to reorder them
+        </MudText>
+    </div>
+
+    <MudPaper Class="pa-4 mb-4">
+        <MudDragDropZone T="FinancialDataPointElementRequest"
+                         Items="dataPoint.Elements"
+                         ItemDraggable="true"
+                         ItemDropped="ItemDropped"
+                         Class="d-flex flex-column gap-4">
+            @if (dataPoint.Elements.Count == 0)
+            {
+                <MudAlert Severity="Severity.Info">No elements added yet. Click "Add Element" to start.</MudAlert>
+            }
+            else
+            {
+                @foreach (var element in dataPoint.Elements)
+                {
+                    <MudPaper Elevation="2" Class="pa-2">
+                        <MudDragDropItem T="FinancialDataPointElementRequest"
+                                        Item="element"
+                                        Class="mud-width-full">
+                            <MudCard Elevation="0">
+                                <MudCardHeader Class="py-1">
+                                    <CardHeaderAvatar>
+                                        <MudAvatar Color="Color.Primary" Size="Size.Small">@(element.Position)</MudAvatar>
+                                    </CardHeaderAvatar>
+                                    <CardHeaderContent>
+                                        <MudText Typo="Typo.body1">
+                                            @(string.IsNullOrEmpty(element.PropertyName) ? "New Element" : element.PropertyName)
+                                        </MudText>
+                                    </CardHeaderContent>
+                                    <CardHeaderActions>
+                                        <MudIconButton Icon="@Icons.Material.Filled.DragIndicator"
+                                                      Size="Size.Small"
+                                                      Class="mud-drag-handle" />
+                                    </CardHeaderActions>
+                                </MudCardHeader>
+                                <MudCardContent>
+                                    <MudGrid>
+                                        <MudItem xs="12" md="4">
+                                            <MudTextField @bind-Value="element.PropertyName"
+                                                         Label="Property Name"
+                                                         Required="true" />
+                                        </MudItem>
+                                        <MudItem xs="12" md="3">
+                                            <MudSelect T="MappingTypePrimitive"
+                                                      @bind-Value="element.MappingPrimitiveValue"
+                                                      Label="Primitive Data Type"
+                                                      Required="true"
+                                                      RequiredError="Primitive Type is required"
+                                                      AnchorOrigin="Origin.BottomCenter">
+                                                @foreach (var type in Enum.GetValues<MappingTypePrimitive>())
+                                                {
+                                                    <MudSelectItem Value="@type">@type</MudSelectItem>
+                                                }
+                                            </MudSelect>
+                                        </MudItem>
+                                        <MudItem xs="12" md="5">
+                                            <MudTextField @bind-Value="element.Description"
+                                                         Label="Description" />
+                                        </MudItem>
+                                    </MudGrid>
+                                </MudCardContent>
+                                <MudCardActions>
+                                    <MudButton OnClick="() => RemoveElement(element)"
+                                              Color="Color.Error"
+                                              StartIcon="@Icons.Material.Filled.Delete">
+                                        Remove Element
+                                    </MudButton>
+                                </MudCardActions>
+                            </MudCard>
+                        </MudDragDropItem>
+                    </MudPaper>
+                }
+            }
+        </MudDragDropZone>
+    </MudPaper>
+
+    <MudButton OnClick="AddElement"
+               Color="Color.Primary"
+               Variant="Variant.Outlined"
+               StartIcon="@Icons.Material.Filled.Add"
+               Class="mb-4 mt-4">
+        Add Element
+    </MudButton>
+
+    <MudDivider Class="my-6" />
+
+    <MudButton OnClick="SaveDataPoint"
+               Color="Color.Primary"
+               Variant="Variant.Filled"
+               Size="Size.Large"
+               Disabled="@(!CanSave())">
+        @(IsEditMode ? "Update" : "Save") Data Point
+    </MudButton>
+}
+
+@code {
+    [Parameter]
+    public int? Id { get; set; }
+
+    private bool IsEditMode => Id.HasValue;
+    private CreateFinancialDataPointRequest dataPoint = new();
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (IsEditMode)
+        {
+            await LoadDataPoint();
+        }
+        else
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task LoadDataPoint()
+    {
+        try
+        {
+            var result = await MindApi.GetFinancialDataPointAsync(Id!.Value);
+
+            dataPoint = new CreateFinancialDataPointRequest() {
+                    Description = result.Data.Description,
+                    Elements = result.Data.Elements.Select(e => new FinancialDataPointElementRequest
+                    {
+                        Id = e.Id,
+                        FinancialDataPointId = e.FinancialDataPointId,
+                        PropertyName = e.PropertyName,
+                        Description = e.Description,
+                        PotentialValues = e.PotentialValues.ToList(),
+                        Position = e.Position,
+                        MappingPrimitiveValue = e.MappingPrimitiveValue
+                    }).ToList(),
+                    FinancialType = result.Data.FinancialType,
+                    Id = result.Data.Id,
+                    Name = result.Data.Name
+            };
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading data: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void AddElement()
+    {
+        int nextPosition = dataPoint.Elements.Count > 0 ? dataPoint.Elements.Max(e => e.Position ?? 0) + 1 : 1;
+        dataPoint.Elements.Add(new FinancialDataPointElementRequest {
+            Position = nextPosition,
+            MappingPrimitiveValue = MappingTypePrimitive.String // Valeur par défaut
+        });
+        StateHasChanged();
+    }
+
+    private void RemoveElement(FinancialDataPointElementRequest element)
+    {
+        dataPoint.Elements.Remove(element);
+        UpdateElementPositions();
+        StateHasChanged();
+    }
+
+    private void ItemDropped(MudItemDropInfo<FinancialDataPointElementRequest> dropInfo)
+    {
+        // Récupérer l'élément
+        var item = dropInfo.Item;
+
+        // Enlever l'élément de sa position actuelle
+        dataPoint.Elements.Remove(item);
+
+        // Insérer l'élément à sa nouvelle position
+        dataPoint.Elements.Insert(dropInfo.IndexInZone, item);
+
+        // Mettre à jour les positions
+        UpdateElementPositions();
+
+        // Rafraîchir l'UI
+        StateHasChanged();
+    }
+
+    private void UpdateElementPositions()
+    {
+        for (int i = 0; i < dataPoint.Elements.Count; i++)
+        {
+            dataPoint.Elements[i].Position = i + 1;
+        }
+    }
+
+    private bool CanSave()
+    {
+        if (string.IsNullOrWhiteSpace(dataPoint.Name))
+            return false;
+
+        if (dataPoint.Elements.Count == 0)
+            return false;
+
+        return dataPoint.Elements.All(e => !string.IsNullOrWhiteSpace(e.PropertyName));
+    }
+
+    private async Task SaveDataPoint()
+    {
+        try
+        {
+            if (IsEditMode)
+            {
+                var result = await MindApi.UpdateFinancialDataPointAsync(dataPoint.Id, dataPoint);
+                Snackbar.Add("Financial data point updated successfully", Severity.Success);
+                NavigationManager.NavigateTo("/financial-data/list");
+            }
+            else
+            {
+                var result = await MindApi.CreateFinancialDataPointAsync(dataPoint);
+
+                if (result.Data != null)
+                {
+                    Snackbar.Add("Financial data point created successfully", Severity.Success);
+                    NavigationManager.NavigateTo("/financial-data/list");
+                }
+                else
+                {
+                    Snackbar.Add("Failed to create data point", Severity.Error);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error saving data point: {ex.Message}", Severity.Error);
+        }
+    }
+}
+
+<style>
+    .mud-drag-handle {
+        cursor: move;
+    }
+</style>

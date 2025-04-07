@@ -1,0 +1,218 @@
+﻿@using HillMetrics.Normalized.Domain.Contracts.AI.Dataset
+@using HillMetrics.MIND.API.SDK.V1
+@using Refit
+@inject IMindAPI MindApi
+@inject ISnackbar Snackbar
+
+<MudText Typo="Typo.h6" Class="mb-3">Upload File</MudText>
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <MudAlert Severity="Severity.Error" Class="mb-3">@errorMessage</MudAlert>
+}
+
+@if (DuplicateFileFound)
+{
+    <MudAlert Severity="Severity.Warning" Class="mb-3">
+        This file has already been uploaded. Using the existing file (ID: @UploadedFile?.Id).
+    </MudAlert>
+}
+
+@if (selectedFile == null)
+{
+    <MudText Class="mb-4">Select a file to upload (.csv, .xls, .xlsx, .pdf, .xml, .json, .html)</MudText>
+
+    <MudFileUpload T="IBrowserFile" Accept=".csv,.xls,.xlsx,.pdf,.xml,.json,.html"
+                   OnFilesChanged="OnFileChanged" MaximumFileCount="1">
+        <MudButton HtmlTag="label"
+                   Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.CloudUpload">
+            Choose File
+        </MudButton>
+    </MudFileUpload>
+}
+else
+{
+    <MudList T="object">
+        <MudListItem>
+            <MudText Typo="Typo.body1">
+                <strong>File Name:</strong> @selectedFileName
+            </MudText>
+        </MudListItem>
+        <MudListItem>
+            <MudText Typo="Typo.body1">
+                <strong>Size:</strong> @FormatFileSize(selectedFileSize)
+            </MudText>
+        </MudListItem>
+        <MudListItem>
+            <MudText Typo="Typo.body1">
+                <strong>Type:</strong> @selectedFileContentType
+            </MudText>
+        </MudListItem>
+    </MudList>
+
+    <MudButtonGroup Class="mt-4">
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Default"
+                   OnClick="ClearFile">
+            Clear
+        </MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="UploadFile"
+                   Disabled="isUploading">
+            @if (isUploading)
+            {
+                <MudProgressCircular Class="mr-2" Size="Size.Small" Indeterminate="true" />
+                <span>Uploading...</span>
+            }
+            else
+            {
+                <span>Upload</span>
+            }
+        </MudButton>
+    </MudButtonGroup>
+}
+
+@if (UploadedFile != null)
+{
+    <MudPaper Class="pa-4 mt-4" Elevation="3">
+        <MudText Typo="Typo.h6" Class="mb-2">
+            <MudIcon Icon="@Icons.Material.Filled.CheckCircle"
+                     Color="Color.Success"
+                     Class="mr-2" />
+            File @(DuplicateFileFound ? "Found" : "Uploaded Successfully")
+        </MudText>
+        <MudText Typo="Typo.body1">
+            <strong>File ID:</strong> @UploadedFile.Id
+        </MudText>
+        <MudText Typo="Typo.body1">
+            <strong>File:</strong> @UploadedFile.FileName
+        </MudText>
+        <MudText Typo="Typo.body1">
+            <strong>Type:</strong> @UploadedFile.FileType
+        </MudText>
+        <MudText Typo="Typo.body1">
+            <strong>Size:</strong> @FormatFileSize(UploadedFile.FileSize)
+        </MudText>
+        <MudText Typo="Typo.body1">
+            <strong>Uploaded:</strong> @UploadedFile.UploadedAt.ToLocalTime().ToString("g")
+        </MudText>
+    </MudPaper>
+}
+
+@code {
+    [Parameter]
+    public FileUpload? UploadedFile { get; set; }
+
+    [Parameter]
+    public bool DuplicateFileFound { get; set; }
+
+    [Parameter]
+    public EventCallback<(FileUpload, bool)> OnFileUploaded { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnError { get; set; }
+
+    private IBrowserFile? selectedFile;
+    private string errorMessage = string.Empty;
+    private bool isUploading;
+    private string selectedFileName = string.Empty;
+    private long selectedFileSize;
+    private string selectedFileContentType = string.Empty;
+
+    private async Task OnFileChanged(InputFileChangeEventArgs e)
+    {
+        try
+        {
+            selectedFile = e.File;
+            selectedFileName = selectedFile.Name;
+            selectedFileSize = selectedFile.Size;
+            selectedFileContentType = selectedFile.ContentType;
+            errorMessage = string.Empty;
+
+            // Validate file size (max 10MB)
+            if (selectedFile.Size > 10 * 1024 * 1024)
+            {
+                errorMessage = "File is too large. Maximum size is 10MB.";
+                await OnError.InvokeAsync(errorMessage);
+                ClearFile();
+                return;
+            }
+
+            // Validate file type
+            var fileExtension = Path.GetExtension(selectedFile.Name).ToLowerInvariant();
+            var allowedExtensions = new[] { ".csv", ".xls", ".xlsx", ".pdf", ".xml", ".json", ".html" };
+            if (!allowedExtensions.Contains(fileExtension))
+            {
+                errorMessage = "File type not supported. Allowed types: CSV, Excel, PDF, XML, JSON, HTML.";
+                await OnError.InvokeAsync(errorMessage);
+                ClearFile();
+                return;
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error processing file: {ex.Message}";
+            await OnError.InvokeAsync(errorMessage);
+            ClearFile();
+        }
+    }
+
+    private void ClearFile()
+    {
+        selectedFile = null;
+        selectedFileName = string.Empty;
+        selectedFileSize = 0;
+        selectedFileContentType = string.Empty;
+        errorMessage = string.Empty;
+    }
+
+    private async Task UploadFile()
+    {
+        if (selectedFile == null)
+        {
+            return;
+        }
+
+        try
+        {
+            isUploading = true;
+            errorMessage = string.Empty;
+
+            using var stream = selectedFile.OpenReadStream(maxAllowedSize: 10485760); // 10MB
+            var streamContent = new StreamPart(stream, selectedFileName, selectedFileContentType);
+
+            var result = await MindApi.CreateFileUploadAsync(streamContent);
+            Snackbar.Add("File uploaded successfully!", Severity.Success);
+            await OnFileUploaded.InvokeAsync((result.Data, false));
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error uploading file: {ex.Message}";
+            await OnError.InvokeAsync(errorMessage);
+            Snackbar.Add(errorMessage, Severity.Error);
+        }
+        finally
+        {
+            isUploading = false;
+            ClearFile();
+        }
+    }
+
+    private string FormatFileSize(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB", "TB" };
+        int order = 0;
+        double size = bytes;
+
+        while (size >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            size /= 1024;
+        }
+
+        return $"{size:0.##} {sizes[order]}";
+    }
+}

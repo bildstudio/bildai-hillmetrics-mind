@@ -15,7 +15,7 @@ namespace HillMetrics.MIND.API.Tests.Fakers
         {
             StrictMode(true)
                 .RuleFor(s => s.Name, set => set.Name.Random.String())
-                .RuleFor(s => s.DataType, set => set.Random.Enum<FinancialDataPoint>())
+                //.RuleFor(s => s.DataType, set => set.Random.Enum<FinancialDataPoint>())
                 .RuleFor(s => s.ProductType, set => set.Random.Enum<FinancialType>())
                 .RuleFor(s => s.File, set => null!);
         }

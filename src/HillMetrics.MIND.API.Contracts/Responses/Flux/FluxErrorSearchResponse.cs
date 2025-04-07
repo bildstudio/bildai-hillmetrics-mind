@@ -9,6 +9,7 @@ namespace HillMetrics.MIND.API.Contracts.Responses.Flux
 {
     public class FluxErrorSearchResponse
     {
+        public required int Id { get; set; }
         public required int FluxId { get; set; }
         public required string FluxErrorType { get; set; }
         public required string ExternalId { get; set; }

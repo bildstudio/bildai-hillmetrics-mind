@@ -1,3 +1,5 @@
+using HillMetrics.Core.Http.Handler;
+using HillMetrics.Core.Http.Resilience;
 using HillMetrics.MIND.API.Contracts.Converter;
 using HillMetrics.MIND.API.SDK.V1;
 using Microsoft.Extensions.DependencyInjection;
@@ -95,6 +97,60 @@ namespace HillMetrics.MIND.API.SDK
                 });
 
             return services;
+        }
+
+        /// <summary>
+        /// Adds the MIND API client with HillMetrics HTTP client capabilities (logging, resilience, correlation ID, etc.)
+        /// </summary>
+        /// <param name="services">The service collection</param>
+        /// <param name="baseAddress">The base address of the MIND API</param>
+        /// <param name="consumer">The API consumer identifier</param>
+        /// <param name="httpClientTimeout">The HTTP client timeout (default: 30 seconds)</param>
+        /// <returns>The HTTP client builder for additional configuration</returns>
+        public static IHttpClientBuilder AddHillMetricsMindApiSDK(
+            this IServiceCollection services,
+            string baseAddress,
+            string consumer,
+            TimeSpan? httpClientTimeout = null)
+        {
+            services.AddTransient<LoggingHttpRequestHandler>();
+            services.AddTransient<CorrelationIdDelegatingHandler>();
+
+            httpClientTimeout ??= TimeSpan.FromMinutes(5);
+
+            var refitSettings = new Refit.RefitSettings
+            {
+                ContentSerializer = new Refit.SystemTextJsonContentSerializer(new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                    DictionaryKeyPolicy = JsonNamingPolicy.CamelCase,
+                    Converters = { new HillMetrics.MIND.API.Contracts.Converter.FluxMetadataDtoJsonConverter() }
+                }),
+            };
+
+            // Add Refit client for IMindAPI
+            var httpClientBuilder = services
+                .AddRefitClient<HillMetrics.MIND.API.SDK.V1.IMindAPI>()
+                .ConfigureHttpClient(s =>
+                {
+                    s.BaseAddress = new Uri(baseAddress);
+                    s.DefaultRequestHeaders.Add("x-caller", consumer);
+                    s.Timeout = httpClientTimeout.Value;
+                });
+
+            //httpClientBuilder.AddHillMetricsResilience(options =>
+            //{
+            //    options.Retry = new Microsoft.Extensions.Http.Resilience.HttpRetryStrategyOptions()
+            //    {
+            //        MaxRetryAttempts = 1
+            //    };
+            //});
+
+            httpClientBuilder.AddServiceDiscovery();
+            httpClientBuilder.AddHttpMessageHandler<LoggingHttpRequestHandler>();
+            httpClientBuilder.AddHttpMessageHandler<CorrelationIdDelegatingHandler>();
+
+            return httpClientBuilder;
         }
     }
 }

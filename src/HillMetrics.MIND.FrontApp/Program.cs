@@ -1,14 +1,15 @@
 using HillMetrics.MIND.FrontApp.Components;
-using HillMetrics.MIND.FrontApp.Services;
 using MudBlazor.Services;
 using MudBlazor;
-using HillMetrics.MIND.FrontApp.Services.Base;
 using HillMetrics.MIND.API.SDK;
 using HillMetrics.Core;
 using HillMetrics.Core.Monitoring.Logging;
 using HillMetrics.Core.Monitoring;
-using HillMetrics.MIND.API.SDK.V1;
 using HillMetrics.Core.Http.Extensions;
+using HillMetrics.MIND.FrontApp.Services;
+using HillMetrics.Normalized.Domain.Contracts.Repository;
+using HillMetrics.Orchestrator.ServicesNames;
+using HillMetrics.Normalized.Infrastructure.Database.Repository;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -22,13 +23,16 @@ builder.AddHillMetricsServiceDefaults();
 builder.Services.ConfigureHillMetricsDefaultHttpClient();
 
 var mindApi = builder.Configuration.GetValue<string>("Services:MindApi", $"https+http://{HillMetrics.Orchestrator.ServicesNames.Services.MindAPI}");
-builder.Services.AddMindApiSDK(mindApi);
+builder.Services.AddHillMetricsMindApiSDK(mindApi, HillMetrics.Orchestrator.ServicesNames.Services.MindFrontApp);
 
 builder.Services.AddHillMetricsHttpClient("MindAPI", client =>
 {
     client.BaseAddress = new Uri(mindApi);
     client.Timeout = TimeSpan.FromMinutes(5);
 });
+
+builder.Services.AddTransient<FileUploadService>();
+builder.Services.AddTransient<MappingExportService>();
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
@@ -45,10 +49,7 @@ builder.Services.AddMudServices(config =>
     config.SnackbarConfiguration.HideTransitionDuration = 500;
     config.SnackbarConfiguration.ShowTransitionDuration = 200;
 });
-
-// Register services for API communication
-builder.Services.AddScoped<IFluxService, FluxService>();
-builder.Services.AddScoped<ISourceService, SourceService>();
+builder.Services.AddMudMarkdownServices();
 
 var app = builder.Build();
 

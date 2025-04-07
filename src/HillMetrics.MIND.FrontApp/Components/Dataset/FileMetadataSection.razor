@@ -1,0 +1,225 @@
+﻿@using HillMetrics.Normalized.Domain.Contracts.AI.Dataset
+@using HillMetrics.Core.Financial
+
+<MudList T="FileUpload" Dense="true">
+    <MudListItem>
+        <MudText><strong>File ID:</strong> @File.Id</MudText>
+    </MudListItem>
+    <MudListItem>
+        <div class="d-flex align-center">
+            <MudText><strong>File Name:</strong></MudText>
+            @if (!IsEditingFileName)
+            {
+                <MudChip Color="Color.Primary"
+                Size="Size.Small"
+                Class="ml-2"
+                OnClick="@(() => StartEditingFileName())">
+                    @File.FileName
+                </MudChip>
+            }
+            else
+            {
+                <MudTextField @bind-Value="editedFileName"
+                Immediate="true"
+                Class="ml-2"
+                Style="min-width: 200px;"
+                Variant="Variant.Outlined"
+                OnBlur="SaveFileName"
+                OnKeyDown="@(e => { if (e.Key == "Enter") SaveFileName(); })"
+                AutoFocus="true" />
+            }
+        </div>
+    </MudListItem>
+    <MudListItem>
+        <MudText><strong>Type:</strong> @File.FileType</MudText>
+    </MudListItem>
+    <MudListItem>
+        <MudText><strong>Size:</strong> @FormatFileSize(File.FileSize)</MudText>
+    </MudListItem>
+    <MudListItem>
+        <MudText><strong>Uploaded:</strong> @File.UploadedAt.ToLocalTime().ToString("g")</MudText>
+    </MudListItem>
+    <MudListItem>
+        <div class="d-flex align-center">
+            <MudText><strong>Status:</strong></MudText>
+            @if (!IsEditingStatus)
+            {
+                <MudChip Color="Color.Primary"
+                Size="Size.Small"
+                Class="ml-2"
+                OnClick="@(() => IsEditingStatus = true)">
+                    @File.MappingStatus.ToString()
+                </MudChip>
+            }
+            else
+            {
+                <MudSelect T="MappingStatus"
+                Value="File.MappingStatus"
+                ValueChanged="OnStatusChanged"
+                Immediate="true"
+                Class="ml-2"
+                Style="min-width: 150px;"
+                OnBlur="@(() => IsEditingStatus = false)"
+                SelectedValuesChanged="@(() => IsEditingStatus = false)">
+                    @foreach (var status in Enum.GetValues<MappingStatus>())
+                    {
+                        <MudSelectItem Value="@status">@status.ToString()</MudSelectItem>
+                    }
+                </MudSelect>
+            }
+        </div>
+    </MudListItem>
+    <MudListItem>
+        <div class="d-flex align-center">
+            <MudText><strong>Difficulty:</strong></MudText>
+            @if (!IsEditingDifficulty)
+            {
+                <MudChip Color="@GetDifficultyColor(File.Difficulty)"
+                Size="Size.Small"
+                Class="ml-2"
+                OnClick="@(() => IsEditingDifficulty = true)">
+                    @File.Difficulty.ToString()
+                </MudChip>
+            }
+            else
+            {
+                <MudSelect T="FileDifficulty"
+                Value="File.Difficulty"
+                ValueChanged="OnDifficultyChanged"
+                Immediate="true"
+                Class="ml-2"
+                Style="min-width: 150px;"
+                OnBlur="@(() => IsEditingDifficulty = false)"
+                SelectedValuesChanged="@(() => IsEditingDifficulty = false)">
+                    @foreach (var difficulty in Enum.GetValues<FileDifficulty>())
+                    {
+                        <MudSelectItem Value="@difficulty">@difficulty.ToString()</MudSelectItem>
+                    }
+                </MudSelect>
+            }
+        </div>
+    </MudListItem>
+    <MudListItem>
+        <div class="d-flex align-center">
+            <MudText><strong>Financial Type:</strong></MudText>
+            @if (!IsEditingFinancialType)
+            {
+                <MudChip Color="@(File.FinancialType == FinancialType.Undefined ? Color.Error : Color.Primary)"
+                Size="Size.Small"
+                Class="ml-2"
+                OnClick="@(() => IsEditingFinancialType = true)">
+                    @File.FinancialType.ToString()
+                </MudChip>
+                @if (File.FinancialType == FinancialType.Undefined)
+                {
+                    <MudText Color="Color.Error" Class="ml-2" Typo="Typo.caption">
+                        Financial Type is required
+                    </MudText>
+                }
+            }
+            else
+            {
+                <MudSelect T="FinancialType"
+                Value="File.FinancialType"
+                ValueChanged="OnFinancialTypeChanged"
+                Immediate="true"
+                Class="ml-2"
+                Style="min-width: 150px;"
+                OnBlur="@(() => IsEditingFinancialType = false)"
+                SelectedValuesChanged="@(() => IsEditingFinancialType = false)">
+                    @foreach (var type in Enum.GetValues<FinancialType>().Where(t => t != FinancialType.Undefined))
+                    {
+                        <MudSelectItem Value="@type">@type.ToString()</MudSelectItem>
+                    }
+                </MudSelect>
+            }
+        </div>
+    </MudListItem>
+</MudList>
+
+@code {
+    [Parameter] public FileUpload File { get; set; } = default!;
+    [Parameter] public EventCallback<string> OnFileNameUpdated { get; set; }
+    [Parameter] public EventCallback<MappingStatus> OnStatusUpdated { get; set; }
+    [Parameter] public EventCallback<FileDifficulty> OnDifficultyUpdated { get; set; }
+    [Parameter] public EventCallback<FinancialType> OnFinancialTypeUpdated { get; set; }
+
+    private bool IsEditingFileName;
+    private string editedFileName = string.Empty;
+    private bool IsEditingStatus;
+    private bool IsEditingDifficulty;
+    private bool IsEditingFinancialType;
+
+    private void StartEditingFileName()
+    {
+        editedFileName = File.FileName;
+        IsEditingFileName = true;
+    }
+
+    private async Task SaveFileName()
+    {
+        if (!string.IsNullOrWhiteSpace(editedFileName) && editedFileName != File.FileName)
+        {
+            File.FileName = editedFileName;
+            await OnFileNameUpdated.InvokeAsync(editedFileName);
+        }
+        IsEditingFileName = false;
+        StateHasChanged();
+    }
+
+    private string FormatFileSize(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB", "TB" };
+        double len = bytes;
+        int order = 0;
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len = len / 1024;
+        }
+        return $"{len:0.##} {sizes[order]}";
+    }
+
+    private Color GetDifficultyColor(FileDifficulty difficulty) => difficulty switch
+    {
+        FileDifficulty.VeryEasy => Color.Success,
+        FileDifficulty.Simple => Color.Info,
+        FileDifficulty.Medium => Color.Primary,
+        FileDifficulty.Hard => Color.Warning,
+        FileDifficulty.VeryDifficult => Color.Error,
+        _ => Color.Default
+    };
+
+    private async Task OnStatusChanged(MappingStatus newStatus)
+    {
+        if (newStatus != File.MappingStatus)
+        {
+            File.MappingStatus = newStatus;
+            await OnStatusUpdated.InvokeAsync(newStatus);
+        }
+        IsEditingStatus = false;
+        StateHasChanged();
+    }
+
+    private async Task OnDifficultyChanged(FileDifficulty newDifficulty)
+    {
+        if (newDifficulty != File.Difficulty)
+        {
+            File.Difficulty = newDifficulty;
+            await OnDifficultyUpdated.InvokeAsync(newDifficulty);
+        }
+        IsEditingDifficulty = false;
+        StateHasChanged();
+    }
+
+    private async Task OnFinancialTypeChanged(FinancialType newType)
+    {
+        if (newType != File.FinancialType)
+        {
+            File.FinancialType = newType;
+            await OnFinancialTypeUpdated.InvokeAsync(newType);
+        }
+        IsEditingFinancialType = false;
+        StateHasChanged();
+    }
+}

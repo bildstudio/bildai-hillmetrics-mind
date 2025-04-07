@@ -1,0 +1,80 @@
+﻿@using HillMetrics.Normalized.Domain.Contracts.AI.Dataset
+<MudList T="object" Dense="true">
+    <MudListItem>
+        <MudText><strong>File Name:</strong> @FileName</MudText>
+    </MudListItem>
+    <MudListItem>
+        <MudText><strong>Size:</strong> @FormatFileSize(FileSize)</MudText>
+    </MudListItem>
+    <MudListItem>
+        <MudText><strong>Type:</strong> @FileType</MudText>
+    </MudListItem>
+</MudList>
+
+<MudTextField @bind-Value="@CustomFileName"
+              Label="Custom File Name (optional)"
+              Variant="Variant.Outlined"
+              Placeholder="Enter a custom name for this file"
+              Class="mt-3 mb-3" />
+
+<MudSelect T="FileDifficulty" @bind-Value="@FileDifficulty"
+           Label="File Difficulty"
+           Variant="Variant.Outlined"
+           Class="mt-3 mb-3">
+    @foreach (var difficulty in Enum.GetValues(typeof(FileDifficulty)))
+    {
+        <MudSelectItem Value="@((FileDifficulty)difficulty)">@difficulty.ToString()</MudSelectItem>
+    }
+</MudSelect>
+
+<div class="d-flex justify-space-between mt-4">
+    <MudButton Variant="Variant.Outlined"
+               Color="Color.Default"
+               OnClick="HandleClear">
+        Clear
+    </MudButton>
+    <MudButton Variant="Variant.Filled"
+               Color="Color.Primary"
+               OnClick="HandleUpload"
+               Disabled="IsUploading">
+        @if (IsUploading)
+        {
+            <MudProgressCircular Class="mr-2" Size="Size.Small" Indeterminate="true" />
+            <span>Uploading...</span>
+        }
+        else
+        {
+            <span>Upload</span>
+        }
+    </MudButton>
+</div>
+
+@code {
+    [Parameter] public string FileName { get; set; } = string.Empty;
+    [Parameter] public long FileSize { get; set; }
+    [Parameter] public string FileType { get; set; } = string.Empty;
+    [Parameter] public string CustomFileName { get; set; } = string.Empty;
+    [Parameter] public FileDifficulty FileDifficulty { get; set; }
+    [Parameter] public bool IsUploading { get; set; }
+
+    [Parameter] public EventCallback<string> OnCustomFileNameChanged { get; set; }
+    [Parameter] public EventCallback<FileDifficulty> OnFileDifficultyChanged { get; set; }
+    [Parameter] public EventCallback OnClear { get; set; }
+    [Parameter] public EventCallback OnUpload { get; set; }
+
+    private string FormatFileSize(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB", "TB" };
+        double len = bytes;
+        int order = 0;
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len = len / 1024;
+        }
+        return $"{len:0.##} {sizes[order]}";
+    }
+
+    private async Task HandleClear() => await OnClear.InvokeAsync();
+    private async Task HandleUpload() => await OnUpload.InvokeAsync();
+}

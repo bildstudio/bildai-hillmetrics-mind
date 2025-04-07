@@ -1,0 +1,86 @@
+﻿@using HillMetrics.Normalized.Domain.Contracts.AI.Dataset
+@using HillMetrics.Core.Common
+@inject FileUploadService FileUploadService
+@inject ISnackbar Snackbar
+@inject IJSRuntime JSRuntime
+
+<MudTooltip Text="Download File">
+    <MudIconButton Icon="@GetFileIcon(File.ContentType)"
+                   Color="Color.Primary"
+                   OnClick="HandleDownload" />
+</MudTooltip>
+
+@code {
+    [Parameter, EditorRequired]
+    public FileUpload File { get; set; } = default!;
+
+    [Parameter]
+    public string FileType { get; set; } = string.Empty;
+
+    private async Task HandleDownload()
+    {
+        try
+        {
+            // Récupérer le fichier depuis le service
+            var fileStream = await FileUploadService.GetFileStreamAsync(File.Id);
+            if (fileStream == null)
+            {
+                Snackbar.Add("File not found", Severity.Error);
+                return;
+            }
+
+            // Convertir le stream en base64 pour le téléchargement
+            using var memoryStream = new MemoryStream();
+            await fileStream.CopyToAsync(memoryStream);
+            var fileBytes = memoryStream.ToArray();
+            var base64 = Convert.ToBase64String(fileBytes);
+
+            // Déterminer le type MIME à partir du ContentType
+            var mimeType = ContentTypeMapper.GetMimeType(File.ContentType);
+
+            // Télécharger le fichier via JS
+            await JSRuntime.InvokeVoidAsync("downloadFileFromBase64", File.FileName, base64, mimeType);
+
+            Snackbar.Add("File download started", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error downloading file: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private string GetFileIcon(ContentType contentType)
+    {
+        return contentType switch
+        {
+            ContentType.Xlsx => Icons.Custom.FileFormats.FileExcel,
+            ContentType.Xls => Icons.Custom.FileFormats.FileExcel,
+            ContentType.Csv => Icons.Custom.FileFormats.FileExcel,
+            ContentType.Pdf => Icons.Custom.FileFormats.FilePdf,
+            ContentType.Xml => Icons.Custom.FileFormats.FileCode,
+            ContentType.Json => Icons.Custom.FileFormats.FileCode,
+            ContentType.Html => Icons.Material.Filled.InsertDriveFile,
+            ContentType.Text => Icons.Material.Filled.Description,
+            _ => Icons.Material.Filled.InsertDriveFile
+        };
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JSRuntime.InvokeVoidAsync("eval", @"
+                window.downloadFileFromBase64 = function (fileName, base64, contentType) {
+                    const linkSource = `data:${contentType};base64,${base64}`;
+                    const downloadLink = document.createElement('a');
+                    document.body.appendChild(downloadLink);
+
+                    downloadLink.href = linkSource;
+                    downloadLink.download = fileName;
+                    downloadLink.click();
+                    document.body.removeChild(downloadLink);
+                }
+            ");
+        }
+    }
+}

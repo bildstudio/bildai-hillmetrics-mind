@@ -1,0 +1,158 @@
+﻿@page "/property-mapping/create"
+@page "/property-mapping/edit/{Id:int?}"
+@using HillMetrics.Core.Common
+@using HillMetrics.Core.Financial
+@using HillMetrics.MIND.API.Contracts.Requests.AiDataset
+@using HillMetrics.MIND.API.SDK.V1
+@using HillMetrics.Normalized.Domain.Contracts.AI.Dataset
+@inject IMindAPI MindApi
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+
+<MudText Typo="Typo.h4" Class="mb-4">@(IsEditMode ? "Edit" : "Create") Property Data Type</MudText>
+
+@if (isLoading)
+{
+    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+}
+else
+{
+    <MudCard>
+        <MudCardContent>
+            <MudGrid>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="propertyType.Name"
+                                  Label="Property Type Name"
+                                  Required="true"
+                                  RequiredError="Name is required" />
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudSelect T="ContentType"
+                               @bind-Value="propertyType.ContentType"
+                               Label="Content Type"
+                               Required="true"
+                               RequiredError="Content Type is required"
+                               AnchorOrigin="Origin.BottomCenter">
+                        @foreach (var type in Enum.GetValues<ContentType>())
+                        {
+                            <MudSelectItem Value="@type">@type</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="propertyType.Description"
+                                  Label="Description"
+                                  Lines="3"
+                                  Variant="Variant.Outlined" />
+                </MudItem>
+            </MudGrid>
+        </MudCardContent>
+        <MudCardActions>
+            <MudButton OnClick="SavePropertyType"
+                       Color="Color.Primary"
+                       Variant="Variant.Filled"
+                       Size="Size.Large"
+                       Disabled="@(!CanSave())">
+                @(IsEditMode ? "Update" : "Save") Property Type
+            </MudButton>
+            <MudButton OnClick="Cancel"
+                       Color="Color.Secondary"
+                       Variant="Variant.Outlined"
+                       Size="Size.Large">
+                Cancel
+            </MudButton>
+        </MudCardActions>
+    </MudCard>
+}
+
+@code {
+    [Parameter]
+    public int? Id { get; set; }
+
+    private bool IsEditMode => Id.HasValue;
+    private CreatePropertyDataTypeRequest propertyType = new();
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (IsEditMode)
+        {
+            await LoadPropertyType();
+        }
+        else
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task LoadPropertyType()
+    {
+        try
+        {
+            var result = await MindApi.GetPropertyDataTypeAsync(Id!.Value);
+            var data = result.Data;
+
+            propertyType = new CreatePropertyDataTypeRequest
+                {
+                    Name = data.Name,
+                    Description = data.Description,
+                    ContentType = data.ContentType
+                };
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading data: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private bool CanSave()
+    {
+        return !string.IsNullOrWhiteSpace(propertyType.Name);
+    }
+
+    private async Task SavePropertyType()
+    {
+        try
+        {
+            if (IsEditMode)
+            {
+                var result = await MindApi.UpdatePropertyDataTypeAsync(Id!.Value, propertyType);
+                if (result.Data != null)
+                {
+                    Snackbar.Add("Property data type updated successfully", Severity.Success);
+                    NavigationManager.NavigateTo("/property-mapping/search");
+                }
+                else
+                {
+                    Snackbar.Add("Failed to update property type", Severity.Error);
+                }
+            }
+            else
+            {
+                var result = await MindApi.CreatePropertyDataTypeAsync(propertyType);
+                if (result.Data != null)
+                {
+                    Snackbar.Add("Property data type created successfully", Severity.Success);
+                    NavigationManager.NavigateTo("/property-mapping/search");
+                }
+                else
+                {
+                    Snackbar.Add("Failed to create property type", Severity.Error);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error saving property type: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void Cancel()
+    {
+        NavigationManager.NavigateTo("/property-mapping/search");
+    }
+}
