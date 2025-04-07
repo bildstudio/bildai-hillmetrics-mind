@@ -55,8 +55,8 @@ namespace HillMetrics.MIND.API.Controllers
                 }
 
                 _logger.LogInformation("Code exchanged for token");
-                tokenResult.Value.SaveTokensInCookies(HttpContext.Response.Cookies);
-
+                //tokenResult.Value.SaveTokensInCookies(HttpContext.Response.Cookies);
+                _logger.LogInformation("Cookies saved");
 
                 return Redirect(state);
             }
