@@ -1,0 +1,90 @@
+﻿@page "/refined/force-calcul"
+@using HillMetrics.MIND.API.Contracts.Requests.Flux
+@inject ISnackbar Snackbar
+@inject IMindAPI MindApi
+
+<MudText Typo="Typo.h5" Class="mb-4">Force Calcul Refined</MudText>
+
+<MudPaper Class="pa-4" Elevation="2">
+    <MudForm @ref="form" @bind-IsValid="@success">
+        <MudTextField T="string"
+                      Label="Financial IDs (comma separated)"
+                      Required="true"
+                      @bind-Value="financialIdsInput"
+                      Validation="@(new Func<string, IEnumerable<string>>(ValidateFinancialIds))"
+                      Immediate="true" />
+
+        <MudTextField T="int?"
+                      Label="Flux ID"
+                      @bind-Value="request.FluxId"
+                      Class="mt-3" />
+
+        <MudTextField T="string"
+                      Label="Currency"
+                      @bind-Value="request.Currency"
+                      Class="mt-3" />
+
+        <MudDateRangePicker Label="Dates"
+                            @bind-DateRange="dateRange"
+                            Class="mt-3" />
+
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   Class="mt-4"
+                   OnClick="SubmitAsync"
+                   Disabled="@(!success)">
+            Force Calcul
+        </MudButton>
+    </MudForm>
+</MudPaper>
+
+@code {
+    private MudForm form;
+    private bool success;
+    private string financialIdsInput = "";
+    private DateRange dateRange;
+    private ForceFinancialPriceProcessingRequest request = new();
+
+    private IEnumerable<string> ValidateFinancialIds(string input)
+    {
+        if (string.IsNullOrWhiteSpace(input))
+            yield return "Financial IDs are required";
+
+        var ids = input.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        foreach (var id in ids)
+        {
+            if (!int.TryParse(id, out var _))
+                yield return $"'{id}' is not a valid number";
+        }
+    }
+
+    private async Task SubmitAsync()
+    {
+        try
+        {
+            // Parse financial IDs
+            request.FinancialIds = financialIdsInput
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(int.Parse)
+                .ToList();
+
+            // Add dates if selected
+            if (dateRange.Start.HasValue && dateRange.End.HasValue)
+            {
+                var current = dateRange.Start.Value;
+                while (current <= dateRange.End.Value)
+                {
+                    request.Dates.Add(current);
+                    current = current.AddDays(1);
+                }
+            }
+
+            var response = await MindApi.ForceFinancialPriceProcessingAsync(request);
+            Snackbar.Add("Calcul started successfully", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+    }
+}

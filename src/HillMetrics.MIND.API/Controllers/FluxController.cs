@@ -26,7 +26,7 @@ namespace HillMetrics.MIND.API.Controllers
 {
     [Route("api/v{v:apiVersion}/[controller]"), AllowAnonymous]
     //[EnableRateLimiting("allow5000requestsPerSecond_fixed")]
-    public class FluxController(IMediator mediator, IMapper mapper, IWorkflowTracker workflowTracker, ILogger<FluxController> logger) : BaseHillMetricsController(mediator)
+    public class FluxController(IMediator mediator, IMapper mapper, IWorkflowTracker workflowTracker, ILogger<FluxController> logger, IServiceScopeFactory serviceScopeFactory) : BaseHillMetricsController(mediator)
     {
         #region Flux
         /// <summary>
@@ -256,13 +256,13 @@ namespace HillMetrics.MIND.API.Controllers
             try
             {
                 // Capture services from the current request context
-                var serviceProvider = HttpContext.RequestServices;
+                //var serviceProvider = HttpContext.RequestServices;
 
                 // Start the background processing task without awaiting it
                 _ = Task.Run(async () =>
                 {
                     // Create a new scope for the long-running operation
-                    using var scope = serviceProvider.CreateScope();
+                    using var scope = serviceScopeFactory.CreateScope();
                     
                     try
                     {
@@ -319,14 +319,11 @@ namespace HillMetrics.MIND.API.Controllers
         {
             try
             {
-                // Capture services from the current request context
-                var serviceProvider = HttpContext.RequestServices;
-
                 // Start the background processing task without awaiting it
                 _ = Task.Run(async () =>
                 {
-                    // Create a new scope for the long-running operation
-                    using var scope = serviceProvider.CreateScope();
+                    // Create a new scope using the factory instead of the provider
+                    using var scope = serviceScopeFactory.CreateScope();
                     
                     try
                     {
@@ -354,13 +351,11 @@ namespace HillMetrics.MIND.API.Controllers
                     }
                     catch (Exception ex)
                     {
-                        // Use logger from the scope
                         var scopedLogger = scope.ServiceProvider.GetRequiredService<ILogger<FluxController>>();
                         scopedLogger.LogError(ex, "Error in asynchronous flux process for flux {FluxId}", id);
                     }
                 });
                 
-                // Return success immediately
                 return new ApiResponseBase<string>(
                     $"Flux process operation started for flux {id}. The operation will continue in the background.");
             }
