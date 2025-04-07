@@ -2,8 +2,8 @@
 @inject NavigationManager NavigationManager
 
 <MudNavMenu>
-     <AuthorizeView Roles="mind-admin,mind-data-analyst,mind-data-test">
-         <Authorized>
+   @*   <AuthorizeView Roles="mind-admin,mind-data-analyst,mind-data-test">
+         <Authorized> *@
     <MudNav>
         <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard">
             Dashboard
@@ -83,8 +83,8 @@
             Help & Documentation
         </MudNavLink>
     </MudNav>
-        </Authorized>
-        </AuthorizeView>
+       @*  </Authorized>
+        </AuthorizeView> *@
     @*authentication component*@
     <AuthMudNavMenuComponent />
 </MudNavMenu>
