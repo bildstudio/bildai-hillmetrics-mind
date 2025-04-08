@@ -20,16 +20,20 @@ namespace HillMetrics.MIND.API.Controllers
         private readonly IRedirectUrlValidator _redirectUrlValidator;
         private readonly ITokenExchangeService _tokenExchangeService;
         private readonly ILogger<AuthController> _logger;
+        private readonly ICookieService _cookieService;
+
         public AuthController(
             IAuthenticationService authenticationService,
             IRedirectUrlValidator redirectUrlValidator,
             ILogger<AuthController> logger,
-            ITokenExchangeService tokenExchangeService)
+            ITokenExchangeService tokenExchangeService,
+            ICookieService cookieService)
         {
             _authenticationService = authenticationService;
             _redirectUrlValidator = redirectUrlValidator;
             _logger = logger;
             _tokenExchangeService = tokenExchangeService;
+            _cookieService = cookieService;
         }
 
         [HttpGet(InternalRoutes.Authentication.Login)]
@@ -57,12 +61,10 @@ namespace HillMetrics.MIND.API.Controllers
                     return new ErrorApiActionResult(tokenResult.Errors.ToApiResult());
                 }
 
-                string exchangeCode = await _tokenExchangeService.SaveTokenForCodeAsync(tokenResult.Value, TimeSpan.FromMinutes(1));
+                string exchangeCode = await _tokenExchangeService.SaveTokenForCodeAsync(tokenResult.Value, TimeSpan.FromMinutes(3));
 
-                _logger.LogInformation("Exchange code saved: {exchangeCode}", exchangeCode);
-                TokenExtensions.SaveExchangeCodeInCookie(exchangeCode, HttpContext.Response.Cookies, new Uri(state));
-                //tokenResult.Value.SaveTokensInCookies(HttpContext.Response.Cookies);
-                //_logger.LogInformation("Cookies saved");
+                _cookieService.Set(AuthConstants.Cookie.ExchangeCode, exchangeCode);
+                _logger.LogInformation("Exchange code saved in cookie: {exchangeCode}", exchangeCode);
 
                 return Redirect(state);
             }
@@ -72,7 +74,8 @@ namespace HillMetrics.MIND.API.Controllers
                 throw;
             }
         }
-        
+
+        [Authorize]
         [HttpPost(InternalRoutes.Authentication.Refresh)]
         public async Task<ActionResult<TokenResponse>> RefreshToken([FromBody] Contracts.Requests.RefreshTokenRequest request)
         {
@@ -80,11 +83,10 @@ namespace HillMetrics.MIND.API.Controllers
             if (tokenResult.IsFailed)
                 return new ErrorApiActionResult(tokenResult.Errors.ToApiResult());
 
-            //tokenResult.Value.SaveTokensInCookies(HttpContext.Response.Cookies);
-
             return tokenResult.Value;
         }
 
+        [ApiExplorerSettings(IgnoreApi = true)]
         [HttpPost(InternalRoutes.Authentication.ExchangeCode)]
         public async Task<ActionResult<TokenResponse>> ExchangeCode([FromBody] Contracts.Requests.ExchangeCodeRequest request)
         {
@@ -98,6 +100,7 @@ namespace HillMetrics.MIND.API.Controllers
             return tokenResponse;
         }
 
+
         [HttpGet(InternalRoutes.Authentication.Logout)]
         public IActionResult Logout([FromQuery] string redirectUrl)
         {
@@ -105,8 +108,6 @@ namespace HillMetrics.MIND.API.Controllers
                 return Forbid();
 
             Request.Cookies.TryGetValue(AuthConstants.Cookie.IdToken, out string? idToken);
-
-            //string idToken = Request.Cookies.ContainsKey(Constants.Cookie.IdToken) ? Request.Cookies[Constants.Cookie.IdToken]!.ToString() : string.Empty;
 
             string authorizationUrl = _authenticationService.GetLogoutUrl(idToken, redirectUrl);
             return Redirect(authorizationUrl);

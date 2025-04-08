@@ -27,6 +27,7 @@ namespace HillMetrics.MIND.API.Tests.Controllers
         private readonly string _redirectAuthenticationUrl = "http://localhost/redirect-login";
         private ILogger<AuthController> _logger;
         private ITokenExchangeService _tokenExchangeService;
+        private ICookieService _cookieService;
 
         [SetUp]
         public void Setup()
@@ -38,13 +39,16 @@ namespace HillMetrics.MIND.API.Tests.Controllers
             _logger = Substitute.For<ILogger<AuthController>>();
             _tokenExchangeService = Substitute.For<ITokenExchangeService>();
 
+            _cookieService = Substitute.For<ICookieService>();
+
             _corsConfig = new CorsConfig()
             {
                 AllowedOrigins = _validRedirectUrls
             };
 
             _redirectUrlValidator = new RedirectUrlValidator(Options.Create(_corsConfig));
-            _controller = new AuthController(_authenticationService, _redirectUrlValidator, _logger, _tokenExchangeService);
+
+            _controller = new AuthController(_authenticationService, _redirectUrlValidator, _logger, _tokenExchangeService, _cookieService);
         }
 
         [Test]

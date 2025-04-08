@@ -21,8 +21,8 @@ namespace HillMetrics.MIND.Infrastructure.Authentication
         {
             try
             {
-                var json = await _database.StringGetAsync(code);
-                if (!json.HasValue)
+                var json = await _database.StringGetDeleteAsync(code);
+                if (json.IsNull)
                     return default;
 
                 return json.HasValue ? JsonSerializer.Deserialize<TokenResponse>(json.ToString()) : default;

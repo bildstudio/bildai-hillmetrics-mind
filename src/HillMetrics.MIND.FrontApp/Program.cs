@@ -25,7 +25,7 @@ builder.AddHillMetricsServiceDefaults();
 builder.Services.ConfigureHillMetricsDefaultHttpClient();
 
 var mindApi = builder.Configuration.GetValue<string>("Services:MindApi", $"https+http://{HillMetrics.Orchestrator.ServicesNames.Services.MindAPI}");
-
+//mindApi = "https://mindapi.hillm.bildhosting.me";
 
 builder.Services.AddHillMetricsHttpClient("MindAPI", client =>
 {
