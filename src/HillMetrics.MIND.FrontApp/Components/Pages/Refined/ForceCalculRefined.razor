@@ -69,7 +69,7 @@
                 .ToList();
 
             // Add dates if selected
-            if (dateRange.Start.HasValue && dateRange.End.HasValue)
+            if (dateRange is not null && dateRange.Start.HasValue && dateRange.End.HasValue)
             {
                 var current = dateRange.Start.Value;
                 while (current <= dateRange.End.Value)
