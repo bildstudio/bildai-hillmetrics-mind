@@ -24,7 +24,7 @@ using HillMetrics.Normalized.Domain.Contracts.Providing.Flux.Cqrs;
 
 namespace HillMetrics.MIND.API.Controllers
 {
-    [Route("api/v{v:apiVersion}/[controller]"), AllowAnonymous]
+    [Route("api/v{v:apiVersion}/[controller]")]
     //[EnableRateLimiting("allow5000requestsPerSecond_fixed")]
     public class FluxController(IMediator mediator, IMapper mapper, IWorkflowTracker workflowTracker, ILogger<FluxController> logger, IServiceScopeFactory serviceScopeFactory) : BaseHillMetricsController(mediator)
     {

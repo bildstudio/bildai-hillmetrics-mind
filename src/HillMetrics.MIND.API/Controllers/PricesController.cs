@@ -12,7 +12,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace HillMetrics.MIND.API.Controllers
 {
-    [Route("api/v{v:apiVersion}/[controller]"), AllowAnonymous]
+    [Route("api/v{v:apiVersion}/[controller]")]
     public class PricesController(IMediator mediator, IMapper mapper, ILogger<PricesController> logger) : BaseHillMetricsController(mediator)
     {
         [HttpPost("update")]

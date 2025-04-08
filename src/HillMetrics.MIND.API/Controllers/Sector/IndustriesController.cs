@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace HillMetrics.MIND.API.Controllers.Sector
 {
-    [Route("api/v{v:apiVersion}/[controller]"), AllowAnonymous]
+    [Route("api/v{v:apiVersion}/[controller]")]
     public class IndustriesController(IMediator mediator, IMapper mapper) : BaseHillMetricsController(mediator)
     {
         // --- GicsIndustry Endpoints ---

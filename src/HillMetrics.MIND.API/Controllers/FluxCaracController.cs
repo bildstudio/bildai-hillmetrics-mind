@@ -16,7 +16,7 @@ using HillMetrics.Normalized.Domain.Contracts.AI.Dataset.Cqrs.PropertyDataType;
 
 namespace HillMetrics.MIND.API.Controllers;
 
-[Route("api/v{v:apiVersion}/[controller]"), AllowAnonymous]
+[Route("api/v{v:apiVersion}/[controller]")]
 public class FluxCaracController(IMediator mediator, IMapper mapper, ILogger<FluxCaracController> logger) : BaseHillMetricsController(mediator)
 {
     #region FileUpload
