@@ -10,4 +10,9 @@ namespace HillMetrics.MIND.API.Contracts.Requests
     {
         public string RefreshToken { get; set; }
     }
+
+    public class ExchangeCodeRequest
+    {
+        public string ExchangeCode { get; set; }
+    }
 }

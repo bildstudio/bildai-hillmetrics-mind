@@ -20,7 +20,7 @@ namespace HillMetrics.MIND.API.SDK.V1
     /// <summary>
     /// Interface Refit pour l'API MIND - expose les endpoints du FluxController
     /// </summary>
-    public interface IMindAPI
+    public partial interface IMindAPI
     {
         #region Flux Management
 

@@ -11,6 +11,8 @@
 @inject ISnackbar Snackbar
 @inject IJSRuntime JSRuntime
 
+@* @attribute [Authorize] *@
+
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
     @if (loading)
     {
