@@ -608,6 +608,8 @@ public class FluxCaracController(IMediator mediator, IMapper mapper, ILogger<Flu
     /// <summary>
     /// Search property data types
     /// </summary>
+    /// 
+    [Authorize]
     [HttpGet("property-mapping/search")]
     public async Task<ActionResult<PagedApiResponseBase<PropertyMappingResponse>>> SearchPropertyDataTypes(
         [FromQuery] SearchPropertyDataTypeRequest request,

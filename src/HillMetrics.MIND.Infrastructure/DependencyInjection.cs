@@ -1,6 +1,8 @@
 ﻿using HillMetrics.Core.AI.Configs;
 using HillMetrics.Core.AI.Contracts;
+using HillMetrics.Core.API.Configs;
 using HillMetrics.Core.API.Contracts;
+using HillMetrics.Core.API.Services;
 using HillMetrics.Core.Authentication.Contracts;
 using HillMetrics.MIND.Infrastructure.AI;
 using HillMetrics.MIND.Infrastructure.Authentication;
@@ -31,6 +33,10 @@ namespace HillMetrics.MIND.Infrastructure
             services.AddSingleton<IConnectionMultiplexer>(s => ConnectionMultiplexer.Connect(redisConnectionString));
 
             services.TryAddSingleton<IRedirectUrlValidator, RedirectUrlValidator>();
+
+            IConfigurationSection corsSection = configuration.GetSection("CookieOptions");
+            services.Configure<CookieConfig>(corsSection);
+            services.TryAddSingleton<ICookieService, CookieService>();
 
             return services;
         }
