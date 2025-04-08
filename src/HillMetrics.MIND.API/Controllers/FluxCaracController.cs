@@ -16,7 +16,7 @@ using HillMetrics.Normalized.Domain.Contracts.AI.Dataset.Cqrs.PropertyDataType;
 
 namespace HillMetrics.MIND.API.Controllers;
 
-[Route("api/v{v:apiVersion}/[controller]"), AllowAnonymous]
+[Route("api/v{v:apiVersion}/[controller]")]
 public class FluxCaracController(IMediator mediator, IMapper mapper, ILogger<FluxCaracController> logger) : BaseHillMetricsController(mediator)
 {
     #region FileUpload
@@ -623,9 +623,12 @@ public class FluxCaracController(IMediator mediator, IMapper mapper, ILogger<Flu
         if (result.IsFailed)
             return new ErrorApiActionResult(result.Errors.ToApiResult());
 
-        return new PagedApiResponseBase<PropertyMappingResponse>(
+        var res = new PagedApiResponseBase<PropertyMappingResponse>(
             mapper.Map<List<PropertyMappingResponse>>(result.Value.Results),
             result.Value.TotalRecords);
+
+        var json = System.Text.Json.JsonSerializer.Serialize(res);
+        return res;
     }
 
     #endregion

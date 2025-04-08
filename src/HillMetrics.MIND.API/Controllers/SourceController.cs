@@ -15,7 +15,6 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace HillMetrics.MIND.API.Controllers;
 
-[AllowAnonymous]
 public class SourceController(IMediator mediator, IMapper mapper, ILogger<SourceController> logger) : BaseHillMetricsController(mediator)
 {
     /// <summary>

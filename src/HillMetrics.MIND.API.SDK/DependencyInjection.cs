@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Refit;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace HillMetrics.MIND.API.SDK
 {
@@ -31,7 +32,7 @@ namespace HillMetrics.MIND.API.SDK
            )
             where THttpMessageHandler : DelegatingHandler
         {
-            httpClientTimeout ??= TimeSpan.FromSeconds(30);
+            httpClientTimeout ??= TimeSpan.FromMinutes(5);
 
             IHttpClientBuilder httpClientBuilder = services.AddRefitClient<IMindAPI>(settings: new RefitSettings
             {
@@ -39,6 +40,7 @@ namespace HillMetrics.MIND.API.SDK
                 {
                     PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
                     DictionaryKeyPolicy = JsonNamingPolicy.CamelCase,
+                    Converters = { new HillMetrics.MIND.API.Contracts.Converter.FluxMetadataDtoJsonConverter(), new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
                 }),
             })
                 .ConfigureHttpClient(s =>

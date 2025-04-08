@@ -11,6 +11,7 @@ namespace HillMetrics.MIND.API.Contracts.Responses.Flux
     public class FluxProcessingResponse
     {
         public FluxProcessingHistoryResponse FluxProcessingHistory { get; set; } = null!;
+        public ProcessingStatisticsResponse Statistics { get; set; } = new();
     }
 
     public class FluxProcessingHistoryResponse
@@ -76,5 +77,13 @@ namespace HillMetrics.MIND.API.Contracts.Responses.Flux
         /// The status of the flux content processing
         /// </summary>
         public StatusProcess Status { get; set; }
+    }
+
+    public class ProcessingStatisticsResponse
+    {
+        public int TotalErrors { get; set; }
+        public int TotalRowsInserted { get; set; }
+        public int TotalRowsUpdated { get; set; }
+        public int TotalRowsIgnored { get; set; }
     }
 }
