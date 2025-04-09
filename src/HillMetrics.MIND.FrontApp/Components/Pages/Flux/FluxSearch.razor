@@ -535,8 +535,17 @@
         {
             loading = true;
             var result = await MindApi.ForceFetchBackgroundAsync(id);
-            Snackbar.Add("Force fetch started in the background", Severity.Success);
-            await Search();
+            
+            if (result?.Data != null && result.Data.WorkflowId.HasValue)
+            {
+                // Rediriger vers la page du workflow avec l'ID du workflow
+                NavigationManager.NavigateTo($"/flux/workflow-live/{id}/{result.Data.WorkflowId}");
+            }
+            else
+            {
+                Snackbar.Add("Force fetch started in the background", Severity.Success);
+                await Search();
+            }
         }
         catch (Exception ex)
         {
@@ -554,8 +563,17 @@
         {
             loading = true;
             var result = await MindApi.ForceProcessBackgroundAsync(id);
-            Snackbar.Add("Force process started in the background", Severity.Success);
-            await Search();
+            
+            if (result?.Data != null && result.Data.WorkflowId.HasValue)
+            {
+                // Rediriger vers la page du workflow avec l'ID du workflow
+                NavigationManager.NavigateTo($"/flux/workflow-live/{id}/{result.Data.WorkflowId}");
+            }
+            else
+            {
+                Snackbar.Add("Force process started in the background", Severity.Success);
+                await Search();
+            }
         }
         catch (Exception ex)
         {

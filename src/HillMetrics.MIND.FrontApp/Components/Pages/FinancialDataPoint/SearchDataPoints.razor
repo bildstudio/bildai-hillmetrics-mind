@@ -84,11 +84,11 @@
                 Class="mt-0 mb-3" Margin="Margin.Dense" Dense="true" />
             </ToolBarContent>
             <HeaderContent>
-                <MudTh>ID</MudTh>
-                <MudTh>Name</MudTh>
-                <MudTh>Description</MudTh>
-                <MudTh>Financial Type</MudTh>
-                <MudTh>Elements Count</MudTh>
+                <MudTh><MudTableSortLabel SortLabel="Id" T="FinancialDataPointSearchResponse">ID</MudTableSortLabel></MudTh>
+                <MudTh><MudTableSortLabel SortLabel="Name" T="FinancialDataPointSearchResponse">Name</MudTableSortLabel></MudTh>
+                <MudTh><MudTableSortLabel SortLabel="Description" T="FinancialDataPointSearchResponse">Description</MudTableSortLabel></MudTh>
+                <MudTh><MudTableSortLabel SortLabel="FinancialType" T="FinancialDataPointSearchResponse">Financial Type</MudTableSortLabel></MudTh>
+                <MudTh><MudTableSortLabel SortLabel="ElementsCount" T="FinancialDataPointSearchResponse">Elements Count</MudTableSortLabel></MudTh>
                 <MudTh>Actions</MudTh>
             </HeaderContent>
             <RowTemplate>
@@ -96,11 +96,24 @@
                 <MudTd DataLabel="Name">@context.Name</MudTd>
                 <MudTd DataLabel="Description">@context.Description</MudTd>
                 <MudTd DataLabel="Financial Type">
-                    <MudChip T="Color" Color="Color.Primary" Size="Size.Small">
+                    <MudChip T="FinancialType" Color="Color.Primary" Size="Size.Small">
                         @context.FinancialType
                     </MudChip>
                 </MudTd>
-                <MudTd DataLabel="Elements Count">@context.ElementsCount</MudTd>
+                <MudTd DataLabel="Elements Count">
+                    @if (context.Elements?.Any() == true)
+                    {
+                        <MudButton Size="Size.Small" 
+                                  OnClick="@(() => ToggleElementsExpanded(context))"
+                                  StartIcon="@(IsExpanded(context) ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)">
+                            @context.ElementsCount
+                        </MudButton>
+                    }
+                    else
+                    {
+                        <MudText>@context.ElementsCount</MudText>
+                    }
+                </MudTd>
                 <MudTd DataLabel="Actions">
                     <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true">
                         <MudMenuItem OnClick="@(() => EditDataPoint(context.Id))">
@@ -112,6 +125,30 @@
                     </MudMenu>
                 </MudTd>
             </RowTemplate>
+            <ChildRowContent>
+                @if (IsExpanded(context) && context.Elements?.Any() == true)
+                {
+                    <MudTr>
+                        <MudTd colspan="6">
+                            <MudTable Items="@context.Elements"
+                                     Hover="true" Dense="true" Class="ml-6"
+                                      T="FinancialDataPointElement"
+                                    Context="elementContext">
+                                <HeaderContent>
+                                    <MudTh>Name</MudTh>
+                                    <MudTh>Type</MudTh>
+                                    <MudTh>Description</MudTh>
+                                </HeaderContent>
+                                <RowTemplate>
+                                    <MudTd DataLabel="Name">@elementContext.PropertyName</MudTd>
+                                    <MudTd DataLabel="Name">@elementContext.MappingPrimitiveValue</MudTd>
+                                    <MudTd DataLabel="Description">@elementContext.Description</MudTd>
+                                </RowTemplate>
+                            </MudTable>
+                        </MudTd>
+                    </MudTr>
+                }
+            </ChildRowContent>
             <PagerContent>
                 <MudTablePager PageSizeOptions="new int[] { 10, 25, 50, 100 }" />
             </PagerContent>
@@ -130,6 +167,7 @@
     private string searchString = "";
     private FinancialDataPointSearchResponse selectedItem = null;
     private TableState tableState;
+    private HashSet<FinancialDataPointSearchResponse> _expandedItems = new();
 
     [Parameter]
     [SupplyParameterFromQuery(Name = "dataPointId")]
@@ -149,7 +187,21 @@
         {
             ApplySearchCriteria();
             searchRequest.Pagination = new Pagination(state.PageSize, state.Page + 1);
-            searchRequest.Sorting = new Sorting("Name", Core.Search.SortDirection.Descending);
+            
+            // Gestion du tri
+            if (!string.IsNullOrEmpty(state.SortLabel))
+            {
+                var sortDirection = state.SortDirection == MudBlazor.SortDirection.Ascending 
+                    ? Core.Search.SortDirection.Ascending 
+                    : Core.Search.SortDirection.Descending;
+                    
+                searchRequest.Sorting = new Sorting(state.SortLabel, sortDirection);
+            }
+            else
+            {
+                // Tri par défaut
+                searchRequest.Sorting = new Sorting("Name", Core.Search.SortDirection.Descending);
+            }
 
             var response = await MindApi.SearchFinancialDataPointsAsync(searchRequest);
 
@@ -235,5 +287,18 @@
                 Snackbar.Add($"Error deleting data point: {ex.Message}", Severity.Error);
             }
         }
+    }
+
+    private bool IsExpanded(FinancialDataPointSearchResponse item)
+    {
+        return _expandedItems.Contains(item);
+    }
+
+    private void ToggleElementsExpanded(FinancialDataPointSearchResponse item)
+    {
+        if (_expandedItems.Contains(item))
+            _expandedItems.Remove(item);
+        else
+            _expandedItems.Add(item);
     }
 }

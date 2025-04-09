@@ -39,4 +39,6 @@ public class FinancialDataPointSearchResponse
     /// The date when the data point was last updated
     /// </summary>
     public DateTime? UpdatedAt { get; set; }
+
+    public ICollection<FinancialDataPointElement> Elements { get; set; } = new List<FinancialDataPointElement>();
 }
