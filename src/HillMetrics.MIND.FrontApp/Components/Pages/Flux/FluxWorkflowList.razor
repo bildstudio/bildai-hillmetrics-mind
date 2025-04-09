@@ -65,7 +65,7 @@
                         <MudTd DataLabel="Started">@context.StartTime.ToLocalTime().ToString("g")</MudTd>
                         <MudTd DataLabel="Completed">@(context.EndTime?.ToLocalTime().ToString("g"))</MudTd>
                         <MudTd DataLabel="Status">
-                            <MudChip Color="@(context.IsSuccessful ? Color.Success : Color.Error)"
+                            <MudChip T="bool" Color="@(context.IsSuccessful ? Color.Success : Color.Error)"
                                      Size="Size.Small">
                                 @(context.IsSuccessful ? "Success" : "Failed")
                             </MudChip>

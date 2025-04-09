@@ -54,17 +54,17 @@ namespace HillMetrics.MIND.API.SDK.V1
         [Delete("/api/v1/flux")]
         Task<bool> DeleteFluxAsync(int fluxId);
 
-        /// <summary>
-        /// Force the fetch of a flux
-        /// </summary>
-        [Get("/api/v1/flux/{id}/force-fetch")]
-        Task<FluxForceFetchResponse> ForceFetchAsync(int id);
+        ///// <summary>
+        ///// Force the fetch of a flux
+        ///// </summary>
+        //[Get("/api/v1/flux/{id}/force-fetch")]
+        //Task<FluxForceFetchResponse> ForceFetchAsync(int id);
 
-        /// <summary>
-        /// Force the process of a flux
-        /// </summary>
-        [Get("/api/v1/flux/{id}/force-process")]
-        Task<FluxForceProcessResponse> ForceProcessAsync(int id);
+        ///// <summary>
+        ///// Force the process of a flux
+        ///// </summary>
+        //[Get("/api/v1/flux/{id}/force-process")]
+        //Task<FluxForceProcessResponse> ForceProcessAsync(int id);
 
         /// <summary>
         /// Force the processing of normalized financial prices for multiple financial IDs
@@ -78,7 +78,7 @@ namespace HillMetrics.MIND.API.SDK.V1
         /// <param name="id">The flux identifier</param>
         /// <returns>Status message indicating that the operation has started</returns>
         [Get("/api/v1/flux/{id}/force-fetch-async")]
-        Task<ApiResponseBase<string>> ForceFetchBackgroundAsync(int id);
+        Task<ApiResponseBase<ProcessStartedResponse>> ForceFetchBackgroundAsync(int id);
 
         /// <summary>
         /// Force the process of a flux in the background without waiting for completion
@@ -86,7 +86,7 @@ namespace HillMetrics.MIND.API.SDK.V1
         /// <param name="id">The flux identifier</param>
         /// <returns>Status message indicating that the operation has started</returns>
         [Get("/api/v1/flux/{id}/force-process-async")]
-        Task<ApiResponseBase<string>> ForceProcessBackgroundAsync(int id);
+        Task<ApiResponseBase<ProcessStartedResponse>> ForceProcessBackgroundAsync(int id);
 
         #endregion
 
@@ -223,6 +223,14 @@ namespace HillMetrics.MIND.API.SDK.V1
         /// </summary>
         [Get("/api/v1/flux/workflow/{fluxId}")]
         Task<ApiResponseBase<FluxWorkflowDetailsDto>> GetFluxWorkflowDetailsAsync(int fluxId);
+
+        /// <summary>
+        /// Gets a workflow by its unique workflow ID
+        /// </summary>
+        /// <param name="workflowId">The unique identifier of the workflow</param>
+        /// <returns>Detailed information about the workflow</returns>
+        [Get("/api/v1/flux/workflow/by-id/{workflowId}")]
+        Task<ApiResponseBase<FluxWorkflowDetailsDto>> GetWorkflowByIdAsync(Guid workflowId);
 
         /// <summary>
         /// Gets a global summary of flux workflows

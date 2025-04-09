@@ -157,42 +157,42 @@ namespace HillMetrics.MIND.API.Controllers
             return fluxCommand;
         }
 
-        /// <summary>
-        /// Force the fetch of a flux
-        /// </summary>
-        /// <param name="id">The flux identifier</param>
-        /// <returns></returns>
-        [HttpGet("{id}/force-fetch")]
-        public async Task<ActionResult<FluxForceFetchResponse>> ForceFetch(int id)
-        {
-            var command = FetchFluxCommand.Create(id, Task.FromResult(new List<Mail>()));
-            command.CalledManually = true;
-            var result = await mediator.Send(command);
+        ///// <summary>
+        ///// Force the fetch of a flux
+        ///// </summary>
+        ///// <param name="id">The flux identifier</param>
+        ///// <returns></returns>
+        //[HttpGet("{id}/force-fetch")]
+        //public async Task<ActionResult<FluxForceFetchResponse>> ForceFetch(int id)
+        //{
+        //    var command = FetchFluxCommand.Create(id, Task.FromResult(new List<Mail>()));
+        //    command.CalledManually = true;
+        //    var result = await mediator.Send(command);
 
-            if (result.IsFailed)
-                return new ErrorApiActionResult(result.Errors.ToApiResult());
+        //    if (result.IsFailed)
+        //        return new ErrorApiActionResult(result.Errors.ToApiResult());
 
-            return mapper.Map<FluxForceFetchResponse>(result.Value);
-        }
+        //    return mapper.Map<FluxForceFetchResponse>(result.Value);
+        //}
 
-        /// <summary>
-        /// Force the process of a flux
-        /// </summary>
-        /// <param name="id">The flux identifier</param>
-        /// <returns></returns>
-        [HttpGet("{id}/force-process")]
-        public async Task<ActionResult<FluxForceProcessResponse>> ForceProcess(int id)
-        {
-            var result = await mediator.Send(new ProcessFluxCommand() {
-                FluxId = id,
-                CalledManually = true
-            });
+        ///// <summary>
+        ///// Force the process of a flux
+        ///// </summary>
+        ///// <param name="id">The flux identifier</param>
+        ///// <returns></returns>
+        //[HttpGet("{id}/force-process")]
+        //public async Task<ActionResult<FluxForceProcessResponse>> ForceProcess(int id)
+        //{
+        //    var result = await mediator.Send(new ProcessFluxCommand() {
+        //        FluxId = id,
+        //        CalledManually = true
+        //    });
 
-            if (result.IsFailed)
-                return new ErrorApiActionResult(result.Errors.ToApiResult());
+        //    if (result.IsFailed)
+        //        return new ErrorApiActionResult(result.Errors.ToApiResult());
 
-            return mapper.Map<FluxForceProcessResponse>(result.Value);
-        }
+        //    return mapper.Map<FluxForceProcessResponse>(result.Value);
+        //}
 
         /// <summary>
         /// Force the processing of normalized financial prices, triggering the same flow as when prices are automatically inserted
@@ -251,12 +251,37 @@ namespace HillMetrics.MIND.API.Controllers
         /// <param name="id">The flux identifier</param>
         /// <returns>Status indication that the operation has started</returns>
         [HttpGet("{id}/force-fetch-async")]
-        public ActionResult<ApiResponseBase<string>> ForceFetchBackgroundAsync(int id)
+        public async Task<ActionResult<ApiResponseBase<ProcessStartedResponse>>> ForceFetchBackgroundAsync(int id)
         {
             try
             {
-                // Capture services from the current request context
-                //var serviceProvider = HttpContext.RequestServices;
+                // First, check if there's already an active workflow for this flux
+                var existingWorkflow = await workflowTracker.GetFluxStateAsync(id);
+                var existingWorkflowId = existingWorkflow?.WorkflowId ?? Guid.Empty;
+
+                // If no existing workflow, we'll create a placeholder entry so we have a workflow ID
+                if (existingWorkflowId == Guid.Empty)
+                {
+                    // Get flux name by querying the flux
+                    var fluxResult = await Mediator.Send(new FluxQuery() { FluxId = id });
+                    if (fluxResult.IsFailed)
+                    {
+                        return new ErrorApiActionResult(fluxResult.Errors.ToApiResult());
+                    }
+
+                    var fluxName = fluxResult.Value.Flux.FluxName;
+
+                    // Create a preliminary workflow entry to get the ID
+                    existingWorkflowId = await workflowTracker.UpdateFluxStageAsync(
+                        id,
+                        fluxName,
+                        WorkflowStage.FetchingData,
+                        "Background fetching started",
+                        CancellationToken.None);
+
+                    // Store in context for subsequent background operations
+                    WorkflowContext.SetCurrentWorkflowId(id, existingWorkflowId);
+                }
 
                 // Start the background processing task without awaiting it
                 _ = Task.Run(async () =>
@@ -269,8 +294,10 @@ namespace HillMetrics.MIND.API.Controllers
                         // Resolve required services from the new scope
                         var scopedMediator = scope.ServiceProvider.GetRequiredService<IMediator>();
                         var scopedLogger = scope.ServiceProvider.GetRequiredService<ILogger<FluxController>>();
+                        var scopedNotificationService = scope.ServiceProvider.GetRequiredService<IWorkflowNotificationService>();
 
-                        scopedLogger.LogInformation("Starting asynchronous fetch for flux {FluxId}", id);
+                        scopedLogger.LogInformation("Starting asynchronous fetch for flux {FluxId} with workflow {WorkflowId}",
+                            id, existingWorkflowId);
 
                         // Execute the operation with services from the new scope
                         var command = FetchFluxCommand.Create(id, Task.FromResult(new List<Mail>()));
@@ -295,9 +322,15 @@ namespace HillMetrics.MIND.API.Controllers
                     }
                 });
 
-                // Return success immediately
-                return new ApiResponseBase<string>(
-                    $"Flux fetch operation started for flux {id}. The operation will continue in the background.");
+                // Create a response with the workflow ID for tracking
+                var response = new ProcessStartedResponse
+                {
+                    Message = $"Flux fetch operation started for flux {id}. The operation will continue in the background.",
+                    FluxId = id,
+                    WorkflowId = existingWorkflowId
+                };
+
+                return new ApiResponseBase<ProcessStartedResponse>(response);
             }
             catch (Exception ex)
             {
@@ -315,10 +348,38 @@ namespace HillMetrics.MIND.API.Controllers
         /// <param name="id">The flux identifier</param>
         /// <returns>Status indication that the operation has started</returns>
         [HttpGet("{id}/force-process-async")]
-        public ActionResult<ApiResponseBase<string>> ForceProcessBackgroundAsync(int id)
+        public async Task<ActionResult<ApiResponseBase<ProcessStartedResponse>>> ForceProcessBackgroundAsync(int id)
         {
             try
             {
+                // First, check if there's already an active workflow for this flux
+                var existingWorkflow = await workflowTracker.GetFluxStateAsync(id);
+                var existingWorkflowId = existingWorkflow?.WorkflowId ?? Guid.Empty;
+
+                // If no existing workflow, we'll create a placeholder entry so we have a workflow ID
+                if (existingWorkflowId == Guid.Empty)
+                {
+                    // Get flux name by querying the flux
+                    var fluxResult = await Mediator.Send(new FluxQuery() { FluxId = id });
+                    if (fluxResult.IsFailed)
+                    {
+                        return new ErrorApiActionResult(fluxResult.Errors.ToApiResult());
+                    }
+
+                    var fluxName = fluxResult.Value.Flux.FluxName;
+
+                    // Create a preliminary workflow entry to get the ID
+                    existingWorkflowId = await workflowTracker.UpdateFluxStageAsync(
+                        id,
+                        fluxName,
+                        WorkflowStage.Processing,
+                        "Background processing started",
+                        CancellationToken.None);
+
+                    // Store in context for subsequent background operations
+                    WorkflowContext.SetCurrentWorkflowId(id, existingWorkflowId);
+                }
+
                 // Start the background processing task without awaiting it
                 _ = Task.Run(async () =>
                 {
@@ -330,8 +391,10 @@ namespace HillMetrics.MIND.API.Controllers
                         // Resolve required services from the new scope
                         var scopedMediator = scope.ServiceProvider.GetRequiredService<IMediator>();
                         var scopedLogger = scope.ServiceProvider.GetRequiredService<ILogger<FluxController>>();
+                        var scopedNotificationService = scope.ServiceProvider.GetRequiredService<IWorkflowNotificationService>();
 
-                        scopedLogger.LogInformation("Starting asynchronous process for flux {FluxId}", id);
+                        scopedLogger.LogInformation("Starting asynchronous process for flux {FluxId} with workflow {WorkflowId}",
+                            id, existingWorkflowId);
 
                         // Execute the operation with services from the new scope
                         var result = await scopedMediator.Send(new ProcessFluxCommand() {
@@ -356,8 +419,15 @@ namespace HillMetrics.MIND.API.Controllers
                     }
                 });
 
-                return new ApiResponseBase<string>(
-                    $"Flux process operation started for flux {id}. The operation will continue in the background.");
+                // Create a response with the workflow ID for tracking
+                var response = new ProcessStartedResponse
+                {
+                    Message = $"Flux process operation started for flux {id}. The operation will continue in the background.",
+                    FluxId = id,
+                    WorkflowId = existingWorkflowId
+                };
+
+                return new ApiResponseBase<ProcessStartedResponse>(response);
             }
             catch (Exception ex)
             {
@@ -843,6 +913,60 @@ namespace HillMetrics.MIND.API.Controllers
             catch (Exception ex)
             {
                 return new ErrorApiActionResult(new ErrorApiResponse(new Core.API.Exceptions.ApiException($"Error during cleanup of historical workflow data (details : {ex.Message})"), System.Net.HttpStatusCode.InternalServerError));
+            }
+        }
+
+        /// <summary>
+        /// Gets a workflow by its unique workflow ID
+        /// </summary>
+        [HttpGet("workflow/by-id/{workflowId}")]
+        public async Task<ActionResult<ApiResponseBase<FluxWorkflowDetailsDto>>> GetWorkflowById(Guid workflowId, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var workflowState = await workflowTracker.GetWorkflowByIdAsync(workflowId, cancellationToken);
+
+                if (workflowState == null)
+                {
+                    return new ErrorApiActionResult(new ErrorApiResponse(
+                        new Core.API.Exceptions.ApiException($"Workflow with ID {workflowId} not found"),
+                        System.Net.HttpStatusCode.NotFound));
+                }
+
+                var result = new FluxWorkflowDetailsDto
+                {
+                    FluxId = workflowState.FluxId,
+                    FluxName = workflowState.FluxName,
+                    CurrentStage = workflowState.CurrentStage.ToString(),
+                    StageDetails = workflowState.Steps.LastOrDefault()?.Description,
+                    StartTime = workflowState.StartTime,
+                    LastUpdateTime = workflowState.LastUpdateTime,
+                    EndTime = workflowState.EndTime,
+                    DurationMinutes = workflowState.Duration.TotalMinutes,
+                    ProgressPercentage = workflowState.ProgressPercentage,
+                    IsCompleted = workflowState.IsCompleted,
+                    IsSuccessful = workflowState.IsSuccessful,
+                    History = workflowState.Steps.Select(h => new HistoryEntryDto
+                    {
+                        Stage = h.Stage.ToString(),
+                        Description = h.Description,
+                        Timestamp = h.Timestamp,
+                        TimeSinceStart = (h.Timestamp - workflowState.StartTime).TotalMinutes,
+                        RowsAdded = h.LinesAdded,
+                        RowsModified = h.LinesModified,
+                        RowsIgnored = h.LinesIgnored,
+                        RowsWithErrors = h.LinesWithErrors
+                    }).OrderByDescending(h => h.Timestamp).ToList(),
+                    WorkflowId = workflowState.WorkflowId
+                };
+
+                return new ApiResponseBase<FluxWorkflowDetailsDto>(result);
+            }
+            catch (Exception ex)
+            {
+                return new ErrorApiActionResult(new ErrorApiResponse(
+                    new Core.API.Exceptions.ApiException($"Error retrieving workflow with ID {workflowId} (details : {ex.Message})"),
+                    System.Net.HttpStatusCode.InternalServerError));
             }
         }
 

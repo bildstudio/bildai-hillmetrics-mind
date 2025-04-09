@@ -12,37 +12,37 @@ namespace HillMetrics.MIND.API.Contracts.Responses.Flux
         /// The ID of the flux
         /// </summary>
         public int FluxId { get; set; }
-        
+
         /// <summary>
         /// The name of the flux
         /// </summary>
         public string FluxName { get; set; }
-        
+
         /// <summary>
         /// The current stage of the workflow
         /// </summary>
         public string Stage { get; set; }
-        
+
         /// <summary>
         /// Detailed description of the current stage
         /// </summary>
         public string Details { get; set; }
-        
+
         /// <summary>
         /// When the workflow started
         /// </summary>
         public DateTime StartTime { get; set; }
-        
+
         /// <summary>
         /// When the workflow was last updated
         /// </summary>
         public DateTime LastUpdateTime { get; set; }
-        
+
         /// <summary>
         /// Duration of the workflow in minutes
         /// </summary>
         public double DurationMinutes { get; set; }
-        
+
         /// <summary>
         /// Percentage of completion (0-100)
         /// </summary>
@@ -58,37 +58,37 @@ namespace HillMetrics.MIND.API.Contracts.Responses.Flux
         /// The ID of the flux
         /// </summary>
         public int FluxId { get; set; }
-        
+
         /// <summary>
         /// The name of the flux
         /// </summary>
         public string FluxName { get; set; }
-        
+
         /// <summary>
         /// The status of the workflow (Success/Failed)
         /// </summary>
         public string Status { get; set; }
-        
+
         /// <summary>
         /// The final stage of the workflow
         /// </summary>
         public string Stage { get; set; }
-        
+
         /// <summary>
         /// Detailed description of the final stage
         /// </summary>
         public string Details { get; set; }
-        
+
         /// <summary>
         /// When the workflow started
         /// </summary>
         public DateTime StartTime { get; set; }
-        
+
         /// <summary>
         /// When the workflow completed
         /// </summary>
         public DateTime? CompletedAt { get; set; }
-        
+
         /// <summary>
         /// Duration of the workflow in minutes
         /// </summary>
@@ -104,21 +104,41 @@ namespace HillMetrics.MIND.API.Contracts.Responses.Flux
         /// The stage of this history entry
         /// </summary>
         public string Stage { get; set; }
-        
+
         /// <summary>
         /// Detailed description of this stage
         /// </summary>
         public string Description { get; set; }
-        
+
         /// <summary>
         /// When this stage occurred
         /// </summary>
         public DateTime Timestamp { get; set; }
-        
+
         /// <summary>
         /// Time in minutes since the workflow started
         /// </summary>
         public double TimeSinceStart { get; set; }
+
+        /// <summary>
+        /// Number of rows added during this step (if applicable)
+        /// </summary>
+        public int RowsAdded { get; set; }
+
+        /// <summary>
+        /// Number of rows modified during this step (if applicable)
+        /// </summary>
+        public int RowsModified { get; set; }
+
+        /// <summary>
+        /// Number of rows ignored during this step (if applicable)
+        /// </summary>
+        public int RowsIgnored { get; set; }
+
+        /// <summary>
+        /// Number of rows with errors during this step (if applicable)
+        /// </summary>
+        public int RowsWithErrors { get; set; }
     }
 
     /// <summary>
@@ -127,60 +147,65 @@ namespace HillMetrics.MIND.API.Contracts.Responses.Flux
     public class FluxWorkflowDetailsDto
     {
         /// <summary>
+        /// The unique identifier of this workflow instance
+        /// </summary>
+        public Guid WorkflowId { get; set; }
+
+        /// <summary>
         /// The ID of the flux
         /// </summary>
         public int FluxId { get; set; }
-        
+
         /// <summary>
         /// The name of the flux
         /// </summary>
         public string FluxName { get; set; }
-        
+
         /// <summary>
         /// The current stage of the workflow
         /// </summary>
         public string CurrentStage { get; set; }
-        
+
         /// <summary>
         /// Detailed description of the current stage
         /// </summary>
         public string StageDetails { get; set; }
-        
+
         /// <summary>
         /// When the workflow started
         /// </summary>
         public DateTime StartTime { get; set; }
-        
+
         /// <summary>
         /// When the workflow was last updated
         /// </summary>
         public DateTime LastUpdateTime { get; set; }
-        
+
         /// <summary>
         /// When the workflow ended (if completed)
         /// </summary>
         public DateTime? EndTime { get; set; }
-        
+
         /// <summary>
         /// Duration of the workflow in minutes
         /// </summary>
         public double DurationMinutes { get; set; }
-        
+
         /// <summary>
         /// Percentage of completion (0-100)
         /// </summary>
         public int ProgressPercentage { get; set; }
-        
+
         /// <summary>
         /// Whether the workflow is completed
         /// </summary>
         public bool IsCompleted { get; set; }
-        
+
         /// <summary>
         /// Whether the workflow completed successfully
         /// </summary>
         public bool IsSuccessful { get; set; }
-        
+
         /// <summary>
         /// History of all stages in this workflow
         /// </summary>
@@ -196,27 +221,27 @@ namespace HillMetrics.MIND.API.Contracts.Responses.Flux
         /// Number of currently active fluxes
         /// </summary>
         public int ActiveFluxCount { get; set; }
-        
+
         /// <summary>
         /// Number of recently completed fluxes
         /// </summary>
         public int RecentlyCompletedCount { get; set; }
-        
+
         /// <summary>
         /// Number of successfully completed fluxes
         /// </summary>
         public int SuccessfulCompletions { get; set; }
-        
+
         /// <summary>
         /// Number of failed fluxes
         /// </summary>
         public int FailedCompletions { get; set; }
-        
+
         /// <summary>
         /// Average completion time in minutes
         /// </summary>
         public double AverageCompletionTimeMinutes { get; set; }
-        
+
         /// <summary>
         /// Count of fluxes by stage
         /// </summary>
@@ -232,10 +257,10 @@ namespace HillMetrics.MIND.API.Contracts.Responses.Flux
         /// The stage name
         /// </summary>
         public string Stage { get; set; }
-        
+
         /// <summary>
         /// Number of fluxes in this stage
         /// </summary>
         public int Count { get; set; }
     }
-} 
+}

@@ -21,7 +21,7 @@
                   OnClick="@(() => NavigationManager.NavigateTo("/flux/search"))">
             Back to Search
         </MudButton>
-        
+
         @if (availableWorkflows.Count > 1)
         {
             <MudSelect T="Guid?" Label="Select Workflow" Value="selectedWorkflowId" ValueChanged="OnWorkflowSelectionChanged"
@@ -51,17 +51,18 @@
                 {
                     <MudText Typo="Typo.body2">Status: <strong>@WorkflowDetails.CurrentStage</strong></MudText>
                     <MudText Typo="Typo.body2">Started: <strong>@WorkflowDetails.StartTime.ToLocalTime().ToString("g")</strong></MudText>
-                    <MudText Typo="Typo.body2">Duration: <strong>@Math.Round(WorkflowDetails.Duration.TotalMinutes, 1) min</strong></MudText>
+                    <MudText Typo="Typo.body2">Duration: <strong>@Math.Round(WorkflowDetails.DurationMinutes, 1) min</strong></MudText>
+                    <MudText Typo="Typo.body2">WorkflowId: <strong>@WorkflowDetails.WorkflowId</strong></MudText>
                 }
             </MudItem>
             <MudItem xs="12" md="6">
-                <MudProgressLinear Color="@GetProgressColor(WorkflowDetails?.CurrentStage)" 
-                                  Value="@(WorkflowDetails?.ProgressPercentage ?? 0)" 
+                <MudProgressLinear Color="@GetProgressColor(WorkflowDetails?.CurrentStage)"
+                                  Value="@(WorkflowDetails?.ProgressPercentage ?? 0)"
                                   Class="my-4"
                                   Size="Size.Large" />
                 <MudText Typo="Typo.body2" Align="Align.Center">
-                    @(WorkflowDetails?.IsCompleted == true 
-                        ? (WorkflowDetails?.IsSuccessful == true ? "Completed successfully" : "Failed") 
+                    @(WorkflowDetails?.IsCompleted == true
+                        ? (WorkflowDetails?.IsSuccessful == true ? "Completed successfully" : "Failed")
                         : "In progress...")
                 </MudText>
             </MudItem>
@@ -73,12 +74,12 @@
         {
             @foreach (var step in positionedSteps)
             {
-                <div class="workflow-step @GetStepStatusClass(step.Entry)"
+                <div class="workflow-step @GetStepStatusClass(step.Stage)"
                      style="left: @(step.X)px; top: @(step.Y)px; width: 200px;"
-                     @onclick="@(() => SelectStep(step.Entry))">
-                    <div class="step-header">@step.Entry.Stage</div>
-                    <div class="step-content">@step.Entry.Description</div>
-                    <div class="step-timestamp">@step.Entry.Timestamp.ToLocalTime().ToString("g")</div>
+                     @onclick="@(() => SelectStep(step))">
+                    <div class="step-header">@step.Stage</div>
+                    <div class="step-content">@step.Description</div>
+                    <div class="step-timestamp">@step.Timestamp.ToLocalTime().ToString("g")</div>
                 </div>
             }
 
@@ -114,7 +115,7 @@
     {
         <MudPaper Class="mt-4 pa-4">
             <MudText Typo="Typo.h6">Step Details</MudText>
-            <MudList Dense="true">
+            <MudList T="HistoryEntryDto" Dense="true">
                 <MudListItem>
                     <MudText><b>Stage:</b> @SelectedStep.Stage</MudText>
                 </MudListItem>
@@ -127,42 +128,42 @@
                 <MudListItem>
                     <MudText><b>Time since start:</b> @Math.Round(SelectedStep.TimeSinceStart, 1) min</MudText>
                 </MudListItem>
-                
-                @if (SelectedStep.LinesAdded > 0 || SelectedStep.LinesModified > 0 || SelectedStep.LinesIgnored > 0 || SelectedStep.LinesWithErrors > 0)
+
+                @if (SelectedStep.RowsAdded > 0 || SelectedStep.RowsModified > 0 || SelectedStep.RowsIgnored > 0 || SelectedStep.RowsWithErrors > 0)
                 {
                     <MudDivider Class="my-2" />
                     <MudListItem>
                         <MudText Typo="Typo.subtitle2">Data Metrics</MudText>
                     </MudListItem>
 
-                    @if (SelectedStep.LinesAdded > 0)
+                    @if (SelectedStep.RowsAdded > 0)
                     {
                         <MudListItem>
-                            <MudChip Color="Color.Success" Size="Size.Small" Class="mr-2">@SelectedStep.LinesAdded</MudChip>
+                            <MudChip Color="Color.Success" Size="Size.Small" Class="mr-2">@SelectedStep.RowsAdded</MudChip>
                             <MudText>Records added</MudText>
                         </MudListItem>
                     }
 
-                    @if (SelectedStep.LinesModified > 0)
+                    @if (SelectedStep.RowsModified > 0)
                     {
                         <MudListItem>
-                            <MudChip Color="Color.Primary" Size="Size.Small" Class="mr-2">@SelectedStep.LinesModified</MudChip>
+                            <MudChip Color="Color.Primary" Size="Size.Small" Class="mr-2">@SelectedStep.RowsModified</MudChip>
                             <MudText>Records updated</MudText>
                         </MudListItem>
                     }
 
-                    @if (SelectedStep.LinesIgnored > 0)
+                    @if (SelectedStep.RowsIgnored > 0)
                     {
                         <MudListItem>
-                            <MudChip Color="Color.Warning" Size="Size.Small" Class="mr-2">@SelectedStep.LinesIgnored</MudChip>
+                            <MudChip Color="Color.Warning" Size="Size.Small" Class="mr-2">@SelectedStep.RowsIgnored</MudChip>
                             <MudText>Records ignored</MudText>
                         </MudListItem>
                     }
 
-                    @if (SelectedStep.LinesWithErrors > 0)
+                    @if (SelectedStep.RowsWithErrors > 0)
                     {
                         <MudListItem>
-                            <MudChip Color="Color.Error" Size="Size.Small" Class="mr-2">@SelectedStep.LinesWithErrors</MudChip>
+                            <MudChip Color="Color.Error" Size="Size.Small" Class="mr-2">@SelectedStep.RowsWithErrors</MudChip>
                             <MudText>Records with errors</MudText>
                         </MudListItem>
                     }
@@ -178,27 +179,28 @@
 
     private ElementReference canvasRef;
     private FluxWorkflowDetailsDto? WorkflowDetails { get; set; }
-    private WorkflowStepModel? SelectedStep { get; set; }
+    private HistoryEntryDto? SelectedStep { get; set; }
     private HubConnection? hubConnection;
-    private List<WorkflowStateModel> availableWorkflows = new();
+    private List<FluxWorkflowDetailsDto> availableWorkflows = new();
     private Guid? selectedWorkflowId;
-    private List<WorkflowStepPosition> positionedSteps = new();
+    private List<PositionedHistoryEntry> positionedSteps = new();
 
-    // Étendre WorkflowStepModel pour inclure les propriétés TimeSinceStart
-    private class WorkflowStepModel : HillMetrics.Core.Workflow.Models.WorkflowStepModel
+    private class PositionedHistoryEntry : HistoryEntryDto
     {
-        public double TimeSinceStart { get; set; }
-    }
-
-    private class WorkflowStepPosition
-    {
-        public WorkflowStepModel Entry { get; set; }
         public double X { get; set; }
         public double Y { get; set; }
 
-        public WorkflowStepPosition(WorkflowStepModel entry, double x, double y)
+        public PositionedHistoryEntry(HistoryEntryDto entry, double x, double y)
         {
-            Entry = entry;
+            // Copier toutes les propriétés
+            Stage = entry.Stage;
+            Description = entry.Description;
+            Timestamp = entry.Timestamp;
+            TimeSinceStart = entry.TimeSinceStart;
+            RowsAdded = entry.RowsAdded;
+            RowsModified = entry.RowsModified;
+            RowsIgnored = entry.RowsIgnored;
+            RowsWithErrors = entry.RowsWithErrors;
             X = x;
             Y = y;
         }
@@ -213,26 +215,46 @@
 
     private async Task SetupSignalRConnection()
     {
-        hubConnection = new HubConnectionBuilder()
-            .WithUrl(NavigationManager.ToAbsoluteUri("/workflow-hub"))
-            .WithAutomaticReconnect()
-            .Build();
-
-        hubConnection.On<WorkflowStateModel>("ReceiveFluxDetailsAsync", OnWorkflowUpdated);
-        hubConnection.On<List<WorkflowStateModel>>("ReceiveActiveFluxesAsync", OnActiveFluxesUpdated);
-        hubConnection.On<List<WorkflowStateModel>>("ReceiveCompletedFluxesAsync", OnCompletedFluxesUpdated);
-        hubConnection.On<int, string, WorkflowStage, string>("ReceiveFluxStageUpdateAsync", OnFluxStageUpdated);
-        hubConnection.On<int, string, string>("ReceiveFluxErrorAsync", OnFluxErrorReceived);
-
-        await hubConnection.StartAsync();
-
-        // Subscribe to updates for the specific flux
-        await hubConnection.SendAsync("subscribeToFlux", FluxId);
-
-        // If we have a specific workflow ID, subscribe to that too
-        if (WorkflowId.HasValue)
+        try
         {
-            await hubConnection.SendAsync("subscribeToWorkflow", WorkflowId.Value);
+            hubConnection = new HubConnectionBuilder()
+                .WithUrl(NavigationManager.ToAbsoluteUri("/workflow-hub"))
+                .WithAutomaticReconnect()
+                .Build();
+
+            // Enregistrement des handlers pour les notifications reçues du hub
+            hubConnection.On<WorkflowStateModel>("ReceiveFluxDetails", OnWorkflowUpdated);
+            hubConnection.On<List<WorkflowStateModel>>("ReceiveActiveFluxes", OnActiveFluxesUpdated);
+            hubConnection.On<List<WorkflowStateModel>>("ReceiveCompletedFluxes", OnCompletedFluxesUpdated);
+            hubConnection.On<int, string, WorkflowStage, string>("ReceiveFluxStageUpdate", OnFluxStageUpdated);
+            hubConnection.On<int, string, string>("ReceiveFluxError", OnFluxErrorReceived);
+
+            // Démarrer la connexion
+            await hubConnection.StartAsync();
+            Console.WriteLine($"SignalR connection started for flux {FluxId}");
+
+            // S'abonner aux mises à jour pour ce flux spécifique
+            await hubConnection.InvokeAsync("subscribeToFlux", FluxId);
+            Console.WriteLine($"Subscribed to flux {FluxId}");
+
+            // Si un WorkflowId est spécifié, s'abonner également à ce workflow
+            if (WorkflowId.HasValue)
+            {
+                await hubConnection.InvokeAsync("subscribeToWorkflow", WorkflowId.Value);
+                Console.WriteLine($"Subscribed to workflow {WorkflowId.Value}");
+
+                // Récupérer immédiatement les détails du workflow
+                await hubConnection.InvokeAsync("getWorkflowById", WorkflowId.Value);
+            }
+
+            // Récupérer la liste des workflows disponibles pour ce flux
+            await hubConnection.InvokeAsync("getWorkflowsForFlux", FluxId);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error setting up SignalR connection: {ex.Message}");
+            // Fallback à l'API REST en cas d'erreur de connexion SignalR
+            await RefreshDataFromApi();
         }
     }
 
@@ -263,17 +285,28 @@
 
     private void OnFluxStageUpdated(int fluxId, string fluxName, WorkflowStage stage, string description)
     {
-        // If this update is for our specific flux, request detailed information
+        // Si cette mise à jour concerne notre flux en cours de visualisation
         if (fluxId == FluxId)
         {
+            Console.WriteLine($"Flux {fluxId} stage updated: {stage} - {description}");
+
+            // Si nous suivons un workflow spécifique
             if (selectedWorkflowId.HasValue)
             {
-                _ = hubConnection?.SendAsync("getWorkflowDetails", selectedWorkflowId.Value);
+                // Requête pour obtenir les détails à jour du workflow spécifique
+                _ = hubConnection?.InvokeAsync("getWorkflowById", selectedWorkflowId.Value);
             }
             else
             {
-                _ = hubConnection?.SendAsync("getFluxDetails", FluxId);
+                // Sinon, demander les détails du flux globalement
+                _ = hubConnection?.InvokeAsync("getFluxDetails", FluxId);
             }
+
+            // Rafraîchir la liste des workflows disponibles
+            _ = hubConnection?.InvokeAsync("getWorkflowsForFlux", FluxId);
+
+            // Forcer le rafraîchissement de l'interface
+            InvokeAsync(StateHasChanged);
         }
     }
 
@@ -285,35 +318,43 @@
             // Request updated details
             if (selectedWorkflowId.HasValue)
             {
-                _ = hubConnection?.SendAsync("getWorkflowDetails", selectedWorkflowId.Value);
+                _ = hubConnection?.InvokeAsync("getWorkflowById", selectedWorkflowId.Value);
             }
             else
             {
-                _ = hubConnection?.SendAsync("getFluxDetails", FluxId);
+                _ = hubConnection?.InvokeAsync("getFluxDetails", FluxId);
             }
         }
     }
 
     private void UpdateAvailableWorkflows(List<WorkflowStateModel> newWorkflows)
     {
-        // Merge with existing list, prioritizing new information
-        foreach (var workflow in newWorkflows)
+        // Convertir les WorkflowStateModel en FluxWorkflowDetailsDto
+        foreach (var workflowState in newWorkflows)
         {
-            var existing = availableWorkflows.FirstOrDefault(w => w.WorkflowId == workflow.WorkflowId);
-            if (existing != null)
+            var workflowDto = MapToFluxWorkflowDetailsDto(workflowState);
+
+            // Vérifier si ce workflow existe déjà dans notre liste
+            var existingIndex = availableWorkflows.FindIndex(w => w.WorkflowId == workflowDto.WorkflowId);
+            if (existingIndex >= 0)
             {
-                availableWorkflows.Remove(existing);
+                // Remplacer l'existant
+                availableWorkflows[existingIndex] = workflowDto;
             }
-            availableWorkflows.Add(workflow);
+            else
+            {
+                // Ajouter le nouveau
+                availableWorkflows.Add(workflowDto);
+            }
         }
 
-        // Sort by start time, newest first
+        // Trier par date de début (le plus récent en premier)
         availableWorkflows = availableWorkflows
             .OrderByDescending(w => w.StartTime)
             .ToList();
 
-        // If we don't have a selected workflow, select the newest one
-        if ((!selectedWorkflowId.HasValue || !availableWorkflows.Any(w => w.WorkflowId == selectedWorkflowId)) 
+        // Si aucun workflow n'est sélectionné, sélectionner le plus récent
+        if ((!selectedWorkflowId.HasValue || !availableWorkflows.Any(w => w.WorkflowId == selectedWorkflowId))
             && availableWorkflows.Any())
         {
             selectedWorkflowId = availableWorkflows.First().WorkflowId;
@@ -326,32 +367,34 @@
     private async Task OnWorkflowSelectionChanged(Guid? workflowId)
     {
         selectedWorkflowId = workflowId;
-        
-        // Update the URL to reflect the selected workflow
+
+        // Mettre à jour l'URL pour refléter le workflow sélectionné
         if (workflowId.HasValue)
         {
             NavigationManager.NavigateTo($"/flux/workflow-live/{FluxId}/{workflowId}", false);
-            
-            // Unsubscribe from previous workflow if any
+
+            // Se désabonner du workflow précédent si nécessaire
             if (WorkflowId.HasValue && WorkflowId.Value != workflowId.Value)
             {
-                await hubConnection?.SendAsync("unsubscribeFromWorkflow", WorkflowId.Value);
+                await hubConnection?.InvokeAsync("unsubscribeFromWorkflow", WorkflowId.Value);
+                Console.WriteLine($"Unsubscribed from workflow {WorkflowId.Value}");
             }
-            
-            // Subscribe to the new workflow
-            await hubConnection?.SendAsync("subscribeToWorkflow", workflowId.Value);
-            
-            // Request details for this workflow
-            await hubConnection?.SendAsync("getWorkflowDetails", workflowId.Value);
+
+            // S'abonner au nouveau workflow
+            await hubConnection?.InvokeAsync("subscribeToWorkflow", workflowId.Value);
+            Console.WriteLine($"Subscribed to workflow {workflowId.Value}");
+
+            // Demander les détails de ce workflow
+            await hubConnection?.InvokeAsync("getWorkflowById", workflowId.Value);
         }
         else
         {
             NavigationManager.NavigateTo($"/flux/workflow-live/{FluxId}", false);
-            
-            // If we unselected a specific workflow, get general flux details
-            await hubConnection?.SendAsync("getFluxDetails", FluxId);
+
+            // Si on désélectionne un workflow spécifique, récupérer les détails généraux du flux
+            await hubConnection?.InvokeAsync("getFluxDetails", FluxId);
         }
-        
+
         WorkflowId = workflowId;
     }
 
@@ -361,66 +404,132 @@
         {
             if (hubConnection != null && hubConnection.State == HubConnectionState.Connected)
             {
-                // Request data via SignalR
-                await hubConnection.SendAsync("getWorkflowsForFlux", FluxId);
-                
+                Console.WriteLine("Refreshing data via SignalR connection");
+
+                // Demander les données via SignalR
+                await hubConnection.InvokeAsync("getWorkflowsForFlux", FluxId);
+
                 if (selectedWorkflowId.HasValue)
                 {
-                    await hubConnection.SendAsync("getWorkflowDetails", selectedWorkflowId.Value);
+                    await hubConnection.InvokeAsync("getWorkflowById", selectedWorkflowId.Value);
                 }
                 else
                 {
-                    await hubConnection.SendAsync("getFluxDetails", FluxId);
+                    await hubConnection.InvokeAsync("getFluxDetails", FluxId);
                 }
                 return;
             }
 
-            // API fallback
+            // Fallback API si SignalR n'est pas disponible
+            Console.WriteLine("Refreshing data via API (SignalR not available)");
             await RefreshDataFromApi();
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Error refreshing workflow data: {ex.Message}");
+            await RefreshDataFromApi();
         }
     }
 
     private async Task RefreshDataFromApi()
     {
-        var response = await MindApi.GetFluxWorkflowDetailsAsync(FluxId);
-        WorkflowDetails = response.Data;
-
-        if (WorkflowDetails != null)
+        try
         {
-            PositionWorkflowSteps();
+            if (selectedWorkflowId.HasValue)
+            {
+                // Récupérer les détails du workflow spécifique
+                var response = await MindApi.GetWorkflowByIdAsync(selectedWorkflowId.Value);
+                if (response?.Data != null)
+                {
+                    WorkflowDetails = response.Data;
+                    PositionWorkflowSteps();
+                }
+            }
+            else
+            {
+                // Récupérer les détails globaux du flux
+                var response = await MindApi.GetFluxWorkflowDetailsAsync(FluxId);
+                if (response?.Data != null)
+                {
+                    WorkflowDetails = response.Data;
+                    PositionWorkflowSteps();
+                }
+            }
+
+            // Récupérer aussi les workflows actifs et complétés
+            var activeResponse = await MindApi.GetActiveFluxesAsync();
+            if (activeResponse?.Data != null)
+            {
+                var relevantWorkflows = activeResponse.Data
+                    .Where(f => f.FluxId == FluxId)
+                    .ToList();
+
+                // Convertir en FluxWorkflowDetailsDto et mettre à jour la liste
+                foreach (var flux in relevantWorkflows)
+                {
+                    var dto = new FluxWorkflowDetailsDto
+                    {
+                        FluxId = flux.FluxId,
+                        FluxName = flux.FluxName,
+                        CurrentStage = flux.Stage,
+                        StartTime = flux.StartTime,
+                        LastUpdateTime = flux.LastUpdateTime,
+                        DurationMinutes = flux.DurationMinutes,
+                        ProgressPercentage = flux.ProgressPercentage
+                    };
+
+                    // Ajouter ou mettre à jour dans la liste
+                    var existingIndex = availableWorkflows.FindIndex(w => w.WorkflowId == dto.WorkflowId);
+                    if (existingIndex >= 0)
+                    {
+                        availableWorkflows[existingIndex] = dto;
+                    }
+                    else
+                    {
+                        availableWorkflows.Add(dto);
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error refreshing data from API: {ex.Message}");
         }
     }
 
     private void MapWorkflowStateToDetails(WorkflowStateModel state)
     {
-        // Convert WorkflowStateModel to FluxWorkflowDetailsDto for rendering
-        WorkflowDetails = new FluxWorkflowDetailsDto
+        WorkflowDetails = MapToFluxWorkflowDetailsDto(state);
+    }
+
+    private FluxWorkflowDetailsDto MapToFluxWorkflowDetailsDto(WorkflowStateModel state)
+    {
+        // Convertir WorkflowStateModel en FluxWorkflowDetailsDto
+        return new FluxWorkflowDetailsDto
         {
+            WorkflowId = state.WorkflowId,
             FluxId = state.FluxId,
             FluxName = state.FluxName,
             CurrentStage = state.CurrentStage.ToString(),
+            StageDetails = state.Steps.LastOrDefault()?.Description,
             StartTime = state.StartTime,
             LastUpdateTime = state.LastUpdateTime,
             EndTime = state.EndTime,
+            DurationMinutes = state.Duration.TotalMinutes,
+            ProgressPercentage = state.ProgressPercentage,
             IsCompleted = state.IsCompleted,
             IsSuccessful = state.IsSuccessful,
-            ProgressPercentage = state.ProgressPercentage,
-            Duration = state.Duration,
-            History = state.Steps?.Select(s => new HistoryEntryDto
+            History = state.Steps.Select(s => new HistoryEntryDto
             {
                 Stage = s.Stage.ToString(),
                 Description = s.Description,
                 Timestamp = s.Timestamp,
                 TimeSinceStart = (s.Timestamp - state.StartTime).TotalMinutes,
-                LinesAdded = s.LinesAdded,
-                LinesModified = s.LinesModified,
-                LinesIgnored = s.LinesIgnored,
-                LinesWithErrors = s.LinesWithErrors
-            }).ToList() ?? new List<HistoryEntryDto>()
+                RowsAdded = s.LinesAdded,
+                RowsModified = s.LinesModified,
+                RowsIgnored = s.LinesIgnored,
+                RowsWithErrors = s.LinesWithErrors
+            }).ToList()
         };
     }
 
@@ -428,7 +537,7 @@
     {
         if (WorkflowDetails?.History == null) return;
 
-        // Calculate positions for each step in workflow
+        // Calculer la position de chaque étape du workflow
         var horizontalSpacing = 250;
         var verticalSpacing = 150;
         var steps = WorkflowDetails.History.OrderBy(h => h.Timestamp).ToList();
@@ -436,28 +545,17 @@
         positionedSteps.Clear();
         for (int i = 0; i < steps.Count; i++)
         {
-            positionedSteps.Add(new WorkflowStepPosition(
-                new WorkflowStepModel
-                {
-                    FluxId = FluxId,
-                    Stage = Enum.Parse<WorkflowStage>(steps[i].Stage),
-                    Description = steps[i].Description ?? "",
-                    Timestamp = steps[i].Timestamp,
-                    LinesAdded = steps[i].LinesAdded,
-                    LinesModified = steps[i].LinesModified,
-                    LinesIgnored = steps[i].LinesIgnored,
-                    LinesWithErrors = steps[i].LinesWithErrors,
-                    TimeSinceStart = steps[i].TimeSinceStart
-                },
+            positionedSteps.Add(new PositionedHistoryEntry(
+                steps[i],
                 i * horizontalSpacing,
                 (i % 2) * verticalSpacing
             ));
         }
     }
 
-    private string GetStepStatusClass(WorkflowStepModel step)
+    private string GetStepStatusClass(string stage)
     {
-        return step.Stage.ToString().ToLowerInvariant() switch
+        return stage.ToLowerInvariant() switch
         {
             var s when s.Contains("fail") => "status-error",
             var s when s.Contains("completed") => "status-success",
@@ -472,17 +570,17 @@
     private Color GetProgressColor(string? stage)
     {
         if (string.IsNullOrEmpty(stage)) return Color.Default;
-        
+
         return stage.ToLowerInvariant() switch
         {
             var s when s.Contains("fail") => Color.Error,
-            var s when s.Contains("completed") => Color.Success, 
+            var s when s.Contains("completed") => Color.Success,
             var s when s.Contains("processing") => Color.Info,
             _ => Color.Primary
         };
     }
 
-    private void SelectStep(WorkflowStepModel step)
+    private void SelectStep(HistoryEntryDto step)
     {
         SelectedStep = step;
     }
