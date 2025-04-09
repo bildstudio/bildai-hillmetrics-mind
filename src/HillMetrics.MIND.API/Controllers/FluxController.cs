@@ -24,9 +24,9 @@ using HillMetrics.Normalized.Domain.Contracts.Providing.Flux.Cqrs;
 
 namespace HillMetrics.MIND.API.Controllers
 {
-    [Route("api/v{v:apiVersion}/[controller]"), AllowAnonymous]
+    [Route("api/v{v:apiVersion}/[controller]")]
     //[EnableRateLimiting("allow5000requestsPerSecond_fixed")]
-    public class FluxController(IMediator mediator, IMapper mapper, IWorkflowTracker workflowTracker, ILogger<FluxController> logger) : BaseHillMetricsController(mediator)
+    public class FluxController(IMediator mediator, IMapper mapper, IWorkflowTracker workflowTracker, ILogger<FluxController> logger, IServiceScopeFactory serviceScopeFactory) : BaseHillMetricsController(mediator)
     {
         #region Flux
         /// <summary>
@@ -54,7 +54,7 @@ namespace HillMetrics.MIND.API.Controllers
         public async Task<ActionResult<FluxResponseWrapper>> GetFluxAsync(int id)
         {
             var result = await Mediator.Send(new FluxQuery() { FluxId = id });
-            
+
             if (result.IsFailed)
                 return new ErrorApiActionResult(result.Errors.ToApiResult());
 
@@ -69,7 +69,7 @@ namespace HillMetrics.MIND.API.Controllers
         /// </summary>
         /// <param name="fluxRequest">The flux informations</param>
         /// <returns>true if success, false otherwise</returns>
-        [HttpPost]
+        [HttpPost, AllowAnonymous]
         public async Task<ActionResult<bool>> CreateFlux(FluxRequest fluxRequest)
         {
             var fluxCommand = CreateFluxCommand.Create();
@@ -89,7 +89,7 @@ namespace HillMetrics.MIND.API.Controllers
         /// <param name="fluxId">The flux identifier</param>
         /// <param name="fluxRequest">The flux informations</param>
         /// <returns>true if success, false otherwise</returns>
-        [HttpPut]
+        [HttpPut, AllowAnonymous]
         public async Task<ActionResult<bool>> UpdateFlux(int fluxId, FluxRequest fluxRequest)
         {
             var fluxCommand = CreateFluxCommand.Create().WithId(fluxId);
@@ -219,13 +219,13 @@ namespace HillMetrics.MIND.API.Controllers
                     Currency = request.Currency,
                     Dates = request.Dates
                 };
-                
+
                 // Send the command to the handler
                 var result = await Mediator.Send(command);
-                
+
                 if (result.IsFailed)
                     return new ErrorApiActionResult(result.Errors.ToApiResult());
-                
+
                 // Map the result to response
                 return new ApiResponseBase<ForceFinancialPriceProcessingResponse>(
                     new ForceFinancialPriceProcessingResponse
@@ -256,34 +256,34 @@ namespace HillMetrics.MIND.API.Controllers
             try
             {
                 // Capture services from the current request context
-                var serviceProvider = HttpContext.RequestServices;
+                //var serviceProvider = HttpContext.RequestServices;
 
                 // Start the background processing task without awaiting it
                 _ = Task.Run(async () =>
                 {
                     // Create a new scope for the long-running operation
-                    using var scope = serviceProvider.CreateScope();
-                    
+                    using var scope = serviceScopeFactory.CreateScope();
+
                     try
                     {
                         // Resolve required services from the new scope
                         var scopedMediator = scope.ServiceProvider.GetRequiredService<IMediator>();
                         var scopedLogger = scope.ServiceProvider.GetRequiredService<ILogger<FluxController>>();
-                        
+
                         scopedLogger.LogInformation("Starting asynchronous fetch for flux {FluxId}", id);
-                        
+
                         // Execute the operation with services from the new scope
                         var command = FetchFluxCommand.Create(id, Task.FromResult(new List<Mail>()));
                         command.CalledManually = true;
                         var result = await scopedMediator.Send(command);
-                        
+
                         if (result.IsSuccess)
                         {
                             scopedLogger.LogInformation("Async fetch completed successfully for flux {FluxId}", id);
                         }
                         else
                         {
-                            scopedLogger.LogWarning("Async fetch failed for flux {FluxId}: {Errors}", 
+                            scopedLogger.LogWarning("Async fetch failed for flux {FluxId}: {Errors}",
                                 id, string.Join(", ", result.Errors.Select(e => e.Message)));
                         }
                     }
@@ -294,7 +294,7 @@ namespace HillMetrics.MIND.API.Controllers
                         scopedLogger.LogError(ex, "Error in asynchronous flux fetch for flux {FluxId}", id);
                     }
                 });
-                
+
                 // Return success immediately
                 return new ApiResponseBase<string>(
                     $"Flux fetch operation started for flux {id}. The operation will continue in the background.");
@@ -304,7 +304,7 @@ namespace HillMetrics.MIND.API.Controllers
                 logger.LogError(ex, "Error initiating asynchronous flux fetch for flux {FluxId}", id);
                 return new ErrorApiActionResult(
                     new ErrorApiResponse(
-                        new Core.API.Exceptions.ApiException($"Error starting asynchronous flux fetch: {ex.Message}"), 
+                        new Core.API.Exceptions.ApiException($"Error starting asynchronous flux fetch: {ex.Message}"),
                         System.Net.HttpStatusCode.InternalServerError));
             }
         }
@@ -319,48 +319,43 @@ namespace HillMetrics.MIND.API.Controllers
         {
             try
             {
-                // Capture services from the current request context
-                var serviceProvider = HttpContext.RequestServices;
-
                 // Start the background processing task without awaiting it
                 _ = Task.Run(async () =>
                 {
-                    // Create a new scope for the long-running operation
-                    using var scope = serviceProvider.CreateScope();
-                    
+                    // Create a new scope using the factory instead of the provider
+                    using var scope = serviceScopeFactory.CreateScope();
+
                     try
                     {
                         // Resolve required services from the new scope
                         var scopedMediator = scope.ServiceProvider.GetRequiredService<IMediator>();
                         var scopedLogger = scope.ServiceProvider.GetRequiredService<ILogger<FluxController>>();
-                        
+
                         scopedLogger.LogInformation("Starting asynchronous process for flux {FluxId}", id);
-                        
+
                         // Execute the operation with services from the new scope
                         var result = await scopedMediator.Send(new ProcessFluxCommand() {
                             FluxId = id,
                             CalledManually = true
                         });
-                        
+
                         if (result.IsSuccess)
                         {
                             scopedLogger.LogInformation("Async process completed successfully for flux {FluxId}", id);
                         }
                         else
                         {
-                            scopedLogger.LogWarning("Async process failed for flux {FluxId}: {Errors}", 
+                            scopedLogger.LogWarning("Async process failed for flux {FluxId}: {Errors}",
                                 id, string.Join(", ", result.Errors.Select(e => e.Message)));
                         }
                     }
                     catch (Exception ex)
                     {
-                        // Use logger from the scope
                         var scopedLogger = scope.ServiceProvider.GetRequiredService<ILogger<FluxController>>();
                         scopedLogger.LogError(ex, "Error in asynchronous flux process for flux {FluxId}", id);
                     }
                 });
-                
-                // Return success immediately
+
                 return new ApiResponseBase<string>(
                     $"Flux process operation started for flux {id}. The operation will continue in the background.");
             }
@@ -369,7 +364,7 @@ namespace HillMetrics.MIND.API.Controllers
                 logger.LogError(ex, "Error initiating asynchronous flux process for flux {FluxId}", id);
                 return new ErrorApiActionResult(
                     new ErrorApiResponse(
-                        new Core.API.Exceptions.ApiException($"Error starting asynchronous flux process: {ex.Message}"), 
+                        new Core.API.Exceptions.ApiException($"Error starting asynchronous flux process: {ex.Message}"),
                         System.Net.HttpStatusCode.InternalServerError));
             }
         }
@@ -564,7 +559,7 @@ namespace HillMetrics.MIND.API.Controllers
             {
                 logger.LogError(ex, "Error deleting fetching history: {FetchingHistoryId}", fetchingHistoryId);
                 return new ErrorApiActionResult(new ErrorApiResponse(
-                    new Core.API.Exceptions.ApiException($"Error deleting fetching history: {ex.Message}"), 
+                    new Core.API.Exceptions.ApiException($"Error deleting fetching history: {ex.Message}"),
                     System.Net.HttpStatusCode.InternalServerError));
             }
         }
@@ -613,7 +608,18 @@ namespace HillMetrics.MIND.API.Controllers
             if (result.IsFailed)
                 return new ErrorApiActionResult(result.Errors.ToApiResult());
 
-            return new ApiResponseBase<FluxProcessingResponse>(mapper.Map<FluxProcessingResponse>(result.Value));
+            var response = mapper.Map<FluxProcessingResponse>(result.Value);
+
+            // Add statistics
+            response.Statistics = new ProcessingStatisticsResponse
+            {
+                TotalErrors = result.Value.TotalErrors,
+                TotalRowsInserted = result.Value.TotalRowsInserted,
+                TotalRowsUpdated = result.Value.TotalRowsUpdated,
+                TotalRowsIgnored = result.Value.TotalRowsIgnored
+            };
+
+            return new ApiResponseBase<FluxProcessingResponse>(response);
         }
         #endregion
 
@@ -671,7 +677,7 @@ namespace HillMetrics.MIND.API.Controllers
             {
                 logger.LogError(ex, "Error deleting flux errors: {ErrorIds}", string.Join(", ", errorIds));
                 return new ErrorApiActionResult(new ErrorApiResponse(
-                    new Core.API.Exceptions.ApiException($"Error deleting flux errors: {ex.Message}"), 
+                    new Core.API.Exceptions.ApiException($"Error deleting flux errors: {ex.Message}"),
                     System.Net.HttpStatusCode.InternalServerError));
             }
         }

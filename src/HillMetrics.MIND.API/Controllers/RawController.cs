@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace HillMetrics.MIND.API.Controllers
 {
-    [Route("api/v{v:apiVersion}/[controller]"), AllowAnonymous]
+    [Route("api/v{v:apiVersion}/[controller]")]
     public class RawController(IMediator mediator, IMapper mapper, IRawFluxDataRepository rawFluxDataRepository, IFileMetadataRepository fileMetadataRepository) : BaseHillMetricsController(mediator)
     {
         [HttpGet("{id}")]

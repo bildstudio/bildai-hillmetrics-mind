@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace HillMetrics.MIND.API.Controllers.Sector
 {
-    [Route("api/v{v:apiVersion}/[controller]"), AllowAnonymous]
+    [Route("api/v{v:apiVersion}/[controller]")]
     public class SectorController(IMediator mediator, IMapper mapper) : BaseHillMetricsController(mediator)
     {
         // GET Sectors

@@ -10,7 +10,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace HillMetrics.MIND.API.Controllers
 {
-    [Route("api/v{v:apiVersion}/[controller]"), AllowAnonymous]
+    [Route("api/v{v:apiVersion}/[controller]")]
     public class TradingVenueController : BaseHillMetricsController
     {
         private readonly ILogger<TradingVenueController> _logger;
