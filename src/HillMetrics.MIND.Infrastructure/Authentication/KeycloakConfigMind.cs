@@ -19,7 +19,7 @@
             if (string.IsNullOrEmpty(Audiences))
                 return [Azure.ClientId];
 
-            return Audiences.Split(";", StringSplitOptions.RemoveEmptyEntries);
+            return Audiences.Split(new char[';'], StringSplitOptions.RemoveEmptyEntries);
         }
     }
 }
