@@ -69,7 +69,7 @@ namespace HillMetrics.MIND.API.Controllers
         /// </summary>
         /// <param name="fluxRequest">The flux informations</param>
         /// <returns>true if success, false otherwise</returns>
-        [HttpPost]
+        [HttpPost, AllowAnonymous]
         public async Task<ActionResult<bool>> CreateFlux(FluxRequest fluxRequest)
         {
             var fluxCommand = CreateFluxCommand.Create();
@@ -89,7 +89,7 @@ namespace HillMetrics.MIND.API.Controllers
         /// <param name="fluxId">The flux identifier</param>
         /// <param name="fluxRequest">The flux informations</param>
         /// <returns>true if success, false otherwise</returns>
-        [HttpPut]
+        [HttpPut, AllowAnonymous]
         public async Task<ActionResult<bool>> UpdateFlux(int fluxId, FluxRequest fluxRequest)
         {
             var fluxCommand = CreateFluxCommand.Create().WithId(fluxId);
