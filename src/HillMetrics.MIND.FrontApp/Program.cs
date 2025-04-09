@@ -36,9 +36,9 @@ builder.Services.AddHillMetricsHttpClient("MindAPI", client =>
 builder.Services.AddTransient<FileUploadService>();
 builder.Services.AddTransient<MappingExportService>();
 
-builder.Services.AddHillMetricsBlazorCookieAuth(mindApi, "HillMetrics_MIND", "HillMetrics_MIND");
+builder.Services.AddHillMetricsBlazorMindCookieAuth(mindApi, "HillMetrics_MIND", "HillMetrics_MIND");
 
-builder.Services.AddMindApiSDK<AuthenticationHttpHandler>(mindApi, HillMetrics.Orchestrator.ServicesNames.Services.MindFrontApp);
+builder.Services.AddMindApiSDK<AuthenticationHttpHandler>(mindApi, HillMetrics.Orchestrator.ServicesNames.Services.MindFrontApp, TimeSpan.FromMinutes(5));
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
@@ -87,6 +87,7 @@ app.UseAuthorization();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+
 
 app.MapRazorPages();
 
