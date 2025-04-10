@@ -6,26 +6,30 @@
 @using HillMetrics.MIND.API.Contracts.Responses.Flux
 @using HillMetrics.MIND.API.SDK.V1
 @using Microsoft.AspNetCore.SignalR.Client
+@using Microsoft.Extensions.Options
+@using HillMetrics.Core.Authentication.Contracts
 @inject IMindAPI MindApi
 @inject IJSRuntime JSRuntime
 @inject NavigationManager NavigationManager
+@inject IServiceProvider ServiceProvider
+@inject IConfiguration Configuration
+@inject IAuthenticationService AuthService
 @implements IAsyncDisposable
-
 @attribute [Authorize]
 
 <div class="workflow-container">
     <div class="d-flex align-center justify-space-between mb-4">
         <MudButton Variant="Variant.Text"
-                  Color="Color.Primary"
-                  StartIcon="@Icons.Material.Filled.ArrowBack"
-                  OnClick="@(() => NavigationManager.NavigateTo("/flux/search"))">
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.ArrowBack"
+                   OnClick="@(() => NavigationManager.NavigateTo("/flux/search"))">
             Back to Search
         </MudButton>
 
         @if (availableWorkflows.Count > 1)
         {
             <MudSelect T="Guid?" Label="Select Workflow" Value="selectedWorkflowId" ValueChanged="OnWorkflowSelectionChanged"
-                      Class="ml-4" Style="min-width: 300px;">
+                       Class="ml-4" Style="min-width: 300px;">
                 @foreach (var workflow in availableWorkflows)
                 {
                     <MudSelectItem Value="@workflow.WorkflowId">
@@ -36,9 +40,9 @@
         }
 
         <MudButton Variant="Variant.Text"
-                  Color="Color.Secondary"
-                  StartIcon="@Icons.Material.Filled.Refresh"
-                  OnClick="@RefreshData">
+                   Color="Color.Secondary"
+                   StartIcon="@Icons.Material.Filled.Refresh"
+                   OnClick="@RefreshData">
             Refresh
         </MudButton>
     </div>
@@ -57,9 +61,9 @@
             </MudItem>
             <MudItem xs="12" md="6">
                 <MudProgressLinear Color="@GetProgressColor(WorkflowDetails?.CurrentStage)"
-                                  Value="@(WorkflowDetails?.ProgressPercentage ?? 0)"
-                                  Class="my-4"
-                                  Size="Size.Large" />
+                                   Value="@(WorkflowDetails?.ProgressPercentage ?? 0)"
+                                   Class="my-4"
+                                   Size="Size.Large" />
                 <MudText Typo="Typo.body2" Align="Align.Center">
                     @(WorkflowDetails?.IsCompleted == true
                         ? (WorkflowDetails?.IsSuccessful == true ? "Completed successfully" : "Failed")
@@ -184,6 +188,7 @@
     private List<FluxWorkflowDetailsDto> availableWorkflows = new();
     private Guid? selectedWorkflowId;
     private List<PositionedHistoryEntry> positionedSteps = new();
+    private string? signalRServiceUrl;
 
     private class PositionedHistoryEntry : HistoryEntryDto
     {
@@ -209,46 +214,85 @@
     protected override async Task OnInitializedAsync()
     {
         selectedWorkflowId = WorkflowId;
+
+        // Récupérer l'URL du service SignalR depuis la configuration ou service discovery
+        await GetSignalRServiceUrl();
+
         await SetupSignalRConnection();
         await RefreshData();
+    }
+
+    private async Task GetSignalRServiceUrl()
+    {
+        try
+        {
+            // Tenter de récupérer l'URL du service SignalR depuis la configuration
+            signalRServiceUrl = Configuration["Services:SignalR:BaseUrl"];
+
+            if (string.IsNullOrEmpty(signalRServiceUrl))
+            {
+                // Utiliser une URL par défaut si non trouvée dans la configuration
+                signalRServiceUrl = "https://localhost:8080";
+                Console.WriteLine($"Using default SignalR service URL: {signalRServiceUrl}");
+            }
+            else
+            {
+                Console.WriteLine($"Found SignalR service URL in configuration: {signalRServiceUrl}");
+            }
+
+            // Vérifier si l'URL se termine par un slash
+            if (!signalRServiceUrl.EndsWith("/"))
+            {
+                signalRServiceUrl += "/";
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error getting SignalR service URL: {ex.Message}");
+            // Fallback sur une URL par défaut en cas d'erreur
+            signalRServiceUrl = "https://localhost:8080/";
+        }
     }
 
     private async Task SetupSignalRConnection()
     {
         try
         {
+            Console.WriteLine($"Connecting to SignalR hub at: {signalRServiceUrl}notification-hub");
+
+            // Récupérer un jeton d'accès pour l'authentification
+            var accessToken = await GetAccessTokenAsync();
+
             hubConnection = new HubConnectionBuilder()
-                .WithUrl(NavigationManager.ToAbsoluteUri("/workflow-hub"))
-                .WithAutomaticReconnect()
+                .WithUrl($"{signalRServiceUrl}notification-hub", options =>
+                {
+                    // Ajouter le jeton d'accès comme en-tête d'autorisation
+                    options.AccessTokenProvider = () => Task.FromResult(accessToken);
+
+                    // Configurer d'autres options si nécessaire
+                    options.SkipNegotiation = false;
+                    options.Transports = Microsoft.AspNetCore.Http.Connections.HttpTransportType.WebSockets;
+                })
+                .WithAutomaticReconnect(new[] { TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10) })
                 .Build();
 
-            // Enregistrement des handlers pour les notifications reçues du hub
-            hubConnection.On<WorkflowStateModel>("ReceiveFluxDetails", OnWorkflowUpdated);
-            hubConnection.On<List<WorkflowStateModel>>("ReceiveActiveFluxes", OnActiveFluxesUpdated);
-            hubConnection.On<List<WorkflowStateModel>>("ReceiveCompletedFluxes", OnCompletedFluxesUpdated);
-            hubConnection.On<int, string, WorkflowStage, string>("ReceiveFluxStageUpdate", OnFluxStageUpdated);
-            hubConnection.On<int, string, string>("ReceiveFluxError", OnFluxErrorReceived);
+            // S'abonner aux messages de notification
+            hubConnection.On<object>("onTopicNotification", (message) =>
+            {
+                // Cette méthode est appelée lorsqu'un message est reçu sur un topic
+                ProcessWorkflowMessage(message);
+            });
 
             // Démarrer la connexion
             await hubConnection.StartAsync();
-            Console.WriteLine($"SignalR connection started for flux {FluxId}");
+            Console.WriteLine("SignalR connection started successfully");
 
-            // S'abonner aux mises à jour pour ce flux spécifique
-            await hubConnection.InvokeAsync("subscribeToFlux", FluxId);
-            Console.WriteLine($"Subscribed to flux {FluxId}");
+            // S'abonner au topic "workflow" pour recevoir les mises à jour de workflow
+            await hubConnection.InvokeAsync("Subscribe", "workflow");
+            Console.WriteLine("Subscribed to 'workflow' topic");
 
-            // Si un WorkflowId est spécifié, s'abonner également à ce workflow
-            if (WorkflowId.HasValue)
-            {
-                await hubConnection.InvokeAsync("subscribeToWorkflow", WorkflowId.Value);
-                Console.WriteLine($"Subscribed to workflow {WorkflowId.Value}");
-
-                // Récupérer immédiatement les détails du workflow
-                await hubConnection.InvokeAsync("getWorkflowById", WorkflowId.Value);
-            }
-
-            // Récupérer la liste des workflows disponibles pour ce flux
-            await hubConnection.InvokeAsync("getWorkflowsForFlux", FluxId);
+            // Forcer le rafraîchissement initial des données via l'API
+            await RefreshDataFromApi();
         }
         catch (Exception ex)
         {
@@ -258,144 +302,101 @@
         }
     }
 
-    private void OnWorkflowUpdated(WorkflowStateModel workflowState)
+    private async Task<string> GetAccessTokenAsync()
     {
-        // Only update if this is the currently selected workflow or we're looking at the flux broadly
-        if (!selectedWorkflowId.HasValue || (workflowState.WorkflowId == selectedWorkflowId))
+        try
         {
-            MapWorkflowStateToDetails(workflowState);
-            PositionWorkflowSteps();
-            StateHasChanged();
+            // Utiliser le service d'authentification injecté pour obtenir le jeton
+            var token = ""; // await AuthService.GetAccessTokenAsync();
+
+            if (!string.IsNullOrEmpty(token))
+            {
+                Console.WriteLine("Retrieved token from AuthenticationService");
+                return token;
+            }
+
+            // Option de secours : Utiliser JSRuntime pour récupérer le jeton stocké côté client
+            token = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "auth_token");
+
+            if (!string.IsNullOrEmpty(token))
+            {
+                Console.WriteLine("Retrieved token from localStorage");
+                return token;
+            }
+
+            // Si aucun jeton n'est trouvé, renvoyer null ou une chaîne vide
+            Console.WriteLine("No access token found");
+            return string.Empty;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error getting access token: {ex.Message}");
+            return string.Empty;
         }
     }
 
-    private void OnActiveFluxesUpdated(List<WorkflowStateModel> fluxes)
+    private void ProcessWorkflowMessage(object message)
     {
-        // Filter to get workflows related to our FluxId
-        var relevantWorkflows = fluxes.Where(f => f.FluxId == FluxId).ToList();
-        UpdateAvailableWorkflows(relevantWorkflows);
-    }
-
-    private void OnCompletedFluxesUpdated(List<WorkflowStateModel> fluxes)
-    {
-        // Filter to get workflows related to our FluxId
-        var relevantWorkflows = fluxes.Where(f => f.FluxId == FluxId).ToList();
-        UpdateAvailableWorkflows(relevantWorkflows);
-    }
-
-    private void OnFluxStageUpdated(int fluxId, string fluxName, WorkflowStage stage, string description)
-    {
-        // Si cette mise à jour concerne notre flux en cours de visualisation
-        if (fluxId == FluxId)
+        try
         {
-            Console.WriteLine($"Flux {fluxId} stage updated: {stage} - {description}");
+            // Convertir le message en JSON pour faciliter l'extraction des propriétés
+            var json = System.Text.Json.JsonSerializer.Serialize(message);
+            var jsonDoc = System.Text.Json.JsonDocument.Parse(json);
 
-            // Si nous suivons un workflow spécifique
-            if (selectedWorkflowId.HasValue)
+            // Tenter d'extraire les informations pertinentes du message
+            if (jsonDoc.RootElement.TryGetProperty("Value", out var valueElement))
             {
-                // Requête pour obtenir les détails à jour du workflow spécifique
-                _ = hubConnection?.InvokeAsync("getWorkflowById", selectedWorkflowId.Value);
-            }
-            else
-            {
-                // Sinon, demander les détails du flux globalement
-                _ = hubConnection?.InvokeAsync("getFluxDetails", FluxId);
-            }
+                // Extraire les propriétés importantes
+                if (valueElement.TryGetProperty("FluxId", out var fluxIdElement) &&
+                    int.TryParse(fluxIdElement.ToString(), out var fluxId))
+                {
+                    // Vérifier si ce message concerne notre flux actuel
+                    if (fluxId == FluxId)
+                    {
+                        Console.WriteLine($"Received workflow update for flux {fluxId}");
 
-            // Rafraîchir la liste des workflows disponibles
-            _ = hubConnection?.InvokeAsync("getWorkflowsForFlux", FluxId);
+                        // Si un WorkflowId est présent, l'extraire
+                        Guid? workflowId = null;
+                        if (valueElement.TryGetProperty("WorkflowId", out var workflowIdElement) &&
+                            Guid.TryParse(workflowIdElement.ToString(), out var parsedWorkflowId))
+                        {
+                            workflowId = parsedWorkflowId;
+                            Console.WriteLine($"Message contains WorkflowId: {workflowId}");
+                        }
 
-            // Forcer le rafraîchissement de l'interface
-            InvokeAsync(StateHasChanged);
-        }
-    }
+                        // Si le message a un indicateur d'erreur
+                        bool isError = false;
+                        if (valueElement.TryGetProperty("IsError", out var isErrorElement))
+                        {
+                            isError = isErrorElement.GetBoolean();
+                        }
 
-    private void OnFluxErrorReceived(int fluxId, string fluxName, string errorMessage)
-    {
-        // If this error is for our specific flux, show some notification or update the UI
-        if (fluxId == FluxId)
-        {
-            // Request updated details
-            if (selectedWorkflowId.HasValue)
-            {
-                _ = hubConnection?.InvokeAsync("getWorkflowById", selectedWorkflowId.Value);
-            }
-            else
-            {
-                _ = hubConnection?.InvokeAsync("getFluxDetails", FluxId);
-            }
-        }
-    }
+                        // Déclencher un rafraîchissement des données basé sur le message reçu
+                        InvokeAsync(async () =>
+                        {
+                            // Si le message contient un WorkflowId spécifique et qu'il correspond à notre sélection actuelle
+                            if (workflowId.HasValue &&
+                                (selectedWorkflowId == null || selectedWorkflowId.Value == workflowId.Value))
+                            {
+                                // Mettre à jour ce workflow spécifique
+                                await RefreshDataFromApi();
+                            }
+                            else
+                            {
+                                // Sinon rafraîchir toutes les données
+                                await RefreshDataFromApi();
+                            }
 
-    private void UpdateAvailableWorkflows(List<WorkflowStateModel> newWorkflows)
-    {
-        // Convertir les WorkflowStateModel en FluxWorkflowDetailsDto
-        foreach (var workflowState in newWorkflows)
-        {
-            var workflowDto = MapToFluxWorkflowDetailsDto(workflowState);
-
-            // Vérifier si ce workflow existe déjà dans notre liste
-            var existingIndex = availableWorkflows.FindIndex(w => w.WorkflowId == workflowDto.WorkflowId);
-            if (existingIndex >= 0)
-            {
-                // Remplacer l'existant
-                availableWorkflows[existingIndex] = workflowDto;
-            }
-            else
-            {
-                // Ajouter le nouveau
-                availableWorkflows.Add(workflowDto);
+                            StateHasChanged();
+                        });
+                    }
+                }
             }
         }
-
-        // Trier par date de début (le plus récent en premier)
-        availableWorkflows = availableWorkflows
-            .OrderByDescending(w => w.StartTime)
-            .ToList();
-
-        // Si aucun workflow n'est sélectionné, sélectionner le plus récent
-        if ((!selectedWorkflowId.HasValue || !availableWorkflows.Any(w => w.WorkflowId == selectedWorkflowId))
-            && availableWorkflows.Any())
+        catch (Exception ex)
         {
-            selectedWorkflowId = availableWorkflows.First().WorkflowId;
-            OnWorkflowSelectionChanged(selectedWorkflowId);
+            Console.WriteLine($"Error processing workflow message: {ex.Message}");
         }
-
-        StateHasChanged();
-    }
-
-    private async Task OnWorkflowSelectionChanged(Guid? workflowId)
-    {
-        selectedWorkflowId = workflowId;
-
-        // Mettre à jour l'URL pour refléter le workflow sélectionné
-        if (workflowId.HasValue)
-        {
-            NavigationManager.NavigateTo($"/flux/workflow-live/{FluxId}/{workflowId}", false);
-
-            // Se désabonner du workflow précédent si nécessaire
-            if (WorkflowId.HasValue && WorkflowId.Value != workflowId.Value)
-            {
-                await hubConnection?.InvokeAsync("unsubscribeFromWorkflow", WorkflowId.Value);
-                Console.WriteLine($"Unsubscribed from workflow {WorkflowId.Value}");
-            }
-
-            // S'abonner au nouveau workflow
-            await hubConnection?.InvokeAsync("subscribeToWorkflow", workflowId.Value);
-            Console.WriteLine($"Subscribed to workflow {workflowId.Value}");
-
-            // Demander les détails de ce workflow
-            await hubConnection?.InvokeAsync("getWorkflowById", workflowId.Value);
-        }
-        else
-        {
-            NavigationManager.NavigateTo($"/flux/workflow-live/{FluxId}", false);
-
-            // Si on désélectionne un workflow spécifique, récupérer les détails généraux du flux
-            await hubConnection?.InvokeAsync("getFluxDetails", FluxId);
-        }
-
-        WorkflowId = workflowId;
     }
 
     private async Task RefreshData()
@@ -468,15 +469,15 @@
                 foreach (var flux in relevantWorkflows)
                 {
                     var dto = new FluxWorkflowDetailsDto
-                    {
-                        FluxId = flux.FluxId,
-                        FluxName = flux.FluxName,
-                        CurrentStage = flux.Stage,
-                        StartTime = flux.StartTime,
-                        LastUpdateTime = flux.LastUpdateTime,
-                        DurationMinutes = flux.DurationMinutes,
-                        ProgressPercentage = flux.ProgressPercentage
-                    };
+                        {
+                            FluxId = flux.FluxId,
+                            FluxName = flux.FluxName,
+                            CurrentStage = flux.Stage,
+                            StartTime = flux.StartTime,
+                            LastUpdateTime = flux.LastUpdateTime,
+                            DurationMinutes = flux.DurationMinutes,
+                            ProgressPercentage = flux.ProgressPercentage
+                        };
 
                     // Ajouter ou mettre à jour dans la liste
                     var existingIndex = availableWorkflows.FindIndex(w => w.WorkflowId == dto.WorkflowId);
@@ -506,31 +507,31 @@
     {
         // Convertir WorkflowStateModel en FluxWorkflowDetailsDto
         return new FluxWorkflowDetailsDto
-        {
-            WorkflowId = state.WorkflowId,
-            FluxId = state.FluxId,
-            FluxName = state.FluxName,
-            CurrentStage = state.CurrentStage.ToString(),
-            StageDetails = state.Steps.LastOrDefault()?.Description,
-            StartTime = state.StartTime,
-            LastUpdateTime = state.LastUpdateTime,
-            EndTime = state.EndTime,
-            DurationMinutes = state.Duration.TotalMinutes,
-            ProgressPercentage = state.ProgressPercentage,
-            IsCompleted = state.IsCompleted,
-            IsSuccessful = state.IsSuccessful,
-            History = state.Steps.Select(s => new HistoryEntryDto
             {
-                Stage = s.Stage.ToString(),
-                Description = s.Description,
-                Timestamp = s.Timestamp,
-                TimeSinceStart = (s.Timestamp - state.StartTime).TotalMinutes,
-                RowsAdded = s.LinesAdded,
-                RowsModified = s.LinesModified,
-                RowsIgnored = s.LinesIgnored,
-                RowsWithErrors = s.LinesWithErrors
-            }).ToList()
-        };
+                WorkflowId = state.WorkflowId,
+                FluxId = state.FluxId,
+                FluxName = state.FluxName,
+                CurrentStage = state.CurrentStage.ToString(),
+                StageDetails = state.Steps.LastOrDefault()?.Description,
+                StartTime = state.StartTime,
+                LastUpdateTime = state.LastUpdateTime,
+                EndTime = state.EndTime,
+                DurationMinutes = state.Duration.TotalMinutes,
+                ProgressPercentage = state.ProgressPercentage,
+                IsCompleted = state.IsCompleted,
+                IsSuccessful = state.IsSuccessful,
+                History = state.Steps.Select(s => new HistoryEntryDto
+                {
+                    Stage = s.Stage.ToString(),
+                    Description = s.Description,
+                    Timestamp = s.Timestamp,
+                    TimeSinceStart = (s.Timestamp - state.StartTime).TotalMinutes,
+                    RowsAdded = s.LinesAdded,
+                    RowsModified = s.LinesModified,
+                    RowsIgnored = s.LinesIgnored,
+                    RowsWithErrors = s.LinesWithErrors
+                }).ToList()
+            };
     }
 
     private void PositionWorkflowSteps()
@@ -585,10 +586,87 @@
         SelectedStep = step;
     }
 
+    private async Task OnWorkflowSelectionChanged(Guid? workflowId)
+    {
+        selectedWorkflowId = workflowId;
+
+        // Mettre à jour l'URL pour refléter le workflow sélectionné
+        if (workflowId.HasValue)
+        {
+            NavigationManager.NavigateTo($"/flux/workflow-live/{FluxId}/{workflowId}", false);
+
+            // Mise à jour du paramètre WorkflowId
+            WorkflowId = workflowId;
+
+            // Rafraîchir les données pour ce workflow spécifique
+            await RefreshSpecificWorkflow(workflowId.Value);
+        }
+        else
+        {
+            NavigationManager.NavigateTo($"/flux/workflow-live/{FluxId}", false);
+            WorkflowId = null;
+
+            // Rafraîchir les données générales du flux
+            await RefreshFluxData();
+        }
+    }
+
+    private async Task RefreshSpecificWorkflow(Guid workflowId)
+    {
+        try
+        {
+            // Récupérer les détails du workflow spécifique
+            var response = await MindApi.GetWorkflowByIdAsync(workflowId);
+            if (response?.Data != null)
+            {
+                WorkflowDetails = response.Data;
+                PositionWorkflowSteps();
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error refreshing specific workflow {workflowId}: {ex.Message}");
+        }
+    }
+
+    private async Task RefreshFluxData()
+    {
+        try
+        {
+            // Récupérer les détails globaux du flux
+            var response = await MindApi.GetFluxWorkflowDetailsAsync(FluxId);
+            if (response?.Data != null)
+            {
+                WorkflowDetails = response.Data;
+                PositionWorkflowSteps();
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error refreshing flux data for FluxId {FluxId}: {ex.Message}");
+        }
+    }
+
     public async ValueTask DisposeAsync()
     {
         if (hubConnection != null)
         {
+            // Se désabonner du topic avant de fermer la connexion
+            try
+            {
+                if (hubConnection.State == HubConnectionState.Connected)
+                {
+                    await hubConnection.InvokeAsync("Unsubscribe", "workflow");
+                    Console.WriteLine("Unsubscribed from 'workflow' topic");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error unsubscribing from topic: {ex.Message}");
+            }
+
             await hubConnection.DisposeAsync();
         }
     }
@@ -622,10 +700,10 @@
         transition: all 0.2s ease;
     }
 
-    .workflow-step:hover {
-        transform: scale(1.02);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-    }
+        .workflow-step:hover {
+            transform: scale(1.02);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
 
     .step-header {
         font-weight: bold;
@@ -664,11 +742,31 @@
         z-index: 1000;
     }
 
-    .status-default { border-left: 4px solid #ccc; }
-    .status-info { border-left: 4px solid #2196F3; }
-    .status-success { border-left: 4px solid #4CAF50; }
-    .status-warning { border-left: 4px solid #FFC107; }
-    .status-error { border-left: 4px solid #F44336; }
-    .status-secondary { border-left: 4px solid #9C27B0; }
-    .status-tertiary { border-left: 4px solid #FF9800; }
+    .status-default {
+        border-left: 4px solid #ccc;
+    }
+
+    .status-info {
+        border-left: 4px solid #2196F3;
+    }
+
+    .status-success {
+        border-left: 4px solid #4CAF50;
+    }
+
+    .status-warning {
+        border-left: 4px solid #FFC107;
+    }
+
+    .status-error {
+        border-left: 4px solid #F44336;
+    }
+
+    .status-secondary {
+        border-left: 4px solid #9C27B0;
+    }
+
+    .status-tertiary {
+        border-left: 4px solid #FF9800;
+    }
 </style>

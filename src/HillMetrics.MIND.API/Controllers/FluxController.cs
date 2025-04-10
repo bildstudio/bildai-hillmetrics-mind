@@ -294,7 +294,6 @@ namespace HillMetrics.MIND.API.Controllers
                         // Resolve required services from the new scope
                         var scopedMediator = scope.ServiceProvider.GetRequiredService<IMediator>();
                         var scopedLogger = scope.ServiceProvider.GetRequiredService<ILogger<FluxController>>();
-                        var scopedNotificationService = scope.ServiceProvider.GetRequiredService<IWorkflowNotificationService>();
 
                         scopedLogger.LogInformation("Starting asynchronous fetch for flux {FluxId} with workflow {WorkflowId}",
                             id, existingWorkflowId);
@@ -391,7 +390,6 @@ namespace HillMetrics.MIND.API.Controllers
                         // Resolve required services from the new scope
                         var scopedMediator = scope.ServiceProvider.GetRequiredService<IMediator>();
                         var scopedLogger = scope.ServiceProvider.GetRequiredService<ILogger<FluxController>>();
-                        var scopedNotificationService = scope.ServiceProvider.GetRequiredService<IWorkflowNotificationService>();
 
                         scopedLogger.LogInformation("Starting asynchronous process for flux {FluxId} with workflow {WorkflowId}",
                             id, existingWorkflowId);
