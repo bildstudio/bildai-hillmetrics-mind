@@ -1,10 +1,8 @@
 ﻿using HillMetrics.Core.API.Contracts;
-using HillMetrics.Core.API.Extensions;
 using HillMetrics.Core.API.Responses;
 using HillMetrics.Core.Authentication;
 using HillMetrics.Core.Authentication.Contracts;
 using HillMetrics.Core.Authentication.Objects;
-using HillMetrics.MIND.API.Contracts.Requests;
 using HillMetrics.MIND.API.Endpoints;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -63,7 +61,7 @@ namespace HillMetrics.MIND.API.Controllers
 
                 string exchangeCode = await _tokenExchangeService.SaveTokenForCodeAsync(tokenResult.Value, TimeSpan.FromMinutes(3));
 
-                _cookieService.Set(AuthConstants.Cookie.ExchangeCode, exchangeCode);
+                _cookieService.Set(AuthConstants.Cookie.ExchangeCode, exchangeCode, DateTimeOffset.UtcNow.AddMinutes(3));
                 _logger.LogInformation("Exchange code saved in cookie: {exchangeCode}", exchangeCode);
 
                 return Redirect(state);
