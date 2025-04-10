@@ -65,6 +65,8 @@ spec:
       objectName: aspnetcore-environment
     - key: OTEL_EXPORTER_OTLP_ENDPOINT
       objectName: otel-exporter-otlp-endpoint
+    - key: ConnectionStrings__Redis
+      objectName: connectionstrings-redis
     secretName: mindfront-env
     type: Opaque
   parameters:
@@ -81,5 +83,8 @@ spec:
           objectType: secret
         - |
           objectName: otel-exporter-otlp-endpoint
+          objectType: secret
+        - |
+          objectName: connectionstrings-redis
           objectType: secret
     tenantId: 47650b84-ae6e-4206-82af-ebe7b3243aa2
