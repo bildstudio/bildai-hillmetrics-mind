@@ -1,5 +1,6 @@
 @page "/flux/workflow-live/{FluxId:int}"
 @page "/flux/workflow-live/{FluxId:int}/{WorkflowId:guid}"
+@using HillMetrics.Core.Blazor.AuthModule.Services
 @using HillMetrics.Core.Monitoring.Workflow
 @using HillMetrics.Core.Workflow
 @using HillMetrics.Core.Workflow.Models
@@ -13,7 +14,8 @@
 @inject NavigationManager NavigationManager
 @inject IServiceProvider ServiceProvider
 @inject IConfiguration Configuration
-@inject IAuthenticationService AuthService
+@* @inject IAuthenticationService AuthService *@
+@inject IAuthService AuthService
 @implements IAsyncDisposable
 @attribute [Authorize]
 
@@ -307,7 +309,7 @@
         try
         {
             // Utiliser le service d'authentification injecté pour obtenir le jeton
-            var token = ""; // await AuthService.GetAccessTokenAsync();
+            var token = await AuthService.GetAccessTokenAsync();
 
             if (!string.IsNullOrEmpty(token))
             {
