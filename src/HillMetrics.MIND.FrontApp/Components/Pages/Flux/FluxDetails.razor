@@ -13,6 +13,8 @@
 @using HillMetrics.Core.Common
 @using System.Text.Json
 @using HillMetrics.MIND.FrontApp.Components.Flux.Metadata
+@using HillMetrics.Core.Workflow
+@using HillMetrics.Core.Workflow.Models
 @inject IMindAPI MindApi
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
@@ -460,6 +462,12 @@
                                     <MudIcon Icon="@Icons.Material.Filled.DataUsage" Class="mr-2" /> Data Points
                                 </MudButton>
                             </MudItem>
+                            <MudItem xs="12" sm="6" md="3" Class="mt-4">
+                                <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true"
+                                         OnClick="@(() => NavigationManager.NavigateTo($"/flux/workflow-live/{FluxId}"))">
+                                    <MudIcon Icon="@Icons.Material.Filled.Timeline" Class="mr-2" /> Workflow Live
+                                </MudButton>
+                            </MudItem>
                         </MudGrid>
                     </MudCardContent>
                 </MudCard>
@@ -476,8 +484,11 @@
     private bool loading = true;
     private bool loadingFetchingHistory = false;
     private bool loadingProcessingHistory = false;
+    private bool loadingWorkflowsHistory = false;
     private TriggerPeriod fetchTriggerPeriod;
     private TriggerPeriod processTriggerPeriod;
+    private string _searchString = string.Empty;
+    private MudTable<FluxWorkflowDetailsDto> _workflowsTable;
 
     protected override async Task OnInitializedAsync()
     {
@@ -779,5 +790,34 @@
             return $"{(int)diff.TotalDays}d ago";
 
         return dateTime.ToString("MMM dd, HH:mm");
+    }
+
+    private Color GetWorkflowStageColor(string stage)
+    {
+        return stage switch
+        {
+            "Initializing" => Color.Primary,
+            "Processing" => Color.Info,
+            "Completed" => Color.Success,
+            "Failed" => Color.Error,
+            _ => Color.Default
+        };
+    }
+
+    private Color GetProgressColor(string stage, bool isCompleted, bool isSuccessful)
+    {
+        if (isCompleted)
+        {
+            return isSuccessful ? Color.Success : Color.Error;
+        }
+        else
+        {
+            return stage switch
+            {
+                "Initializing" => Color.Primary,
+                "Processing" => Color.Info,
+                _ => Color.Default
+            };
+        }
     }
 }
