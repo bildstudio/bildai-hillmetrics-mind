@@ -536,11 +536,10 @@
             loading = true;
             var result = await MindApi.ForceFetchBackgroundAsync(id);
 
-            if (result?.Data != null)
+            if (result?.Data != null && result.Data.WorkflowId.HasValue)
             {
                 // Rediriger vers la page du workflow avec l'ID du workflow
                 NavigationManager.NavigateTo($"/flux/workflow-live/{id}/{result.Data.WorkflowId}");
-                Snackbar.Add($"Suivi du traitement en cours. WorkflowId: {result.Data.WorkflowId}", Severity.Info);
             }
             else
             {
@@ -565,11 +564,10 @@
             loading = true;
             var result = await MindApi.ForceProcessBackgroundAsync(id);
 
-            if (result?.Data != null)
+            if (result?.Data != null && result.Data.WorkflowId.HasValue)
             {
                 // Rediriger vers la page du workflow avec l'ID du workflow
                 NavigationManager.NavigateTo($"/flux/workflow-live/{id}/{result.Data.WorkflowId}");
-                Snackbar.Add($"Suivi du traitement en cours. WorkflowId: {result.Data.WorkflowId}", Severity.Info);
             }
             else
             {
