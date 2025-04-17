@@ -453,8 +453,8 @@
         try
         {
             loading = true;
-            // Appeler l'API pour forcer le traitement du contenu en arrière-plan
-            await MindApi.ForceProcessBackgroundAsync(content.Id);
+            
+            await MindApi.ForceProcessBackgroundAsync(content.FluxIdentificationHistoryId);
             Snackbar.Add($"Force process started in the background for content: {content.ContentName}", Severity.Success);
             await LoadProcessingHistories();
         }

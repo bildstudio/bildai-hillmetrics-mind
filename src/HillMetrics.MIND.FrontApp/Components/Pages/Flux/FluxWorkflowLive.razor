@@ -776,12 +776,12 @@
         if (firstRender)
         {
             // Initialize animations or other JS interop needed after first render
-            await JSRuntime.InvokeVoidAsync("initWorkflowAnimations");
+            // await JSRuntime.InvokeVoidAsync("initWorkflowAnimations");
         }
         else if (WorkflowDetails != null)
         {
             // Update animations when workflow data changes
-            await JSRuntime.InvokeVoidAsync("updateWorkflowAnimations");
+            // await JSRuntime.InvokeVoidAsync("updateWorkflowAnimations");
         }
     }
 }

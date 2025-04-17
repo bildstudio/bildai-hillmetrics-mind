@@ -9,6 +9,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Text.Json.Serialization;
+using HillMetrics.Core.Workflow;
 
 namespace HillMetrics.MIND.API.Contracts.Responses.Flux
 {

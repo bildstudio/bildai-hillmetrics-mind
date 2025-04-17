@@ -1,4 +1,5 @@
 @page "/flux/search"
+@using HillMetrics.Core.Workflow
 @using HillMetrics.MIND.API.Contracts.Requests.Flux
 @using HillMetrics.MIND.API.Contracts.Requests.Source
 @using HillMetrics.MIND.API.Contracts.Responses
@@ -362,7 +363,7 @@
                             <MudIcon Icon="@Icons.Material.Filled.Download" Class="mr-2" Size="Size.Small" /> Force Fetch
                         </MudMenuItem>
                         <MudMenuItem OnClick="@(() => ForceProcess(context.FluxId))">
-                            <MudIcon Icon="@Icons.Material.Filled.PlayArrow" Class="mr-2" Size="Size.Small" /> Force Process
+                            <MudIcon Icon="@Icons.Material.Filled.PlayArrow" Class="mr-2" Size="Size.Small" /> Force Process all fetching
                         </MudMenuItem>
                     </MudMenu>
                 </MudTd>
@@ -539,7 +540,7 @@
             if (result?.Data != null)
             {
                 // Rediriger vers la page du workflow avec l'ID du workflow
-                NavigationManager.NavigateTo($"/flux/workflow-live/{id}/{result.Data.WorkflowId}");
+                // NavigationManager.NavigateTo($"/flux/workflow-live/{id}/{result.Data.WorkflowId}");
                 Snackbar.Add($"Suivi du traitement en cours. WorkflowId: {result.Data.WorkflowId}", Severity.Info);
             }
             else

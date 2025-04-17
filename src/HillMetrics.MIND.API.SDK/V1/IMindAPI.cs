@@ -88,6 +88,15 @@ namespace HillMetrics.MIND.API.SDK.V1
         [Get("/api/v1/flux/{id}/force-process-async")]
         Task<ApiResponseBase<ProcessStartedResponse>> ForceProcessBackgroundAsync(int id);
 
+        /// <summary>
+        /// Force the process of a specific flux fetching content history in the background without waiting for completion
+        /// </summary>
+        /// <param name="fluxId">The ID of the flux</param>
+        /// <param name="fluxFetchingHistoryId">The ID of the flux fetching content history to process</param>
+        /// <returns>Status message indicating that the operation has started</returns>
+        [Get("/api/v1/flux/fetching-history/{fluxFetchingHistoryId}/force-process-async")]
+        Task<ApiResponseBase<ProcessStartedResponse>> ForceProcessElementFetchBackgroundAsync(int fluxId, int fluxFetchingHistoryId);
+
         #endregion
 
         #region Financial Data Point

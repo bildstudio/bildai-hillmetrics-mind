@@ -275,7 +275,7 @@
         {
             loading = true;
             var f = await MindApi.GetFetchingHistoryAsync(fetchingHistoryId);
-            var result = await MindApi.ForceProcessBackgroundAsync(f.Data.FluxFetching.FluxId);
+            var result = await MindApi.ForceProcessElementFetchBackgroundAsync(f.Data.FluxFetching.FluxId, fetchingHistoryId);
             Snackbar.Add("Force process started in the background", Severity.Success);
             await Search();
         }
