@@ -27,6 +27,7 @@ namespace HillMetrics.MIND.API.Controllers
     [Route("api/v{v:apiVersion}/[controller]")]
     //[EnableRateLimiting("allow5000requestsPerSecond_fixed")]
     public class FluxController(IMediator mediator, IMapper mapper, IWorkflowTracker workflowTracker, IWorkflowService workflowService, ILogger<FluxController> logger, IServiceScopeFactory serviceScopeFactory) : BaseHillMetricsController(mediator)
+    public class FluxController(IMediator mediator, IMapper mapper, IWorkflowTracker workflowTracker, IWorkflowService workflowService, ILogger<FluxController> logger, IServiceScopeFactory serviceScopeFactory) : BaseHillMetricsController(mediator)
     {
         #region Flux
         /// <summary>
@@ -247,21 +248,23 @@ namespace HillMetrics.MIND.API.Controllers
                         var scopedLogger = scope.ServiceProvider.GetRequiredService<ILogger<FluxController>>();
 
                         scopedLogger.LogInformation("Starting asynchronous fetch for flux {FluxId} with workflow {WorkflowId}",
-                            id, existingWorkflowId);
+                            id, workflowId);
 
                         // Execute the operation with services from the new scope
                         var command = FetchFluxCommand.CreateFromBackOffice(id, stepId, Task.FromResult(new List<Mail>()));
                         
                         var result = await scopedMediator.Send(command);
 
-                        if (result.IsSuccess)
+                        var fetchResult = await scopedMediator.Send(command);
+
+                        if (fetchResult.IsSuccess)
                         {
                             scopedLogger.LogInformation("Async fetch completed successfully for flux {FluxId}", id);
                         }
                         else
                         {
                             scopedLogger.LogWarning("Async fetch failed for flux {FluxId}: {Errors}",
-                                id, string.Join(", ", result.Errors.Select(e => e.Message)));
+                                id, string.Join(", ", fetchResult.Errors.Select(e => e.Message)));
                         }
                     }
                     catch (Exception ex)
@@ -277,7 +280,7 @@ namespace HillMetrics.MIND.API.Controllers
                 {
                     Message = $"Flux fetch operation started for flux {id}. The operation will continue in the background.",
                     FluxId = id,
-                    WorkflowId = existingWorkflowId
+                    WorkflowId = workflowId
                 };
 
                 return new ApiResponseBase<ProcessStartedResponse>(response);
@@ -315,21 +318,22 @@ namespace HillMetrics.MIND.API.Controllers
                         var scopedLogger = scope.ServiceProvider.GetRequiredService<ILogger<FluxController>>();
 
                         scopedLogger.LogInformation("Starting asynchronous process for flux {FluxId}", id);
+                        scopedLogger.LogInformation("Starting asynchronous process for flux {FluxId}", id);
 
                         // Execute the operation with services from the new scope
-                        var result = await scopedMediator.Send(new ProcessFluxCommand() {
+                        var processResult = await scopedMediator.Send(new ProcessFluxCommand() {
                             FluxId = id,
                             CalledManually = true
                         });
 
-                        if (result.IsSuccess)
+                        if (processResult.IsSuccess)
                         {
                             scopedLogger.LogInformation("Async process completed successfully for flux {FluxId}", id);
                         }
                         else
                         {
                             scopedLogger.LogWarning("Async process failed for flux {FluxId}: {Errors}",
-                                id, string.Join(", ", result.Errors.Select(e => e.Message)));
+                                id, string.Join(", ", processResult.Errors.Select(e => e.Message)));
                         }
                     }
                     catch (Exception ex)
