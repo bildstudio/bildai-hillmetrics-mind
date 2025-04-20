@@ -363,7 +363,6 @@
                             <MudIcon Icon="@Icons.Material.Filled.Download" Class="mr-2" Size="Size.Small" /> Force Fetch
                         </MudMenuItem>
                         <MudMenuItem OnClick="@(() => ForceProcess(context.FluxId))">
-                            <MudIcon Icon="@Icons.Material.Filled.PlayArrow" Class="mr-2" Size="Size.Small" /> Force Process
                             <MudIcon Icon="@Icons.Material.Filled.PlayArrow" Class="mr-2" Size="Size.Small" /> Force Process all fetching
                         </MudMenuItem>
                     </MudMenu>
@@ -418,18 +417,6 @@
     protected override async Task OnInitializedAsync()
     {
         await LoadSourcesAsync();
-        await LoadActiveWorkflows();
-
-        // Configure a timer to refresh workflows every 10 seconds
-        // workflowRefreshTimer = new System.Threading.Timer(
-        //     async _ => await InvokeAsync(async () =>
-        //     {
-        //         await LoadActiveWorkflows();
-        //         StateHasChanged();
-        //     }),
-        //     null,
-        //     TimeSpan.FromSeconds(10),
-        //     TimeSpan.FromSeconds(10));
     }
 
     private async Task LoadSourcesAsync()
@@ -541,8 +528,7 @@
             if (result?.Data != null)
             {
                 // Rediriger vers la page du workflow avec l'ID du workflow
-                NavigationManager.NavigateTo($"/flux/workflow-live/{id}/{result.Data.WorkflowId}");
-                // NavigationManager.NavigateTo($"/flux/workflow-live/{id}/{result.Data.WorkflowId}");
+                NavigationManager.NavigateTo($"/flux/workflow-live/{id}/{result.Data.WorkflowId}/false");
                 Snackbar.Add($"Suivi du traitement en cours. WorkflowId: {result.Data.WorkflowId}", Severity.Info);
             }
             else
@@ -571,7 +557,7 @@
             if (result?.Data != null)
             {
                 // Rediriger vers la page du workflow avec l'ID du workflow
-                NavigationManager.NavigateTo($"/flux/workflow-live/{id}/{result.Data.WorkflowId}");
+                // NavigationManager.NavigateTo($"/flux/workflow-live/{id}/{result.Data.WorkflowId}");
                 Snackbar.Add($"Suivi du traitement en cours. WorkflowId: {result.Data.WorkflowId}", Severity.Info);
             }
             else
@@ -684,30 +670,6 @@
             flux.FluxType.ToString().Contains(searchString, StringComparison.OrdinalIgnoreCase) ||
             flux.FluxState.ToString().Contains(searchString, StringComparison.OrdinalIgnoreCase) ||
             (flux.FinancialType?.ToString().Contains(searchString, StringComparison.OrdinalIgnoreCase) ?? false);
-    }
-
-    private async Task LoadActiveWorkflows()
-    {
-        try
-        {
-            var response = await MindApi.GetActiveFluxesAsync();
-            if (response.Data != null)
-            {
-                activeWorkflows = response.Data.ToDictionary(
-                    f => f.FluxId,
-                    f => new ActiveWorkflowInfo
-                    {
-                        Stage = f.Stage,
-                        Details = f.Details ?? "No details available",
-                        ProgressPercentage = f.ProgressPercentage
-                    });
-            }
-        }
-        catch (Exception ex)
-        {
-            // Log the error but don't show it to the user
-            Console.Error.WriteLine($"Error loading active workflows: {ex.Message}");
-        }
     }
 
     // Dispose the timer when the component is removed

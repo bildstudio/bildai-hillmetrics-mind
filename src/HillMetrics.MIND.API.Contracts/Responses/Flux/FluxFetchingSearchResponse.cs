@@ -21,5 +21,6 @@ namespace HillMetrics.MIND.API.Contracts.Responses.Flux
         public StatusProcess? ContentStatus { get; set; }
         public string? ContentName { get; set; }
         public string? RawId { get; set; }
+        public Guid WorkflowId { get; set; }
     }
 }

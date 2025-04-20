@@ -1,5 +1,6 @@
 @page "/flux/workflow-live/{FluxId:int}"
 @page "/flux/workflow-live/{FluxId:int}/{WorkflowId:guid}"
+@page "/flux/workflow-live/{FluxId:int}/{WorkflowId:guid}/{UseSignalR:bool}"
 @using HillMetrics.Core.Blazor.AuthModule.Services
 @using HillMetrics.Core.Monitoring.Workflow
 @using HillMetrics.Core.Workflow
@@ -42,12 +43,16 @@
             </MudSelect>
         }
 
-        <MudButton Variant="Variant.Text"
-        Color="Color.Secondary"
-        StartIcon="@Icons.Material.Filled.Refresh"
-        OnClick="@RefreshData">
-            Refresh
-        </MudButton>
+        <div>
+            <MudSwitch @bind-Checked="@UseSignalR" Color="Color.Primary" Label="Use SignalR"
+                      Class="mr-2" Immediate="true" T="bool" Style="display: inline-flex" />
+            <MudButton Variant="Variant.Text"
+            Color="Color.Secondary"
+            StartIcon="@Icons.Material.Filled.Refresh"
+            OnClick="@RefreshData">
+                Refresh
+            </MudButton>
+        </div>
     </div>
 
     <MudPaper Class="pa-4 mb-4">
@@ -60,6 +65,7 @@
                     <MudText Typo="Typo.body2">Started: <strong>@WorkflowDetails.StartTime.ToLocalTime().ToString("g")</strong></MudText>
                     <MudText Typo="Typo.body2">Duration: <strong>@Math.Round(WorkflowDetails.DurationMinutes, 1) min</strong></MudText>
                     <MudText Typo="Typo.body2">WorkflowId: <strong>@WorkflowDetails.WorkflowId</strong></MudText>
+                    <MudText Typo="Typo.body2">Updated via: <strong>@(UseSignalR && isSignalRConnected ? "SignalR" : "API")</strong></MudText>
                 }
             </MudItem>
             <MudItem xs="12" md="6">
@@ -79,93 +85,12 @@
     <div class="workflow-canvas" @ref="canvasRef">
         @if (WorkflowDetails != null)
         {
-            @foreach (var step in positionedSteps)
-            {
-                var metricsTitle = "";
-                if (step.RowsAdded > 0 || step.RowsModified > 0 || step.RowsIgnored > 0 || step.RowsWithErrors > 0)
+            <div class="workflow-tree">
+                @foreach (var step in rootSteps)
                 {
-                    var metrics = new List<string>();
-                    if (step.RowsAdded > 0) metrics.Add($"{step.RowsAdded} added");
-                    if (step.RowsModified > 0) metrics.Add($"{step.RowsModified} updated");
-                    if (step.RowsIgnored > 0) metrics.Add($"{step.RowsIgnored} ignored");
-                    if (step.RowsWithErrors > 0) metrics.Add($"{step.RowsWithErrors} errors");
-                    metricsTitle = string.Join(", ", metrics);
+                    @RenderWorkflowStep(step, 0)
                 }
-
-                <div class="workflow-step @GetStepStatusClass(step.Stage)"
-                style="left: @(step.X)px; top: @(step.Y)px; width: 200px;"
-                @onclick="@(() => SelectStep(step))"
-                title="@($"{step.Stage} - {step.Description}\n{metricsTitle}")">
-                    <div class="step-header">
-                        @if (IsCompletedStage(step.Stage))
-                        {
-                            <i class="mud-icon-root mud-icon-default mud-icon-size-small mud-color-success" aria-hidden="true">
-                                <svg viewBox="0 0 24 24" style="width: 18px; height: 18px;"><path d="M12 2C6.5 2 2 6.5 2 12S6.5 22 12 22 22 17.5 22 12 17.5 2 12 2M10 17L5 12L6.41 10.59L10 14.17L17.59 6.58L19 8L10 17Z" fill="currentColor"></path></svg>
-                            </i>
-                        }
-                        else if (step.Stage.Contains("Failed"))
-                        {
-                            <i class="mud-icon-root mud-icon-default mud-icon-size-small mud-color-error" aria-hidden="true">
-                                <svg viewBox="0 0 24 24" style="width: 18px; height: 18px;"><path d="M13,13H11V7H13M13,17H11V15H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z" fill="currentColor"></path></svg>
-                            </i>
-                        }
-                        else
-                        {
-                            <i class="mud-icon-root mud-icon-default mud-icon-size-small mud-color-info" aria-hidden="true">
-                                <svg viewBox="0 0 24 24" style="width: 18px; height: 18px;"><path d="M12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22C6.47,22 2,17.5 2,12A10,10 0 0,1 12,2M12.5,7V12.25L17,14.92L16.25,16.15L11,13V7H12.5Z" fill="currentColor"></path></svg>
-                            </i>
-                        }
-                        <span>@step.Stage</span>
-                    </div>
-                    <div class="step-content">@step.Description</div>
-                    <div class="step-metrics">
-                        @if (step.RowsAdded > 0)
-                        {
-                            <span class="badge success">+@step.RowsAdded</span>
-                        }
-                        @if (step.RowsModified > 0)
-                        {
-                            <span class="badge info">~@step.RowsModified</span>
-                        }
-                        @if (step.RowsIgnored > 0)
-                        {
-                            <span class="badge warning">@step.RowsIgnored</span>
-                        }
-                        @if (step.RowsWithErrors > 0)
-                        {
-                            <span class="badge error">!@step.RowsWithErrors</span>
-                        }
-                    </div>
-                    <div class="step-timestamp">@step.Timestamp.ToLocalTime().ToString("g")</div>
-                </div>
-            }
-
-            <svg class="workflow-connections">
-                @for (int i = 0; i < positionedSteps.Count - 1; i++)
-                {
-                    var currentStep = positionedSteps[i];
-                    var nextStep = positionedSteps[i + 1];
-
-                    var fromX = currentStep.X + 200;
-                    var fromY = currentStep.Y + 40;
-                    var toX = nextStep.X;
-                    var toY = nextStep.Y + 40;
-
-                    var controlPoint1X = fromX + 50;
-                    var controlPoint1Y = fromY;
-                    var controlPoint2X = toX - 50;
-                    var controlPoint2Y = toY;
-
-                    var pathClass = IsCompletedStage(currentStep.Stage) && IsCompletedStage(nextStep.Stage) 
-                        ? "path-completed" 
-                        : "path-inprogress";
-
-                    <path d="M @fromX,@fromY C @controlPoint1X,@controlPoint1Y @controlPoint2X,@controlPoint2Y @toX,@toY"
-                      fill="none" class="@pathClass" />
-                    
-                    <circle cx="@toX" cy="@toY" r="5" class="@pathClass" />
-                }
-            </svg>
+            </div>
         }
         else
         {
@@ -197,25 +122,25 @@
                 </MudListItem>
 
                 <MudListItem>
-                    <MudChip Color="@(SelectedStep.RowsAdded > 0 ? Color.Success : Color.Default)" 
+                    <MudChip Color="@(SelectedStep.RowsAdded > 0 ? Color.Success : Color.Default)"
                              Size="Size.Small" Class="mr-2">@SelectedStep.RowsAdded</MudChip>
                     <MudText>Records added</MudText>
                 </MudListItem>
 
                 <MudListItem>
-                    <MudChip Color="@(SelectedStep.RowsModified > 0 ? Color.Primary : Color.Default)" 
+                    <MudChip Color="@(SelectedStep.RowsModified > 0 ? Color.Primary : Color.Default)"
                              Size="Size.Small" Class="mr-2">@SelectedStep.RowsModified</MudChip>
                     <MudText>Records updated</MudText>
                 </MudListItem>
 
                 <MudListItem>
-                    <MudChip Color="@(SelectedStep.RowsIgnored > 0 ? Color.Warning : Color.Default)" 
+                    <MudChip Color="@(SelectedStep.RowsIgnored > 0 ? Color.Warning : Color.Default)"
                              Size="Size.Small" Class="mr-2">@SelectedStep.RowsIgnored</MudChip>
                     <MudText>Records ignored</MudText>
                 </MudListItem>
 
                 <MudListItem>
-                    <MudChip Color="@(SelectedStep.RowsWithErrors > 0 ? Color.Error : Color.Default)" 
+                    <MudChip Color="@(SelectedStep.RowsWithErrors > 0 ? Color.Error : Color.Default)"
                              Size="Size.Small" Class="mr-2">@SelectedStep.RowsWithErrors</MudChip>
                     <MudText>Records with errors</MudText>
                 </MudListItem>
@@ -227,6 +152,7 @@
 @code {
     [Parameter] public int FluxId { get; set; }
     [Parameter] public Guid? WorkflowId { get; set; }
+    [Parameter] public bool UseSignalR { get; set; } = true;
 
     private ElementReference canvasRef;
     private FluxWorkflowDetailsDto? WorkflowDetails { get; set; }
@@ -235,7 +161,9 @@
     private List<FluxWorkflowDetailsDto> availableWorkflows = new();
     private Guid? selectedWorkflowId;
     private List<PositionedHistoryEntry> positionedSteps = new();
+    private List<HistoryEntryDto> rootSteps = new();
     private string? signalRServiceUrl;
+    private bool isSignalRConnected = false;
 
     private class PositionedHistoryEntry : HistoryEntryDto
     {
@@ -262,10 +190,12 @@
     {
         selectedWorkflowId = WorkflowId;
 
-        // Récupérer l'URL du service SignalR depuis la configuration ou service discovery
-        await GetSignalRServiceUrl();
+        if (UseSignalR)
+        {
+            await GetSignalRServiceUrl();
+            await SetupSignalRConnection();
+        }
 
-        await SetupSignalRConnection();
         await RefreshData();
     }
 
@@ -305,6 +235,12 @@
     {
         try
         {
+            if (!UseSignalR)
+            {
+                isSignalRConnected = false;
+                return;
+            }
+
             Logger.LogInformation($"Connecting to SignalR hub at: {signalRServiceUrl}notification-hub");
 
             // Récupérer un jeton d'accès pour l'authentification
@@ -330,22 +266,37 @@
                 ProcessWorkflowMessage(message);
             });
 
+            // S'abonner à l'événement de reconnexion
+            hubConnection.Reconnected += (connectionId) =>
+            {
+                isSignalRConnected = true;
+                InvokeAsync(StateHasChanged);
+                return Task.CompletedTask;
+            };
+
+            // S'abonner à l'événement de déconnexion
+            hubConnection.Closed += (error) =>
+            {
+                isSignalRConnected = false;
+                InvokeAsync(StateHasChanged);
+                return Task.CompletedTask;
+            };
+
             // Démarrer la connexion
             await hubConnection.StartAsync();
+            isSignalRConnected = true;
             Logger.LogInformation("SignalR connection started successfully");
 
             // S'abonner au topic "workflow" pour recevoir les mises à jour de workflow
             await hubConnection.InvokeAsync("Subscribe", "workflow");
             Logger.LogInformation("Subscribed to 'workflow' topic");
-
-            // Forcer le rafraîchissement initial des données via l'API
-            await RefreshDataFromApi();
         }
         catch (Exception ex)
         {
             Logger.LogError($"Error setting up SignalR connection: {ex.Message}");
-            // Fallback à l'API REST en cas d'erreur de connexion SignalR
-            await RefreshDataFromApi();
+            isSignalRConnected = false;
+
+            // Ne pas faire de fallback à l'API REST, cela sera fait dans RefreshData
         }
     }
 
@@ -450,7 +401,7 @@
     {
         try
         {
-            if (hubConnection != null && hubConnection.State == HubConnectionState.Connected)
+            if (UseSignalR && hubConnection != null && hubConnection.State == HubConnectionState.Connected)
             {
                 Logger.LogInformation("Refreshing data via SignalR connection");
 
@@ -468,8 +419,8 @@
                 return;
             }
 
-            // Fallback API si SignalR n'est pas disponible
-            Logger.LogInformation("Refreshing data via API (SignalR not available)");
+            // Fallback API si SignalR n'est pas disponible ou n'est pas utilisé
+            Logger.LogInformation($"Refreshing data via API ({(UseSignalR ? "SignalR not available" : "SignalR disabled")})");
             await RefreshDataFromApi();
         }
         catch (Exception ex)
@@ -554,6 +505,9 @@
 
     private FluxWorkflowDetailsDto MapToFluxWorkflowDetailsDto(WorkflowStateModel state)
     {
+        // Convertir les étapes du workflow
+        var historyEntries = MapHistoryEntries(state.Steps);
+
         // Convertir WorkflowStateModel en FluxWorkflowDetailsDto
         return new FluxWorkflowDetailsDto
             {
@@ -569,38 +523,48 @@
                 ProgressPercentage = state.ProgressPercentage,
                 IsCompleted = state.IsCompleted,
                 IsSuccessful = state.IsSuccessful,
-                History = state.Steps.Select(s => new HistoryEntryDto
-                {
-                    Stage = s.Stage.ToString(),
-                    Description = s.Description,
-                    Timestamp = s.Timestamp,
-                    TimeSinceStart = (s.Timestamp - state.StartTime).TotalMinutes,
-                    RowsAdded = s.LinesAdded,
-                    RowsModified = s.LinesModified,
-                    RowsIgnored = s.LinesIgnored,
-                    RowsWithErrors = s.LinesWithErrors
-                }).ToList()
+                History = historyEntries
             };
+    }
+
+    private List<HistoryEntryDto> MapHistoryEntries(List<WorkflowStepModel> steps)
+    {
+        var entries = new List<HistoryEntryDto>();
+
+        foreach (var step in steps)
+        {
+            var entry = new HistoryEntryDto
+            {
+                Id = step.Id,
+                ParentId = step.ParentId,
+                Stage = step.Stage.ToString(),
+                Description = step.Description,
+                Timestamp = step.Timestamp,
+                TimeSinceStart = step.TimeSinceStart,
+                RowsAdded = step.LinesAdded,
+                RowsModified = step.LinesModified,
+                RowsIgnored = step.LinesIgnored,
+                RowsWithErrors = step.LinesWithErrors,
+                IsCompleted = step.IsCompleted,
+                CompletionTimestamp = step.CompletionTimestamp,
+                CompletionDescription = step.CompletionDescription,
+                CompletionStage = step.CompletionStage?.ToString(),
+                DurationSeconds = step.DurationSeconds,
+                Children = MapHistoryEntries(step.Children)
+            };
+
+            entries.Add(entry);
+        }
+
+        return entries;
     }
 
     private void PositionWorkflowSteps()
     {
         if (WorkflowDetails?.History == null) return;
 
-        // Calculer la position de chaque étape du workflow
-        var horizontalSpacing = 250;
-        var verticalSpacing = 150;
-        var steps = WorkflowDetails.History.OrderBy(h => h.Timestamp).ToList();
-
-        positionedSteps.Clear();
-        for (int i = 0; i < steps.Count; i++)
-        {
-            positionedSteps.Add(new PositionedHistoryEntry(
-                steps[i],
-                i * horizontalSpacing,
-                (i % 2) * verticalSpacing
-            ));
-        }
+        // Utiliser directement la structure d'arbre pour les étapes du workflow
+        rootSteps = WorkflowDetails.History.Where(h => h.ParentId == null).ToList();
     }
 
     private string GetStepStatusClass(string stage)
@@ -612,25 +576,31 @@
             {
                 WorkflowStage.Failed => "status-error",
                 WorkflowStage.Completed => "status-success",
-                
+
                 // Completed stages
-                WorkflowStage.FetchingDataCompleted => "status-completed status-info",
-                WorkflowStage.ProcessingCompleted => "status-completed status-warning",
-                WorkflowStage.NormalizedDataInserted => "status-completed status-secondary",
-                WorkflowStage.RefinedDataCopied => "status-completed status-secondary",
-                WorkflowStage.CalculationsCompleted => "status-completed status-tertiary",
-                
+                WorkflowStage.FetchingDataCompleted => "status-success",
+                WorkflowStage.ProcessingCompleted => "status-success",
+                WorkflowStage.NormalizedDataInserted => "status-success",
+                WorkflowStage.RefinedDataCopied => "status-success",
+                WorkflowStage.CalcCurrencyExchangeRateCompleted => "status-success",
+                WorkflowStage.CalculationRiskCompleted => "status-success",
+                WorkflowStage.CalculationReturnCompleted => "status-success",
+                WorkflowStage.CalculationWeeklyReturnCompleted => "status-success",
+
                 // In-progress stages
-                WorkflowStage.FetchingData => "status-inprogress status-info",
-                WorkflowStage.Processing => "status-inprogress status-warning",
-                WorkflowStage.RefinedDataCopying => "status-inprogress status-secondary",
-                WorkflowStage.CalculationsStarting => "status-inprogress status-tertiary",
-                
+                WorkflowStage.FetchingData => "status-info",
+                WorkflowStage.Processing => "status-info",
+                WorkflowStage.RefinedDataCopying => "status-info",
+                WorkflowStage.CalcCurrencyExchangeRateStarting => "status-info",
+                WorkflowStage.CalculationRiskStarting => "status-info",
+                WorkflowStage.CalculationReturnStarting => "status-info",
+                WorkflowStage.CalculationWeeklyReturnStarting => "status-info",
+
                 // Default or NotStarted
                 _ => "status-default"
             };
         }
-        
+
         // Fallback to string-based detection if enum parsing fails
         return stage.ToLowerInvariant() switch
         {
@@ -657,11 +627,14 @@
                 WorkflowStage.ProcessingCompleted => true,
                 WorkflowStage.NormalizedDataInserted => true,
                 WorkflowStage.RefinedDataCopied => true,
-                WorkflowStage.CalculationsCompleted => true,
+                WorkflowStage.CalcCurrencyExchangeRateCompleted => true,
+                WorkflowStage.CalculationWeeklyReturnCompleted => true,
+                WorkflowStage.CalculationRiskCompleted => true,
+                WorkflowStage.CalculationReturnCompleted => true,
                 _ => false
             };
         }
-        
+
         // Fallback to string-based detection
         return stage.ToLowerInvariant().Contains("completed") ||
                stage.ToLowerInvariant().Contains("inserted") ||
@@ -693,7 +666,7 @@
         // Mettre à jour l'URL pour refléter le workflow sélectionné
         if (workflowId.HasValue)
         {
-            NavigationManager.NavigateTo($"/flux/workflow-live/{FluxId}/{workflowId}", false);
+            NavigationManager.NavigateTo($"/flux/workflow-live/{FluxId}/{workflowId}/{UseSignalR}", false);
 
             // Mise à jour du paramètre WorkflowId
             WorkflowId = workflowId;
@@ -703,7 +676,7 @@
         }
         else
         {
-            NavigationManager.NavigateTo($"/flux/workflow-live/{FluxId}", false);
+            NavigationManager.NavigateTo($"/flux/workflow-live/{FluxId}/{UseSignalR}", false);
             WorkflowId = null;
 
             // Rafraîchir les données générales du flux
@@ -784,13 +757,201 @@
             // await JSRuntime.InvokeVoidAsync("updateWorkflowAnimations");
         }
     }
+
+    // Méthode pour rendu récursif des étapes de workflow
+    private RenderFragment RenderWorkflowStep(HistoryEntryDto step, int level) => builder =>
+    {
+        var indentClass = $"step-level-{level}";
+        var completionClass = step.IsCompleted ? "status-completed" : "status-inprogress";
+        var statusClass = GetStepStatusClass(step.Stage);
+
+        builder.OpenElement(0, "div");
+        builder.AddAttribute(1, "class", $"workflow-step-container {indentClass}");
+
+        // Step node
+        builder.OpenElement(2, "div");
+        builder.AddAttribute(3, "class", $"workflow-step {statusClass} {completionClass}");
+        builder.AddAttribute(4, "onclick", EventCallback.Factory.Create<MouseEventArgs>(this, () => SelectStep(step)));
+
+        // Compute tooltip content
+        var tooltipContent = step.IsCompleted && !string.IsNullOrEmpty(step.CompletionDescription)
+            ? $"{step.Stage} → {step.CompletionStage}\n{step.Description}\n→ {step.CompletionDescription}"
+            : $"{step.Stage}\n{step.Description}";
+
+        if (step.RowsAdded > 0 || step.RowsModified > 0 || step.RowsIgnored > 0 || step.RowsWithErrors > 0)
+        {
+            var metrics = new List<string>();
+            if (step.RowsAdded > 0) metrics.Add($"{step.RowsAdded} added");
+            if (step.RowsModified > 0) metrics.Add($"{step.RowsModified} updated");
+            if (step.RowsIgnored > 0) metrics.Add($"{step.RowsIgnored} ignored");
+            if (step.RowsWithErrors > 0) metrics.Add($"{step.RowsWithErrors} errors");
+            tooltipContent += $"\n{string.Join(", ", metrics)}";
+        }
+
+        if (step.DurationSeconds.HasValue)
+        {
+            tooltipContent += $"\nDuration: {FormatDuration(step.DurationSeconds.Value)}";
+        }
+
+        builder.AddAttribute(5, "title", tooltipContent);
+
+        // Header
+        builder.OpenElement(6, "div");
+        builder.AddAttribute(7, "class", "step-header");
+
+        // Status icon
+        builder.OpenElement(8, "i");
+        if (step.IsCompleted)
+        {
+            builder.AddAttribute(9, "class", "mud-icon-root mud-icon-default mud-icon-size-small mud-color-success");
+            builder.AddAttribute(10, "aria-hidden", "true");
+            builder.AddMarkupContent(11, "<svg viewBox=\"0 0 24 24\" style=\"width: 18px; height: 18px;\"><path d=\"M12 2C6.5 2 2 6.5 2 12S6.5 22 12 22 22 17.5 22 12 17.5 2 12 2M10 17L5 12L6.41 10.59L10 14.17L17.59 6.58L19 8L10 17Z\" fill=\"currentColor\"></path></svg>");
+        }
+        else if (step.Stage.Contains("Failed"))
+        {
+            builder.AddAttribute(9, "class", "mud-icon-root mud-icon-default mud-icon-size-small mud-color-error");
+            builder.AddAttribute(10, "aria-hidden", "true");
+            builder.AddMarkupContent(11, "<svg viewBox=\"0 0 24 24\" style=\"width: 18px; height: 18px;\"><path d=\"M13,13H11V7H13M13,17H11V15H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z\" fill=\"currentColor\"></path></svg>");
+        }
+        else
+        {
+            builder.AddAttribute(9, "class", "mud-icon-root mud-icon-default mud-icon-size-small mud-color-info");
+            builder.AddAttribute(10, "aria-hidden", "true");
+            builder.AddMarkupContent(11, "<svg viewBox=\"0 0 24 24\" style=\"width: 18px; height: 18px;\"><path d=\"M12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22C6.47,22 2,17.5 2,12A10,10 0 0,1 12,2M12.5,7V12.25L17,14.92L16.25,16.15L11,13V7H12.5Z\" fill=\"currentColor\"></path></svg>");
+        }
+        builder.CloseElement(); // i
+
+        // Stage name
+        builder.OpenElement(12, "span");
+        builder.AddContent(13, step.IsCompleted && !string.IsNullOrEmpty(step.CompletionStage)
+            ? $"{step.Stage} → {step.CompletionStage}"
+            : step.Stage);
+        builder.CloseElement(); // span
+
+        builder.CloseElement(); // step-header
+
+        // Content
+        builder.OpenElement(14, "div");
+        builder.AddAttribute(15, "class", "step-content");
+        builder.AddContent(16, step.Description);
+
+        if (step.IsCompleted && !string.IsNullOrEmpty(step.CompletionDescription) && step.Description != step.CompletionDescription)
+        {
+            builder.OpenElement(17, "div");
+            builder.AddAttribute(18, "class", "step-completion-info");
+            builder.AddContent(19, "→ " + step.CompletionDescription);
+            builder.CloseElement(); // completion info
+        }
+
+        builder.CloseElement(); // step-content
+
+        // Metrics
+        builder.OpenElement(20, "div");
+        builder.AddAttribute(21, "class", "step-metrics");
+
+        if (step.RowsAdded > 0)
+        {
+            builder.OpenElement(22, "span");
+            builder.AddAttribute(23, "class", "badge success");
+            builder.AddContent(24, "+" + step.RowsAdded);
+            builder.CloseElement(); // span
+        }
+
+        if (step.RowsModified > 0)
+        {
+            builder.OpenElement(25, "span");
+            builder.AddAttribute(26, "class", "badge info");
+            builder.AddContent(27, "~" + step.RowsModified);
+            builder.CloseElement(); // span
+        }
+
+        if (step.RowsIgnored > 0)
+        {
+            builder.OpenElement(28, "span");
+            builder.AddAttribute(29, "class", "badge warning");
+            builder.AddContent(30, step.RowsIgnored);
+            builder.CloseElement(); // span
+        }
+
+        if (step.RowsWithErrors > 0)
+        {
+            builder.OpenElement(31, "span");
+            builder.AddAttribute(32, "class", "badge error");
+            builder.AddContent(33, "!" + step.RowsWithErrors);
+            builder.CloseElement(); // span
+        }
+
+        if (step.DurationSeconds.HasValue)
+        {
+            builder.OpenElement(34, "span");
+            builder.AddAttribute(35, "class", "badge duration");
+            builder.AddContent(36, FormatDuration(step.DurationSeconds.Value));
+            builder.CloseElement(); // span
+        }
+
+        builder.CloseElement(); // step-metrics
+
+        // Timestamp
+        builder.OpenElement(37, "div");
+        builder.AddAttribute(38, "class", "step-timestamp");
+        builder.AddContent(39, step.Timestamp.ToLocalTime().ToString("g"));
+
+        if (step.CompletionTimestamp.HasValue)
+        {
+            builder.AddContent(40, " → " + step.CompletionTimestamp.Value.ToLocalTime().ToString("g"));
+        }
+
+        builder.CloseElement(); // step-timestamp
+
+        builder.CloseElement(); // workflow-step
+
+        // Child steps (recursively)
+        if (step.Children != null && step.Children.Any())
+        {
+            builder.OpenElement(41, "div");
+            builder.AddAttribute(42, "class", "step-children");
+
+            foreach (var child in step.Children)
+            {
+                builder.AddContent(43, RenderWorkflowStep(child, level + 1));
+            }
+
+            builder.CloseElement(); // step-children
+        }
+
+        builder.CloseElement(); // workflow-step-container
+    };
+
+    private string FormatDuration(double seconds)
+    {
+        if (seconds < 1)
+        {
+            return $"{seconds * 1000:0}ms";
+        }
+        else if (seconds < 60)
+        {
+            return $"{seconds:0.0}s";
+        }
+        else if (seconds < 3600)
+        {
+            var minutes = Math.Floor(seconds / 60);
+            var remainingSeconds = seconds % 60;
+            return $"{minutes}m {remainingSeconds:0}s";
+        }
+        else
+        {
+            var hours = Math.Floor(seconds / 3600);
+            var remainingMinutes = Math.Floor((seconds % 3600) / 60);
+            return $"{hours}h {remainingMinutes}m";
+        }
+    }
 }
 
 <style>
     .workflow-container {
         position: relative;
         width: 100%;
-        height: 600px;
+        min-height: 600px;
         overflow: auto;
         background-color: #f5f5f5;
         border-radius: 8px;
@@ -804,14 +965,65 @@
         min-height: 100%;
     }
 
-    .workflow-step {
+    /* Tree view styles */
+    .workflow-tree {
+        padding: 20px;
+        width: 100%;
+    }
+
+    .workflow-step-container {
+        position: relative;
+        margin-bottom: 15px;
+    }
+
+    .step-level-0 {
+        margin-left: 0;
+    }
+
+    .step-level-1 {
+        margin-left: 40px;
+    }
+
+    .step-level-2 {
+        margin-left: 80px;
+    }
+
+    .step-level-3 {
+        margin-left: 120px;
+    }
+
+    .step-level-4 {
+        margin-left: 160px;
+    }
+
+    .step-children {
+        position: relative;
+        padding-left: 30px;
+        margin-top: 15px;
+        border-left: 2px solid #e0e0e0;
+    }
+
+    .step-children:before {
+        content: "";
         position: absolute;
+        top: -15px;
+        left: 0;
+        width: 20px;
+        height: 15px;
+        border-bottom: 2px solid #e0e0e0;
+    }
+
+    .workflow-step {
+        position: relative;
         background-color: white;
         border-radius: 8px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         padding: 12px;
         cursor: pointer;
         transition: all 0.2s ease;
+        margin-bottom: 5px;
+        min-width: 300px;
+        max-width: 600px;
     }
 
     .workflow-step:hover {
@@ -835,6 +1047,13 @@
         font-size: 0.9em;
         color: #666;
         margin-bottom: 8px;
+    }
+
+    .step-completion-info {
+        font-size: 0.9em;
+        color: #4CAF50;
+        margin-top: 5px;
+        font-style: italic;
     }
 
     .step-metrics {
@@ -870,6 +1089,11 @@
         background-color: #F44336;
     }
 
+    .badge.duration {
+        background-color: #9C27B0;
+        opacity: 0.7;
+    }
+
     /* Enhance badges in completed steps */
     .status-completed .badge {
         box-shadow: 0 1px 3px rgba(0,0,0,0.2);
@@ -884,15 +1108,6 @@
     .step-timestamp {
         font-size: 0.8em;
         color: #999;
-    }
-
-    .workflow-connections {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        pointer-events: none;
     }
 
     .step-details-panel {
@@ -943,31 +1158,19 @@
     .status-inprogress {
         background-color: rgba(33, 150, 243, 0.05);
         border-style: dashed;
+        border-width: 1px;
+        border-right-width: 1px;
+        border-top-width: 1px;
+        border-bottom-width: 1px;
     }
 
-    /* Path styling */
-    path {
-        transition: stroke 0.3s ease;
-    }
-
-    circle {
-        transition: fill 0.3s ease;
-    }
-
-    .path-completed {
-        stroke: #4CAF50;
-        stroke-width: 3px;
-        fill: #4CAF50;
-    }
-
-    .path-inprogress {
-        stroke: #888;
-        stroke-width: 2px;
-        stroke-dasharray: 5,5;
-        fill: #888;
-    }
-
-    .path-inprogress.animate {
-        animation: dash 2s linear infinite;
+    /* Connecting lines between steps */
+    .workflow-connections {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
     }
 </style>

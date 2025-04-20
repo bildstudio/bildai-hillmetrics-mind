@@ -29,6 +29,7 @@
         <MudTh>Contents</MudTh>
         <MudTh>Processings</MudTh>
         <MudTh>Status</MudTh>
+        <MudTh>Workflow</MudTh>
         <MudTh>Actions</MudTh>
     </HeaderContent>
     <RowTemplate>
@@ -104,6 +105,18 @@
                 <span>-</span>
             }
         </MudTd>
+        <MudTd DataLabel="Workflow">
+            @if (context.WorkflowId != Guid.Empty)
+            {
+                <MudLink Href="@($"/flux/workflow-live/{context.FluxId}/{context.WorkflowId}/false")">
+                    <MudIcon Icon="@Icons.Material.Filled.Timeline" Color="Color.Primary" />
+                </MudLink>
+            }
+            else
+            {
+                <span>-</span>
+            }
+        </MudTd>
         <MudTd DataLabel="Actions">
             <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true">
                 <MudMenuItem OnClick="@(() => ViewDetails(context.Id))">
@@ -119,6 +132,12 @@
                 {
                     <MudMenuItem OnClick="@(async () => await ShowMetadata(context))">
                         <MudIcon Icon="@Icons.Material.Filled.Info" Class="mr-2" Size="Size.Small" /> Show Metadata
+                    </MudMenuItem>
+                }
+                @if (context.WorkflowId != Guid.Empty)
+                {
+                    <MudMenuItem OnClick="@(() => ViewWorkflow(context.FluxId, context.WorkflowId))">
+                        <MudIcon Icon="@Icons.Material.Filled.Timeline" Class="mr-2" Size="Size.Small" /> View Workflow
                     </MudMenuItem>
                 }
                 <MudMenuItem OnClick="@(() => ForceProcess(context.Id))">
@@ -175,6 +194,11 @@
     private void ViewFluxDetails(int id)
     {
         NavigationManager.NavigateTo($"/flux/details/{id}");
+    }
+
+    private void ViewWorkflow(int fluxId, Guid workflowId)
+    {
+        NavigationManager.NavigateTo($"/flux/workflow-live/{fluxId}/{workflowId}/false");
     }
 
     private async Task ForceProcess(int fetchingHistoryId)

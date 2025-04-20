@@ -101,44 +101,84 @@ namespace HillMetrics.MIND.API.Contracts.Responses.Flux
     public class HistoryEntryDto
     {
         /// <summary>
-        /// The stage of this history entry
+        /// Gets or sets the ID of the step
+        /// </summary>
+        public int Id { get; set; }
+
+        /// <summary>
+        /// Gets or sets the ID of the parent step, if any
+        /// </summary>
+        public int? ParentId { get; set; }
+
+        /// <summary>
+        /// Gets or sets the stage of the workflow
         /// </summary>
         public string Stage { get; set; }
 
         /// <summary>
-        /// Detailed description of this stage
+        /// Gets or sets the description of the step
         /// </summary>
         public string Description { get; set; }
 
         /// <summary>
-        /// When this stage occurred
+        /// Gets or sets the timestamp when the step occurred
         /// </summary>
         public DateTime Timestamp { get; set; }
 
         /// <summary>
-        /// Time in minutes since the workflow started
+        /// Gets or sets the minutes elapsed since the start of the workflow
         /// </summary>
         public double TimeSinceStart { get; set; }
 
         /// <summary>
-        /// Number of rows added during this step (if applicable)
+        /// Gets or sets the number of rows added during this step
         /// </summary>
         public int RowsAdded { get; set; }
 
         /// <summary>
-        /// Number of rows modified during this step (if applicable)
+        /// Gets or sets the number of rows modified during this step
         /// </summary>
         public int RowsModified { get; set; }
 
         /// <summary>
-        /// Number of rows ignored during this step (if applicable)
+        /// Gets or sets the number of rows ignored during this step
         /// </summary>
         public int RowsIgnored { get; set; }
 
         /// <summary>
-        /// Number of rows with errors during this step (if applicable)
+        /// Gets or sets the number of rows with errors during this step
         /// </summary>
         public int RowsWithErrors { get; set; }
+
+        /// <summary>
+        /// Indicates whether this step has been completed
+        /// </summary>
+        public bool IsCompleted { get; set; }
+
+        /// <summary>
+        /// The timestamp when the step was completed
+        /// </summary>
+        public DateTime? CompletionTimestamp { get; set; }
+
+        /// <summary>
+        /// Description provided at step completion
+        /// </summary>
+        public string CompletionDescription { get; set; }
+
+        /// <summary>
+        /// The stage at completion
+        /// </summary>
+        public string CompletionStage { get; set; }
+
+        /// <summary>
+        /// Duration of the step in seconds (if completed)
+        /// </summary>
+        public double? DurationSeconds { get; set; }
+
+        /// <summary>
+        /// Child steps of this step
+        /// </summary>
+        public List<HistoryEntryDto> Children { get; set; } = new List<HistoryEntryDto>();
     }
 
     /// <summary>
