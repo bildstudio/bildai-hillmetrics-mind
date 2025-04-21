@@ -237,6 +237,9 @@
 
         // Apply datetime SearchCriteria
         searchRequest.FetchingDate = fetchingDateSearchCriteria.IsSet() ? fetchingDateSearchCriteria : null;
+
+        searchRequest.Sorting.Field = "Id";
+        searchRequest.Sorting.Direction = Core.Search.SortDirection.Descending;
     }
 
     private async Task Search()

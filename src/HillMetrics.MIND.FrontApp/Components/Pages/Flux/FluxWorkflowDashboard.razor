@@ -76,8 +76,6 @@
                     <HeaderContent>
                         <MudTh>ID</MudTh>
                         <MudTh>Name</MudTh>
-                        <MudTh>Stage</MudTh>
-                        <MudTh>Progress</MudTh>
                         <MudTh>Start Time</MudTh>
                         <MudTh>Duration (min)</MudTh>
                         <MudTh>Actions</MudTh>
@@ -85,17 +83,6 @@
                     <RowTemplate>
                         <MudTd>@context.FluxId</MudTd>
                         <MudTd>@context.FluxName</MudTd>
-                        <MudTd>
-                            <MudChip T="Color" Color="Color.Info" Size="Size.Small">@context.Stage</MudChip>
-                        </MudTd>
-                        <MudTd>
-                            <MudProgressLinear Color="Color.Info"
-                                              Value="@context.ProgressPercentage"
-                                              Class="my-0"
-                                              Striped="true">
-                                @context.ProgressPercentage%
-                            </MudProgressLinear>
-                        </MudTd>
                         <MudTd>@context.StartTime.ToLocalTime().ToString("g")</MudTd>
                         <MudTd>@Math.Round(context.DurationMinutes, 1)</MudTd>
                         <MudTd>
@@ -236,4 +223,4 @@
     {
         refreshTimer?.Dispose();
     }
-} 
+}

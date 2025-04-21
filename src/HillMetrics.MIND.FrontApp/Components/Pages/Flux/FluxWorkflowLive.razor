@@ -10,12 +10,14 @@
 @using Microsoft.AspNetCore.SignalR.Client
 @using Microsoft.Extensions.Options
 @using HillMetrics.Core.Authentication.Contracts
+@using System.Text.Json
 @inject IMindAPI MindApi
 @inject IJSRuntime JSRuntime
 @inject NavigationManager NavigationManager
 @inject IServiceProvider ServiceProvider
 @inject IConfiguration Configuration
 @inject ILogger<FluxWorkflowLive> Logger
+@inject ISnackbar Snackbar
 @* @inject IAuthenticationService AuthService *@
 @inject IAuthService AuthService
 @implements IAsyncDisposable
@@ -37,7 +39,7 @@
                 @foreach (var workflow in availableWorkflows)
                 {
                     <MudSelectItem Value="@workflow.WorkflowId">
-                        @($"Started: {workflow.StartTime.ToLocalTime():g}, Status: {workflow.CurrentStage}")
+                        @($"Started: {workflow.StartTime.ToLocalTime():g}")
                     </MudSelectItem>
                 }
             </MudSelect>
@@ -58,10 +60,14 @@
     <MudPaper Class="pa-4 mb-4">
         <MudGrid>
             <MudItem xs="12" md="6">
-                <MudText Typo="Typo.h6">Flux: @(WorkflowDetails?.FluxName ?? $"ID: {FluxId}")</MudText>
+                <MudText Typo="Typo.h6">
+                    Flux:
+                    <MudLink Href="@($"/flux/details/{FluxId}")" Underline="Underline.Always">
+                        @(WorkflowDetails?.FluxName ?? $"ID: {FluxId}")
+                    </MudLink>
+                </MudText>
                 @if (WorkflowDetails != null)
                 {
-                    <MudText Typo="Typo.body2">Status: <strong>@WorkflowDetails.CurrentStage</strong></MudText>
                     <MudText Typo="Typo.body2">Started: <strong>@WorkflowDetails.StartTime.ToLocalTime().ToString("g")</strong></MudText>
                     <MudText Typo="Typo.body2">Duration: <strong>@Math.Round(WorkflowDetails.DurationMinutes, 1) min</strong></MudText>
                     <MudText Typo="Typo.body2">WorkflowId: <strong>@WorkflowDetails.WorkflowId</strong></MudText>
@@ -69,13 +75,9 @@
                 }
             </MudItem>
             <MudItem xs="12" md="6">
-                <MudProgressLinear Color="@GetProgressColor(WorkflowDetails?.CurrentStage)"
-                Value="@(WorkflowDetails?.ProgressPercentage ?? 0)"
-                Class="my-4"
-                Size="Size.Large" />
                 <MudText Typo="Typo.body2" Align="Align.Center">
                     @(WorkflowDetails?.IsCompleted == true
-                            ? (WorkflowDetails?.IsSuccessful == true ? "Completed successfully" : "Failed")
+                            ? "Completed"
                             : "In progress...")
                 </MudText>
             </MudItem>
@@ -100,52 +102,58 @@
 
     @if (SelectedStep != null)
     {
-        <MudPaper Class="mt-4 pa-4">
-            <MudText Typo="Typo.h6">Step Details</MudText>
-            <MudList T="HistoryEntryDto" Dense="true">
-                <MudListItem>
-                    <MudText><b>Stage:</b> @SelectedStep.Stage</MudText>
-                </MudListItem>
-                <MudListItem>
-                    <MudText><b>Description:</b> @SelectedStep.Description</MudText>
-                </MudListItem>
-                <MudListItem>
-                    <MudText><b>Timestamp:</b> @SelectedStep.Timestamp.ToLocalTime().ToString("g")</MudText>
-                </MudListItem>
-                <MudListItem>
-                    <MudText><b>Time since start:</b> @Math.Round(SelectedStep.TimeSinceStart, 1) min</MudText>
-                </MudListItem>
+        <MudDrawer @bind-Open="isStepDetailOpen" Anchor="Anchor.Right" Elevation="1" Variant="@DrawerVariant.Persistent" Width="400px">
+            <MudDrawerHeader>
+                <MudText Typo="Typo.h6">Step Details</MudText>
+                <MudSpacer />
+                <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Default" OnClick="@(() => isStepDetailOpen = false)" />
+            </MudDrawerHeader>
+            <MudDrawerContainer>
+                <MudList T="HistoryEntryDto" Dense="true">
+                    <MudListItem>
+                        <MudText><b>Stage:</b> @SelectedStep.Stage</MudText>
+                    </MudListItem>
+                    <MudListItem>
+                        <MudText><b>Description:</b> @SelectedStep.Description</MudText>
+                    </MudListItem>
+                    <MudListItem>
+                        <MudText><b>Timestamp:</b> @SelectedStep.Timestamp.ToLocalTime().ToString("g")</MudText>
+                    </MudListItem>
+                    <MudListItem>
+                        <MudText><b>Time since start:</b> @Math.Round(SelectedStep.TimeSinceStart, 1) min</MudText>
+                    </MudListItem>
 
-                <MudDivider Class="my-2" />
-                <MudListItem>
-                    <MudText Typo="Typo.subtitle2">Data Metrics</MudText>
-                </MudListItem>
+                    <MudDivider Class="my-2" />
+                    <MudListItem>
+                        <MudText Typo="Typo.subtitle2">Data Metrics</MudText>
+                    </MudListItem>
 
-                <MudListItem>
-                    <MudChip Color="@(SelectedStep.RowsAdded > 0 ? Color.Success : Color.Default)"
-                             Size="Size.Small" Class="mr-2">@SelectedStep.RowsAdded</MudChip>
-                    <MudText>Records added</MudText>
-                </MudListItem>
+                    <MudListItem>
+                        <MudChip Color="@(SelectedStep.RowsAdded > 0 ? Color.Success : Color.Default)"
+                                Size="Size.Small" Class="mr-2">@SelectedStep.RowsAdded</MudChip>
+                        <MudText>Records added</MudText>
+                    </MudListItem>
 
-                <MudListItem>
-                    <MudChip Color="@(SelectedStep.RowsModified > 0 ? Color.Primary : Color.Default)"
-                             Size="Size.Small" Class="mr-2">@SelectedStep.RowsModified</MudChip>
-                    <MudText>Records updated</MudText>
-                </MudListItem>
+                    <MudListItem>
+                        <MudChip Color="@(SelectedStep.RowsModified > 0 ? Color.Primary : Color.Default)"
+                                Size="Size.Small" Class="mr-2">@SelectedStep.RowsModified</MudChip>
+                        <MudText>Records updated</MudText>
+                    </MudListItem>
 
-                <MudListItem>
-                    <MudChip Color="@(SelectedStep.RowsIgnored > 0 ? Color.Warning : Color.Default)"
-                             Size="Size.Small" Class="mr-2">@SelectedStep.RowsIgnored</MudChip>
-                    <MudText>Records ignored</MudText>
-                </MudListItem>
+                    <MudListItem>
+                        <MudChip Color="@(SelectedStep.RowsIgnored > 0 ? Color.Warning : Color.Default)"
+                                Size="Size.Small" Class="mr-2">@SelectedStep.RowsIgnored</MudChip>
+                        <MudText>Records ignored</MudText>
+                    </MudListItem>
 
-                <MudListItem>
-                    <MudChip Color="@(SelectedStep.RowsWithErrors > 0 ? Color.Error : Color.Default)"
-                             Size="Size.Small" Class="mr-2">@SelectedStep.RowsWithErrors</MudChip>
-                    <MudText>Records with errors</MudText>
-                </MudListItem>
-            </MudList>
-        </MudPaper>
+                    <MudListItem>
+                        <MudChip Color="@(SelectedStep.RowsWithErrors > 0 ? Color.Error : Color.Default)"
+                                Size="Size.Small" Class="mr-2">@SelectedStep.RowsWithErrors</MudChip>
+                        <MudText>Records with errors</MudText>
+                    </MudListItem>
+                </MudList>
+            </MudDrawerContainer>
+        </MudDrawer>
     }
 </div>
 
@@ -164,6 +172,7 @@
     private List<HistoryEntryDto> rootSteps = new();
     private string? signalRServiceUrl;
     private bool isSignalRConnected = false;
+    private bool isStepDetailOpen = false;
 
     private class PositionedHistoryEntry : HistoryEntryDto
     {
@@ -173,7 +182,10 @@
         public PositionedHistoryEntry(HistoryEntryDto entry, double x, double y)
         {
             // Copier toutes les propriétés
+            Id = entry.Id;
+            ParentId = entry.ParentId;
             Stage = entry.Stage;
+            ActionId = entry.ActionId;
             Description = entry.Description;
             Timestamp = entry.Timestamp;
             TimeSinceStart = entry.TimeSinceStart;
@@ -181,6 +193,11 @@
             RowsModified = entry.RowsModified;
             RowsIgnored = entry.RowsIgnored;
             RowsWithErrors = entry.RowsWithErrors;
+            IsCompleted = entry.IsCompleted;
+            CompletionTimestamp = entry.CompletionTimestamp;
+            CompletionDescription = entry.CompletionDescription;
+            DurationSeconds = entry.DurationSeconds;
+            Children = entry.Children;
             X = x;
             Y = y;
         }
@@ -295,8 +312,6 @@
         {
             Logger.LogError($"Error setting up SignalR connection: {ex.Message}");
             isSignalRConnected = false;
-
-            // Ne pas faire de fallback à l'API REST, cela sera fait dans RefreshData
         }
     }
 
@@ -456,41 +471,6 @@
                     PositionWorkflowSteps();
                 }
             }
-
-            // Récupérer aussi les workflows actifs et complétés
-            var activeResponse = await MindApi.GetActiveFluxesAsync();
-            if (activeResponse?.Data != null)
-            {
-                var relevantWorkflows = activeResponse.Data
-                    .Where(f => f.FluxId == FluxId)
-                    .ToList();
-
-                // Convertir en FluxWorkflowDetailsDto et mettre à jour la liste
-                foreach (var flux in relevantWorkflows)
-                {
-                    var dto = new FluxWorkflowDetailsDto
-                        {
-                            FluxId = flux.FluxId,
-                            FluxName = flux.FluxName,
-                            CurrentStage = flux.Stage,
-                            StartTime = flux.StartTime,
-                            LastUpdateTime = flux.LastUpdateTime,
-                            DurationMinutes = flux.DurationMinutes,
-                            ProgressPercentage = flux.ProgressPercentage
-                        };
-
-                    // Ajouter ou mettre à jour dans la liste
-                    var existingIndex = availableWorkflows.FindIndex(w => w.WorkflowId == dto.WorkflowId);
-                    if (existingIndex >= 0)
-                    {
-                        availableWorkflows[existingIndex] = dto;
-                    }
-                    else
-                    {
-                        availableWorkflows.Add(dto);
-                    }
-                }
-            }
         }
         catch (Exception ex)
         {
@@ -514,15 +494,12 @@
                 WorkflowId = state.WorkflowId,
                 FluxId = state.FluxId,
                 FluxName = state.FluxName,
-                CurrentStage = state.CurrentStage.ToString(),
                 StageDetails = state.Steps.LastOrDefault()?.Description,
                 StartTime = state.StartTime,
                 LastUpdateTime = state.LastUpdateTime,
                 EndTime = state.EndTime,
                 DurationMinutes = state.Duration.TotalMinutes,
-                ProgressPercentage = state.ProgressPercentage,
                 IsCompleted = state.IsCompleted,
-                IsSuccessful = state.IsSuccessful,
                 History = historyEntries
             };
     }
@@ -537,7 +514,7 @@
             {
                 Id = step.Id,
                 ParentId = step.ParentId,
-                Stage = step.Stage.ToString(),
+                Stage = step.Stage,
                 Description = step.Description,
                 Timestamp = step.Timestamp,
                 TimeSinceStart = step.TimeSinceStart,
@@ -548,8 +525,8 @@
                 IsCompleted = step.IsCompleted,
                 CompletionTimestamp = step.CompletionTimestamp,
                 CompletionDescription = step.CompletionDescription,
-                CompletionStage = step.CompletionStage?.ToString(),
                 DurationSeconds = step.DurationSeconds,
+                ActionId = step.ActionId,
                 Children = MapHistoryEntries(step.Children)
             };
 
@@ -567,96 +544,30 @@
         rootSteps = WorkflowDetails.History.Where(h => h.ParentId == null).ToList();
     }
 
-    private string GetStepStatusClass(string stage)
+    private string GetStepStatusClass(WorkflowStage stage)
     {
-        // Parse the stage string to the enum if possible
-        if (Enum.TryParse<WorkflowStage>(stage, out var workflowStage))
+        return stage switch
         {
-            return workflowStage switch
-            {
-                WorkflowStage.Failed => "status-error",
-                WorkflowStage.Completed => "status-success",
+            WorkflowStage.Failed => "status-error",
 
-                // Completed stages
-                WorkflowStage.FetchingDataCompleted => "status-success",
-                WorkflowStage.ProcessingCompleted => "status-success",
-                WorkflowStage.NormalizedDataInserted => "status-success",
-                WorkflowStage.RefinedDataCopied => "status-success",
-                WorkflowStage.CalcCurrencyExchangeRateCompleted => "status-success",
-                WorkflowStage.CalculationRiskCompleted => "status-success",
-                WorkflowStage.CalculationReturnCompleted => "status-success",
-                WorkflowStage.CalculationWeeklyReturnCompleted => "status-success",
+            // In-progress stages
+            WorkflowStage.FetchingData => "status-info",
+            WorkflowStage.Processing => "status-info",
+            WorkflowStage.RefinedDataCopying => "status-info",
+            WorkflowStage.CalcCurrencyExchangeRateStarting => "status-info",
+            WorkflowStage.CalculationRiskStarting => "status-info",
+            WorkflowStage.CalculationReturnStarting => "status-info",
+            WorkflowStage.CalculationWeeklyReturnStarting => "status-info",
 
-                // In-progress stages
-                WorkflowStage.FetchingData => "status-info",
-                WorkflowStage.Processing => "status-info",
-                WorkflowStage.RefinedDataCopying => "status-info",
-                WorkflowStage.CalcCurrencyExchangeRateStarting => "status-info",
-                WorkflowStage.CalculationRiskStarting => "status-info",
-                WorkflowStage.CalculationReturnStarting => "status-info",
-                WorkflowStage.CalculationWeeklyReturnStarting => "status-info",
-
-                // Default or NotStarted
-                _ => "status-default"
-            };
-        }
-
-        // Fallback to string-based detection if enum parsing fails
-        return stage.ToLowerInvariant() switch
-        {
-            var s when s.Contains("fail") => "status-error",
-            var s when s.Contains("completed") => "status-success",
-            var s when s.Contains("processing") => "status-warning",
-            var s when s.Contains("fetching") => "status-info",
-            var s when s.Contains("insert") => "status-secondary",
-            var s when s.Contains("copying") => "status-secondary",
-            var s when s.Contains("calculation") => "status-tertiary",
+            // Default or NotStarted
             _ => "status-default"
-        };
-    }
-
-    private bool IsCompletedStage(string stage)
-    {
-        // Check if the stage indicates a completed state
-        if (Enum.TryParse<WorkflowStage>(stage, out var workflowStage))
-        {
-            return workflowStage switch
-            {
-                WorkflowStage.Completed => true,
-                WorkflowStage.FetchingDataCompleted => true,
-                WorkflowStage.ProcessingCompleted => true,
-                WorkflowStage.NormalizedDataInserted => true,
-                WorkflowStage.RefinedDataCopied => true,
-                WorkflowStage.CalcCurrencyExchangeRateCompleted => true,
-                WorkflowStage.CalculationWeeklyReturnCompleted => true,
-                WorkflowStage.CalculationRiskCompleted => true,
-                WorkflowStage.CalculationReturnCompleted => true,
-                _ => false
-            };
-        }
-
-        // Fallback to string-based detection
-        return stage.ToLowerInvariant().Contains("completed") ||
-               stage.ToLowerInvariant().Contains("inserted") ||
-               stage.ToLowerInvariant().Contains("copied");
-    }
-
-    private Color GetProgressColor(string? stage)
-    {
-        if (string.IsNullOrEmpty(stage)) return Color.Default;
-
-        return stage.ToLowerInvariant() switch
-        {
-            var s when s.Contains("fail") => Color.Error,
-            var s when s.Contains("completed") => Color.Success,
-            var s when s.Contains("processing") => Color.Info,
-            _ => Color.Primary
         };
     }
 
     private void SelectStep(HistoryEntryDto step)
     {
         SelectedStep = step;
+        isStepDetailOpen = true;
     }
 
     private async Task OnWorkflowSelectionChanged(Guid? workflowId)
@@ -722,6 +633,12 @@
         }
     }
 
+    // Method to handle UseSignalR property changes
+    protected override async Task OnParametersSetAsync()
+    {
+        await base.OnParametersSetAsync();
+    }
+
     public async ValueTask DisposeAsync()
     {
         if (hubConnection != null)
@@ -758,6 +675,12 @@
         }
     }
 
+    // Méthode pour gérer le clic sur le bouton de traitement sans propager l'événement au parent
+    private async Task HandleProcessButtonClick(HistoryEntryDto step)
+    {
+        await ForceProcess(step);
+    }
+
     // Méthode pour rendu récursif des étapes de workflow
     private RenderFragment RenderWorkflowStep(HistoryEntryDto step, int level) => builder =>
     {
@@ -775,7 +698,7 @@
 
         // Compute tooltip content
         var tooltipContent = step.IsCompleted && !string.IsNullOrEmpty(step.CompletionDescription)
-            ? $"{step.Stage} → {step.CompletionStage}\n{step.Description}\n→ {step.CompletionDescription}"
+            ? $"{step.Stage} → completed\n{step.Description}\n→ {step.CompletionDescription}"
             : $"{step.Stage}\n{step.Description}";
 
         if (step.RowsAdded > 0 || step.RowsModified > 0 || step.RowsIgnored > 0 || step.RowsWithErrors > 0)
@@ -807,7 +730,7 @@
             builder.AddAttribute(10, "aria-hidden", "true");
             builder.AddMarkupContent(11, "<svg viewBox=\"0 0 24 24\" style=\"width: 18px; height: 18px;\"><path d=\"M12 2C6.5 2 2 6.5 2 12S6.5 22 12 22 22 17.5 22 12 17.5 2 12 2M10 17L5 12L6.41 10.59L10 14.17L17.59 6.58L19 8L10 17Z\" fill=\"currentColor\"></path></svg>");
         }
-        else if (step.Stage.Contains("Failed"))
+        else if (step.Stage == WorkflowStage.Failed)
         {
             builder.AddAttribute(9, "class", "mud-icon-root mud-icon-default mud-icon-size-small mud-color-error");
             builder.AddAttribute(10, "aria-hidden", "true");
@@ -823,9 +746,9 @@
 
         // Stage name
         builder.OpenElement(12, "span");
-        builder.AddContent(13, step.IsCompleted && !string.IsNullOrEmpty(step.CompletionStage)
-            ? $"{step.Stage} → {step.CompletionStage}"
-            : step.Stage);
+        builder.AddContent(13, step.IsCompleted
+            ? $"{step.Stage} → completed"
+            : step.Stage.ToString());
         builder.CloseElement(); // span
 
         builder.CloseElement(); // step-header
@@ -903,17 +826,85 @@
 
         builder.CloseElement(); // step-timestamp
 
+        // Action buttons section at the bottom - centralized all step-related actions
+        builder.OpenElement(41, "div");
+        builder.AddAttribute(42, "class", "step-actions mt-2 d-flex justify-center flex-wrap gap-1");
+
+        // Add Process button for FetchingData steps that are not completed
+        if (step.Stage == WorkflowStage.FetchingData && !step.IsCompleted)
+        {
+            builder.OpenElement(50, "button");
+            builder.AddAttribute(51, "class", "btn btn-sm btn-outline-primary");
+            builder.AddAttribute(52, "onclick", EventCallback.Factory.Create(this, () => HandleProcessButtonClick(step)));
+            builder.AddAttribute(53, "title", "Force processing for this step");
+            builder.AddContent(54, "Process");
+            builder.CloseElement();
+        }
+
+        // Add buttons based on step type and metadata availability
+        if (!string.IsNullOrEmpty(step.Metadata))
+        {
+            // Add button for FetchingData step
+            if (step.Stage == WorkflowStage.FetchingData)
+            {
+                var fetchingId = TryGetFetchingId(step.Metadata);
+                if (fetchingId > 0)
+                {
+                    // View details button
+                    builder.OpenElement(55, "button");
+                    builder.AddAttribute(56, "class", "btn btn-sm btn-outline-info");
+                    builder.AddAttribute(57, "onclick", EventCallback.Factory.Create<MouseEventArgs>(this, () => NavigateToFetchingDetails(fetchingId)));
+                    builder.AddAttribute(58, "title", "View fetching details");
+                    builder.AddContent(59, "Fetching Details");
+                    builder.CloseElement(); // button
+
+                    // Process data button
+                    builder.OpenElement(60, "button");
+                    builder.AddAttribute(61, "class", "btn btn-sm btn-outline-primary");
+                    builder.AddAttribute(62, "onclick", EventCallback.Factory.Create<MouseEventArgs>(this, () => ForceProcessFetching(fetchingId)));
+                    builder.AddAttribute(63, "title", "Force process this fetching data");
+                    builder.AddContent(64, "Process Data");
+                    builder.CloseElement(); // button
+                }
+            }
+
+            // Add button for Processing step
+            else if (step.Stage == WorkflowStage.Processing)
+            {
+                var processingId = TryGetProcessingId(step.Metadata);
+                if (processingId > 0)
+                {
+                    builder.OpenElement(65, "button");
+                    builder.AddAttribute(66, "class", "btn btn-sm btn-outline-info");
+                    builder.AddAttribute(67, "onclick", EventCallback.Factory.Create<MouseEventArgs>(this, () => NavigateToProcessingDetails(processingId)));
+                    builder.AddAttribute(68, "title", "View processing details");
+                    builder.AddContent(69, "Processing Details");
+                    builder.CloseElement(); // button
+                }
+            }
+        }
+
+        // Add Flux Details button for all steps
+        builder.OpenElement(70, "button");
+        builder.AddAttribute(71, "class", "btn btn-sm btn-outline-dark");
+        builder.AddAttribute(72, "onclick", EventCallback.Factory.Create<MouseEventArgs>(this, () => NavigationManager.NavigateTo($"/flux/details/{FluxId}")));
+        builder.AddAttribute(73, "title", "View flux details");
+        builder.AddContent(74, "Flux Details");
+        builder.CloseElement(); // button
+
+        builder.CloseElement(); // step-actions
+
         builder.CloseElement(); // workflow-step
 
         // Child steps (recursively)
         if (step.Children != null && step.Children.Any())
         {
-            builder.OpenElement(41, "div");
-            builder.AddAttribute(42, "class", "step-children");
+            builder.OpenElement(80, "div");
+            builder.AddAttribute(81, "class", "step-children");
 
             foreach (var child in step.Children)
             {
-                builder.AddContent(43, RenderWorkflowStep(child, level + 1));
+                builder.AddContent(82, RenderWorkflowStep(child, level + 1));
             }
 
             builder.CloseElement(); // step-children
@@ -921,6 +912,104 @@
 
         builder.CloseElement(); // workflow-step-container
     };
+
+    // Helper method to extract FluxFetchingId from step metadata
+    private int TryGetFetchingId(string metadata)
+    {
+        try
+        {
+            // Deserialize the metadata JSON string
+            var metadataObj = JsonSerializer.Deserialize<JsonElement>(metadata);
+
+            // Try to get FluxFetchingId
+            if (metadataObj.TryGetProperty("FluxFetchingId", out JsonElement idElement) &&
+                idElement.TryGetInt32(out int id))
+            {
+                return id;
+            }
+
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError($"Error parsing metadata for fetching ID: {ex.Message}");
+            return 0;
+        }
+    }
+
+    // Helper method to extract FluxProcessId from step metadata
+    private int TryGetProcessingId(string metadata)
+    {
+        try
+        {
+            // Deserialize the metadata JSON string
+            var metadataObj = JsonSerializer.Deserialize<JsonElement>(metadata);
+
+            // Try to get FluxProcessId
+            if (metadataObj.TryGetProperty("FluxProcessId", out JsonElement idElement) &&
+                idElement.TryGetInt32(out int id))
+            {
+                return id;
+            }
+
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError($"Error parsing metadata for processing ID: {ex.Message}");
+            return 0;
+        }
+    }
+
+    // Navigate to fetching details page
+    private void NavigateToFetchingDetails(int fetchingId)
+    {
+        if (fetchingId > 0)
+        {
+            NavigationManager.NavigateTo($"/flux/fetching-details/{fetchingId}");
+        }
+        else
+        {
+            Snackbar.Add("Unable to get fetching ID from metadata", Severity.Warning);
+        }
+    }
+
+    // Navigate to processing details page
+    private void NavigateToProcessingDetails(int processingId)
+    {
+        if (processingId > 0)
+        {
+            NavigationManager.NavigateTo($"/flux/processing-details/{processingId}");
+        }
+        else
+        {
+            Snackbar.Add("Unable to get processing ID from metadata", Severity.Warning);
+        }
+    }
+
+    // Force process a specific fetching data
+    private async Task ForceProcessFetching(int fetchingId)
+    {
+        try
+        {
+            // Afficher un message avant de démarrer
+            Snackbar.Add($"Starting force process for fetching ID {fetchingId}", Severity.Info);
+
+            // Appeler l'API pour traiter l'élément
+            var result = await MindApi.ForceProcessElementFetchBackgroundAsync(FluxId, fetchingId);
+
+            // Afficher une notification de succès
+            Snackbar.Add("Force process started in the background", Severity.Success);
+
+            // Rafraîchir les données
+            await RefreshData();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError($"Error forcing process: {ex.Message}");
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+    }
 
     private string FormatDuration(double seconds)
     {
@@ -943,6 +1032,42 @@
             var hours = Math.Floor(seconds / 3600);
             var remainingMinutes = Math.Floor((seconds % 3600) / 60);
             return $"{hours}h {remainingMinutes}m";
+        }
+    }
+
+    private async Task ForceProcess(HistoryEntryDto step)
+    {
+        try
+        {
+            // Vérifier si l'étape a un ActionId et si c'est une étape de type FetchingData
+            if (step.ActionId.HasValue &&
+                step.Stage == WorkflowStage.FetchingData &&
+                step.IsCompleted)
+            {
+                var fetchingHistoryId = step.ActionId.Value;
+
+                // Afficher un message avant de démarrer
+                Snackbar.Add($"Starting force process for fetching ID {fetchingHistoryId}", Severity.Info);
+
+                // Appeler l'API pour traiter l'élément
+                var result = await MindApi.ForceProcessElementFetchBackgroundAsync(FluxId, fetchingHistoryId);
+
+                // Afficher une notification de succès
+                Snackbar.Add("Force process started in the background", Severity.Success);
+
+                // Rafraîchir les données
+                await RefreshData();
+            }
+            else
+            {
+                // Afficher un message si l'action n'est pas possible
+                Snackbar.Add("This step cannot be processed - Either not a fetching step, already completed, or missing action ID", Severity.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError($"Error forcing process: {ex.Message}");
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
         }
     }
 }
@@ -1172,5 +1297,29 @@
         width: 100%;
         height: 100%;
         pointer-events: none;
+    }
+
+    /* Improved action buttons styling */
+    .step-actions {
+        margin-top: 12px;
+        padding-top: 8px;
+        border-top: 1px dashed #e0e0e0;
+    }
+
+    .step-actions button {
+        font-size: 0.75rem;
+        padding: 3px 8px;
+        margin: 2px;
+        transition: all 0.2s ease;
+    }
+
+    .step-actions button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+    }
+
+    /* Flex gap utility */
+    .gap-1 {
+        gap: 0.25rem;
     }
 </style>

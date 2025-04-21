@@ -1,4 +1,5 @@
 @using HillMetrics.Core.Monitoring.Workflow
+@using HillMetrics.Core.Workflow
 @using HillMetrics.MIND.API.Contracts.Responses.Flux
 
 <MudDialog>
@@ -20,16 +21,7 @@
                         <MudCardContent>
                             <MudList T="FluxWorkflowDetailsDto" Dense="true">
                                 <MudListItem>
-                                    <MudText><b>Current Stage:</b> @FluxDetails.CurrentStage</MudText>
-                                </MudListItem>
-                                <MudListItem>
                                     <MudText><b>Details:</b> @FluxDetails.StageDetails</MudText>
-                                </MudListItem>
-                                <MudListItem>
-                                    <MudText><b>Progress:</b></MudText>
-                                    <MudProgressLinear Color="Color.Primary" Value="@FluxDetails.ProgressPercentage" Class="my-2">
-                                        @FluxDetails.ProgressPercentage%
-                                    </MudProgressLinear>
                                 </MudListItem>
                                 <MudListItem>
                                     <MudText><b>Started:</b> @FluxDetails.StartTime.ToLocalTime().ToString("g")</MudText>
@@ -59,22 +51,11 @@
                             <div class="d-flex flex-column align-center justify-center">
                                 @if (FluxDetails.IsCompleted)
                                 {
-                                    @if (FluxDetails.IsSuccessful)
-                                    {
-                                        <MudIcon Icon="@Icons.Material.Filled.CheckCircle"
-                                                 Color="Color.Success"
-                                                 Size="Size.Large"
-                                                 Style="font-size: 64px;" />
-                                        <MudText Typo="Typo.body1" Class="mt-2">Completed Successfully</MudText>
-                                    }
-                                    else
-                                    {
-                                        <MudIcon Icon="@Icons.Material.Filled.Error"
-                                                 Color="Color.Error"
-                                                 Size="Size.Large"
-                                                 Style="font-size: 64px;" />
-                                        <MudText Typo="Typo.body1" Class="mt-2">Failed</MudText>
-                                    }
+                                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle"
+                                             Color="Color.Success"
+                                             Size="Size.Large"
+                                             Style="font-size: 64px;" />
+                                    <MudText Typo="Typo.body1" Class="mt-2">Completed</MudText>
                                 }
                                 else
                                 {
@@ -134,17 +115,18 @@
         MudDialog?.Cancel();
     }
 
-    private Color GetStageColor(string stage)
+    private Color GetStageColor(WorkflowStage stage)
     {
-        return stage.ToLowerInvariant() switch
+        return stage switch
         {
-            var s when s.Contains("fail") => Color.Error,
-            var s when s.Contains("completed") => Color.Success,
-            var s when s.Contains("processing") => Color.Warning,
-            var s when s.Contains("fetching") => Color.Info,
-            var s when s.Contains("insert") => Color.Secondary,
-            var s when s.Contains("calculation") => Color.Tertiary,
+            WorkflowStage.Failed => Color.Error,
+            WorkflowStage.Processing => Color.Warning,
+            WorkflowStage.FetchingData => Color.Info,
+            WorkflowStage.CalcCurrencyExchangeRateStarting => Color.Tertiary,
+            WorkflowStage.CalculationRiskStarting => Color.Tertiary,
+            WorkflowStage.CalculationReturnStarting => Color.Tertiary,
+            WorkflowStage.CalculationWeeklyReturnStarting => Color.Tertiary,
             _ => Color.Default
         };
     }
-} 
+}

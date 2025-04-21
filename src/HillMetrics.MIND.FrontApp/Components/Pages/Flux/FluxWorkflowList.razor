@@ -30,17 +30,11 @@
                 <MudTable Items="@ActiveWorkflows" Hover="true" Dense="true" Class="mb-4">
                     <HeaderContent>
                         <MudTh>Started</MudTh>
-                        <MudTh>Current Stage</MudTh>
-                        <MudTh>Progress</MudTh>
                         <MudTh>Duration</MudTh>
                         <MudTh></MudTh>
                     </HeaderContent>
                     <RowTemplate>
                         <MudTd DataLabel="Started">@context.StartTime.ToLocalTime().ToString("g")</MudTd>
-                        <MudTd DataLabel="Current Stage">@context.CurrentStage</MudTd>
-                        <MudTd DataLabel="Progress">
-                            <MudProgressLinear Value="@context.ProgressPercentage" Size="Size.Small" Color="Color.Primary" Class="my-2" />
-                        </MudTd>
                         <MudTd DataLabel="Duration">@Math.Round(context.Duration.TotalMinutes, 1) min</MudTd>
                         <MudTd>
                             <MudIconButton Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" 
@@ -57,19 +51,12 @@
                     <HeaderContent>
                         <MudTh>Started</MudTh>
                         <MudTh>Completed</MudTh>
-                        <MudTh>Status</MudTh>
                         <MudTh>Duration</MudTh>
                         <MudTh></MudTh>
                     </HeaderContent>
                     <RowTemplate>
                         <MudTd DataLabel="Started">@context.StartTime.ToLocalTime().ToString("g")</MudTd>
                         <MudTd DataLabel="Completed">@(context.EndTime?.ToLocalTime().ToString("g"))</MudTd>
-                        <MudTd DataLabel="Status">
-                            <MudChip T="bool" Color="@(context.IsSuccessful ? Color.Success : Color.Error)"
-                                     Size="Size.Small">
-                                @(context.IsSuccessful ? "Success" : "Failed")
-                            </MudChip>
-                        </MudTd>
                         <MudTd DataLabel="Duration">@Math.Round(context.Duration.TotalMinutes, 1) min</MudTd>
                         <MudTd>
                             <MudIconButton Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" 

@@ -316,7 +316,6 @@ namespace HillMetrics.MIND.API.Controllers
                         var scopedLogger = scope.ServiceProvider.GetRequiredService<ILogger<FluxController>>();
 
                         scopedLogger.LogInformation("Starting asynchronous process for flux {FluxId}", id);
-                        scopedLogger.LogInformation("Starting asynchronous process for flux {FluxId}", id);
 
                         // Execute the operation with services from the new scope
                         var processResult = await scopedMediator.Send(new ProcessFluxCommand() {

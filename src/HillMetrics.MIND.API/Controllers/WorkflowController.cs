@@ -43,12 +43,10 @@ namespace HillMetrics.MIND.API.Controllers
                 {
                     FluxId = flux.FluxId,
                     FluxName = flux.FluxName,
-                    Stage = flux.CurrentStage.ToString(),
                     Details = flux.Steps.LastOrDefault()?.Description,
                     StartTime = flux.StartTime,
                     LastUpdateTime = flux.LastUpdateTime,
                     DurationMinutes = flux.Duration.TotalMinutes,
-                    ProgressPercentage = flux.ProgressPercentage
                 }).ToList();
 
                 return new ApiResponseBase<List<ActiveFluxDto>>(result);
@@ -76,8 +74,7 @@ namespace HillMetrics.MIND.API.Controllers
                 {
                     FluxId = flux.FluxId,
                     FluxName = flux.FluxName,
-                    Status = flux.IsSuccessful ? "Success" : "Failed",
-                    Stage = flux.CurrentStage.ToString(),
+                    Status = flux.EndTime != null ? "Completed" : "Pending",
                     Details = flux.Steps.LastOrDefault()?.Description,
                     StartTime = flux.StartTime,
                     CompletedAt = flux.EndTime,
@@ -116,15 +113,12 @@ namespace HillMetrics.MIND.API.Controllers
                 {
                     FluxId = fluxState.FluxId,
                     FluxName = fluxState.FluxName,
-                    CurrentStage = fluxState.CurrentStage.ToString(),
                     StageDetails = fluxState.Steps.LastOrDefault()?.Description,
                     StartTime = fluxState.StartTime,
                     LastUpdateTime = fluxState.LastUpdateTime,
                     EndTime = fluxState.EndTime,
                     DurationMinutes = fluxState.Duration.TotalMinutes,
-                    ProgressPercentage = fluxState.ProgressPercentage,
                     IsCompleted = fluxState.IsCompleted,
-                    IsSuccessful = fluxState.IsSuccessful,
                     WorkflowId = fluxState.WorkflowId,
                     History = MapWorkflowStepsToHistoryEntries(fluxState.Steps, fluxState.StartTime)
                 };
@@ -155,13 +149,11 @@ namespace HillMetrics.MIND.API.Controllers
                 {
                     ActiveFluxCount = activeFluxes.Count,
                     RecentlyCompletedCount = completedFluxes.Count,
-                    SuccessfulCompletions = completedFluxes.Count(f => f.IsSuccessful),
-                    FailedCompletions = completedFluxes.Count(f => !f.IsSuccessful),
                     AverageCompletionTimeMinutes = completedFluxes.Any()
                         ? completedFluxes.Average(f => f.Duration.TotalMinutes)
                         : 0,
                     ByStage = activeFluxes
-                        .GroupBy(f => f.CurrentStage)
+                        .GroupBy(f => f.Steps)
                         .Select(g => new StageCountDto
                         {
                             Stage = g.Key.ToString(),
@@ -223,15 +215,12 @@ namespace HillMetrics.MIND.API.Controllers
                 {
                     FluxId = workflowState.FluxId,
                     FluxName = workflowState.FluxName,
-                    CurrentStage = workflowState.CurrentStage.ToString(),
                     StageDetails = workflowState.Steps.LastOrDefault()?.Description,
                     StartTime = workflowState.StartTime,
                     LastUpdateTime = workflowState.LastUpdateTime,
                     EndTime = workflowState.EndTime,
                     DurationMinutes = workflowState.Duration.TotalMinutes,
-                    ProgressPercentage = workflowState.ProgressPercentage,
                     IsCompleted = workflowState.IsCompleted,
-                    IsSuccessful = workflowState.IsSuccessful,
                     WorkflowId = workflowState.WorkflowId,
                     History = MapWorkflowStepsToHistoryEntries(workflowState.Steps, workflowState.StartTime)
                 };
@@ -260,7 +249,7 @@ namespace HillMetrics.MIND.API.Controllers
                 {
                     Id = step.Id,
                     ParentId = step.ParentId,
-                    Stage = step.Stage.ToString(),
+                    Stage = step.Stage,
                     Description = step.Description,
                     Timestamp = step.Timestamp,
                     TimeSinceStart = (step.Timestamp - workflowStartTime).TotalMinutes,
@@ -271,8 +260,9 @@ namespace HillMetrics.MIND.API.Controllers
                     IsCompleted = step.IsCompleted,
                     CompletionTimestamp = step.CompletionTimestamp,
                     CompletionDescription = step.CompletionDescription,
-                    CompletionStage = step.CompletionStage?.ToString(),
                     DurationSeconds = step.DurationSeconds,
+                    ActionId = step.ActionId,
+                    Metadata = step.Metadata ?? string.Empty,
                     Children = MapWorkflowStepsToHistoryEntries(step.Children, workflowStartTime)
                 };
 

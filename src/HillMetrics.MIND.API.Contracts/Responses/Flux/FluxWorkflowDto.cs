@@ -1,3 +1,4 @@
+using HillMetrics.Core.Workflow;
 using System;
 using System.Collections.Generic;
 
@@ -19,11 +20,6 @@ namespace HillMetrics.MIND.API.Contracts.Responses.Flux
         public string FluxName { get; set; }
 
         /// <summary>
-        /// The current stage of the workflow
-        /// </summary>
-        public string Stage { get; set; }
-
-        /// <summary>
         /// Detailed description of the current stage
         /// </summary>
         public string Details { get; set; }
@@ -42,11 +38,6 @@ namespace HillMetrics.MIND.API.Contracts.Responses.Flux
         /// Duration of the workflow in minutes
         /// </summary>
         public double DurationMinutes { get; set; }
-
-        /// <summary>
-        /// Percentage of completion (0-100)
-        /// </summary>
-        public int ProgressPercentage { get; set; }
     }
 
     /// <summary>
@@ -110,10 +101,12 @@ namespace HillMetrics.MIND.API.Contracts.Responses.Flux
         /// </summary>
         public int? ParentId { get; set; }
 
+        public int? ActionId { get; set; }
+
         /// <summary>
         /// Gets or sets the stage of the workflow
         /// </summary>
-        public string Stage { get; set; }
+        public WorkflowStage Stage { get; set; }
 
         /// <summary>
         /// Gets or sets the description of the step
@@ -166,14 +159,11 @@ namespace HillMetrics.MIND.API.Contracts.Responses.Flux
         public string CompletionDescription { get; set; }
 
         /// <summary>
-        /// The stage at completion
-        /// </summary>
-        public string CompletionStage { get; set; }
-
-        /// <summary>
         /// Duration of the step in seconds (if completed)
         /// </summary>
         public double? DurationSeconds { get; set; }
+
+        public string Metadata { get; set; } = string.Empty;
 
         /// <summary>
         /// Child steps of this step
@@ -202,11 +192,6 @@ namespace HillMetrics.MIND.API.Contracts.Responses.Flux
         public string FluxName { get; set; }
 
         /// <summary>
-        /// The current stage of the workflow
-        /// </summary>
-        public string CurrentStage { get; set; }
-
-        /// <summary>
         /// Detailed description of the current stage
         /// </summary>
         public string StageDetails { get; set; }
@@ -232,19 +217,9 @@ namespace HillMetrics.MIND.API.Contracts.Responses.Flux
         public double DurationMinutes { get; set; }
 
         /// <summary>
-        /// Percentage of completion (0-100)
-        /// </summary>
-        public int ProgressPercentage { get; set; }
-
-        /// <summary>
         /// Whether the workflow is completed
         /// </summary>
         public bool IsCompleted { get; set; }
-
-        /// <summary>
-        /// Whether the workflow completed successfully
-        /// </summary>
-        public bool IsSuccessful { get; set; }
 
         /// <summary>
         /// History of all stages in this workflow
