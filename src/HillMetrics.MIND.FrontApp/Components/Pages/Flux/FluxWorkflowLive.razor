@@ -87,10 +87,10 @@
     <div class="workflow-canvas" @ref="canvasRef">
         @if (WorkflowDetails != null)
         {
-            <div class="workflow-tree">
+            <div class="workflow-diagram">
                 @foreach (var step in rootSteps)
                 {
-                    @RenderWorkflowStep(step, 0)
+                    @RenderWorkflowDiagram(step, 0)
                 }
             </div>
         }
@@ -681,19 +681,21 @@
         await ForceProcess(step);
     }
 
-    // Méthode pour rendu récursif des étapes de workflow
-    private RenderFragment RenderWorkflowStep(HistoryEntryDto step, int level) => builder =>
+    // Méthode pour rendu récursif des étapes de workflow en forme de diagramme
+    private RenderFragment RenderWorkflowDiagram(HistoryEntryDto step, int level) => builder =>
     {
-        var indentClass = $"step-level-{level}";
-        var completionClass = step.IsCompleted ? "status-completed" : "status-inprogress";
         var statusClass = GetStepStatusClass(step.Stage);
+        var completionClass = step.IsCompleted ? "node-completed" : "node-inprogress";
+
+        // Calculate the node position based on level
+        string nodePositionClass = level == 0 ? "node-center" : "";
 
         builder.OpenElement(0, "div");
-        builder.AddAttribute(1, "class", $"workflow-step-container {indentClass}");
+        builder.AddAttribute(1, "class", $"workflow-node-container {nodePositionClass}");
 
-        // Step node
+        // Node element
         builder.OpenElement(2, "div");
-        builder.AddAttribute(3, "class", $"workflow-step {statusClass} {completionClass}");
+        builder.AddAttribute(3, "class", $"workflow-node {statusClass} {completionClass}");
         builder.AddAttribute(4, "onclick", EventCallback.Factory.Create<MouseEventArgs>(this, () => SelectStep(step)));
 
         // Compute tooltip content
@@ -718,200 +720,200 @@
 
         builder.AddAttribute(5, "title", tooltipContent);
 
-        // Header
+        // Node content
         builder.OpenElement(6, "div");
-        builder.AddAttribute(7, "class", "step-header");
+        builder.AddAttribute(7, "class", "node-content");
 
         // Status icon
-        builder.OpenElement(8, "i");
+        builder.OpenElement(8, "div");
+        builder.AddAttribute(9, "class", "node-header");
+
+        builder.OpenElement(10, "i");
         if (step.IsCompleted)
         {
-            builder.AddAttribute(9, "class", "mud-icon-root mud-icon-default mud-icon-size-small mud-color-success");
-            builder.AddAttribute(10, "aria-hidden", "true");
-            builder.AddMarkupContent(11, "<svg viewBox=\"0 0 24 24\" style=\"width: 18px; height: 18px;\"><path d=\"M12 2C6.5 2 2 6.5 2 12S6.5 22 12 22 22 17.5 22 12 17.5 2 12 2M10 17L5 12L6.41 10.59L10 14.17L17.59 6.58L19 8L10 17Z\" fill=\"currentColor\"></path></svg>");
+            builder.AddAttribute(11, "class", "mud-icon-root mud-icon-default mud-icon-size-small mud-color-success");
+            builder.AddAttribute(12, "aria-hidden", "true");
+            builder.AddMarkupContent(13, "<svg viewBox=\"0 0 24 24\" style=\"width: 18px; height: 18px;\"><path d=\"M12 2C6.5 2 2 6.5 2 12S6.5 22 12 22 22 17.5 22 12 17.5 2 12 2M10 17L5 12L6.41 10.59L10 14.17L17.59 6.58L19 8L10 17Z\" fill=\"currentColor\"></path></svg>");
         }
         else if (step.Stage == WorkflowStage.Failed)
         {
-            builder.AddAttribute(9, "class", "mud-icon-root mud-icon-default mud-icon-size-small mud-color-error");
-            builder.AddAttribute(10, "aria-hidden", "true");
-            builder.AddMarkupContent(11, "<svg viewBox=\"0 0 24 24\" style=\"width: 18px; height: 18px;\"><path d=\"M13,13H11V7H13M13,17H11V15H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z\" fill=\"currentColor\"></path></svg>");
+            builder.AddAttribute(11, "class", "mud-icon-root mud-icon-default mud-icon-size-small mud-color-error");
+            builder.AddAttribute(12, "aria-hidden", "true");
+            builder.AddMarkupContent(13, "<svg viewBox=\"0 0 24 24\" style=\"width: 18px; height: 18px;\"><path d=\"M13,13H11V7H13M13,17H11V15H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z\" fill=\"currentColor\"></path></svg>");
         }
         else
         {
-            builder.AddAttribute(9, "class", "mud-icon-root mud-icon-default mud-icon-size-small mud-color-info");
-            builder.AddAttribute(10, "aria-hidden", "true");
-            builder.AddMarkupContent(11, "<svg viewBox=\"0 0 24 24\" style=\"width: 18px; height: 18px;\"><path d=\"M12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22C6.47,22 2,17.5 2,12A10,10 0 0,1 12,2M12.5,7V12.25L17,14.92L16.25,16.15L11,13V7H12.5Z\" fill=\"currentColor\"></path></svg>");
+            builder.AddAttribute(11, "class", "mud-icon-root mud-icon-default mud-icon-size-small mud-color-info");
+            builder.AddAttribute(12, "aria-hidden", "true");
+            builder.AddMarkupContent(13, "<svg viewBox=\"0 0 24 24\" style=\"width: 18px; height: 18px;\"><path d=\"M12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22C6.47,22 2,17.5 2,12A10,10 0 0,1 12,2M12.5,7V12.25L17,14.92L16.25,16.15L11,13V7H12.5Z\" fill=\"currentColor\"></path></svg>");
         }
         builder.CloseElement(); // i
 
+        builder.CloseElement(); // node-header
+
         // Stage name
-        builder.OpenElement(12, "span");
-        builder.AddContent(13, step.IsCompleted
-            ? $"{step.Stage} → completed"
-            : step.Stage.ToString());
-        builder.CloseElement(); // span
-
-        builder.CloseElement(); // step-header
-
-        // Content
         builder.OpenElement(14, "div");
-        builder.AddAttribute(15, "class", "step-content");
-        builder.AddContent(16, step.Description);
+        builder.AddAttribute(15, "class", "node-title");
+        builder.AddContent(16, GetWorkflowStageDisplayName(step.Stage));
+        builder.CloseElement(); // node-title
 
-        if (step.IsCompleted && !string.IsNullOrEmpty(step.CompletionDescription) && step.Description != step.CompletionDescription)
-        {
-            builder.OpenElement(17, "div");
-            builder.AddAttribute(18, "class", "step-completion-info");
-            builder.AddContent(19, "→ " + step.CompletionDescription);
-            builder.CloseElement(); // completion info
-        }
-
-        builder.CloseElement(); // step-content
-
-        // Metrics
-        builder.OpenElement(20, "div");
-        builder.AddAttribute(21, "class", "step-metrics");
-
-        if (step.RowsAdded > 0)
-        {
-            builder.OpenElement(22, "span");
-            builder.AddAttribute(23, "class", "badge success");
-            builder.AddContent(24, "+" + step.RowsAdded);
-            builder.CloseElement(); // span
-        }
-
-        if (step.RowsModified > 0)
-        {
-            builder.OpenElement(25, "span");
-            builder.AddAttribute(26, "class", "badge info");
-            builder.AddContent(27, "~" + step.RowsModified);
-            builder.CloseElement(); // span
-        }
-
-        if (step.RowsIgnored > 0)
-        {
-            builder.OpenElement(28, "span");
-            builder.AddAttribute(29, "class", "badge warning");
-            builder.AddContent(30, step.RowsIgnored);
-            builder.CloseElement(); // span
-        }
-
-        if (step.RowsWithErrors > 0)
-        {
-            builder.OpenElement(31, "span");
-            builder.AddAttribute(32, "class", "badge error");
-            builder.AddContent(33, "!" + step.RowsWithErrors);
-            builder.CloseElement(); // span
-        }
-
-        if (step.DurationSeconds.HasValue)
-        {
-            builder.OpenElement(34, "span");
-            builder.AddAttribute(35, "class", "badge duration");
-            builder.AddContent(36, FormatDuration(step.DurationSeconds.Value));
-            builder.CloseElement(); // span
-        }
-
-        builder.CloseElement(); // step-metrics
-
-        // Timestamp
-        builder.OpenElement(37, "div");
-        builder.AddAttribute(38, "class", "step-timestamp");
-        builder.AddContent(39, step.Timestamp.ToLocalTime().ToString("g"));
-
-        if (step.CompletionTimestamp.HasValue)
-        {
-            builder.AddContent(40, " → " + step.CompletionTimestamp.Value.ToLocalTime().ToString("g"));
-        }
-
-        builder.CloseElement(); // step-timestamp
-
-        // Action buttons section at the bottom - centralized all step-related actions
-        builder.OpenElement(41, "div");
-        builder.AddAttribute(42, "class", "step-actions mt-2 d-flex justify-center flex-wrap gap-1");
-
-        // Add Process button for FetchingData steps that are not completed
-        if (step.Stage == WorkflowStage.FetchingData && !step.IsCompleted)
-        {
-            builder.OpenElement(50, "button");
-            builder.AddAttribute(51, "class", "btn btn-sm btn-outline-primary");
-            builder.AddAttribute(52, "onclick", EventCallback.Factory.Create(this, () => HandleProcessButtonClick(step)));
-            builder.AddAttribute(53, "title", "Force processing for this step");
-            builder.AddContent(54, "Process");
-            builder.CloseElement();
-        }
-
-        // Add buttons based on step type and metadata availability
+        // Action buttons
         if (!string.IsNullOrEmpty(step.Metadata))
         {
-            // Add button for FetchingData step
+            builder.OpenElement(17, "div");
+            builder.AddAttribute(18, "class", "node-actions");
+
             if (step.Stage == WorkflowStage.FetchingData)
             {
                 var fetchingId = TryGetFetchingId(step.Metadata);
                 if (fetchingId > 0)
                 {
-                    // View details button
-                    builder.OpenElement(55, "button");
-                    builder.AddAttribute(56, "class", "btn btn-sm btn-outline-info");
-                    builder.AddAttribute(57, "onclick", EventCallback.Factory.Create<MouseEventArgs>(this, () => NavigateToFetchingDetails(fetchingId)));
-                    builder.AddAttribute(58, "title", "View fetching details");
-                    builder.AddContent(59, "Fetching Details");
+                    // Quick action buttons
+                    builder.OpenElement(19, "button");
+                    builder.AddAttribute(20, "class", "btn-quick");
+                    builder.AddAttribute(21, "onclick", EventCallback.Factory.Create<MouseEventArgs>(this, () => NavigateToFetchingDetails(fetchingId)));
+                    builder.AddAttribute(22, "title", "View fetching details");
+                    builder.AddMarkupContent(23, "<i class=\"mud-icon-root mud-icon-default\"><svg viewBox=\"0 0 24 24\" style=\"width: 16px; height: 16px;\"><path d=\"M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9M12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17M12,4.5C7,4.5 2.73,7.61 1,12C2.73,16.39 7,19.5 12,19.5C17,19.5 21.27,16.39 23,12C21.27,7.61 17,4.5 12,4.5Z\" fill=\"currentColor\"></path></svg></i>");
                     builder.CloseElement(); // button
 
-                    // Process data button
-                    builder.OpenElement(60, "button");
-                    builder.AddAttribute(61, "class", "btn btn-sm btn-outline-primary");
-                    builder.AddAttribute(62, "onclick", EventCallback.Factory.Create<MouseEventArgs>(this, () => ForceProcessFetching(fetchingId)));
-                    builder.AddAttribute(63, "title", "Force process this fetching data");
-                    builder.AddContent(64, "Process Data");
+                    builder.OpenElement(24, "button");
+                    builder.AddAttribute(25, "class", "btn-quick");
+                    builder.AddAttribute(26, "onclick", EventCallback.Factory.Create<MouseEventArgs>(this, () => ForceProcessFetching(fetchingId)));
+                    builder.AddAttribute(27, "title", "Force process this fetching data");
+                    builder.AddMarkupContent(28, "<i class=\"mud-icon-root mud-icon-default\"><svg viewBox=\"0 0 24 24\" style=\"width: 16px; height: 16px;\"><path d=\"M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z\" fill=\"currentColor\"></path></svg></i>");
                     builder.CloseElement(); // button
                 }
             }
-
-            // Add button for Processing step
             else if (step.Stage == WorkflowStage.Processing)
             {
                 var processingId = TryGetProcessingId(step.Metadata);
                 if (processingId > 0)
                 {
-                    builder.OpenElement(65, "button");
-                    builder.AddAttribute(66, "class", "btn btn-sm btn-outline-info");
-                    builder.AddAttribute(67, "onclick", EventCallback.Factory.Create<MouseEventArgs>(this, () => NavigateToProcessingDetails(processingId)));
-                    builder.AddAttribute(68, "title", "View processing details");
-                    builder.AddContent(69, "Processing Details");
+                    builder.OpenElement(29, "button");
+                    builder.AddAttribute(30, "class", "btn-quick");
+                    builder.AddAttribute(31, "onclick", EventCallback.Factory.Create<MouseEventArgs>(this, () => NavigateToProcessingDetails(processingId)));
+                    builder.AddAttribute(32, "title", "View processing details");
+                    builder.AddMarkupContent(33, "<i class=\"mud-icon-root mud-icon-default\"><svg viewBox=\"0 0 24 24\" style=\"width: 16px; height: 16px;\"><path d=\"M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9M12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17M12,4.5C7,4.5 2.73,7.61 1,12C2.73,16.39 7,19.5 12,19.5C17,19.5 21.27,16.39 23,12C21.27,7.61 17,4.5 12,4.5Z\" fill=\"currentColor\"></path></svg></i>");
                     builder.CloseElement(); // button
                 }
             }
+
+            builder.CloseElement(); // node-actions
         }
 
-        // Add Flux Details button for all steps
-        builder.OpenElement(70, "button");
-        builder.AddAttribute(71, "class", "btn btn-sm btn-outline-dark");
-        builder.AddAttribute(72, "onclick", EventCallback.Factory.Create<MouseEventArgs>(this, () => NavigationManager.NavigateTo($"/flux/details/{FluxId}")));
-        builder.AddAttribute(73, "title", "View flux details");
-        builder.AddContent(74, "Flux Details");
-        builder.CloseElement(); // button
-
-        builder.CloseElement(); // step-actions
-
-        builder.CloseElement(); // workflow-step
-
-        // Child steps (recursively)
-        if (step.Children != null && step.Children.Any())
+        // Metrics indicators
+        if (step.RowsAdded > 0 || step.RowsModified > 0 || step.RowsIgnored > 0 || step.RowsWithErrors > 0)
         {
-            builder.OpenElement(80, "div");
-            builder.AddAttribute(81, "class", "step-children");
+            builder.OpenElement(34, "div");
+            builder.AddAttribute(35, "class", "node-metrics");
 
-            foreach (var child in step.Children)
+            if (step.RowsAdded > 0)
             {
-                builder.AddContent(82, RenderWorkflowStep(child, level + 1));
+                builder.OpenElement(36, "span");
+                builder.AddAttribute(37, "class", "badge success");
+                builder.AddAttribute(38, "title", $"{step.RowsAdded} records added");
+                builder.AddContent(39, "+" + step.RowsAdded);
+                builder.CloseElement(); // span
             }
 
-            builder.CloseElement(); // step-children
+            if (step.RowsModified > 0)
+            {
+                builder.OpenElement(40, "span");
+                builder.AddAttribute(41, "class", "badge info");
+                builder.AddAttribute(42, "title", $"{step.RowsModified} records modified");
+                builder.AddContent(43, "~" + step.RowsModified);
+                builder.CloseElement(); // span
+            }
+
+            if (step.RowsIgnored > 0)
+            {
+                builder.OpenElement(44, "span");
+                builder.AddAttribute(45, "class", "badge warning");
+                builder.AddAttribute(46, "title", $"{step.RowsIgnored} records ignored");
+                builder.AddContent(47, step.RowsIgnored);
+                builder.CloseElement(); // span
+            }
+
+            if (step.RowsWithErrors > 0)
+            {
+                builder.OpenElement(48, "span");
+                builder.AddAttribute(49, "class", "badge error");
+                builder.AddAttribute(50, "title", $"{step.RowsWithErrors} records with errors");
+                builder.AddContent(51, "!" + step.RowsWithErrors);
+                builder.CloseElement(); // span
+            }
+
+            builder.CloseElement(); // node-metrics
         }
 
-        builder.CloseElement(); // workflow-step-container
+        builder.CloseElement(); // node-content
+        builder.CloseElement(); // workflow-node
+
+        // Container for child nodes
+        if (step.Children != null && step.Children.Any())
+        {
+            // Render children based on how many they are
+            var childrenCount = step.Children.Count;
+
+            if (childrenCount == 1)
+            {
+                // Single child - vertical connection
+                builder.OpenElement(60, "div");
+                builder.AddAttribute(61, "class", "arrow-down");
+                builder.CloseElement(); // arrow-down
+
+                builder.OpenElement(62, "div");
+                builder.AddAttribute(63, "class", "node-children single-child");
+                builder.AddContent(64, RenderWorkflowDiagram(step.Children[0], level + 1));
+                builder.CloseElement(); // node-children
+            }
+            else
+            {
+                // Multiple children - branch out
+                builder.OpenElement(65, "div");
+                builder.AddAttribute(66, "class", "arrow-down");
+                builder.CloseElement(); // arrow-down
+
+                builder.OpenElement(67, "div");
+                builder.AddAttribute(68, "class", "branch-container");
+                builder.CloseElement(); // branch-container
+
+                builder.OpenElement(69, "div");
+                builder.AddAttribute(70, "class", "node-children multi-child");
+
+                foreach (var child in step.Children)
+                {
+                    builder.OpenElement(71, "div");
+                    builder.AddAttribute(72, "class", "child-branch");
+                    builder.AddContent(73, RenderWorkflowDiagram(child, level + 1));
+                    builder.CloseElement(); // child-branch
+                }
+
+                builder.CloseElement(); // node-children
+            }
+        }
+
+        builder.CloseElement(); // workflow-node-container
     };
+
+    // Helper function to get a friendlier display name for workflow stages
+    private string GetWorkflowStageDisplayName(WorkflowStage stage)
+    {
+        return stage switch
+        {
+            WorkflowStage.FetchingData => "Fetch data",
+            WorkflowStage.Processing => "Process data",
+            WorkflowStage.NormalizedDataInserting => "Normalized insertion",
+            WorkflowStage.RefinedDataCopying => "Refined insertion",
+            WorkflowStage.RefinedDataCopied => "Refined data copied",
+            WorkflowStage.CalculationReturnStarting => "Calcul 1",
+            WorkflowStage.CalculationRiskStarting => "Calcul 2",
+            WorkflowStage.CalculationWeeklyReturnStarting => "Calcul 3",
+            WorkflowStage.CalcCurrencyExchangeRateStarting => "Calcul 4",
+            WorkflowStage.Failed => "Error",
+            _ => stage.ToString()
+        };
+    }
 
     // Helper method to extract FluxFetchingId from step metadata
     private int TryGetFetchingId(string metadata)
@@ -1090,105 +1092,186 @@
         min-height: 100%;
     }
 
-    /* Tree view styles */
-    .workflow-tree {
+    /* Diagram styles */
+    .workflow-diagram {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
         padding: 20px;
         width: 100%;
     }
 
-    .workflow-step-container {
+    .workflow-node-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin-bottom: 30px;
         position: relative;
-        margin-bottom: 15px;
     }
 
-    .step-level-0 {
-        margin-left: 0;
-    }
-
-    .step-level-1 {
-        margin-left: 40px;
-    }
-
-    .step-level-2 {
-        margin-left: 80px;
-    }
-
-    .step-level-3 {
-        margin-left: 120px;
-    }
-
-    .step-level-4 {
-        margin-left: 160px;
-    }
-
-    .step-children {
-        position: relative;
-        padding-left: 30px;
-        margin-top: 15px;
-        border-left: 2px solid #e0e0e0;
-    }
-
-    .step-children:before {
-        content: "";
-        position: absolute;
-        top: -15px;
-        left: 0;
-        width: 20px;
-        height: 15px;
-        border-bottom: 2px solid #e0e0e0;
-    }
-
-    .workflow-step {
-        position: relative;
+    .workflow-node {
         background-color: white;
         border-radius: 8px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         padding: 12px;
         cursor: pointer;
         transition: all 0.2s ease;
-        margin-bottom: 5px;
-        min-width: 300px;
-        max-width: 600px;
+        min-width: 180px;
+        max-width: 250px;
+        text-align: center;
+        border-left: 4px solid #ccc;
     }
 
-    .workflow-step:hover {
-        transform: scale(1.02);
+    .workflow-node:hover {
+        transform: scale(1.05);
         box-shadow: 0 4px 8px rgba(0,0,0,0.15);
     }
 
-    .step-header {
-        font-weight: bold;
-        margin-bottom: 8px;
-        color: #333;
+    .node-content {
         display: flex;
+        flex-direction: column;
         align-items: center;
     }
 
-    .step-header i {
-        margin-right: 5px;
-    }
-
-    .step-content {
-        font-size: 0.9em;
-        color: #666;
+    .node-header {
         margin-bottom: 8px;
     }
 
-    .step-completion-info {
-        font-size: 0.9em;
-        color: #4CAF50;
-        margin-top: 5px;
-        font-style: italic;
+    .node-title {
+        font-weight: bold;
+        font-size: 1rem;
+        margin-bottom: 8px;
+        color: #333;
     }
 
-    .step-metrics {
+    .node-actions {
+        display: flex;
+        justify-content: center;
+        gap: 5px;
+        margin: 5px 0;
+    }
+
+    .btn-quick {
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 2px;
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+    }
+
+    .btn-quick:hover {
+        background-color: rgba(0,0,0,0.1);
+        transform: scale(1.2);
+    }
+
+    .node-metrics {
         display: flex;
         flex-wrap: wrap;
         gap: 5px;
-        margin-bottom: 8px;
-        min-height: 22px;
+        justify-content: center;
+        margin-top: 5px;
     }
 
+    /* Arrow connecting nodes */
+    .arrow-down {
+        height: 30px;
+        width: 2px;
+        background-color: #2196F3;
+        margin: 5px 0;
+        position: relative;
+    }
+
+    .arrow-down:after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: -4px;
+        width: 0;
+        height: 0;
+        border-left: 5px solid transparent;
+        border-right: 5px solid transparent;
+        border-top: 8px solid #2196F3;
+    }
+
+    /* Node children containment */
+    .node-children {
+        display: flex;
+        justify-content: center;
+        position: relative;
+    }
+
+    .single-child {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .multi-child {
+        flex-direction: row;
+        gap: 30px;
+        width: 100%;
+    }
+
+    .child-branch {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .branch-container {
+        width: 100%;
+        height: 2px;
+        background-color: #2196F3;
+        margin-bottom: 20px;
+        max-width: 300px;
+    }
+
+    /* Status classes for workflow nodes */
+    .status-default {
+        border-left-color: #ccc;
+    }
+
+    .status-info {
+        border-left-color: #2196F3;
+    }
+
+    .status-success {
+        border-left-color: #4CAF50;
+    }
+
+    .status-warning {
+        border-left-color: #FFC107;
+    }
+
+    .status-error {
+        border-left-color: #F44336;
+    }
+
+    .status-secondary {
+        border-left-color: #9C27B0;
+    }
+
+    /* Status modifiers for completed vs in-progress */
+    .node-completed {
+        background-color: rgba(76, 175, 80, 0.1);
+    }
+
+    .node-inprogress {
+        background-color: rgba(33, 150, 243, 0.05);
+        border-style: dashed;
+        border-width: 1px;
+        border-right-width: 1px;
+        border-top-width: 1px;
+        border-bottom-width: 1px;
+    }
+
+    /* Badge styles */
     .badge {
         display: inline-block;
         padding: 2px 6px;
@@ -1219,22 +1302,13 @@
         opacity: 0.7;
     }
 
-    /* Enhance badges in completed steps */
-    .status-completed .badge {
-        box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-    }
-
     /* Make badges a bit more prominent on hover */
-    .workflow-step:hover .badge {
+    .workflow-node:hover .badge {
         transform: scale(1.1);
         transition: transform 0.2s ease;
     }
 
-    .step-timestamp {
-        font-size: 0.8em;
-        color: #999;
-    }
-
+    /* Drawer styles */
     .step-details-panel {
         position: fixed;
         right: 20px;
@@ -1244,82 +1318,5 @@
         border-radius: 8px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         z-index: 1000;
-    }
-
-    /* Status classes for workflow steps */
-    .status-default {
-        border-left: 4px solid #ccc;
-    }
-
-    .status-info {
-        border-left: 4px solid #2196F3;
-    }
-
-    .status-success {
-        border-left: 4px solid #4CAF50;
-    }
-
-    .status-warning {
-        border-left: 4px solid #FFC107;
-    }
-
-    .status-error {
-        border-left: 4px solid #F44336;
-    }
-
-    .status-secondary {
-        border-left: 4px solid #9C27B0;
-    }
-
-    .status-tertiary {
-        border-left: 4px solid #FF9800;
-    }
-
-    /* Status modifiers for completed vs in-progress */
-    .status-completed {
-        background-color: rgba(76, 175, 80, 0.1);
-    }
-
-    .status-inprogress {
-        background-color: rgba(33, 150, 243, 0.05);
-        border-style: dashed;
-        border-width: 1px;
-        border-right-width: 1px;
-        border-top-width: 1px;
-        border-bottom-width: 1px;
-    }
-
-    /* Connecting lines between steps */
-    .workflow-connections {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        pointer-events: none;
-    }
-
-    /* Improved action buttons styling */
-    .step-actions {
-        margin-top: 12px;
-        padding-top: 8px;
-        border-top: 1px dashed #e0e0e0;
-    }
-
-    .step-actions button {
-        font-size: 0.75rem;
-        padding: 3px 8px;
-        margin: 2px;
-        transition: all 0.2s ease;
-    }
-
-    .step-actions button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 2px 5px rgba(0,0,0,0.15);
-    }
-
-    /* Flex gap utility */
-    .gap-1 {
-        gap: 0.25rem;
     }
 </style>
