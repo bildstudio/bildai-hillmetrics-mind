@@ -47,7 +47,7 @@
             }
         </MudTd>
         <MudTd DataLabel="Fetching Date">
-            <MudTooltip Text="@context.FetchingDate.ToString("yyyy-MM-dd HH:mm:ss")">
+            <MudTooltip Text="@context.FetchingDate.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")">
                 <div>@FormatDateTime(context.FetchingDate)</div>
             </MudTooltip>
         </MudTd>
@@ -198,7 +198,7 @@
 
     private void ViewWorkflow(int fluxId, Guid workflowId)
     {
-        NavigationManager.NavigateTo($"/flux/workflow-live/{fluxId}/{workflowId}/false");
+        NavigationManager.NavigateTo($"/flux/workflow-live/{fluxId}/{workflowId}/true");
     }
 
     private async Task ForceProcess(int fetchingHistoryId)

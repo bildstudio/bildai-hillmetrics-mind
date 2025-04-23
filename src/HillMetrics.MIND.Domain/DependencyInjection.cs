@@ -19,7 +19,7 @@ public static class DependencyInjection
 
         builder.Services.AddMediatRAndPipelineBehaviors([typeof(SearchFluxHandler).Assembly, typeof(SearchFluxQuery).Assembly ]);
 
-        builder.Services.AddMarketRepositories();
+        builder.AddMarketRepositories();
 
         return builder;
     }

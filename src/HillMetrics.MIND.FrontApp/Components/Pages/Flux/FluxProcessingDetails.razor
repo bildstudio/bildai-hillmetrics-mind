@@ -62,13 +62,13 @@
                                             Variant="Variant.Outlined" FullWidth="true" />
                             </MudItem>
                             <MudItem xs="12" md="6">
-                                <MudTextField Label="Processing Start Date" Value="@processingHistory.FluxProcessingHistory.StartedAt.ToString("yyyy-MM-dd HH:mm:ss")" ReadOnly="true"
+                                <MudTextField Label="Processing Start Date" Value="@processingHistory.FluxProcessingHistory.StartedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")" ReadOnly="true"
                                             Variant="Variant.Outlined" FullWidth="true" />
                             </MudItem>
                             @if (processingHistory.FluxProcessingHistory.EndedAt.HasValue)
                             {
                                 <MudItem xs="12" md="6">
-                                    <MudTextField Label="Processing End Date" Value="@processingHistory.FluxProcessingHistory.EndedAt.Value.ToString("yyyy-MM-dd HH:mm:ss")" ReadOnly="true"
+                                    <MudTextField Label="Processing End Date" Value="@processingHistory.FluxProcessingHistory.EndedAt.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")" ReadOnly="true"
                                                 Variant="Variant.Outlined" FullWidth="true" />
                                 </MudItem>
                             }
@@ -399,8 +399,8 @@
 
     private string FormatDateTime(DateTime dateTime)
     {
-        var now = DateTime.Now;
-        var diff = now - dateTime;
+        var now = DateTime.Now.ToLocalTime();
+        var diff = now - dateTime.ToLocalTime();
 
         if (diff.TotalMinutes < 1)
             return "Just now";

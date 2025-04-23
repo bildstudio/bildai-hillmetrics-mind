@@ -22,12 +22,19 @@ using HillMetrics.Core.Workflow;
 using System.Text.Json;
 using HillMetrics.Normalized.Domain.Contracts.Providing.Flux.Cqrs;
 using HillMetrics.Core.Workflow.Models;
+using HillMetrics.Core.Contracts;
 
 namespace HillMetrics.MIND.API.Controllers
 {
     [Route("api/v{v:apiVersion}/[controller]")]
     //[EnableRateLimiting("allow5000requestsPerSecond_fixed")]
-    public class FluxController(IMediator mediator, IMapper mapper, IWorkflowService workflowService, ILogger<FluxController> logger, IServiceScopeFactory serviceScopeFactory) : BaseHillMetricsController(mediator)
+    public class FluxController(
+        IMediator mediator, 
+        IMapper mapper, 
+        IWorkflowService workflowService, 
+        ILogger<FluxController> logger, 
+        IServiceScopeFactory serviceScopeFactory, 
+        IApiRequestContext apiRequestContext) : BaseHillMetricsController(mediator)
     {
         #region Flux
         /// <summary>
@@ -219,6 +226,8 @@ namespace HillMetrics.MIND.API.Controllers
         {
             try
             {
+                var requestAudit = apiRequestContext.GetAudit();
+
                 // Get flux name by querying the flux
                 var fluxResult = await Mediator.Send(new FluxQuery() { FluxId = id });
                 if (fluxResult.IsFailed)
@@ -252,6 +261,7 @@ namespace HillMetrics.MIND.API.Controllers
 
                         // Execute the operation with services from the new scope
                         var command = FetchFluxCommand.CreateFromBackOffice(id, stepId, Task.FromResult(new List<Mail>()));
+                        command.Audit = requestAudit;
 
                         var fetchResult = await scopedMediator.Send(command);
 
@@ -303,6 +313,8 @@ namespace HillMetrics.MIND.API.Controllers
         {
             try
             {
+                var requestAudit = apiRequestContext.GetAudit();
+
                 // Start the background processing task without awaiting it
                 _ = Task.Run(async () =>
                 {
@@ -317,11 +329,15 @@ namespace HillMetrics.MIND.API.Controllers
 
                         scopedLogger.LogInformation("Starting asynchronous process for flux {FluxId}", id);
 
-                        // Execute the operation with services from the new scope
-                        var processResult = await scopedMediator.Send(new ProcessFluxCommand() {
+                        var command = new ProcessFluxCommand()
+                        {
                             FluxId = id,
                             CalledManually = true
-                        });
+                        };
+                        command.Audit = requestAudit;
+
+                        // Execute the operation with services from the new scope
+                        var processResult = await scopedMediator.Send(command);
 
                         if (processResult.IsSuccess)
                         {
@@ -371,6 +387,8 @@ namespace HillMetrics.MIND.API.Controllers
         {
             try
             {
+                var requestAudit = apiRequestContext.GetAudit();
+
                 var existingWorkflow = await workflowService.GetWorkflowFromFetchingAsync(fluxFetchingHistoryId);
                 var fetchStep = await workflowService.TryFindFetchingContentStepAsync(fluxFetchingHistoryId);
 
@@ -386,13 +404,17 @@ namespace HillMetrics.MIND.API.Controllers
                         var scopedMediator = scope.ServiceProvider.GetRequiredService<IMediator>();
                         var scopedLogger = scope.ServiceProvider.GetRequiredService<ILogger<FluxController>>();
 
-                        // Execute the operation with services from the new scope
-                        var result = await scopedMediator.Send(new ProcessElementFetchCommand() {
+                        var command = new ProcessElementFetchCommand()
+                        {
                             FluxFetchingHistoryId = fluxFetchingHistoryId,
                             CalledManually = true,
                             FluxId = fluxId,
                             WorkflowStepId = fetchStep.Value
-                        });
+                        };
+                        command.Audit = requestAudit;
+
+                        // Execute the operation with services from the new scope
+                        var result = await scopedMediator.Send(command);
 
                         if (result.IsSuccess)
                         {
@@ -675,10 +697,10 @@ namespace HillMetrics.MIND.API.Controllers
             // Add statistics
             response.Statistics = new ProcessingStatisticsResponse
             {
-                TotalErrors = result.Value.RowsError!.Value,
-                TotalRowsInserted = result.Value.RowsAdded!.Value,
-                TotalRowsUpdated = result.Value.RowsUpdated!.Value,
-                TotalRowsIgnored = result.Value.RowsIgnored!.Value
+                TotalErrors = result.Value.RowsError,
+                TotalRowsInserted = result.Value.RowsAdded,
+                TotalRowsUpdated = result.Value.RowsUpdated,
+                TotalRowsIgnored = result.Value.RowsIgnored
             };
 
             return new ApiResponseBase<FluxProcessingResponse>(response);

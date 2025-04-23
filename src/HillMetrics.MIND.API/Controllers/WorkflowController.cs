@@ -259,8 +259,8 @@ namespace HillMetrics.MIND.API.Controllers
                     RowsWithErrors = step.LinesWithErrors,
                     IsCompleted = step.IsCompleted,
                     CompletionTimestamp = step.CompletionTimestamp,
-                    CompletionDescription = step.CompletionDescription,
                     DurationSeconds = step.DurationSeconds,
+                    ActionType = step.ActionType,
                     ActionId = step.ActionId,
                     Metadata = step.Metadata ?? string.Empty,
                     Children = MapWorkflowStepsToHistoryEntries(step.Children, workflowStartTime)

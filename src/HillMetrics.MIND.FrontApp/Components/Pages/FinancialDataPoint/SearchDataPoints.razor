@@ -73,6 +73,7 @@
         Hover="true" Bordered="true" Striped="true"
         Dense="true" @bind-SelectedItem="selectedItem"
         T="FinancialDataPointSearchResponse"
+        RowStyleFunc="@RowStyleFunc"
         Breakpoint="Breakpoint.Sm">
             <ToolBarContent>
                 <MudText Typo="Typo.h6" Class="ml-2">Data Points List</MudText>
@@ -94,6 +95,7 @@
             <RowTemplate>
                 <MudTd DataLabel="ID">@context.Id</MudTd>
                 <MudTd DataLabel="Name">@context.Name</MudTd>
+                <MudTd DataLabel="External Name">@context..ExternalName</MudTd>
                 <MudTd DataLabel="Description">@context.Description</MudTd>
                 <MudTd DataLabel="Financial Type">
                     <MudChip T="FinancialType" Color="Color.Primary" Size="Size.Small">
@@ -130,19 +132,27 @@
                 {
                     <MudTr>
                         <MudTd colspan="6">
-                            <MudTable Items="@context.Elements"
+                            <MudTable Items="@GetSortedElements(context.Elements)"
                                      Hover="true" Dense="true" Class="ml-6"
-                                      T="FinancialDataPointElement"
-                                    Context="elementContext">
+                                     T="FinancialDataPointElement"
+                                     Context="elementContext">
                                 <HeaderContent>
+                                    <MudTh>Position</MudTh>
                                     <MudTh>Name</MudTh>
+                                    <MudTh>Technical name</MudTh>
+                                    <MudTh>External name</MudTh>
                                     <MudTh>Type</MudTh>
                                     <MudTh>Description</MudTh>
+                                    <MudTh>Commentary</MudTh>
                                 </HeaderContent>
                                 <RowTemplate>
+                                    <MudTd DataLabel="Position">@(elementContext.Position?.ToString() ?? "N/A")</MudTd>
                                     <MudTd DataLabel="Name">@elementContext.PropertyName</MudTd>
-                                    <MudTd DataLabel="Name">@elementContext.MappingPrimitiveValue</MudTd>
+                                    <MudTd DataLabel="Name">@elementContext.FinancialTechnicalDataPoint</MudTd>
+                                    <MudTd DataLabel="Name">@elementContext.ExternalName</MudTd>
+                                    <MudTd DataLabel="Type">@elementContext.MappingPrimitiveValue</MudTd>
                                     <MudTd DataLabel="Description">@elementContext.Description</MudTd>
+                                    <MudTd DataLabel="Description">@elementContext.Commentary</MudTd>
                                 </RowTemplate>
                             </MudTable>
                         </MudTd>
@@ -176,6 +186,18 @@
     protected override async Task OnInitializedAsync()
     {
         await Search();
+    }
+
+    private IEnumerable<FinancialDataPointElement> GetSortedElements(IEnumerable<FinancialDataPointElement> elements)
+    {
+        return elements
+            .OrderBy(e => e.Position ?? int.MaxValue) // Sort by Position, placing nulls at the end
+            .ToList();
+    }
+
+    private string RowStyleFunc(FinancialDataPointSearchResponse item, int index)
+    {
+        return IsExpanded(item) ? "background-color: rgba(0,0,0,0.04)" : "";
     }
 
     private async Task<TableData<FinancialDataPointSearchResponse>> ServerReload(TableState state, CancellationToken token)

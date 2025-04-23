@@ -101,7 +101,8 @@ namespace HillMetrics.MIND.API.Contracts.Responses.Flux
         /// </summary>
         public int? ParentId { get; set; }
 
-        public int? ActionId { get; set; }
+        public FluxActionType ActionType { get; set; }
+        public int ActionId { get; set; }
 
         /// <summary>
         /// Gets or sets the stage of the workflow
@@ -152,11 +153,6 @@ namespace HillMetrics.MIND.API.Contracts.Responses.Flux
         /// The timestamp when the step was completed
         /// </summary>
         public DateTime? CompletionTimestamp { get; set; }
-
-        /// <summary>
-        /// Description provided at step completion
-        /// </summary>
-        public string CompletionDescription { get; set; }
 
         /// <summary>
         /// Duration of the step in seconds (if completed)
