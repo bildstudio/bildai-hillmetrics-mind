@@ -382,7 +382,7 @@ public class FluxCaracController(IMediator mediator, IMapper mapper, ILogger<Flu
         [FromBody] CreateFinancialDataPointRequest request,
         CancellationToken cancellationToken)
     {
-        logger.LogInformation("Creating financial data point with name: {Name}, externalName: {ExternalName}", request.Name);
+        logger.LogInformation("Creating financial data point with name: {Name}", request.Name);
         var command = new CreateFinancialDataPointCommand()
         {
             FinancialDataPoint = new FinancialDataPoint()
@@ -428,7 +428,7 @@ public class FluxCaracController(IMediator mediator, IMapper mapper, ILogger<Flu
         [FromBody] CreateFinancialDataPointRequest request,
         CancellationToken cancellationToken)
     {
-        logger.LogInformation("Updating financial data point with ID: {DataPointId}, name: {Name}, externalName: {ExternalName}", 
+        logger.LogInformation("Updating financial data point with ID: {DataPointId}, name: {Name}", 
             dataPointId, request.Name);
 
         var command = new CreateFinancialDataPointCommand()

@@ -48,7 +48,9 @@
 
         <div>
             <MudSwitch @bind-Checked="@UseSignalR" Color="Color.Primary" Label="Use SignalR"
-                       Class="mr-2" Immediate="true" T="bool" Style="display: inline-flex" />
+                       Class="mr-2" T="bool" Style="display: inline-flex" 
+                       ThumbIcon="@(UseSignalR==true ? Icons.Material.Filled.Done : Icons.Material.Filled.Close)" 
+                       ThumbIconColor="@(UseSignalR==true ? Color.Success : Color.Error)" />
             <MudButton Variant="Variant.Text"
                        Color="Color.Secondary"
                        StartIcon="@Icons.Material.Filled.Refresh"
@@ -103,58 +105,104 @@
 
     @if (SelectedStep != null)
     {
-        <MudDrawer @bind-Open="isStepDetailOpen" Anchor="Anchor.Right" Elevation="1" Variant="@DrawerVariant.Persistent" Width="400px" OverlayAutoClose=true>
-            <MudDrawerHeader>
+        <MudPopover Open="isStepDetailOpen"
+                   AnchorOrigin="Origin.CenterRight"
+                   TransformOrigin="Origin.CenterLeft"
+                   Fixed="true"
+                   Paper="true"
+                   Class="pa-4"
+                   MaxHeight="500"
+                   Style="width: 450px; overflow-y: auto;"
+                   AnchorSelector="@($"#node-{SelectedStep.Id}")">
+            <div class="d-flex justify-space-between align-center mb-2">
                 <MudText Typo="Typo.h6">Step Details</MudText>
-                <MudSpacer />
-                <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Default" OnClick="@(() => isStepDetailOpen = false)" />
-            </MudDrawerHeader>
-            <MudDrawerContainer>
-                <MudList T="HistoryEntryDto" Dense="true">
-                    <MudListItem>
-                        <MudText><b>Stage:</b> @SelectedStep.Stage</MudText>
-                    </MudListItem>
-                    <MudListItem>
-                        <MudText><b>Description:</b> @SelectedStep.Description</MudText>
-                    </MudListItem>
-                    <MudListItem>
-                        <MudText><b>Timestamp:</b> @SelectedStep.Timestamp.ToLocalTime().ToString("g")</MudText>
-                    </MudListItem>
-                    <MudListItem>
-                        <MudText><b>Time since start:</b> @Math.Round(SelectedStep.TimeSinceStart, 1) min</MudText>
-                    </MudListItem>
+                <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Default" OnClick="@(() => isStepDetailOpen = false)" Size="Size.Small" />
+            </div>
 
-                    <MudDivider Class="my-2" />
-                    <MudListItem>
-                        <MudText Typo="Typo.subtitle2">Data Metrics</MudText>
-                    </MudListItem>
+            <MudCard Elevation="0" Class="mb-3">
+                <MudCardContent>
+                    <MudText Typo="Typo.h6" Color="Color.Primary">@GetWorkflowStageDisplayName(SelectedStep.Stage)</MudText>
+                    <MudText Typo="Typo.body1" Class="mt-2">@SelectedStep.Description</MudText>
 
-                    <MudListItem>
-                        <MudChip Color="@(SelectedStep.RowsAdded > 0 ? Color.Success : Color.Default)"
-                                 Size="Size.Small" Class="mr-2">@SelectedStep.RowsAdded</MudChip>
-                        <MudText>Records added</MudText>
-                    </MudListItem>
+                    <MudDivider Class="my-3" />
 
-                    <MudListItem>
-                        <MudChip Color="@(SelectedStep.RowsModified > 0 ? Color.Primary : Color.Default)"
-                                 Size="Size.Small" Class="mr-2">@SelectedStep.RowsModified</MudChip>
-                        <MudText>Records updated</MudText>
-                    </MudListItem>
+                    <MudGrid>
+                        <MudItem xs="6">
+                            <MudText Typo="Typo.subtitle2">Started At</MudText>
+                            <MudText Typo="Typo.body2">@SelectedStep.Timestamp.ToLocalTime().ToString("g")</MudText>
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudText Typo="Typo.subtitle2">Ended At</MudText>
+                            <MudText Typo="Typo.body2">
+                                @(SelectedStep.CompletionTimestamp.HasValue
+                                  ? SelectedStep.CompletionTimestamp.Value.ToLocalTime().ToString("g")
+                                  : "In progress...")
+                            </MudText>
+                        </MudItem>
+                    </MudGrid>
 
-                    <MudListItem>
-                        <MudChip Color="@(SelectedStep.RowsIgnored > 0 ? Color.Warning : Color.Default)"
-                                 Size="Size.Small" Class="mr-2">@SelectedStep.RowsIgnored</MudChip>
-                        <MudText>Records ignored</MudText>
-                    </MudListItem>
+                    <MudText Typo="Typo.subtitle2" Class="mt-3">Duration</MudText>
+                    <MudText Typo="Typo.body2">
+                        @(SelectedStep.DurationSeconds.HasValue
+                          ? FormatDuration(SelectedStep.DurationSeconds.Value)
+                          : "Calculating...")
+                    </MudText>
 
-                    <MudListItem>
-                        <MudChip Color="@(SelectedStep.RowsWithErrors > 0 ? Color.Error : Color.Default)"
-                                 Size="Size.Small" Class="mr-2">@SelectedStep.RowsWithErrors</MudChip>
-                        <MudText>Records with errors</MudText>
-                    </MudListItem>
-                </MudList>
-            </MudDrawerContainer>
-        </MudDrawer>
+                    @if (GetParentStep(SelectedStep) != null)
+                    {
+                        <MudDivider Class="my-3" />
+                        <MudText Typo="Typo.subtitle2" Class="mb-2">Previous Step</MudText>
+                        <MudPaper Elevation="0" Class="pa-2" Style="background-color: var(--mud-palette-background-grey);">
+                            <MudText Typo="Typo.body2">
+                                <b>@GetWorkflowStageDisplayName(GetParentStep(SelectedStep).Stage)</b>
+                            </MudText>
+                            <MudText Typo="Typo.caption">@GetParentStep(SelectedStep).Description</MudText>
+                        </MudPaper>
+                    }
+                </MudCardContent>
+            </MudCard>
+
+            <MudText Typo="Typo.subtitle1" Class="mt-3 mb-2">Data Metrics</MudText>
+            <MudPaper Elevation="0" Class="pa-3" Style="background-color: var(--mud-palette-background-grey);">
+                <MudGrid>
+                    <MudItem xs="6">
+                        <MudStack Row="true" AlignItems="AlignItems.Center">
+                            <MudChip T="Color" Color="Color.Success" Size="Size.Small">@SelectedStep.RowsAdded</MudChip>
+                            <MudText Typo="Typo.body2">Records Added</MudText>
+                        </MudStack>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudStack Row="true" AlignItems="AlignItems.Center">
+                            <MudChip T="Color" Color="Color.Primary" Size="Size.Small">@SelectedStep.RowsModified</MudChip>
+                            <MudText Typo="Typo.body2">Records Updated</MudText>
+                        </MudStack>
+                    </MudItem>
+                    <MudItem xs="6" Class="mt-2">
+                        <MudStack Row="true" AlignItems="AlignItems.Center">
+                            <MudChip T="Color" Color="Color.Warning" Size="Size.Small">@SelectedStep.RowsIgnored</MudChip>
+                            <MudText Typo="Typo.body2">Records Ignored</MudText>
+                        </MudStack>
+                    </MudItem>
+                    <MudItem xs="6" Class="mt-2">
+                        <MudStack Row="true" AlignItems="AlignItems.Center">
+                            @if (SelectedStep.RowsWithErrors > 0)
+                            {
+                                <MudLink Href="@($"/flux/errors?fluxId={FluxId}&actionType={SelectedStep.ActionId}")"
+                                         Target="_blank"
+                                         Underline="Underline.Always">
+                                    <MudChip T="Color" Color="Color.Error" Size="Size.Small">@SelectedStep.RowsWithErrors</MudChip>
+                                </MudLink>
+                            }
+                            else
+                            {
+                                <MudChip T="Color" Color="Color.Default" Size="Size.Small">0</MudChip>
+                            }
+                            <MudText Typo="Typo.body2">Records with Errors</MudText>
+                        </MudStack>
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+        </MudPopover>
     }
 </div>
 
@@ -526,6 +574,7 @@
     {
         SelectedStep = step;
         isStepDetailOpen = true;
+        StateHasChanged();
     }
 
     private async Task OnWorkflowSelectionChanged(Guid? workflowId)
@@ -653,6 +702,7 @@
         builder.OpenElement(2, "div");
         builder.AddAttribute(3, "class", $"workflow-node {statusClass} {completionClass}");
         builder.AddAttribute(4, "onclick", EventCallback.Factory.Create<MouseEventArgs>(this, () => SelectStep(step)));
+        builder.AddAttribute(5, "id", $"node-{step.Id}");
 
         var tooltipTitle = GetWorkflowStageDisplayName(step.Stage);
         var tooltipText = step.Description ?? string.Empty; // Use original description for tooltip
@@ -668,35 +718,35 @@
             tooltipText += $"\nDuration: {FormatDuration(step.DurationSeconds.Value)}";
         }
 
-        builder.AddAttribute(5, "title", $"{tooltipTitle}\n{tooltipText}"); // Keep tooltip detailed
+        builder.AddAttribute(6, "title", $"{tooltipTitle}\n{tooltipText}"); // Keep tooltip detailed
 
-        builder.OpenElement(6, "div");
-        builder.AddAttribute(7, "class", "node-content");
+        builder.OpenElement(7, "div");
+        builder.AddAttribute(8, "class", "node-content");
 
         // --- Node Header (Icon + Stage Name) ---
-        builder.OpenElement(8, "div");
-        builder.AddAttribute(9, "class", "node-header");
-        builder.OpenElement(10, "i"); // Icon wrapper
+        builder.OpenElement(9, "div");
+        builder.AddAttribute(10, "class", "node-header");
+        builder.OpenElement(11, "i"); // Icon wrapper
         if (step.IsCompleted)
         {
-            builder.AddAttribute(11, "class", "mud-icon-root mud-icon-default mud-icon-size-small mud-color-success");
-            builder.AddMarkupContent(13, "<svg viewBox='0 0 24 24' style='width: 18px; height: 18px;'><path d='M12 2C6.5 2 2 6.5 2 12S6.5 22 12 22 22 17.5 22 12 17.5 2 12 2M10 17L5 12L6.41 10.59L10 14.17L17.59 6.58L19 8L10 17Z' fill='currentColor'></path></svg>");
+            builder.AddAttribute(12, "class", "mud-icon-root mud-icon-default mud-icon-size-small mud-color-success");
+            builder.AddMarkupContent(14, "<svg viewBox='0 0 24 24' style='width: 18px; height: 18px;'><path d='M12 2C6.5 2 2 6.5 2 12S6.5 22 12 22 22 17.5 22 12 17.5 2 12 2M10 17L5 12L6.41 10.59L10 14.17L17.59 6.58L19 8L10 17Z' fill='currentColor'></path></svg>");
         }
         else if (step.Stage == WorkflowStage.Failed)
         {
-            builder.AddAttribute(11, "class", "mud-icon-root mud-icon-default mud-icon-size-small mud-color-error");
-            builder.AddMarkupContent(13, "<svg viewBox='0 0 24 24' style='width: 18px; height: 18px;'><path d='M13,13H11V7H13M13,17H11V15H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z' fill='currentColor'></path></svg>");
+            builder.AddAttribute(12, "class", "mud-icon-root mud-icon-default mud-icon-size-small mud-color-error");
+            builder.AddMarkupContent(14, "<svg viewBox='0 0 24 24' style='width: 18px; height: 18px;'><path d='M13,13H11V7H13M13,17H11V15H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z' fill='currentColor'></path></svg>");
         }
         else // In progress
         {
-            builder.AddAttribute(11, "class", "mud-icon-root mud-icon-default mud-icon-size-small mud-color-info");
-            builder.AddMarkupContent(13, "<svg viewBox='0 0 24 24' style='width: 18px; height: 18px;'><path d='M12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22C6.47,22 2,17.5 2,12A10,10 0 0,1 12,2M12.5,7V12.25L17,14.92L16.25,16.15L11,13V7H12.5Z' fill='currentColor'></path></svg>");
+            builder.AddAttribute(12, "class", "mud-icon-root mud-icon-default mud-icon-size-small mud-color-info");
+            builder.AddMarkupContent(14, "<svg viewBox='0 0 24 24' style='width: 18px; height: 18px;'><path d='M12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22C6.47,22 2,17.5 2,12A10,10 0 0,1 12,2M12.5,7V12.25L17,14.92L16.25,16.15L11,13V7H12.5Z' fill='currentColor'></path></svg>");
         }
         builder.CloseElement(); // i icon wrapper
 
-        builder.OpenElement(14, "div");
-        builder.AddAttribute(15, "class", "node-title");
-        builder.AddContent(16, GetWorkflowStageDisplayName(step.Stage));
+        builder.OpenElement(15, "div");
+        builder.AddAttribute(16, "class", "node-title");
+        builder.AddContent(17, GetWorkflowStageDisplayName(step.Stage));
         builder.CloseElement(); // node-title
         builder.CloseElement(); // node-header
 
@@ -782,10 +832,10 @@
             builder.AddAttribute(137, "title", $"{step.RowsWithErrors} records with errors (click to view)");
             builder.AddAttribute(138, "Target", "_blank");
             // builder.AddAttribute(139, "onclick", EventCallback.Factory.Create<MouseEventArgs>(this, (e) => { /* Stop propagation */ }), true); // Add true for stopPropagation
-            builder.AddAttribute(140, "ChildContent", (RenderFragment)((linkBuilder) =>
+            builder.AddAttribute(139, "ChildContent", (RenderFragment)((linkBuilder) =>
             {
-                linkBuilder.AddMarkupContent(141, "<i class='mud-icon-root mud-icon-default mud-icon-size-small mr-1 error'><svg viewBox='0 0 24 24' style='width: 1em; height: 1em;'><path d='M13,13H11V7H13M13,17H11V15H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z' fill='currentColor'></path></svg></i>");
-                linkBuilder.AddContent(142, $"{step.RowsWithErrors}");
+                linkBuilder.AddMarkupContent(140, "<i class='mud-icon-root mud-icon-default mud-icon-size-small mr-1 error'><svg viewBox='0 0 24 24' style='width: 1em; height: 1em;'><path d='M13,13H11V7H13M13,17H11V15H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z' fill='currentColor'></path></svg></i>");
+                linkBuilder.AddContent(141, $"{step.RowsWithErrors}");
             }));
             builder.CloseComponent(); // MudLink error
         }
@@ -862,26 +912,38 @@
             }
             else
             {
+                // For multiple children, create a horizontal layout
                 builder.OpenElement(65, "div");
                 builder.AddAttribute(66, "class", "arrow-down");
                 builder.CloseElement(); // arrow-down
 
+                // Horizontal branch line
                 builder.OpenElement(67, "div");
                 builder.AddAttribute(68, "class", "branch-container");
                 builder.CloseElement(); // branch-container
 
+                // Container for all children with horizontal layout
                 builder.OpenElement(69, "div");
-                builder.AddAttribute(70, "class", "node-children multi-child");
+                builder.AddAttribute(70, "class", "multi-children-container");
 
                 foreach (var child in step.Children)
                 {
+                    // Each child in its own column
                     builder.OpenElement(71, "div");
-                    builder.AddAttribute(72, "class", "child-branch");
-                    builder.AddContent(73, RenderWorkflowDiagram(child, level + 1));
-                    builder.CloseElement(); // child-branch
+                    builder.AddAttribute(72, "class", "child-column");
+
+                    // Vertical branch line to child
+                    builder.OpenElement(73, "div");
+                    builder.AddAttribute(74, "class", "vertical-branch");
+                    builder.CloseElement(); // vertical-branch
+
+                    // Render the child node
+                    builder.AddContent(75, RenderWorkflowDiagram(child, level + 1));
+
+                    builder.CloseElement(); // child-column
                 }
 
-                builder.CloseElement(); // node-children
+                builder.CloseElement(); // multi-children-container
             }
         }
 
@@ -1101,6 +1163,15 @@
 
         builder.CloseElement(); // children-container
     }
+
+    // Helper method to get the parent step of a given step
+    private HistoryEntryDto? GetParentStep(HistoryEntryDto step)
+    {
+        if (step.ParentId == null || WorkflowDetails?.History == null)
+            return null;
+
+        return WorkflowDetails.History.FirstOrDefault(h => h.Id == step.ParentId);
+    }
 }
 
 <style>
@@ -1117,8 +1188,9 @@
     .workflow-canvas {
         position: relative;
         width: 100%;
-        height: 100%;
+        min-width: fit-content;
         min-height: 100%;
+        overflow-x: auto;
     }
 
     /* Diagram styles */
@@ -1128,6 +1200,7 @@
         align-items: center;
         padding: 20px;
         width: 100%;
+        min-width: fit-content;
     }
 
     .workflow-node-container {
@@ -1232,47 +1305,34 @@
 
     /* Ensure connection line CSS is present */
     .arrow-down {
-        height: 30px;
+        height: 20px;
         width: 2px;
         background-color: #B0BEC5;
         margin: 0 auto;
         position: relative;
     }
 
-        .arrow-down::after {
-            content: '';
-            position: absolute;
-            bottom: -1px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 0;
-            height: 0;
-            border-left: 5px solid transparent;
-            border-right: 5px solid transparent;
-            border-top: 7px solid #B0BEC5;
-        }
+    .arrow-down::after {
+        content: '';
+        position: absolute;
+        bottom: -1px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 0;
+        height: 0;
+        border-left: 5px solid transparent;
+        border-right: 5px solid transparent;
+        border-top: 7px solid #B0BEC5;
+    }
 
     .branch-container {
         width: 90%;
-        max-width: 500px;
         height: 2px;
         background-color: #B0BEC5;
         margin: 0 auto;
         position: relative;
-        top: -1px;
         z-index: -1;
-    }
-
-    .child-branch::before {
-        content: '';
-        position: absolute;
-        top: -20px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 2px;
-        height: 20px;
-        background-color: #B0BEC5;
-        z-index: -1;
+        max-width: 800px;
     }
 
     /* Status classes for workflow nodes */
@@ -1380,5 +1440,61 @@
         gap: 20px;
         margin-top: 20px;
         overflow-x: auto;
+    }
+
+    /* Horizontal tree layout styles */
+    .multi-children-container {
+        display: flex;
+        flex-direction: row;
+        justify-content: center;
+        align-items: flex-start;
+        gap: 30px;
+        margin-top: 10px;
+        width: 100%;
+        min-width: fit-content;
+        overflow-x: auto;
+    }
+
+    .child-column {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        position: relative;
+        min-width: 180px;
+    }
+
+    .vertical-branch {
+        height: 20px;
+        width: 2px;
+        background-color: #B0BEC5;
+        margin-bottom: 5px;
+    }
+
+    .arrow-down {
+        height: 20px;
+        width: 2px;
+        background-color: #B0BEC5;
+        margin: 0 auto;
+        position: relative;
+    }
+
+    .arrow-down::after {
+        content: '';
+        position: absolute;
+        bottom: -1px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 0;
+        height: 0;
+        border-left: 5px solid transparent;
+        border-right: 5px solid transparent;
+        border-top: 7px solid #B0BEC5;
+    }
+
+    /* For single child case */
+    .node-children.single-child {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
     }
 </style>
