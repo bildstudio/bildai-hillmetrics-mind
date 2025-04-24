@@ -213,15 +213,15 @@
             if (!string.IsNullOrEmpty(state.SortLabel))
             {
                 var sortDirection = state.SortDirection == MudBlazor.SortDirection.Ascending 
-                    ? Core.Search.SortDirection.Ascending 
-                    : Core.Search.SortDirection.Descending;
+                    ? Core.Search.SortDirection.Asc 
+                    : Core.Search.SortDirection.Desc;
                     
                 searchRequest.Sorting = new Sorting(state.SortLabel, sortDirection);
             }
             else
             {
                 // Tri par défaut
-                searchRequest.Sorting = new Sorting("Name", Core.Search.SortDirection.Descending);
+                searchRequest.Sorting = new Sorting("Name", Core.Search.SortDirection.Desc);
             }
 
             var response = await MindApi.SearchFinancialDataPointsAsync(searchRequest);

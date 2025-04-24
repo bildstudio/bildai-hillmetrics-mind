@@ -332,7 +332,7 @@
         searchRequest.CreatedAt = createdAtSearchCriteria.IsSet() ? createdAtSearchCriteria : null;
 
         searchRequest.Sorting.Field = "Id";
-        searchRequest.Sorting.Direction = Core.Search.SortDirection.Descending;
+        searchRequest.Sorting.Direction = Core.Search.SortDirection.Desc;
     }
 
     private async Task Search()
