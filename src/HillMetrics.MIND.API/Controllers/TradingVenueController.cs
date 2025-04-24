@@ -71,7 +71,13 @@ namespace HillMetrics.MIND.API.Controllers
                 return new ErrorApiActionResult(result.Errors.ToApiResult());
 
             var responses = result.Value.TradingVenues.Select(MapTradingVenueToSearchResponse).ToList();
-            return new PagedApiResponseBase<TradingVenueSearchResponse>(responses, result.Value.TotalCount);
+            var response = new PagedApiResponseBase<TradingVenueSearchResponse>(responses, result.Value.TotalCount);
+
+            // Add country alerts to the response
+            response.CountriesWithMultipleMainVenues = result.Value.CountriesWithMultipleMainVenues;
+            response.CountriesWithNoMainVenue = result.Value.CountriesWithNoMainVenue;
+
+            return response;
         }
 
         /// <summary>

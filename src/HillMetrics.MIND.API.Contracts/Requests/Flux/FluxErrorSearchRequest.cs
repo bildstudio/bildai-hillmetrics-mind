@@ -1,4 +1,5 @@
 ﻿using HillMetrics.Core.Search;
+using HillMetrics.Core.Workflow;
 using HillMetrics.Normalized.Domain.Contracts.Providing.Flux;
 using System;
 using System.Collections.Generic;

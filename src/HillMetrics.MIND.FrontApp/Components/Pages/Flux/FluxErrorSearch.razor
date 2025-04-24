@@ -1,4 +1,5 @@
 @page "/flux/errors"
+@using HillMetrics.Core.Workflow
 @using HillMetrics.MIND.API.Contracts.Requests.Flux
 @using HillMetrics.MIND.API.Contracts.Responses
 @using HillMetrics.MIND.API.Contracts.Responses.Flux
@@ -116,13 +117,13 @@
                 Class="mt-0 mb-3" Margin="Margin.Dense" Dense="true"></MudTextField>
             </ToolBarContent>
             <HeaderContent>
-                <MudTh>
+                @* <MudTh>
                     <MudTableSortLabel T="FluxErrorSearchResponse">
                         <MudCheckBox T="bool"
                                      ValueChanged="@(b => SelectAllItems(b))"
                         Color="Color.Primary"/>
                     </MudTableSortLabel>
-                </MudTh>
+                </MudTh> *@
                 <MudTh>Flux ID</MudTh>
                 <MudTh>Error Type</MudTh>
                 <MudTh>External ID</MudTh>
@@ -132,11 +133,11 @@
                 <MudTh>Actions</MudTh>
             </HeaderContent>
             <RowTemplate>
-                <MudTd>
+                @* <MudTd>
                     <MudCheckBox T="bool"
                                  ValueChanged="@(b => OnRowChecked(b, context))"
                     Color="Color.Primary" />
-                </MudTd>
+                </MudTd> *@
                 <MudTd DataLabel="Flux ID">
                     <MudLink Href="@($"/flux/details/{context.FluxId}")">@context.FluxId</MudLink>
                 </MudTd>
@@ -163,7 +164,7 @@
                     </MudTooltip>
                 </MudTd>
                 <MudTd DataLabel="Date">
-                    <MudTooltip Text="@context.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")">
+                    <MudTooltip Text="@context.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")">
                         <div>@FormatDateTime(context.CreatedAt)</div>
                     </MudTooltip>
                 </MudTd>
@@ -330,7 +331,8 @@
         // Apply datetime SearchCriteria
         searchRequest.CreatedAt = createdAtSearchCriteria.IsSet() ? createdAtSearchCriteria : null;
 
-        // La pagination est configurée dans ServerReload
+        searchRequest.Sorting.Field = "Id";
+        searchRequest.Sorting.Direction = Core.Search.SortDirection.Desc;
     }
 
     private async Task Search()

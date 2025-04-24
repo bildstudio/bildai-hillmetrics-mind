@@ -54,17 +54,17 @@ namespace HillMetrics.MIND.API.SDK.V1
         [Delete("/api/v1/flux")]
         Task<bool> DeleteFluxAsync(int fluxId);
 
-        /// <summary>
-        /// Force the fetch of a flux
-        /// </summary>
-        [Get("/api/v1/flux/{id}/force-fetch")]
-        Task<FluxForceFetchResponse> ForceFetchAsync(int id);
+        ///// <summary>
+        ///// Force the fetch of a flux
+        ///// </summary>
+        //[Get("/api/v1/flux/{id}/force-fetch")]
+        //Task<FluxForceFetchResponse> ForceFetchAsync(int id);
 
-        /// <summary>
-        /// Force the process of a flux
-        /// </summary>
-        [Get("/api/v1/flux/{id}/force-process")]
-        Task<FluxForceProcessResponse> ForceProcessAsync(int id);
+        ///// <summary>
+        ///// Force the process of a flux
+        ///// </summary>
+        //[Get("/api/v1/flux/{id}/force-process")]
+        //Task<FluxForceProcessResponse> ForceProcessAsync(int id);
 
         /// <summary>
         /// Force the processing of normalized financial prices for multiple financial IDs
@@ -78,7 +78,7 @@ namespace HillMetrics.MIND.API.SDK.V1
         /// <param name="id">The flux identifier</param>
         /// <returns>Status message indicating that the operation has started</returns>
         [Get("/api/v1/flux/{id}/force-fetch-async")]
-        Task<ApiResponseBase<string>> ForceFetchBackgroundAsync(int id);
+        Task<ApiResponseBase<ProcessStartedResponse>> ForceFetchBackgroundAsync(int id);
 
         /// <summary>
         /// Force the process of a flux in the background without waiting for completion
@@ -86,7 +86,16 @@ namespace HillMetrics.MIND.API.SDK.V1
         /// <param name="id">The flux identifier</param>
         /// <returns>Status message indicating that the operation has started</returns>
         [Get("/api/v1/flux/{id}/force-process-async")]
-        Task<ApiResponseBase<string>> ForceProcessBackgroundAsync(int id);
+        Task<ApiResponseBase<ProcessStartedResponse>> ForceProcessBackgroundAsync(int id);
+
+        /// <summary>
+        /// Force the process of a specific flux fetching content history in the background without waiting for completion
+        /// </summary>
+        /// <param name="fluxId">The ID of the flux</param>
+        /// <param name="fluxFetchingHistoryId">The ID of the flux fetching content history to process</param>
+        /// <returns>Status message indicating that the operation has started</returns>
+        [Get("/api/v1/flux/fetching-history/{fluxFetchingHistoryId}/force-process-async")]
+        Task<ApiResponseBase<ProcessStartedResponse>> ForceProcessElementFetchBackgroundAsync(int fluxId, int fluxFetchingHistoryId);
 
         #endregion
 
@@ -209,31 +218,39 @@ namespace HillMetrics.MIND.API.SDK.V1
         /// <summary>
         /// Gets the current state of all active workflow fluxes
         /// </summary>
-        [Get("/api/v1/flux/workflow/active")]
+        [Get("/api/v1/workflow/active")]
         Task<ApiResponseBase<List<ActiveFluxDto>>> GetActiveFluxesAsync();
 
         /// <summary>
         /// Gets the state of recently completed fluxes
         /// </summary>
-        [Get("/api/v1/flux/workflow/completed")]
+        [Get("/api/v1/workflow/completed")]
         Task<ApiResponseBase<List<CompletedFluxDto>>> GetCompletedFluxesAsync([Query] int count = 10);
 
         /// <summary>
         /// Gets the details of a specific flux workflow
         /// </summary>
-        [Get("/api/v1/flux/workflow/{fluxId}")]
+        [Get("/api/v1/workflow/{fluxId}")]
         Task<ApiResponseBase<FluxWorkflowDetailsDto>> GetFluxWorkflowDetailsAsync(int fluxId);
+
+        /// <summary>
+        /// Gets a workflow by its unique workflow ID
+        /// </summary>
+        /// <param name="workflowId">The unique identifier of the workflow</param>
+        /// <returns>Detailed information about the workflow</returns>
+        [Get("/api/v1/workflow/by-id/{workflowId}")]
+        Task<ApiResponseBase<FluxWorkflowDetailsDto>> GetWorkflowByIdAsync(Guid workflowId);
 
         /// <summary>
         /// Gets a global summary of flux workflows
         /// </summary>
-        [Get("/api/v1/flux/workflow/summary")]
+        [Get("/api/v1/workflow/summary")]
         Task<ApiResponseBase<WorkflowSummaryDto>> GetFluxWorkflowSummaryAsync();
 
         /// <summary>
         /// Manually triggers cleanup of historical workflow data
         /// </summary>
-        [Post("/api/v1/flux/workflow/cleanup")]
+        [Post("/api/v1/workflow/cleanup")]
         Task<ApiResponseBase<string>> CleanupWorkflowHistoryAsync([Query] int daysToKeep = 14);
 
         #endregion

@@ -1,0 +1,137 @@
+@using HillMetrics.Core.Workflow
+@using HillMetrics.Core.Workflow.Models
+@using Microsoft.AspNetCore.SignalR.Client
+@inject NavigationManager NavigationManager
+@implements IAsyncDisposable
+
+<MudCard Class="mt-4">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">Workflow History</MudText>
+        </CardHeaderContent>
+        <CardHeaderActions>
+            <MudIconButton Icon="@Icons.Material.Filled.Refresh" Color="Color.Default" OnClick="RefreshData" />
+        </CardHeaderActions>
+    </MudCardHeader>
+    <MudCardContent>
+        @if (isLoading)
+        {
+            <MudProgressCircular Indeterminate="true" Size="Size.Small" />
+        }
+        else if (ActiveWorkflows.Count == 0 && CompletedWorkflows.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info">No workflows found for this flux.</MudAlert>
+        }
+        else
+        {
+            @if (ActiveWorkflows.Count > 0)
+            {
+                <MudText Typo="Typo.subtitle1" Class="mb-2">Active Workflows</MudText>
+                <MudTable Items="@ActiveWorkflows" Hover="true" Dense="true" Class="mb-4">
+                    <HeaderContent>
+                        <MudTh>Started</MudTh>
+                        <MudTh>Duration</MudTh>
+                        <MudTh></MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Started">@context.StartTime.ToLocalTime().ToString("g")</MudTd>
+                        <MudTd DataLabel="Duration">@Math.Round(context.Duration.TotalMinutes, 1) min</MudTd>
+                        <MudTd>
+                            <MudIconButton Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" 
+                                           OnClick="@(() => NavigateToWorkflow(context.FluxId, context.WorkflowId))" />
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            }
+
+            @if (CompletedWorkflows.Count > 0)
+            {
+                <MudText Typo="Typo.subtitle1" Class="mt-4 mb-2">Completed Workflows</MudText>
+                <MudTable Items="@CompletedWorkflows" Hover="true" Dense="true">
+                    <HeaderContent>
+                        <MudTh>Started</MudTh>
+                        <MudTh>Completed</MudTh>
+                        <MudTh>Duration</MudTh>
+                        <MudTh></MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Started">@context.StartTime.ToLocalTime().ToString("g")</MudTd>
+                        <MudTd DataLabel="Completed">@(context.EndTime?.ToLocalTime().ToString("g"))</MudTd>
+                        <MudTd DataLabel="Duration">@Math.Round(context.Duration.TotalMinutes, 1) min</MudTd>
+                        <MudTd>
+                            <MudIconButton Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" 
+                                           OnClick="@(() => NavigateToWorkflow(context.FluxId, context.WorkflowId))" />
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            }
+        }
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter] public int FluxId { get; set; }
+
+    private HubConnection? hubConnection;
+    private List<WorkflowStateModel> ActiveWorkflows { get; set; } = new();
+    private List<WorkflowStateModel> CompletedWorkflows { get; set; } = new();
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await SetupSignalRConnection();
+        await RefreshData();
+    }
+
+    private async Task SetupSignalRConnection()
+    {
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl(NavigationManager.ToAbsoluteUri("/workflow-hub"))
+            .WithAutomaticReconnect()
+            .Build();
+
+        hubConnection.On<List<WorkflowStateModel>>("ReceiveActiveFluxesAsync", OnActiveFluxesUpdated);
+        hubConnection.On<List<WorkflowStateModel>>("ReceiveCompletedFluxesAsync", OnCompletedFluxesUpdated);
+
+        await hubConnection.StartAsync();
+        await hubConnection.SendAsync("subscribeToFlux", FluxId);
+    }
+
+    private void OnActiveFluxesUpdated(List<WorkflowStateModel> fluxes)
+    {
+        ActiveWorkflows = fluxes.Where(f => f.FluxId == FluxId).ToList();
+        isLoading = false;
+        StateHasChanged();
+    }
+
+    private void OnCompletedFluxesUpdated(List<WorkflowStateModel> fluxes)
+    {
+        CompletedWorkflows = fluxes.Where(f => f.FluxId == FluxId).ToList();
+        isLoading = false;
+        StateHasChanged();
+    }
+
+    private async Task RefreshData()
+    {
+        isLoading = true;
+        StateHasChanged();
+
+        if (hubConnection != null && hubConnection.State == HubConnectionState.Connected)
+        {
+            await hubConnection.SendAsync("getWorkflowsForFlux", FluxId);
+        }
+    }
+
+    private void NavigateToWorkflow(int fluxId, Guid workflowId)
+    {
+        NavigationManager.NavigateTo($"/flux/workflow-live/{fluxId}/{workflowId}");
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (hubConnection != null)
+        {
+            await hubConnection.DisposeAsync();
+        }
+    }
+} 

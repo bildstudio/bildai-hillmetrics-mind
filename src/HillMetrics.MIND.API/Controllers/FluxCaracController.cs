@@ -399,7 +399,10 @@ public class FluxCaracController(IMediator mediator, IMapper mapper, ILogger<Flu
                     FinancialDataPointId = 0,
                     Position = x.Position,
                     PotentialValues = x.PotentialValues,
-                    MappingPrimitiveValue = x.MappingPrimitiveValue
+                    MappingPrimitiveValue = x.MappingPrimitiveValue,
+                    Commentary = x.Commentary,
+                    FinancialTechnicalDataPoint = x.FinancialTechnicalDataPoint,
+                    ExternalName = x.ExternalName
                 }).ToList()
             }
         };
@@ -425,7 +428,8 @@ public class FluxCaracController(IMediator mediator, IMapper mapper, ILogger<Flu
         [FromBody] CreateFinancialDataPointRequest request,
         CancellationToken cancellationToken)
     {
-        logger.LogInformation("Updating financial data point with ID: {DataPointId}", dataPointId);
+        logger.LogInformation("Updating financial data point with ID: {DataPointId}, name: {Name}", 
+            dataPointId, request.Name);
 
         var command = new CreateFinancialDataPointCommand()
         {
@@ -443,7 +447,10 @@ public class FluxCaracController(IMediator mediator, IMapper mapper, ILogger<Flu
                     FinancialDataPointId = dataPointId,
                     Position = x.Position,
                     PotentialValues = x.PotentialValues,
-                    MappingPrimitiveValue = x.MappingPrimitiveValue
+                    MappingPrimitiveValue = x.MappingPrimitiveValue,
+                    ExternalName = x.ExternalName,
+                    Commentary = x.Commentary,
+                    FinancialTechnicalDataPoint = x.FinancialTechnicalDataPoint
                 }).ToList()
             }
         };

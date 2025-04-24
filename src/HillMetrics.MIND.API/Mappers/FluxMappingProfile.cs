@@ -81,7 +81,8 @@ namespace HillMetrics.MIND.API.Mappers
             CreateMap<SearchFluxQueryItemResult, FluxSearchResponse>();
 
             CreateMap<FluxFetchingSearchRequest, SearchFluxFetchingQuery>();
-            CreateMap<SearchFluxFetchingQueryItemResult, FluxFetchingSearchResponse>();
+            CreateMap<SearchFluxFetchingQueryItemResult, FluxFetchingSearchResponse>()
+                .ForMember(dest => dest.WorkflowId, opt => opt.MapFrom(src => src.WorkflowId));
 
             CreateMap<FluxProcessingSearchRequest, SearchFluxProcessingFluxQuery>();
             CreateMap<SearchFluxProcessingQueryItemResult, FluxProcessingSearchReponse>();

@@ -25,6 +25,26 @@
         </MudItem>
     </MudGrid>
 
+    @if (countriesWithMultipleMainVenues.Any())
+    {
+        <MudAlert Severity="Severity.Warning" Variant="Variant.Filled" Class="mb-2" ShowCloseIcon="false">
+            <MudText>
+                <strong>Warning:</strong> The following countries have multiple trading venues marked as main:
+                @string.Join(", ", countriesWithMultipleMainVenues)
+            </MudText>
+        </MudAlert>
+    }
+
+    @if (countriesWithNoMainVenue.Any())
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-2" ShowCloseIcon="false">
+            <MudText>
+                <strong>Error:</strong> The following countries don't have any trading venue marked as main:
+                @string.Join(", ", countriesWithNoMainVenue)
+            </MudText>
+        </MudAlert>
+    }
+
     <MudCard Class="mb-4">
         <MudCardContent>
             <MudForm @ref="form" @bind-IsValid="@isValid">
@@ -53,8 +73,8 @@
 
                     <!-- Main Venues Only -->
                     <MudItem xs="12" md="4">
-                        <MudCheckBox T="bool" @bind-Checked="isOnlyMain" 
-                                     Label="Main Venues Only" 
+                        <MudCheckBox T="bool" @bind-Checked="isOnlyMain"
+                                     Label="Main Venues Only"
                                      Color="Color.Primary"
                                      Dense="true"
                                      Class="mt-4"/>
@@ -75,10 +95,10 @@
     else
     {
         <MudTable ServerData="@ServerReload"
-                 Hover="true" 
-                 Bordered="true" 
+                 Hover="true"
+                 Bordered="true"
                  Striped="true"
-                 Dense="true" 
+                 Dense="true"
                  @bind-SelectedItem="selectedItem"
                  T="TradingVenueSearchResponse"
                  Breakpoint="Breakpoint.Sm">
@@ -182,6 +202,8 @@
     private TradingVenueSearchResponse selectedItem = null;
     private TableState tableState;
     private bool isOnlyMain = false;
+    private List<string> countriesWithMultipleMainVenues = new List<string>();
+    private List<string> countriesWithNoMainVenue = new List<string>();
 
     protected override async Task OnInitializedAsync()
     {
@@ -197,7 +219,7 @@
         {
             ApplySearchCriteria();
             searchRequest.Pagination = new Pagination(state.PageSize, state.Page + 1);
-            
+
             // Apply sorting if provided
             if (!string.IsNullOrEmpty(state.SortLabel))
             {
@@ -210,6 +232,10 @@
             }
 
             var response = await MindApi.SearchTradingVenuesAsync(searchRequest, token);
+
+            // Update the alert lists
+            countriesWithMultipleMainVenues = response.CountriesWithMultipleMainVenues ?? new List<string>();
+            countriesWithNoMainVenue = response.CountriesWithNoMainVenue ?? new List<string>();
 
             return new TableData<TradingVenueSearchResponse>
             {

@@ -1,57 +1,101 @@
 @page "/flux/workflow-live/{FluxId:int}"
+@page "/flux/workflow-live/{FluxId:int}/{WorkflowId:guid}"
+@page "/flux/workflow-live/{FluxId:int}/{WorkflowId:guid}/{UseSignalR:bool}"
+@using HillMetrics.Core.Blazor.AuthModule.Services
 @using HillMetrics.Core.Monitoring.Workflow
+@using HillMetrics.Core.Workflow
+@using HillMetrics.Core.Workflow.Models
 @using HillMetrics.MIND.API.Contracts.Responses.Flux
 @using HillMetrics.MIND.API.SDK.V1
+@using Microsoft.AspNetCore.Components.Rendering
+@using Microsoft.AspNetCore.SignalR.Client
+@using Microsoft.Extensions.Options
+@using HillMetrics.Core.Authentication.Contracts
+@using System.Text.Json
 @inject IMindAPI MindApi
 @inject IJSRuntime JSRuntime
 @inject NavigationManager NavigationManager
-
+@inject IServiceProvider ServiceProvider
+@inject IConfiguration Configuration
+@inject ILogger<FluxWorkflowLive> Logger
+@inject ISnackbar Snackbar
+@* @inject IAuthenticationService AuthService *@
+@inject IAuthService AuthService
+@implements IAsyncDisposable
 @attribute [Authorize]
 
 <div class="workflow-container">
-    <div class="d-flex align-center mb-4">
+    <div class="d-flex align-center justify-space-between mb-4">
         <MudButton Variant="Variant.Text"
-                  Color="Color.Primary"
-                  StartIcon="@Icons.Material.Filled.ArrowBack"
-                  OnClick="@(() => NavigationManager.NavigateTo("/flux/search"))">
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.ArrowBack"
+                   OnClick="@(() => NavigationManager.NavigateTo("/flux/search"))">
             Back to Search
         </MudButton>
+
+        @if (availableWorkflows.Count > 1)
+        {
+            <MudSelect T="Guid?" Label="Select Workflow" Value="selectedWorkflowId" ValueChanged="OnWorkflowSelectionChanged"
+                       Class="ml-4" Style="min-width: 300px;">
+                @foreach (var workflow in availableWorkflows)
+                {
+                    <MudSelectItem Value="@workflow.WorkflowId">
+                        @($"Started: {workflow.StartTime.ToLocalTime():g}")
+                    </MudSelectItem>
+                }
+            </MudSelect>
+        }
+
+        <div>
+            <MudSwitch @bind-Checked="@UseSignalR" Color="Color.Primary" Label="Use SignalR"
+                       Class="mr-2" T="bool" Style="display: inline-flex" 
+                       ThumbIcon="@(UseSignalR==true ? Icons.Material.Filled.Done : Icons.Material.Filled.Close)" 
+                       ThumbIconColor="@(UseSignalR==true ? Color.Success : Color.Error)" />
+            <MudButton Variant="Variant.Text"
+                       Color="Color.Secondary"
+                       StartIcon="@Icons.Material.Filled.Refresh"
+                       OnClick="@RefreshData">
+                Refresh
+            </MudButton>
+        </div>
     </div>
+
+    <MudPaper Class="pa-4 mb-4">
+        <MudGrid>
+            <MudItem xs="12" md="6">
+                <MudText Typo="Typo.h6">
+                    Flux:
+                    <MudLink Href="@($"/flux/details/{FluxId}")" Underline="Underline.Always">
+                        @(WorkflowDetails?.FluxName ?? $"ID: {FluxId}")
+                    </MudLink>
+                </MudText>
+                @if (WorkflowDetails != null)
+                {
+                    <MudText Typo="Typo.body2">Started: <strong>@WorkflowDetails.StartTime.ToLocalTime().ToString("g")</strong></MudText>
+                    <MudText Typo="Typo.body2">Duration: <strong>@Math.Round(WorkflowDetails.DurationMinutes, 1) min</strong></MudText>
+                    <MudText Typo="Typo.body2">WorkflowId: <strong>@WorkflowDetails.WorkflowId</strong></MudText>
+                    <MudText Typo="Typo.body2">Updated via: <strong>@(UseSignalR && isSignalRConnected ? "SignalR" : "API")</strong></MudText>
+                }
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudText Typo="Typo.body2" Align="Align.Center">
+                    @(WorkflowDetails?.IsCompleted == true
+                        ? "Completed"
+                        : "In progress...")
+                </MudText>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
     <div class="workflow-canvas" @ref="canvasRef">
         @if (WorkflowDetails != null)
         {
-            @foreach (var step in positionedSteps)
-            {
-                <div class="workflow-step @GetStepStatusClass(step.Entry)"
-                     style="left: @(step.X)px; top: @(step.Y)px; width: 200px;"
-                     @onclick="@(() => SelectStep(step.Entry))">
-                    <div class="step-header">@step.Entry.Stage</div>
-                    <div class="step-content">@step.Entry.Description</div>
-                    <div class="step-timestamp">@step.Entry.Timestamp.ToLocalTime().ToString("g")</div>
-                </div>
-            }
-
-            <svg class="workflow-connections">
-                @for (int i = 0; i < positionedSteps.Count - 1; i++)
+            <div class="workflow-diagram">
+                @foreach (var step in rootSteps)
                 {
-                    var currentStep = positionedSteps[i];
-                    var nextStep = positionedSteps[i + 1];
-
-                    var fromX = currentStep.X + 200;
-                    var fromY = currentStep.Y + 40;
-                    var toX = nextStep.X;
-                    var toY = nextStep.Y + 40;
-
-                    var controlPoint1X = fromX + 50;
-                    var controlPoint1Y = fromY;
-                    var controlPoint2X = toX - 50;
-                    var controlPoint2Y = toY;
-
-                    <path d="M @fromX,@fromY C @controlPoint1X,@controlPoint1Y @controlPoint2X,@controlPoint2Y @toX,@toY"
-                          fill="none" stroke="#888" stroke-width="2" />
-                    <circle cx="@toX" cy="@toY" r="5" fill="#888" />
+                    @RenderWorkflowDiagram(step, 0)
                 }
-            </svg>
+            </div>
         }
         else
         {
@@ -61,52 +105,148 @@
 
     @if (SelectedStep != null)
     {
-        <div class="step-details-panel">
-            <MudCard Elevation="0">
-                <MudCardHeader>
-                    <CardHeaderContent>
-                        <MudText Typo="Typo.h6">Step Details</MudText>
-                    </CardHeaderContent>
-                </MudCardHeader>
+        <MudPopover Open="isStepDetailOpen"
+                   AnchorOrigin="Origin.CenterRight"
+                   TransformOrigin="Origin.CenterLeft"
+                   Fixed="true"
+                   Paper="true"
+                   Class="pa-4"
+                   MaxHeight="500"
+                   Style="width: 450px; overflow-y: auto;"
+                   AnchorSelector="@($"#node-{SelectedStep.Id}")">
+            <div class="d-flex justify-space-between align-center mb-2">
+                <MudText Typo="Typo.h6">Step Details</MudText>
+                <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Default" OnClick="@(() => isStepDetailOpen = false)" Size="Size.Small" />
+            </div>
+
+            <MudCard Elevation="0" Class="mb-3">
                 <MudCardContent>
-                    <MudList T="HistoryEntryDto" Dense="true">
-                        <MudListItem>
-                            <MudText><b>Stage:</b> @SelectedStep.Stage</MudText>
-                        </MudListItem>
-                        <MudListItem>
-                            <MudText><b>Description:</b> @SelectedStep.Description</MudText>
-                        </MudListItem>
-                        <MudListItem>
-                            <MudText><b>Timestamp:</b> @SelectedStep.Timestamp.ToLocalTime().ToString("g")</MudText>
-                        </MudListItem>
-                        <MudListItem>
-                            <MudText><b>Time since start:</b> @Math.Round(SelectedStep.TimeSinceStart, 1) min</MudText>
-                        </MudListItem>
-                    </MudList>
+                    <MudText Typo="Typo.h6" Color="Color.Primary">@GetWorkflowStageDisplayName(SelectedStep.Stage)</MudText>
+                    <MudText Typo="Typo.body1" Class="mt-2">@SelectedStep.Description</MudText>
+
+                    <MudDivider Class="my-3" />
+
+                    <MudGrid>
+                        <MudItem xs="6">
+                            <MudText Typo="Typo.subtitle2">Started At</MudText>
+                            <MudText Typo="Typo.body2">@SelectedStep.Timestamp.ToLocalTime().ToString("g")</MudText>
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudText Typo="Typo.subtitle2">Ended At</MudText>
+                            <MudText Typo="Typo.body2">
+                                @(SelectedStep.CompletionTimestamp.HasValue
+                                  ? SelectedStep.CompletionTimestamp.Value.ToLocalTime().ToString("g")
+                                  : "In progress...")
+                            </MudText>
+                        </MudItem>
+                    </MudGrid>
+
+                    <MudText Typo="Typo.subtitle2" Class="mt-3">Duration</MudText>
+                    <MudText Typo="Typo.body2">
+                        @(SelectedStep.DurationSeconds.HasValue
+                          ? FormatDuration(SelectedStep.DurationSeconds.Value)
+                          : "Calculating...")
+                    </MudText>
+
+                    @if (GetParentStep(SelectedStep) != null)
+                    {
+                        <MudDivider Class="my-3" />
+                        <MudText Typo="Typo.subtitle2" Class="mb-2">Previous Step</MudText>
+                        <MudPaper Elevation="0" Class="pa-2" Style="background-color: var(--mud-palette-background-grey);">
+                            <MudText Typo="Typo.body2">
+                                <b>@GetWorkflowStageDisplayName(GetParentStep(SelectedStep).Stage)</b>
+                            </MudText>
+                            <MudText Typo="Typo.caption">@GetParentStep(SelectedStep).Description</MudText>
+                        </MudPaper>
+                    }
                 </MudCardContent>
             </MudCard>
-        </div>
+
+            <MudText Typo="Typo.subtitle1" Class="mt-3 mb-2">Data Metrics</MudText>
+            <MudPaper Elevation="0" Class="pa-3" Style="background-color: var(--mud-palette-background-grey);">
+                <MudGrid>
+                    <MudItem xs="6">
+                        <MudStack Row="true" AlignItems="AlignItems.Center">
+                            <MudChip T="Color" Color="Color.Success" Size="Size.Small">@SelectedStep.RowsAdded</MudChip>
+                            <MudText Typo="Typo.body2">Records Added</MudText>
+                        </MudStack>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudStack Row="true" AlignItems="AlignItems.Center">
+                            <MudChip T="Color" Color="Color.Primary" Size="Size.Small">@SelectedStep.RowsModified</MudChip>
+                            <MudText Typo="Typo.body2">Records Updated</MudText>
+                        </MudStack>
+                    </MudItem>
+                    <MudItem xs="6" Class="mt-2">
+                        <MudStack Row="true" AlignItems="AlignItems.Center">
+                            <MudChip T="Color" Color="Color.Warning" Size="Size.Small">@SelectedStep.RowsIgnored</MudChip>
+                            <MudText Typo="Typo.body2">Records Ignored</MudText>
+                        </MudStack>
+                    </MudItem>
+                    <MudItem xs="6" Class="mt-2">
+                        <MudStack Row="true" AlignItems="AlignItems.Center">
+                            @if (SelectedStep.RowsWithErrors > 0)
+                            {
+                                <MudLink Href="@($"/flux/errors?fluxId={FluxId}&actionType={SelectedStep.ActionId}")"
+                                         Target="_blank"
+                                         Underline="Underline.Always">
+                                    <MudChip T="Color" Color="Color.Error" Size="Size.Small">@SelectedStep.RowsWithErrors</MudChip>
+                                </MudLink>
+                            }
+                            else
+                            {
+                                <MudChip T="Color" Color="Color.Default" Size="Size.Small">0</MudChip>
+                            }
+                            <MudText Typo="Typo.body2">Records with Errors</MudText>
+                        </MudStack>
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+        </MudPopover>
     }
 </div>
 
 @code {
+
     [Parameter] public int FluxId { get; set; }
+    [Parameter] public Guid? WorkflowId { get; set; }
+    [Parameter] public bool UseSignalR { get; set; } = true;
 
     private ElementReference canvasRef;
     private FluxWorkflowDetailsDto? WorkflowDetails { get; set; }
     private HistoryEntryDto? SelectedStep { get; set; }
-    private System.Threading.Timer? RefreshTimer { get; set; }
-    private List<WorkflowStepPosition> positionedSteps = new();
+    private HubConnection? hubConnection;
+    private List<FluxWorkflowDetailsDto> availableWorkflows = new();
+    private Guid? selectedWorkflowId;
+    private List<PositionedHistoryEntry> positionedSteps = new();
+    private List<HistoryEntryDto> rootSteps = new();
+    private string? signalRServiceUrl;
+    private bool isSignalRConnected = false;
+    private bool isStepDetailOpen = false;
 
-    private class WorkflowStepPosition
+    private class PositionedHistoryEntry : HistoryEntryDto
     {
-        public HistoryEntryDto Entry { get; set; }
         public double X { get; set; }
         public double Y { get; set; }
 
-        public WorkflowStepPosition(HistoryEntryDto entry, double x, double y)
+        public PositionedHistoryEntry(HistoryEntryDto entry, double x, double y)
         {
-            Entry = entry;
+            // Copier toutes les propriétés
+            Id = entry.Id;
+            ParentId = entry.ParentId;
+            Stage = entry.Stage;
+            ActionId = entry.ActionId;
+            Description = entry.Description;
+            Timestamp = entry.Timestamp;
+            TimeSinceStart = entry.TimeSinceStart;
+            RowsAdded = entry.RowsAdded;
+            RowsModified = entry.RowsModified;
+            RowsIgnored = entry.RowsIgnored;
+            RowsWithErrors = entry.RowsWithErrors;
+            IsCompleted = entry.IsCompleted;
+            CompletionTimestamp = entry.CompletionTimestamp;
+            DurationSeconds = entry.DurationSeconds;
+            Children = entry.Children;
             X = x;
             Y = y;
         }
@@ -114,56 +254,318 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await RefreshData();
+        selectedWorkflowId = WorkflowId;
 
-        // Set up automatic refresh every 5 seconds
-        RefreshTimer = new System.Threading.Timer(
-            async _ => await InvokeAsync(RefreshData),
-            null,
-            TimeSpan.FromSeconds(5),
-            TimeSpan.FromSeconds(5));
+        if (UseSignalR)
+        {
+            await GetSignalRServiceUrl();
+            await SetupSignalRConnection();
+        }
+
+        await RefreshData();
+    }
+
+    private async Task GetSignalRServiceUrl()
+    {
+        try
+        {
+            // Tenter de récupérer l'URL du service SignalR depuis la configuration
+            signalRServiceUrl = Configuration["Services:SignalR:BaseUrl"];
+
+            if (string.IsNullOrEmpty(signalRServiceUrl))
+            {
+                // Utiliser une URL par défaut si non trouvée dans la configuration
+                signalRServiceUrl = "https://localhost:7228";
+                Logger.LogInformation($"Using default SignalR service URL: {signalRServiceUrl}");
+            }
+            else
+            {
+                Logger.LogInformation($"Found SignalR service URL in configuration: {signalRServiceUrl}");
+            }
+
+            // Vérifier si l'URL se termine par un slash
+            if (!signalRServiceUrl.EndsWith("/"))
+            {
+                signalRServiceUrl += "/";
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError($"Error getting SignalR service URL: {ex.Message}");
+            // Fallback sur une URL par défaut en cas d'erreur
+            signalRServiceUrl = "https://localhost:8080/";
+        }
+    }
+
+    private async Task SetupSignalRConnection()
+    {
+        try
+        {
+            if (!UseSignalR)
+            {
+                isSignalRConnected = false;
+                return;
+            }
+
+            Logger.LogInformation($"Connecting to SignalR hub at: {signalRServiceUrl}notification-hub");
+
+            // Récupérer un jeton d'accès pour l'authentification
+            var accessToken = await GetAccessTokenAsync();
+
+            hubConnection = new HubConnectionBuilder()
+                .WithUrl($"{signalRServiceUrl}notification-hub", options =>
+                {
+                    // Ajouter le jeton d'accès comme en-tête d'autorisation
+                    options.AccessTokenProvider = () => Task.FromResult(accessToken);
+
+                    // Configurer d'autres options si nécessaire
+                    options.SkipNegotiation = false;
+                    options.Transports = Microsoft.AspNetCore.Http.Connections.HttpTransportType.WebSockets;
+                })
+                .WithAutomaticReconnect(new[] { TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10) })
+                .Build();
+
+            // S'abonner aux messages de notification
+            hubConnection.On<object>("onTopicNotification", (message) =>
+            {
+                // Cette méthode est appelée lorsqu'un message est reçu sur un topic
+                ProcessWorkflowMessage(message);
+            });
+
+            // S'abonner à l'événement de reconnexion
+            hubConnection.Reconnected += (connectionId) =>
+            {
+                isSignalRConnected = true;
+                InvokeAsync(StateHasChanged);
+                return Task.CompletedTask;
+            };
+
+            // S'abonner à l'événement de déconnexion
+            hubConnection.Closed += (error) =>
+            {
+                isSignalRConnected = false;
+                InvokeAsync(StateHasChanged);
+                return Task.CompletedTask;
+            };
+
+            // Démarrer la connexion
+            await hubConnection.StartAsync();
+            isSignalRConnected = true;
+            Logger.LogInformation("SignalR connection started successfully");
+
+            // S'abonner au topic "workflow" pour recevoir les mises à jour de workflow
+            await hubConnection.InvokeAsync("Subscribe", "workflow");
+            Logger.LogInformation("Subscribed to 'workflow' topic");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError($"Error setting up SignalR connection: {ex.Message}");
+            isSignalRConnected = false;
+        }
+    }
+
+    private async Task<string> GetAccessTokenAsync()
+    {
+        try
+        {
+            // Utiliser le service d'authentification injecté pour obtenir le jeton
+            var token = await AuthService.GetAccessTokenAsync();
+
+            if (!string.IsNullOrEmpty(token))
+            {
+                Logger.LogInformation("Retrieved token from AuthenticationService");
+                return token;
+            }
+
+            // Option de secours : Utiliser JSRuntime pour récupérer le jeton stocké côté client
+            token = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "auth_token");
+
+            if (!string.IsNullOrEmpty(token))
+            {
+                Logger.LogInformation("Retrieved token from localStorage");
+                return token;
+            }
+
+            // Si aucun jeton n'est trouvé, renvoyer null ou une chaîne vide
+            Logger.LogError("No access token found");
+            return string.Empty;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError($"Error getting access token: {ex.Message}");
+            return string.Empty;
+        }
+    }
+
+    private void ProcessWorkflowMessage(object message)
+    {
+        try
+        {
+            // Simplification: Assume any message on the 'workflow' topic means potential changes
+            // relevant to the current view (either the selected workflow or the list of workflows).
+            // Just trigger a full refresh from the API.
+            Logger.LogInformation($"Received generic workflow update notification. Refreshing data from API.");
+
+            InvokeAsync(async () =>
+            {
+                await RefreshDataFromApi();
+                // StateHasChanged() is called within RefreshDataFromApi's finally block
+            });
+        }
+        catch (Exception ex)
+        {
+            // Log any unexpected errors during the InvokeAsync process
+            Logger.LogError(ex, "Error invoking API refresh after SignalR notification");
+        }
     }
 
     private async Task RefreshData()
     {
         try
         {
-            var response = await MindApi.GetFluxWorkflowDetailsAsync(FluxId);
-            WorkflowDetails = response.Data;
-
-            if (WorkflowDetails != null)
+            if (UseSignalR && hubConnection != null && hubConnection.State == HubConnectionState.Connected)
             {
-                // Calculate positions for each step
-                var horizontalSpacing = 250;
-                var verticalSpacing = 150;
+                Logger.LogInformation("Refreshing data via SignalR connection");
 
-                positionedSteps = WorkflowDetails.History
-                    .OrderBy(h => h.Timestamp)
-                    .Select((step, index) => new WorkflowStepPosition(
-                        step,
-                        index * horizontalSpacing,
-                        (index % 2) * verticalSpacing
-                    ))
-                    .ToList();
+                // Demander les données via SignalR
+                await hubConnection.InvokeAsync("getWorkflowsForFlux", FluxId);
+
+                if (selectedWorkflowId.HasValue)
+                {
+                    await hubConnection.InvokeAsync("getWorkflowById", selectedWorkflowId.Value);
+                }
+                else
+                {
+                    await hubConnection.InvokeAsync("getFluxDetails", FluxId);
+                }
+                return;
+            }
+
+            // Fallback API si SignalR n'est pas disponible ou n'est pas utilisé
+            Logger.LogInformation($"Refreshing data via API ({(UseSignalR ? "SignalR not available" : "SignalR disabled")})");
+            await RefreshDataFromApi();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError($"Error refreshing workflow data: {ex.Message}");
+            await RefreshDataFromApi();
+        }
+    }
+
+    private async Task RefreshDataFromApi()
+    {
+        try
+        {
+            if (selectedWorkflowId.HasValue)
+            {
+                // Récupérer les détails du workflow spécifique
+                var response = await MindApi.GetWorkflowByIdAsync(selectedWorkflowId.Value);
+                if (response?.Data != null)
+                {
+                    Logger.LogInformation($"[API update] Received data from GetWorkflowByIdAsync({selectedWorkflowId.Value}), values : {System.Text.Json.JsonSerializer.Serialize(response)}");
+
+                    WorkflowDetails = response.Data;
+                    PositionWorkflowSteps();
+                }
+            }
+            else
+            {
+                // Récupérer les détails globaux du flux
+                var response = await MindApi.GetFluxWorkflowDetailsAsync(FluxId);
+                if (response?.Data != null)
+                {
+                    WorkflowDetails = response.Data;
+                    PositionWorkflowSteps();
+                }
             }
         }
         catch (Exception ex)
         {
-            // Log error or handle it appropriately
-            Console.WriteLine($"Error refreshing workflow data: {ex.Message}");
+            Logger.LogError($"Error refreshing data from API: {ex.Message}");
         }
     }
 
-    private string GetStepStatusClass(HistoryEntryDto step)
+    private void MapWorkflowStateToDetails(WorkflowStateModel state)
     {
-        return step.Stage.ToLowerInvariant() switch
+        WorkflowDetails = MapToFluxWorkflowDetailsDto(state);
+    }
+
+    private FluxWorkflowDetailsDto MapToFluxWorkflowDetailsDto(WorkflowStateModel state)
+    {
+        // Convertir les étapes du workflow
+        var historyEntries = MapHistoryEntries(state.Steps);
+
+        // Convertir WorkflowStateModel en FluxWorkflowDetailsDto
+        return new FluxWorkflowDetailsDto
+            {
+                WorkflowId = state.WorkflowId,
+                FluxId = state.FluxId,
+                FluxName = state.FluxName,
+                StageDetails = state.Steps.LastOrDefault()?.Description,
+                StartTime = state.StartTime,
+                LastUpdateTime = state.LastUpdateTime,
+                EndTime = state.EndTime,
+                DurationMinutes = state.Duration.TotalMinutes,
+                IsCompleted = state.IsCompleted,
+                History = historyEntries
+            };
+    }
+
+    private List<HistoryEntryDto> MapHistoryEntries(List<WorkflowStepModel> steps)
+    {
+        var entries = new List<HistoryEntryDto>();
+
+        foreach (var step in steps)
         {
-            var s when s.Contains("fail") => "status-error",
-            var s when s.Contains("completed") => "status-success",
-            var s when s.Contains("processing") => "status-warning",
-            var s when s.Contains("fetching") => "status-info",
-            var s when s.Contains("insert") => "status-secondary",
-            var s when s.Contains("calculation") => "status-tertiary",
+            var entry = new HistoryEntryDto
+                {
+                    Id = step.Id,
+                    ParentId = step.ParentId,
+                    Stage = step.Stage,
+                    Description = step.Description,
+                    Timestamp = step.Timestamp,
+                    TimeSinceStart = step.TimeSinceStart,
+                    RowsAdded = step.LinesAdded,
+                    RowsModified = step.LinesModified,
+                    RowsIgnored = step.LinesIgnored,
+                    RowsWithErrors = step.LinesWithErrors,
+                    IsCompleted = step.IsCompleted,
+                    CompletionTimestamp = step.CompletionTimestamp,
+                    DurationSeconds = step.DurationSeconds,
+                    ActionId = step.ActionId,
+                    Children = MapHistoryEntries(step.Children)
+                };
+
+            entries.Add(entry);
+        }
+
+        return entries;
+    }
+
+    private void PositionWorkflowSteps()
+    {
+        if (WorkflowDetails?.History == null) return;
+
+        // Utiliser directement la structure d'arbre pour les étapes du workflow
+        rootSteps = WorkflowDetails.History.Where(h => h.ParentId == null).ToList();
+    }
+
+    private string GetStepStatusClass(WorkflowStage stage)
+    {
+        return stage switch
+        {
+            WorkflowStage.Failed => "status-error",
+
+            // In-progress stages
+            WorkflowStage.FetchingData => "status-info",
+            WorkflowStage.Processing => "status-info",
+            WorkflowStage.RefinedDataCopying => "status-info",
+            WorkflowStage.CalcCurrencyExchangeRateStarting => "status-info",
+            WorkflowStage.CalculationRiskStarting => "status-info",
+            WorkflowStage.CalculationReturnStarting => "status-info",
+            WorkflowStage.CalculationWeeklyReturnStarting => "status-info",
+
+            // Default or NotStarted
             _ => "status-default"
         };
     }
@@ -171,11 +573,604 @@
     private void SelectStep(HistoryEntryDto step)
     {
         SelectedStep = step;
+        isStepDetailOpen = true;
+        StateHasChanged();
     }
 
-    public void Dispose()
+    private async Task OnWorkflowSelectionChanged(Guid? workflowId)
     {
-        RefreshTimer?.Dispose();
+        selectedWorkflowId = workflowId;
+
+        // Mettre à jour l'URL pour refléter le workflow sélectionné
+        if (workflowId.HasValue)
+        {
+            NavigationManager.NavigateTo($"/flux/workflow-live/{FluxId}/{workflowId}/{UseSignalR}", false);
+
+            // Mise à jour du paramètre WorkflowId
+            WorkflowId = workflowId;
+
+            // Rafraîchir les données pour ce workflow spécifique
+            await RefreshSpecificWorkflow(workflowId.Value);
+        }
+        else
+        {
+            NavigationManager.NavigateTo($"/flux/workflow-live/{FluxId}/{UseSignalR}", false);
+            WorkflowId = null;
+
+            // Rafraîchir les données générales du flux
+            await RefreshFluxData();
+        }
+    }
+
+    private async Task RefreshSpecificWorkflow(Guid workflowId)
+    {
+        try
+        {
+            // Récupérer les détails du workflow spécifique
+            var response = await MindApi.GetWorkflowByIdAsync(workflowId);
+            if (response?.Data != null)
+            {
+                WorkflowDetails = response.Data;
+                PositionWorkflowSteps();
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError($"Error refreshing specific workflow {workflowId}: {ex.Message}");
+        }
+    }
+
+    private async Task RefreshFluxData()
+    {
+        try
+        {
+            // Récupérer les détails globaux du flux
+            var response = await MindApi.GetFluxWorkflowDetailsAsync(FluxId);
+            if (response?.Data != null)
+            {
+                WorkflowDetails = response.Data;
+                PositionWorkflowSteps();
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError($"Error refreshing flux data for FluxId {FluxId}: {ex.Message}");
+        }
+    }
+
+    // Method to handle UseSignalR property changes
+    protected override async Task OnParametersSetAsync()
+    {
+        await base.OnParametersSetAsync();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (hubConnection != null)
+        {
+            // Se désabonner du topic avant de fermer la connexion
+            try
+            {
+                if (hubConnection.State == HubConnectionState.Connected)
+                {
+                    await hubConnection.InvokeAsync("Unsubscribe", "workflow");
+                    Logger.LogInformation("Unsubscribed from 'workflow' topic");
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"Error unsubscribing from topic: {ex.Message}");
+            }
+
+            await hubConnection.DisposeAsync();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Initialize animations or other JS interop needed after first render
+            // await JSRuntime.InvokeVoidAsync("initWorkflowAnimations");
+        }
+        else if (WorkflowDetails != null)
+        {
+            // Update animations when workflow data changes
+            // await JSRuntime.InvokeVoidAsync("updateWorkflowAnimations");
+        }
+    }
+
+    // Méthode pour gérer le clic sur le bouton de traitement sans propager l'événement au parent
+    private async Task HandleProcessButtonClick(HistoryEntryDto step)
+    {
+        await ForceProcess(step);
+    }
+
+    // Méthode pour rendu récursif des étapes de workflow en forme de diagramme
+    private RenderFragment RenderWorkflowDiagram(HistoryEntryDto step, int level) => builder =>
+    {
+        var statusClass = GetStepStatusClass(step.Stage);
+        var completionClass = step.IsCompleted ? "node-completed" : "node-inprogress";
+
+        string nodePositionClass = level == 0 ? "node-center" : "";
+
+        builder.OpenElement(0, "div");
+        builder.AddAttribute(1, "class", $"workflow-node-container {nodePositionClass}");
+
+        builder.OpenElement(2, "div");
+        builder.AddAttribute(3, "class", $"workflow-node {statusClass} {completionClass}");
+        builder.AddAttribute(4, "onclick", EventCallback.Factory.Create<MouseEventArgs>(this, () => SelectStep(step)));
+        builder.AddAttribute(5, "id", $"node-{step.Id}");
+
+        var tooltipTitle = GetWorkflowStageDisplayName(step.Stage);
+        var tooltipText = step.Description ?? string.Empty; // Use original description for tooltip
+
+        tooltipText += $"\nStarted: {step.Timestamp.ToLocalTime():g}";
+
+        if (step.CompletionTimestamp.HasValue)
+        {
+            tooltipText += $"\nCompleted: {step.CompletionTimestamp.Value.ToLocalTime():g}";
+        }
+        if (step.DurationSeconds.HasValue)
+        {
+            tooltipText += $"\nDuration: {FormatDuration(step.DurationSeconds.Value)}";
+        }
+
+        builder.AddAttribute(6, "title", $"{tooltipTitle}\n{tooltipText}"); // Keep tooltip detailed
+
+        builder.OpenElement(7, "div");
+        builder.AddAttribute(8, "class", "node-content");
+
+        // --- Node Header (Icon + Stage Name) ---
+        builder.OpenElement(9, "div");
+        builder.AddAttribute(10, "class", "node-header");
+        builder.OpenElement(11, "i"); // Icon wrapper
+        if (step.IsCompleted)
+        {
+            builder.AddAttribute(12, "class", "mud-icon-root mud-icon-default mud-icon-size-small mud-color-success");
+            builder.AddMarkupContent(14, "<svg viewBox='0 0 24 24' style='width: 18px; height: 18px;'><path d='M12 2C6.5 2 2 6.5 2 12S6.5 22 12 22 22 17.5 22 12 17.5 2 12 2M10 17L5 12L6.41 10.59L10 14.17L17.59 6.58L19 8L10 17Z' fill='currentColor'></path></svg>");
+        }
+        else if (step.Stage == WorkflowStage.Failed)
+        {
+            builder.AddAttribute(12, "class", "mud-icon-root mud-icon-default mud-icon-size-small mud-color-error");
+            builder.AddMarkupContent(14, "<svg viewBox='0 0 24 24' style='width: 18px; height: 18px;'><path d='M13,13H11V7H13M13,17H11V15H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z' fill='currentColor'></path></svg>");
+        }
+        else // In progress
+        {
+            builder.AddAttribute(12, "class", "mud-icon-root mud-icon-default mud-icon-size-small mud-color-info");
+            builder.AddMarkupContent(14, "<svg viewBox='0 0 24 24' style='width: 18px; height: 18px;'><path d='M12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22C6.47,22 2,17.5 2,12A10,10 0 0,1 12,2M12.5,7V12.25L17,14.92L16.25,16.15L11,13V7H12.5Z' fill='currentColor'></path></svg>");
+        }
+        builder.CloseElement(); // i icon wrapper
+
+        builder.OpenElement(15, "div");
+        builder.AddAttribute(16, "class", "node-title");
+        builder.AddContent(17, GetWorkflowStageDisplayName(step.Stage));
+        builder.CloseElement(); // node-title
+        builder.CloseElement(); // node-header
+
+        // --- Node Body (Description + Completion Time) ---
+        builder.OpenElement(100, "div");
+        builder.AddAttribute(101, "class", "node-body");
+
+        // Description
+        if (!string.IsNullOrWhiteSpace(step.Description))
+        {
+            builder.OpenElement(102, "div");
+            builder.AddAttribute(103, "class", "node-description");
+            // Truncate long descriptions for display in node
+            var displayDescription = step.Description.Length > 150 ? step.Description.Substring(0, 147) + "..." : step.Description;
+            builder.AddContent(104, displayDescription);
+            builder.CloseElement(); // node-description
+        }
+
+        // Completion Timestamp
+        if (step.IsCompleted && step.CompletionTimestamp.HasValue)
+        {
+            builder.OpenElement(105, "div");
+            builder.AddAttribute(106, "class", "node-completion-time");
+            builder.AddContent(107, $"Completed: {step.CompletionTimestamp.Value.ToLocalTime():g}");
+            builder.CloseElement(); // node-completion-time
+        }
+        builder.CloseElement(); // node-body
+
+
+        // --- Node Footer (Metrics + Duration) ---
+        builder.OpenElement(110, "div");
+        builder.AddAttribute(111, "class", "node-details"); // Reusing class, but could rename to node-footer
+
+        // Duration
+        if (step.DurationSeconds.HasValue)
+        {
+            builder.OpenElement(112, "span");
+            builder.AddAttribute(116, "title", $"Duration: {FormatDuration(step.DurationSeconds.Value)}");
+            builder.AddAttribute(113, "class", "detail-item duration");
+            builder.AddMarkupContent(114, "<i class='mud-icon-root mud-icon-default mud-icon-size-small mr-1'><svg viewBox='0 0 24 24' style='width: 1em; height: 1em;'><path d='M12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22C6.47,22 2,17.5 2,12A10,10 0 0,1 12,2Z' fill='currentColor'></path></svg></i>");
+            builder.AddContent(115, FormatDuration(step.DurationSeconds.Value));
+            builder.CloseElement(); // span duration
+        }
+
+        // Rows Added
+        if (step.RowsAdded > 0)
+        {
+            builder.OpenElement(117, "span");
+            builder.AddAttribute(118, "class", "detail-item success");
+            builder.AddAttribute(121, "title", $"{step.RowsAdded} records added");
+            builder.AddMarkupContent(119, "<i class='mud-icon-root mud-icon-default mud-icon-size-small mr-1'><svg viewBox='0 0 24 24' style='width: 1em; height: 1em;'><path d='M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z' fill='currentColor'></path></svg></i>");
+            builder.AddContent(120, $"{step.RowsAdded}");
+            builder.CloseElement(); // span added
+        }
+        // Rows Modified
+        if (step.RowsModified > 0)
+        {
+            builder.OpenElement(122, "span");
+            builder.AddAttribute(123, "class", "detail-item info");
+            builder.AddAttribute(126, "title", $"{step.RowsModified} records modified/updated");
+            builder.AddMarkupContent(124, "<i class='mud-icon-root mud-icon-default mud-icon-size-small mr-1'><svg viewBox='0 0 24 24' style='width: 1em; height: 1em;'><path d='M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z' fill='currentColor'></path></svg></i>");
+            builder.AddContent(125, $"{step.RowsModified}");
+            builder.CloseElement(); // span modified
+        }
+        // Rows Ignored
+        if (step.RowsIgnored > 0)
+        {
+            builder.OpenElement(127, "span");
+            builder.AddAttribute(128, "class", "detail-item warning");
+            builder.AddAttribute(131, "title", $"{step.RowsIgnored} records ignored");
+            builder.AddMarkupContent(129, "<i class='mud-icon-root mud-icon-default mud-icon-size-small mr-1'><svg viewBox='0 0 24 24' style='width: 1em; height: 1em;'><path d='M13,14H11V10H13M13,18H11V16H13M1,21H23L12,2L1,21Z' fill='currentColor'></path></svg></i>");
+            builder.AddContent(130, $"{step.RowsIgnored}");
+            builder.CloseElement(); // span ignored
+        }
+        // Rows With Errors (Link)
+        if (step.RowsWithErrors > 0)
+        {
+            builder.OpenComponent<MudLink>(132);
+            builder.AddAttribute(133, "Href", $"/flux/errors?fluxId={FluxId}&actionType={step.ActionId}");
+            builder.AddAttribute(134, "Typo", Typo.caption);
+            builder.AddAttribute(135, "Underline", Underline.Always);
+            builder.AddAttribute(136, "Class", "detail-item error-link");
+            builder.AddAttribute(137, "title", $"{step.RowsWithErrors} records with errors (click to view)");
+            builder.AddAttribute(138, "Target", "_blank");
+            // builder.AddAttribute(139, "onclick", EventCallback.Factory.Create<MouseEventArgs>(this, (e) => { /* Stop propagation */ }), true); // Add true for stopPropagation
+            builder.AddAttribute(139, "ChildContent", (RenderFragment)((linkBuilder) =>
+            {
+                linkBuilder.AddMarkupContent(140, "<i class='mud-icon-root mud-icon-default mud-icon-size-small mr-1 error'><svg viewBox='0 0 24 24' style='width: 1em; height: 1em;'><path d='M13,13H11V7H13M13,17H11V15H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z' fill='currentColor'></path></svg></i>");
+                linkBuilder.AddContent(141, $"{step.RowsWithErrors}");
+            }));
+            builder.CloseComponent(); // MudLink error
+        }
+
+        builder.CloseElement(); // node-details (footer)
+
+        // --- Node Actions (Conditional Buttons) ---
+        builder.OpenElement(150, "div");
+        builder.AddAttribute(151, "class", "node-actions");
+
+        if (step.Stage == WorkflowStage.FetchingData)
+        {
+            var fetchingId = TryGetFetchingId(step.Metadata);
+            if (fetchingId > 0)
+            {
+                // Fetching Details Button (icon only)
+                builder.OpenComponent<MudIconButton>(164);
+                builder.AddAttribute(165, "Icon", Icons.Material.Filled.Info);
+                builder.AddAttribute(166, "Color", Color.Primary);
+                builder.AddAttribute(167, "Size", Size.Small);
+                builder.AddAttribute(168, "OnClick", EventCallback.Factory.Create<MouseEventArgs>(this, () => NavigationManager.NavigateTo($"/flux/fetching-details/{fetchingId}")));
+                builder.AddAttribute(169, "Title", "View Fetching Details");
+                builder.CloseComponent(); // MudIconButton Fetching Details
+
+                if(step.IsCompleted) {
+                    // Force Process Button (icon only)
+                    builder.OpenComponent<MudIconButton>(152);
+                    builder.AddAttribute(153, "Icon", Icons.Material.Filled.Refresh);
+                    builder.AddAttribute(154, "Color", Color.Secondary);
+                    builder.AddAttribute(155, "Size", Size.Small);
+                    builder.AddAttribute(156, "OnClick", EventCallback.Factory.Create<MouseEventArgs>(this, () => HandleForceProcessFetching(fetchingId)));
+                    builder.AddAttribute(157, "Title", "Force Process");
+                    builder.AddAttribute(158, "Class", "mr-1");
+                    builder.CloseComponent(); // MudIconButton Force Process
+                }
+            }
+        }
+        else if (step.Stage == WorkflowStage.Processing)
+        {
+            var processingId = TryGetProcessingId(step.Metadata);
+            if (processingId > 0)
+            {
+                // Processing Details Button (icon only)
+                builder.OpenComponent<MudIconButton>(175);
+                builder.AddAttribute(176, "Icon", Icons.Material.Filled.Info);
+                builder.AddAttribute(177, "Color", Color.Primary);
+                builder.AddAttribute(178, "Size", Size.Small);
+                builder.AddAttribute(179, "OnClick", EventCallback.Factory.Create<MouseEventArgs>(this, () => NavigationManager.NavigateTo($"/flux/processing-details/{processingId}")));
+                builder.AddAttribute(180, "Title", "View Processing Details");
+                builder.CloseComponent(); // MudIconButton Processing Details
+            }
+        }
+
+        builder.CloseElement(); // node-actions
+
+        builder.CloseElement(); // node-content
+        builder.CloseElement(); // workflow-node
+
+        // Container for child nodes (existing logic)
+        if (step.Children != null && step.Children.Any())
+        {
+            var childrenCount = step.Children.Count;
+
+            if (childrenCount == 1)
+            {
+                builder.OpenElement(60, "div");
+                builder.AddAttribute(61, "class", "arrow-down");
+                builder.CloseElement(); // arrow-down
+
+                builder.OpenElement(62, "div");
+                builder.AddAttribute(63, "class", "node-children single-child");
+                builder.AddContent(64, RenderWorkflowDiagram(step.Children[0], level + 1));
+                builder.CloseElement(); // node-children
+            }
+            else
+            {
+                // For multiple children, create a horizontal layout
+                builder.OpenElement(65, "div");
+                builder.AddAttribute(66, "class", "arrow-down");
+                builder.CloseElement(); // arrow-down
+
+                // Horizontal branch line
+                builder.OpenElement(67, "div");
+                builder.AddAttribute(68, "class", "branch-container");
+                builder.CloseElement(); // branch-container
+
+                // Container for all children with horizontal layout
+                builder.OpenElement(69, "div");
+                builder.AddAttribute(70, "class", "multi-children-container");
+
+                foreach (var child in step.Children)
+                {
+                    // Each child in its own column
+                    builder.OpenElement(71, "div");
+                    builder.AddAttribute(72, "class", "child-column");
+
+                    // Vertical branch line to child
+                    builder.OpenElement(73, "div");
+                    builder.AddAttribute(74, "class", "vertical-branch");
+                    builder.CloseElement(); // vertical-branch
+
+                    // Render the child node
+                    builder.AddContent(75, RenderWorkflowDiagram(child, level + 1));
+
+                    builder.CloseElement(); // child-column
+                }
+
+                builder.CloseElement(); // multi-children-container
+            }
+        }
+
+        builder.CloseElement(); // workflow-node-container
+    };
+
+    // Helper function to get a friendlier display name for workflow stages
+    private string GetWorkflowStageDisplayName(WorkflowStage stage)
+    {
+        return stage switch
+        {
+            WorkflowStage.FetchingData => "Fetch data",
+            WorkflowStage.Processing => "Process data",
+            WorkflowStage.NormalizedDataInserting => "Insertion into Normalized database",
+            WorkflowStage.RefinedDataCopying => "Insertion into Refined database",
+            WorkflowStage.CalculationReturnStarting => "Calcul Performance",
+            WorkflowStage.CalculationRiskStarting => "Calcul Volatility",
+            WorkflowStage.CalculationWeeklyReturnStarting => "Calcul Weekly performance",
+            WorkflowStage.CalcCurrencyExchangeRateStarting => "Convert currency with exchange rate",
+            WorkflowStage.Failed => "Error",
+            _ => stage.ToString()
+        };
+    }
+
+    // Helper method to extract FluxFetchingId from step metadata
+    private int TryGetFetchingId(string metadata)
+    {
+        try
+        {
+            // Deserialize the metadata JSON string
+            var metadataObj = JsonSerializer.Deserialize<JsonElement>(metadata);
+
+            // Try to get FluxFetchingId
+            if (metadataObj.TryGetProperty("FluxFetchingId", out JsonElement idElement) &&
+                idElement.TryGetInt32(out int id))
+            {
+                return id;
+            }
+
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError($"Error parsing metadata for fetching ID: {ex.Message}");
+            return 0;
+        }
+    }
+
+    // Helper method to extract FluxProcessId from step metadata
+    private int TryGetProcessingId(string metadata)
+    {
+        try
+        {
+            // Deserialize the metadata JSON string
+            var metadataObj = JsonSerializer.Deserialize<JsonElement>(metadata);
+
+            // Try to get FluxProcessId
+            if (metadataObj.TryGetProperty("FluxProcessId", out JsonElement idElement) &&
+                idElement.TryGetInt32(out int id))
+            {
+                return id;
+            }
+
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError($"Error parsing metadata for processing ID: {ex.Message}");
+            return 0;
+        }
+    }
+
+    // Navigate to fetching details page
+    private void NavigateToFetchingDetails(int fetchingId)
+    {
+        if (fetchingId > 0)
+        {
+            NavigationManager.NavigateTo($"/flux/fetching-details/{fetchingId}");
+        }
+        else
+        {
+            Snackbar.Add("Unable to get fetching ID from metadata", Severity.Warning);
+        }
+    }
+
+    // Navigate to processing details page
+    private void NavigateToProcessingDetails(int processingId)
+    {
+        if (processingId > 0)
+        {
+            NavigationManager.NavigateTo($"/flux/processing-details/{processingId}");
+        }
+        else
+        {
+            Snackbar.Add("Unable to get processing ID from metadata", Severity.Warning);
+        }
+    }
+
+    // Force process a specific fetching data
+    private async Task ForceProcessFetching(int fetchingId)
+    {
+        try
+        {
+            // Afficher un message avant de démarrer
+            Snackbar.Add($"Starting force process for fetching ID {fetchingId}", Severity.Info);
+
+            // Appeler l'API pour traiter l'élément
+            var result = await MindApi.ForceProcessElementFetchBackgroundAsync(FluxId, fetchingId);
+
+            // Afficher une notification de succès
+            Snackbar.Add("Force process started in the background", Severity.Success);
+
+            // Rafraîchir les données
+            await RefreshData();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError($"Error forcing process: {ex.Message}");
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private string FormatDuration(double seconds)
+    {
+        if (seconds < 1)
+        {
+            return $"{seconds * 1000:0}ms";
+        }
+        else if (seconds < 60)
+        {
+            return $"{seconds:0.0}s";
+        }
+        else if (seconds < 3600)
+        {
+            var minutes = Math.Floor(seconds / 60);
+            var remainingSeconds = seconds % 60;
+            return $"{minutes}m {remainingSeconds:0}s";
+        }
+        else
+        {
+            var hours = Math.Floor(seconds / 3600);
+            var remainingMinutes = Math.Floor((seconds % 3600) / 60);
+            return $"{hours}h {remainingMinutes}m";
+        }
+    }
+
+    private async Task ForceProcess(HistoryEntryDto step)
+    {
+        try
+        {
+            // Vérifier si l'étape a un ActionId et si c'est une étape de type FetchingData
+            if (step.Stage == WorkflowStage.FetchingData && step.IsCompleted)
+            {
+                var fetchingHistoryId = step.ActionId;
+
+                // Afficher un message avant de démarrer
+                Snackbar.Add($"Starting force process for fetching ID {fetchingHistoryId}", Severity.Info);
+
+                // Appeler l'API pour traiter l'élément
+                var result = await MindApi.ForceProcessElementFetchBackgroundAsync(FluxId, fetchingHistoryId);
+
+                // Afficher une notification de succès
+                Snackbar.Add("Force process started in the background", Severity.Success);
+
+                // Rafraîchir les données
+                await RefreshData();
+            }
+            else
+            {
+                // Afficher un message si l'action n'est pas possible
+                Snackbar.Add("This step cannot be processed - Either not a fetching step, already completed, or missing action ID", Severity.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError($"Error forcing process: {ex.Message}");
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+    }
+
+    // --- New handler for Force Process Fetching ---
+    private async Task HandleForceProcessFetching(int fetchingId)
+    {
+        try
+        {
+            Snackbar.Add($"Initiating force process for fetching ID {fetchingId}...", Severity.Info);
+            await MindApi.ForceProcessElementFetchBackgroundAsync(FluxId, fetchingId);
+            Snackbar.Add($"Force process started successfully for fetching ID {fetchingId}.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error forcing process for fetching ID {FetchingId}", fetchingId);
+            Snackbar.Add($"An error occurred: {ex.Message}", Severity.Error);
+        }
+    }
+
+    // --- Fix multiple children layout issues ---
+    private void RenderTree(RenderTreeBuilder builder, HistoryEntryDto parent, int level = 0)
+    {
+        if (parent == null || parent.Children == null) return;
+
+        // Outer container for children list
+        builder.OpenElement(300, "div");
+        builder.AddAttribute(301, "class", "children-container");
+
+        // Calculate container width based on number of children
+        var childCount = parent.Children.Count;
+        if (childCount > 3)
+        {
+            builder.AddAttribute(302, "style", $"min-width: {childCount * 240}px;");
+        }
+
+        foreach (var child in parent.Children)
+        {
+            RenderTree(builder, child, level + 1);
+        }
+
+        builder.CloseElement(); // children-container
+    }
+
+    // Helper method to get the parent step of a given step
+    private HistoryEntryDto? GetParentStep(HistoryEntryDto step)
+    {
+        if (step.ParentId == null || WorkflowDetails?.History == null)
+            return null;
+
+        return WorkflowDetails.History.FirstOrDefault(h => h.Id == step.ParentId);
     }
 }
 
@@ -183,7 +1178,7 @@
     .workflow-container {
         position: relative;
         width: 100%;
-        height: 600px;
+        min-height: 600px;
         overflow: auto;
         background-color: #f5f5f5;
         border-radius: 8px;
@@ -193,51 +1188,230 @@
     .workflow-canvas {
         position: relative;
         width: 100%;
-        height: 100%;
+        min-width: fit-content;
         min-height: 100%;
+        overflow-x: auto;
     }
 
-    .workflow-step {
-        position: absolute;
+    /* Diagram styles */
+    .workflow-diagram {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 20px;
+        width: 100%;
+        min-width: fit-content;
+    }
+
+    .workflow-node-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin-bottom: 30px;
+        position: relative;
+    }
+
+    .workflow-node {
         background-color: white;
         border-radius: 8px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         padding: 12px;
         cursor: pointer;
         transition: all 0.2s ease;
+        min-width: 180px;
+        max-width: 250px;
+        text-align: center;
+        border-left: 4px solid #ccc;
     }
 
-    .workflow-step:hover {
-        transform: scale(1.02);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        .workflow-node:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+
+    .node-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
     }
 
-    .step-header {
-        font-weight: bold;
-        margin-bottom: 8px;
+    .node-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 6px;
+    }
+
+        .node-header i {
+            margin-right: 8px; /* Space after icon */
+            flex-shrink: 0; /* Prevent icon from shrinking */
+        }
+
+    .node-title {
+        font-weight: 600; /* Semibold */
+        font-size: 0.9rem;
         color: #333;
+        flex-grow: 1; /* Allow title to take space */
+        line-height: 1.2; /* Adjust line height */
+        margin-bottom: 0; /* Remove margin if header handles spacing */
     }
 
-    .step-content {
-        font-size: 0.9em;
+    .node-body {
+        padding: 5px 0; /* Add some vertical padding */
+        margin-bottom: 8px; /* Space before footer */
+    }
+
+    .node-description {
+        font-size: 0.8rem;
+        color: #555; /* Slightly darker than before */
+        margin-bottom: 4px; /* Space below description */
+        white-space: normal;
+        line-height: 1.3;
+        /* Optional: limit lines shown */
+        /* display: -webkit-box;
+                -webkit-line-clamp: 3;
+                -webkit-box-orient: vertical;
+                overflow: hidden; */
+    }
+
+    .node-completion-time {
+        font-size: 0.7rem;
         color: #666;
-        margin-bottom: 8px;
+        margin-top: 4px;
+        font-style: italic;
     }
 
-    .step-timestamp {
-        font-size: 0.8em;
-        color: #999;
+
+    .node-details { /* This now acts as the footer */
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 8px; /* Row and column gap */
+        padding-top: 8px;
+        margin-top: auto; /* Push footer to bottom if node content varies */
+        border-top: 1px solid #eee; /* Separator line */
+        font-size: 0.75rem;
+        color: #555;
     }
 
-    .workflow-connections {
+    /* Detail item styles remain the same */
+    .detail-item {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px 5px;
+        border-radius: 4px;
+        background-color: #f0f0f0;
+        line-height: 1;
+    }
+    /* ... other detail-item styles ... */
+
+    /* Ensure connection line CSS is present */
+    .arrow-down {
+        height: 20px;
+        width: 2px;
+        background-color: #B0BEC5;
+        margin: 0 auto;
+        position: relative;
+    }
+
+    .arrow-down::after {
+        content: '';
         position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        pointer-events: none;
+        bottom: -1px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 0;
+        height: 0;
+        border-left: 5px solid transparent;
+        border-right: 5px solid transparent;
+        border-top: 7px solid #B0BEC5;
     }
 
+    .branch-container {
+        width: 90%;
+        height: 2px;
+        background-color: #B0BEC5;
+        margin: 0 auto;
+        position: relative;
+        z-index: -1;
+        max-width: 800px;
+    }
+
+    /* Status classes for workflow nodes */
+    .status-default {
+        border-left-color: #ccc;
+    }
+
+    .status-info {
+        border-left-color: #2196F3;
+    }
+
+    .status-success {
+        border-left-color: #4CAF50;
+    }
+
+    .status-warning {
+        border-left-color: #FFC107;
+    }
+
+    .status-error {
+        border-left-color: #F44336;
+    }
+
+    .status-secondary {
+        border-left-color: #9C27B0;
+    }
+
+    /* Status modifiers for completed vs in-progress */
+    .node-completed {
+        background-color: rgba(76, 175, 80, 0.1);
+    }
+
+    .node-inprogress {
+        background-color: rgba(33, 150, 243, 0.05);
+        border-style: dashed;
+        border-width: 1px;
+        border-right-width: 1px;
+        border-top-width: 1px;
+        border-bottom-width: 1px;
+    }
+
+    /* Badge styles */
+    .badge {
+        display: inline-block;
+        padding: 2px 6px;
+        border-radius: 12px;
+        font-size: 0.75em;
+        font-weight: bold;
+        color: white;
+    }
+
+        .badge.success {
+            background-color: #4CAF50;
+        }
+
+        .badge.info {
+            background-color: #2196F3;
+        }
+
+        .badge.warning {
+            background-color: #FFC107;
+        }
+
+        .badge.error {
+            background-color: #F44336;
+        }
+
+        .badge.duration {
+            background-color: #9C27B0;
+            opacity: 0.7;
+        }
+
+    /* Make badges a bit more prominent on hover */
+    .workflow-node:hover .badge {
+        transform: scale(1.1);
+        transition: transform 0.2s ease;
+    }
+
+    /* Drawer styles */
     .step-details-panel {
         position: fixed;
         right: 20px;
@@ -249,11 +1423,78 @@
         z-index: 1000;
     }
 
-    .status-default { border-left: 4px solid #ccc; }
-    .status-info { border-left: 4px solid #2196F3; }
-    .status-success { border-left: 4px solid #4CAF50; }
-    .status-warning { border-left: 4px solid #FFC107; }
-    .status-error { border-left: 4px solid #F44336; }
-    .status-secondary { border-left: 4px solid #9C27B0; }
-    .status-tertiary { border-left: 4px solid #FF9800; }
+    .node-actions {
+        margin-top: 8px;
+        padding-top: 4px;
+        border-top: 1px solid #eee;
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        gap: 4px;
+    }
+
+    .children-container {
+        display: flex;
+        flex-wrap: nowrap;
+        justify-content: center;
+        gap: 20px;
+        margin-top: 20px;
+        overflow-x: auto;
+    }
+
+    /* Horizontal tree layout styles */
+    .multi-children-container {
+        display: flex;
+        flex-direction: row;
+        justify-content: center;
+        align-items: flex-start;
+        gap: 30px;
+        margin-top: 10px;
+        width: 100%;
+        min-width: fit-content;
+        overflow-x: auto;
+    }
+
+    .child-column {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        position: relative;
+        min-width: 180px;
+    }
+
+    .vertical-branch {
+        height: 20px;
+        width: 2px;
+        background-color: #B0BEC5;
+        margin-bottom: 5px;
+    }
+
+    .arrow-down {
+        height: 20px;
+        width: 2px;
+        background-color: #B0BEC5;
+        margin: 0 auto;
+        position: relative;
+    }
+
+    .arrow-down::after {
+        content: '';
+        position: absolute;
+        bottom: -1px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 0;
+        height: 0;
+        border-left: 5px solid transparent;
+        border-right: 5px solid transparent;
+        border-top: 7px solid #B0BEC5;
+    }
+
+    /* For single child case */
+    .node-children.single-child {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
 </style>

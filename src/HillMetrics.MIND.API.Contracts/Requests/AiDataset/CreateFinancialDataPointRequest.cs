@@ -26,4 +26,11 @@ public class FinancialDataPointElementRequest
     public int? Position { get; set; }
     public int? FinancialDataPointId { get; set; }
     public MappingTypePrimitive MappingPrimitiveValue { get; set; } = MappingTypePrimitive.String;
+
+    [StringLength(100)]
+    public string ExternalName { get; set; } = string.Empty;
+
+    public string Commentary { get; set; } = string.Empty;
+
+    public FinancialTechnicalDataPoint? FinancialTechnicalDataPoint { get; set; }
 }

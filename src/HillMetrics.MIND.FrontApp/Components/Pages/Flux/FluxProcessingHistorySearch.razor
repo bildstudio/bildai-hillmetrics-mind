@@ -189,6 +189,9 @@
         searchRequest.ProcessingDateStart = processingDateStartSearchCriteria.IsSet() ? processingDateStartSearchCriteria : null;
         searchRequest.ProcessingDateEnd = processingDateEndSearchCriteria.IsSet() ? processingDateEndSearchCriteria : null;
 
+        searchRequest.Sorting.Field = "Id";
+        searchRequest.Sorting.Direction = Core.Search.SortDirection.Desc;
+
         // La pagination est configurée dans ServerReload
     }
 

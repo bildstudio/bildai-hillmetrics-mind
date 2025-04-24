@@ -13,6 +13,8 @@
 @using HillMetrics.Core.Common
 @using System.Text.Json
 @using HillMetrics.MIND.FrontApp.Components.Flux.Metadata
+@using HillMetrics.Core.Workflow
+@using HillMetrics.Core.Workflow.Models
 @inject IMindAPI MindApi
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
@@ -50,7 +52,7 @@
                             <MudIcon Icon="@Icons.Material.Filled.Download" Class="mr-2" /> Force Fetch
                         </MudButton>
                         <MudButton OnClick="@ForceProcess" Disabled="@(loading || flux.FluxState != FluxState.Active)">
-                            <MudIcon Icon="@Icons.Material.Filled.PlayArrow" Class="mr-2" /> Force Process
+                            <MudIcon Icon="@Icons.Material.Filled.PlayArrow" Class="mr-2" /> Force Process all fetching
                         </MudButton>
                         <MudButton OnClick="@ShowMetadataDialog">
                             <MudIcon Icon="@Icons.Material.Filled.Info" Class="mr-2" /> Metadata
@@ -423,6 +425,60 @@
                 </MudCard>
             </MudItem>
 
+            <!-- Financial Data Points -->
+            <MudItem xs="12">
+                <MudCard Elevation="3" Class="mb-4">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Financial Data Points</MudText>
+                        </CardHeaderContent>
+                        <CardHeaderActions>
+                            <MudTooltip Text="View full data points page">
+                                <MudIconButton Icon="@Icons.Material.Filled.OpenInNew" Color="Color.Primary"
+                                             OnClick="@(() => NavigationManager.NavigateTo($"/flux/financial-data-points?fluxId={FluxId}"))" />
+                            </MudTooltip>
+                        </CardHeaderActions>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        @if (flux?.FinancialDataPoints == null || !flux.FinancialDataPoints.Any())
+                        {
+                            <MudText>No financial data points found for this flux.</MudText>
+                        }
+                        else
+                        {
+                            <MudTable Items="@flux.FinancialDataPoints" Dense="true" Hover="true" Bordered="true" Striped="true">
+                                <HeaderContent>
+                                    <MudTh>ID</MudTh>
+                                    <MudTh>Data Point ID</MudTh>
+                                    <MudTh>Data Point Name</MudTh>
+                                    @* <MudTh>Approved</MudTh> *@
+                                    <MudTh>Provider</MudTh>
+                                    <MudTh>From</MudTh>
+                                    <MudTh>To</MudTh>
+                                    <MudTh>Mapping Metadata</MudTh>
+                                </HeaderContent>
+                                <RowTemplate>
+                                    <MudTd DataLabel="ID">@context.Id</MudTd>
+                                    <MudTd DataLabel="Data Point ID">@context.DataPoint?.Id</MudTd>
+                                    <MudTd DataLabel="Data Point Name">@context.DataPoint?.Name</MudTd>
+                                    @* <MudTd DataLabel="Approved">
+                                        <MudIcon Icon="@(context.FluxMapping.FileUpload.MappingStatus == Normalized.Domain.Contracts.AI.Dataset.MappingStatus.Approved ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Cancel)"
+                                                 Color="@(context.FluxMapping.FileUpload.MappingStatus == Normalized.Domain.Contracts.AI.Dataset.MappingStatus.Approved ? Color.Success : Color.Error)" />
+                                    </MudTd> *@
+                                    <MudTd DataLabel="Provider">@context.Provider</MudTd>
+                                    <MudTd DataLabel="From">@context.From.ToString("yyyy-MM-dd")</MudTd>
+                                    <MudTd DataLabel="To">@context.To?.ToString("yyyy-MM-dd")</MudTd>
+                                    <MudTd DataLabel="Mapping Metadata">
+                                        <MudIconButton Icon="@Icons.Material.Filled.OpenInNew" Color="Color.Primary"
+                                                       OnClick="@(() => NavigationManager.NavigateTo($"/file-data-mapping/file/{context.FluxMapping.FileUploadId}"))" />
+                                    </MudTd>
+                                </RowTemplate>
+                            </MudTable>
+                        }
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+
             <!-- Quick Links and History -->
             <MudItem xs="12">
                 <MudCard Elevation="3" Class="mb-4">
@@ -460,6 +516,12 @@
                                     <MudIcon Icon="@Icons.Material.Filled.DataUsage" Class="mr-2" /> Data Points
                                 </MudButton>
                             </MudItem>
+                            <MudItem xs="12" sm="6" md="3" Class="mt-4">
+                                <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true"
+                                         OnClick="@(() => NavigationManager.NavigateTo($"/flux/workflow-live/{FluxId}"))">
+                                    <MudIcon Icon="@Icons.Material.Filled.Timeline" Class="mr-2" /> Workflow Live
+                                </MudButton>
+                            </MudItem>
                         </MudGrid>
                     </MudCardContent>
                 </MudCard>
@@ -476,8 +538,11 @@
     private bool loading = true;
     private bool loadingFetchingHistory = false;
     private bool loadingProcessingHistory = false;
+    private bool loadingWorkflowsHistory = false;
     private TriggerPeriod fetchTriggerPeriod;
     private TriggerPeriod processTriggerPeriod;
+    private string _searchString = string.Empty;
+    private MudTable<FluxWorkflowDetailsDto> _workflowsTable;
 
     protected override async Task OnInitializedAsync()
     {
@@ -779,5 +844,34 @@
             return $"{(int)diff.TotalDays}d ago";
 
         return dateTime.ToString("MMM dd, HH:mm");
+    }
+
+    private Color GetWorkflowStageColor(string stage)
+    {
+        return stage switch
+        {
+            "Initializing" => Color.Primary,
+            "Processing" => Color.Info,
+            "Completed" => Color.Success,
+            "Failed" => Color.Error,
+            _ => Color.Default
+        };
+    }
+
+    private Color GetProgressColor(string stage, bool isCompleted, bool isSuccessful)
+    {
+        if (isCompleted)
+        {
+            return isSuccessful ? Color.Success : Color.Error;
+        }
+        else
+        {
+            return stage switch
+            {
+                "Initializing" => Color.Primary,
+                "Processing" => Color.Info,
+                _ => Color.Default
+            };
+        }
     }
 }

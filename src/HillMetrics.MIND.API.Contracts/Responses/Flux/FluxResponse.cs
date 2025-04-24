@@ -9,6 +9,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Text.Json.Serialization;
+using HillMetrics.Core.Workflow;
+using HillMetrics.MIND.API.Contracts.Responses.AiDataset;
+using HillMetrics.Normalized.Domain.Contracts.AI.Dataset;
 
 namespace HillMetrics.MIND.API.Contracts.Responses.Flux
 {
@@ -115,6 +118,7 @@ namespace HillMetrics.MIND.API.Contracts.Responses.Flux
         public DateTime From { get; set; }
         public DateTime? To { get; set; }
         public ActionProviding Provider { get; set; }
+        public FileDataMapping FluxMapping { get; set; }
     }
 
     public abstract class FluxMetadataDto
