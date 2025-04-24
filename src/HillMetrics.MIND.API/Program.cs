@@ -79,6 +79,7 @@ public partial class Program
             options.JsonSerializerOptions.Converters.Add(new JsonDateTimeUTCConverter());
             options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
             options.JsonSerializerOptions.Converters.Add(new FluxMetadataDtoJsonConverter());
+            options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
         });
 
         builder.Services.AddRouting(options =>

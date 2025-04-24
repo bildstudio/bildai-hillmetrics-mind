@@ -63,6 +63,6 @@ namespace HillMetrics.MIND.API.Contracts.Requests.Flux
         public SearchCriteria<int>? MappingsCount { get; set; }
 
         public Pagination Pagination { get; set; } = Pagination.Default;
-        public Sorting Sorting { get; set; } = new Sorting(nameof(Name), SortDirection.Ascending);
+        public Sorting Sorting { get; set; } = new Sorting(nameof(Name), SortDirection.Asc);
     }
 }

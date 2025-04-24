@@ -30,6 +30,6 @@ namespace HillMetrics.MIND.API.Contracts.Requests.Prices
         public SearchCriteria<DateTime> From { get; set; } = new();
         public SearchCriteria<DateTime> To { get; set; } = new();
         public Pagination Pagination { get; set; } = Pagination.Default;
-        public Sorting Sorting { get; set; } = new Sorting("Date", SortDirection.Ascending);
+        public Sorting Sorting { get; set; } = new Sorting("Date", SortDirection.Asc);
     }
 }

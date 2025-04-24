@@ -208,7 +208,7 @@
     private SearchPricesRequest searchRequest = new()
     {
         Pagination = Pagination.New(1, 100),
-        Sorting = new Sorting("Date", Core.Search.SortDirection.Descending)
+        Sorting = new Sorting("Date", Core.Search.SortDirection.Desc)
     };
 
     private async Task<TableData<SearchPricesResponse>> ServerReload(TableState state, CancellationToken token)
@@ -230,8 +230,8 @@
                 searchRequest.Sorting = new Sorting(
                     state.SortLabel,
                     state.SortDirection == MudBlazor.SortDirection.Descending
-                        ? Core.Search.SortDirection.Descending
-                        : Core.Search.SortDirection.Ascending
+                        ? Core.Search.SortDirection.Desc
+                        : Core.Search.SortDirection.Asc
                 );
             }
 
@@ -277,7 +277,7 @@
         searchRequest = new()
         {
             Pagination = Pagination.New(1, 100),
-            Sorting = new Sorting("Date", Core.Search.SortDirection.Descending)
+            Sorting = new Sorting("Date", Core.Search.SortDirection.Desc)
         };
 
         searchRequest.FinancialId = new SearchCriteria<int>();

@@ -15,6 +15,6 @@ namespace HillMetrics.MIND.API.Contracts.Requests.Source
         public SearchCriteria<int>? NbFluxAssociated { get; set; }
 
         public Pagination Pagination { get; set; } = Pagination.Default;
-        public Sorting Sorting { get; set; } = new Sorting(nameof(Name), SortDirection.Ascending);
+        public Sorting Sorting { get; set; } = new Sorting(nameof(Name), SortDirection.Asc);
     }
 }
