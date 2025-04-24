@@ -162,7 +162,7 @@ t
         try
         {
             searchRequest.Pagination = new Pagination(state.PageSize, state.Page + 1);
-            searchRequest.Sorting = new Sorting("Name", Core.Search.SortDirection.Ascending);
+            searchRequest.Sorting = new Sorting("Name", Core.Search.SortDirection.Asc);
 
             var response = await MindApi.SearchPropertyDataTypesAsync(searchRequest);
 

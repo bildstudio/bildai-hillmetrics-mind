@@ -24,5 +24,5 @@ public class SearchFinancialDataPointRequest
     /// <summary>
     /// Sorting information
     /// </summary>
-    public Sorting? Sorting { get; set; } = new Sorting("Name", SortDirection.Ascending);
+    public Sorting? Sorting { get; set; } = new Sorting("Name", SortDirection.Asc);
 }

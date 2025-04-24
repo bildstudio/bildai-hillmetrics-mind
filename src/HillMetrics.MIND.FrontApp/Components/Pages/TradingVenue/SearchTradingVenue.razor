@@ -226,8 +226,8 @@
                 searchRequest.Sorting = new Sorting(
                     state.SortLabel,
                     state.SortDirection == MudBlazor.SortDirection.Descending
-                        ? Core.Search.SortDirection.Descending
-                        : Core.Search.SortDirection.Ascending
+                        ? Core.Search.SortDirection.Desc
+                        : Core.Search.SortDirection.Asc
                 );
             }
 

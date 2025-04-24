@@ -56,6 +56,6 @@ namespace HillMetrics.MIND.API.Contracts.Requests.Flux
         public string? RawId { get; set; }
 
         public Pagination Pagination { get; set; } = Pagination.Default;
-        public Sorting Sorting { get; set; } = new Sorting(nameof(FluxId), Core.Search.SortDirection.Ascending);
+        public Sorting Sorting { get; set; } = new Sorting(nameof(FluxId), Core.Search.SortDirection.Asc);
     }
 }

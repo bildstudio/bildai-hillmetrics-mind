@@ -19,6 +19,6 @@ namespace HillMetrics.MIND.API.Contracts.Requests.AiDataset
         public int? FluxId { get; set; }
         public FileOriginType OriginType { get; set; } = FileOriginType.All;
         public Pagination Pagination { get; set; } = Pagination.Default;
-        public Sorting Sorting { get; set; } = new Sorting(nameof(FileName), SortDirection.Ascending);
+        public Sorting Sorting { get; set; } = new Sorting(nameof(FileName), SortDirection.Asc);
     }
 }
