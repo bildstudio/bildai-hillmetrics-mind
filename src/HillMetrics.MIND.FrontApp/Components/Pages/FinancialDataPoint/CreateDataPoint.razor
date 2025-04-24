@@ -82,7 +82,7 @@ else
             </ChildContent>
             <ItemRenderer>
                 <MudCard Elevation="0" Class="element-card">
-                    <MudCardHeader Class="py-1">
+                    <MudCardHeader Class="py-1 mud-drop-item-draghandle">
                         <CardHeaderAvatar>
                             <MudAvatar Color="Color.Primary" Size="Size.Small">@(context.Position)</MudAvatar>
                         </CardHeaderAvatar>
@@ -94,7 +94,7 @@ else
                         <CardHeaderActions>
                             <MudIconButton Icon="@Icons.Material.Filled.DragIndicator"
                             Size="Size.Small"
-                            Class="mud-drop-item-draghandle" />
+                            Class="drag-indicator" />
                         </CardHeaderActions>
                     </MudCardHeader>
                     <MudCardContent>
@@ -345,6 +345,10 @@ else
 
 <style>
     .mud-drop-item-draghandle {
+        cursor: move;
+    }
+    
+    .drag-indicator {
         cursor: move;
     }
     

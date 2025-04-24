@@ -425,6 +425,61 @@
                 </MudCard>
             </MudItem>
 
+            <!-- Financial Data Points -->
+            <MudItem xs="12">
+                <MudCard Elevation="3" Class="mb-4">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Financial Data Points</MudText>
+                        </CardHeaderContent>
+                        <CardHeaderActions>
+                            <MudTooltip Text="View full data points page">
+                                <MudIconButton Icon="@Icons.Material.Filled.OpenInNew" Color="Color.Primary"
+                                             OnClick="@(() => NavigationManager.NavigateTo($"/flux/financial-data-points?fluxId={FluxId}"))" />
+                            </MudTooltip>
+                        </CardHeaderActions>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        @if (flux?.FinancialDataPoints == null || !flux.FinancialDataPoints.Any())
+                        {
+                            <MudText>No financial data points found for this flux.</MudText>
+                        }
+                        else
+                        {
+                            <MudTable Items="@flux.FinancialDataPoints" Dense="true" Hover="true" Bordered="true" Striped="true">
+                                <HeaderContent>
+                                    <MudTh>ID</MudTh>
+                                    <MudTh>Data Point ID</MudTh>
+                                    <MudTh>Data Point Name</MudTh>
+                                    <MudTh>Approved</MudTh>
+                                    <MudTh>Provider</MudTh>
+                                    <MudTh>From</MudTh>
+                                    <MudTh>To</MudTh>
+                                    <MudTh>Mapping Metadata</MudTh>
+                                </HeaderContent>
+                                <RowTemplate>
+                                    <MudTd DataLabel="ID">@context.Id</MudTd>
+                                    <MudTd DataLabel="Data Point ID">@context.DataPoint?.Id</MudTd>
+                                    <MudTd DataLabel="Data Point Name">@context.DataPoint?.Name</MudTd>
+                                    <MudTd DataLabel="Approved">
+                                        <MudIcon Icon="@(context.HasBeenApproved ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Cancel)"
+                                                 Color="@(context.HasBeenApproved ? Color.Success : Color.Error)" />
+                                    </MudTd>
+                                    <MudTd DataLabel="Provider">@context.Provider</MudTd>
+                                    <MudTd DataLabel="From">@context.From.ToString("yyyy-MM-dd")</MudTd>
+                                    <MudTd DataLabel="To">@context.To?.ToString("yyyy-MM-dd")</MudTd>
+                                    <MudTd DataLabel="Mapping Metadata">
+                                        <MudTooltip Text="@context.MappingMetadata">
+                                            <MudChip T="Color" Size="Size.Small" Color="Color.Primary">View</MudChip>
+                                        </MudTooltip>
+                                    </MudTd>
+                                </RowTemplate>
+                            </MudTable>
+                        }
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+
             <!-- Quick Links and History -->
             <MudItem xs="12">
                 <MudCard Elevation="3" Class="mb-4">
