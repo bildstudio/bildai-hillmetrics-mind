@@ -149,7 +149,7 @@
         {
             ApplySearchCriteria();
             searchRequest.Pagination = new Pagination(state.PageSize, state.Page + 1);
-            searchRequest.Sorting = new Sorting("Name", Core.Search.SortDirection.Descending);
+            searchRequest.Sorting = new Sorting("Name", Core.Search.SortDirection.Desc);
 
             var response = await MindApi.SearchFinancialDataPointsAsync(searchRequest);
 

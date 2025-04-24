@@ -32,5 +32,5 @@ public class SearchTradingVenueRequest
     /// <summary>
     /// Sorting options
     /// </summary>
-    public Sorting Sorting { get; set; } = new Sorting("Mic", SortDirection.Ascending);
+    public Sorting Sorting { get; set; } = new Sorting("Mic", SortDirection.Asc);
 }

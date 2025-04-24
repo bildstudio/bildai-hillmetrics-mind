@@ -35,6 +35,6 @@ namespace HillMetrics.MIND.API.Contracts.Requests.AiDataset
         /// <summary>
         /// Optional sorting parameters
         /// </summary>
-        public Sorting Sorting { get; set; } = new Sorting(nameof(Name), SortDirection.Ascending);
+        public Sorting Sorting { get; set; } = new Sorting(nameof(Name), SortDirection.Asc);
     }
 }

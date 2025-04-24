@@ -433,7 +433,7 @@
         {
             // Configure pagination
             searchRequest.Pagination = new Pagination(state.PageSize, state.Page + 1);
-            searchRequest.Sorting = new Sorting("FileName", Core.Search.SortDirection.Ascending);
+            searchRequest.Sorting = new Sorting("FileName", Core.Search.SortDirection.Asc);
 
             var response = await MindApi.SearchFileUploadsAsync(searchRequest, token);
             
