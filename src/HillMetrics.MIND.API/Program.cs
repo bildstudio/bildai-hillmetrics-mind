@@ -29,6 +29,7 @@ using HillMetrics.Core.Monitoring;
 using HillMetrics.MIND.API.Contracts.Converter;
 using HillMetrics.MIND.API.Consumers;
 using HillMetrics.Core.Messaging.Services;
+using HillMetrics.Core.Converters;
 
 
 namespace HillMetrics.MIND.API;
