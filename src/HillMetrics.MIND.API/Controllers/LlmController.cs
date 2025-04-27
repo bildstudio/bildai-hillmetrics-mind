@@ -2,6 +2,7 @@
 using FluentResults;
 using HillMetrics.Core.API.Responses;
 using HillMetrics.Core.Contracts;
+using HillMetrics.Core.Mediator;
 using HillMetrics.MIND.API.Contracts.Requests.Llm;
 using HillMetrics.MIND.API.Contracts.Responses.Common;
 using HillMetrics.MIND.API.Contracts.Responses.Llm;
@@ -21,7 +22,7 @@ namespace HillMetrics.MIND.API.Controllers
     public class LlmController : BaseHillMetricsController
     {
         private readonly IMapper _mapper;
-        public LlmController(IMediator mediator, IMapper mapper) : base(mediator)
+        public LlmController(IHMediator mediator, IMapper mapper) : base(mediator)
         {
             _mapper = mapper;
         }

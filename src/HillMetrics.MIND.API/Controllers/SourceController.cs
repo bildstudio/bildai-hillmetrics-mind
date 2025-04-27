@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using HillMetrics.Core.API.Extensions;
 using HillMetrics.Core.API.Responses;
+using HillMetrics.Core.Mediator;
 using HillMetrics.MIND.API.Contracts.Requests.Flux;
 using HillMetrics.MIND.API.Contracts.Requests.Source;
 using HillMetrics.MIND.API.Contracts.Responses.Flux;
@@ -15,7 +16,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace HillMetrics.MIND.API.Controllers;
 
-public class SourceController(IMediator mediator, IMapper mapper, ILogger<SourceController> logger) : BaseHillMetricsController(mediator)
+public class SourceController(IHMediator mediator, IMapper mapper, ILogger<SourceController> logger) : BaseHillMetricsController(mediator)
 {
     /// <summary>
     /// Search for sources following the given criteria

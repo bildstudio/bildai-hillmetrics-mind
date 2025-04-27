@@ -51,22 +51,13 @@ else
                             OnFileClear="ClearFile"
                             OnSave="HandleSave" />
 
-            @if (uploadedFile != null && IsSpreadsheetFile(uploadedFile.FileType))
+            @if (uploadedFile != null)
             {
-                <FilePreview IsLoadingPreview="isLoadingPreview"
-                             FilePreviewData="filePreviewData"
-                             FilePreviewHeaders="filePreviewHeaders"
+                <FilePreview File="uploadedFile"
                              IsSelectingField="isSelectingField"
                              SelectedFieldName="selectedFieldName"
-                             File="uploadedFile"
-                             Worksheets="worksheets"
-                             CurrentWorksheet="currentWorksheet"
                              OnCellSelected="OnCellClick"
-                             OnCancelFieldSelection="CancelFieldSelection"
-                             OnRefreshPreview="LoadFilePreview"
-                             OnShowSheetSelector="ShowSheetSelector"
-                             OnZoomIn="ZoomIn"
-                             OnZoomOut="ZoomOut" />
+                             OnCancelFieldSelection="CancelFieldSelection" />
             }
         </MudItem>
 
@@ -133,15 +124,6 @@ else
     public int? FluxFetchingHistoryContentId { get; set; }
 
     [Parameter]
-    public bool IsLoadingPreview { get; set; }
-
-    [Parameter]
-    public List<List<string>> FilePreviewData { get; set; } = new();
-
-    [Parameter]
-    public List<string> FilePreviewHeaders { get; set; } = new();
-
-    [Parameter]
     public bool IsSelectingField { get; set; }
 
     [Parameter]
@@ -167,24 +149,13 @@ else
     private string editedFileName = string.Empty;
 
     private List<HillMetrics.Core.Financial.FinancialDataPoint> availableDataPoints = new();
-    // private List<DataMappingViewModel> dataMappings = new();
     private List<FileDataMapping> dataMappings = new();
     private int nextMappingId = 1;
-
-    // New properties for file preview
-    private bool isLoadingPreview = false;
-    private List<List<string>> filePreviewData = new();
-    private List<string> filePreviewHeaders = new();
 
     // Properties for field selection
     private bool isSelectingField = false;
     private string selectedFieldName = string.Empty;
     private Action<string>? selectedFieldCallback;
-
-    // Propriétés pour la visualisation Excel
-    private List<string> worksheets = new();
-    private string currentWorksheet = "Sheet1";
-    private double zoomLevel = 1.0;
 
     private FileDifficulty fileDifficulty = FileDifficulty.Medium;
 
@@ -267,11 +238,6 @@ else
             if (isEditMode)
             {
                 await LoadExistingFile();
-            }
-
-            if (uploadedFile != null && IsSpreadsheetFile(uploadedFile.FileType))
-            {
-                await LoadFilePreview();
             }
         }
         catch (Exception ex)
@@ -643,210 +609,6 @@ else
         return response.Data;
     }
 
-    // Method to check if file is a spreadsheet
-    private bool IsSpreadsheetFile(string? fileType)
-    {
-        if (string.IsNullOrEmpty(fileType))
-            return false;
-
-        fileType = fileType.ToLowerInvariant();
-        return (fileType == "csv" || fileType == ".csv") || (fileType == "xlsx" || fileType == ".xlsx") || (fileType == "xls" || fileType == ".xls");
-    }
-
-    // Method to load file preview
-    private async Task LoadFilePreview()
-    {
-        if (uploadedFile == null || !IsSpreadsheetFile(uploadedFile.FileType))
-            return;
-
-        try
-        {
-            isLoadingPreview = true;
-
-            Stream? fileStream = await FileUploadService.GetFileStreamAsync(uploadedFile.Id);
-            if (fileStream == null)
-            {
-                Snackbar.Add("File not found", Severity.Error);
-                return;
-            }
-
-            // Parse file based on type
-            if (uploadedFile.FileType.ToLowerInvariant() == "csv")
-            {
-                await ParseCsvFile(fileStream);
-            }
-            else
-            {
-                await ParseExcelFile(fileStream);
-            }
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Error loading file preview: {ex.Message}", Severity.Error);
-        }
-        finally
-        {
-            isLoadingPreview = false;
-        }
-    }
-
-    // Method to parse CSV file
-    private async Task ParseCsvFile(Stream fileStream)
-    {
-        using var reader = new StreamReader(fileStream);
-
-        // Read header
-        var headerLine = await reader.ReadLineAsync();
-        if (headerLine != null)
-        {
-            filePreviewHeaders = headerLine.Split(',').Select(h => h.Trim('"')).ToList();
-        }
-
-        // Read data (limit to 100 rows for performance)
-        filePreviewData.Clear();
-        int rowCount = 0;
-        while (!reader.EndOfStream && rowCount < 100)
-        {
-            var line = await reader.ReadLineAsync();
-            if (line != null)
-            {
-                filePreviewData.Add(line.Split(',').Select(c => c.Trim('"')).ToList());
-                rowCount++;
-            }
-        }
-    }
-
-    // Method to parse Excel file using ExcelDataReader
-    private async Task ParseExcelFile(Stream fileStream)
-    {
-        try
-        {
-            // Assurez-vous d'avoir installé les packages NuGet suivants:
-            // dotnet add package ExcelDataReader
-            // dotnet add package ExcelDataReader.DataSet
-            // dotnet add package System.Text.Encoding.CodePages
-
-            // Enregistrer les encodages (nécessaire pour ExcelDataReader)
-            System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
-
-            // Créer un reader pour le fichier Excel
-            using var reader = ExcelDataReader.ExcelReaderFactory.CreateReader(fileStream);
-
-            // Récupérer toutes les feuilles de calcul
-            var result = reader.AsDataSet(new ExcelDataReader.ExcelDataSetConfiguration()
-                {
-                    ConfigureDataTable = (_) => new ExcelDataReader.ExcelDataTableConfiguration()
-                    {
-                        UseHeaderRow = true
-                    }
-                });
-
-            // Récupérer la liste des noms de feuilles
-            worksheets.Clear();
-            for (int i = 0; i < result.Tables.Count; i++)
-            {
-                worksheets.Add(result.Tables[i].TableName);
-            }
-
-            // Utiliser la première feuille par défaut
-            var dataTable = result.Tables[0];
-            currentWorksheet = dataTable.TableName;
-
-            if (dataTable.Rows.Count == 0)
-            {
-                Snackbar.Add("Excel file is empty or has no data", Severity.Warning);
-                return;
-            }
-
-            filePreviewHeaders.Clear();
-            filePreviewData.Clear();
-
-            // Récupérer les en-têtes (noms de colonnes)
-            foreach (System.Data.DataColumn column in dataTable.Columns)
-            {
-                filePreviewHeaders.Add(string.IsNullOrWhiteSpace(column.ColumnName)
-                ? $"Column {column.Ordinal + 1}"
-                : column.ColumnName);
-            }
-
-            // Récupérer les données (limiter à 100 lignes)
-            int maxRows = Math.Min(dataTable.Rows.Count, 100);
-            for (int i = 0; i < maxRows; i++)
-            {
-                var rowData = new List<string>
-                    ();
-                for (int j = 0; j < dataTable.Columns.Count; j++)
-                {
-                    var value = dataTable.Rows[i][j];
-                    string cellValue;
-
-                    if (value == null || value == DBNull.Value)
-                    {
-                        cellValue = string.Empty;
-                    }
-                    else if (value is DateTime dateTime)
-                    {
-                        cellValue = dateTime.ToString("yyyy-MM-dd");
-                    }
-                    else if (value is double number && number >= 0 && number <= 1)
-                    {
-                        cellValue = (number * 100).ToString("0.##") + "%";
-                    }
-                    else
-                    {
-                        cellValue = value.ToString();
-                    }
-
-                    rowData.Add(cellValue);
-                }
-                filePreviewData.Add(rowData);
-            }
-
-            // Si aucune donnée n'a été trouvée
-            if (filePreviewData.Count == 0)
-            {
-                Snackbar.Add("No data found in the Excel file", Severity.Warning);
-            }
-
-            // Initialiser le zoom
-            await JSRuntime.InvokeVoidAsync("eval", @"
-            window.applyExcelZoom = function(zoomLevel) {
-            const container = document.querySelector('.excel-container');
-            if (container) {
-            container.style.fontSize = (14 * zoomLevel) + 'px';
-
-            const cells = document.querySelectorAll('.excel-cell, .excel-header-cell');
-            cells.forEach(cell => {
-            cell.style.minWidth = (120 * zoomLevel) + 'px';
-            cell.style.padding = (8 * zoomLevel) + 'px';
-            });
-
-            const rowHeaders = document.querySelectorAll('.excel-row-header, .excel-corner-cell');
-            rowHeaders.forEach(header => {
-            header.style.minWidth = (40 * zoomLevel) + 'px';
-            });
-            }
-            }
-            ");
-        }
-        catch (Exception ex)
-        {
-            // Gérer les erreurs
-            Snackbar.Add($"Error parsing Excel file: {ex.Message}", Severity.Error);
-
-            // Ajouter des données factices en cas d'erreur pour que l'interface reste fonctionnelle
-            filePreviewHeaders = new List<string>
-                { "Column A", "Column B", "Column C" };
-            filePreviewData = new List<List<string>>
-            {
-                new List<string> { "Error", "Parsing", "File" },
-                new List<string> { "Please", "Check", "Format" }
-            };
-        }
-
-        await Task.CompletedTask;
-    }
-
     // Method to handle cell click in the preview
     private void OnCellClick(string cellValue)
     {
@@ -871,158 +633,5 @@ else
         isSelectingField = false;
         selectedFieldName = string.Empty;
         selectedFieldCallback = null;
-    }
-
-    // Méthode pour obtenir le nom de colonne Excel (A, B, C, ..., AA, AB, etc.)
-    private string GetExcelColumnName(int columnIndex)
-    {
-        string columnName = "";
-        int dividend = columnIndex + 1;
-        int modulo;
-
-        while (dividend > 0)
-        {
-            modulo = (dividend - 1) % 26;
-            columnName = Convert.ToChar(65 + modulo) + columnName;
-            dividend = (dividend - modulo) / 26;
-        }
-
-        return columnName;
-    }
-
-    // Méthode pour afficher le sélecteur de feuilles
-    private async Task ShowSheetSelector()
-    {
-        if (worksheets.Count <= 1) return;
-
-        var parameters = new DialogParameters
-            {
-                ["Worksheets"] = worksheets,
-                ["CurrentWorksheet"] = currentWorksheet
-            };
-
-        var dialog = await dialogService.ShowAsync<WorksheetSelectorDialog>("Select Worksheet", parameters);
-        var result = await dialog.Result;
-
-        if (!result.Canceled && result.Data is string selectedSheet)
-        {
-            currentWorksheet = (string)result.Data;
-            await LoadWorksheet((string)result.Data);
-        }
-    }
-
-    // Méthode pour charger une feuille spécifique
-    private async Task LoadWorksheet(string sheetName)
-    {
-        if (uploadedFile == null) return;
-
-        try
-        {
-            isLoadingPreview = true;
-
-            // Récupérer le fichier
-            var fileStream = await FileUploadService.GetFileStreamAsync(uploadedFile.Id);
-            if (fileStream == null)
-            {
-                Snackbar.Add("File not found", Severity.Error);
-                return;
-            }
-
-            // Enregistrer les encodages
-            System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
-
-            // Créer un reader pour le fichier Excel
-            using var reader = ExcelDataReader.ExcelReaderFactory.CreateReader(fileStream);
-
-            // Récupérer toutes les feuilles
-            var result = reader.AsDataSet(new ExcelDataReader.ExcelDataSetConfiguration()
-                {
-                    ConfigureDataTable = (_) => new ExcelDataReader.ExcelDataTableConfiguration()
-                    {
-                        UseHeaderRow = true
-                    }
-                });
-
-            // Trouver la feuille demandée
-            var dataTable = result.Tables[sheetName];
-            if (dataTable == null)
-            {
-                Snackbar.Add($"Worksheet '{sheetName}' not found", Severity.Error);
-                return;
-            }
-
-            currentWorksheet = sheetName;
-
-            filePreviewHeaders.Clear();
-            filePreviewData.Clear();
-
-            // Récupérer les en-têtes
-            foreach (System.Data.DataColumn column in dataTable.Columns)
-            {
-                filePreviewHeaders.Add(string.IsNullOrWhiteSpace(column.ColumnName)
-                    ? $"Column {column.Ordinal + 1}"
-                    : column.ColumnName);
-            }
-
-            // Récupérer les données (limiter à 100 lignes)
-            int maxRows = Math.Min(dataTable.Rows.Count, 100);
-            for (int i = 0; i < maxRows; i++)
-            {
-                var rowData = new List<string>();
-                for (int j = 0; j < dataTable.Columns.Count; j++)
-                {
-                    var value = dataTable.Rows[i][j];
-                    string cellValue;
-
-                    if (value == null || value == DBNull.Value)
-                    {
-                        cellValue = string.Empty;
-                    }
-                    else if (value is DateTime dateTime)
-                    {
-                        cellValue = dateTime.ToString("yyyy-MM-dd");
-                    }
-                    else if (value is double number && number >= 0 && number <= 1)
-                    {
-                        cellValue = (number * 100).ToString("0.##") + "%";
-                    }
-                    else
-                    {
-                        cellValue = value.ToString();
-                    }
-
-                    rowData.Add(cellValue);
-                }
-                filePreviewData.Add(rowData);
-            }
-
-            Snackbar.Add($"Loaded worksheet: {sheetName}", Severity.Success);
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Error loading worksheet: {ex.Message}", Severity.Error);
-        }
-        finally
-        {
-            isLoadingPreview = false;
-        }
-    }
-
-    // Méthodes pour le zoom
-    private void ZoomIn()
-    {
-        zoomLevel = Math.Min(zoomLevel + 0.1, 2.0);
-        ApplyZoom();
-    }
-
-    private void ZoomOut()
-    {
-        zoomLevel = Math.Max(zoomLevel - 0.1, 0.5);
-        ApplyZoom();
-    }
-
-    private async Task ApplyZoom()
-    {
-        await JSRuntime.InvokeVoidAsync("applyExcelZoom", zoomLevel);
     }
 }

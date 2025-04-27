@@ -13,11 +13,12 @@ using HillMetrics.Core.Financial;
 using Microsoft.AspNetCore.Authorization;
 using HillMetrics.MIND.API.Contracts.Responses.AiDataset;
 using HillMetrics.Normalized.Domain.Contracts.AI.Dataset.Cqrs.PropertyDataType;
+using HillMetrics.Core.Mediator;
 
 namespace HillMetrics.MIND.API.Controllers;
 
 [Route("api/v{v:apiVersion}/[controller]")]
-public class FluxCaracController(IMediator mediator, IMapper mapper, ILogger<FluxCaracController> logger) : BaseHillMetricsController(mediator)
+public class FluxCaracController(IHMediator mediator, IMapper mapper, ILogger<FluxCaracController> logger) : BaseHillMetricsController(mediator)
 {
     #region FileUpload
     [HttpGet("file-uploads/search")]

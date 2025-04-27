@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using HillMetrics.Core.Common;
+using HillMetrics.Core.Mediator;
 using HillMetrics.Normalized.Domain.Contracts.Repository;
 using HillMetrics.Raw.Infrastructure.Contracts.Repository;
 using HillMetrics.Raw.Infrastructure.Database.Repository;
@@ -10,7 +11,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace HillMetrics.MIND.API.Controllers
 {
     [Route("api/v{v:apiVersion}/[controller]")]
-    public class RawController(IMediator mediator, IMapper mapper, IRawFluxDataRepository rawFluxDataRepository, IFileMetadataRepository fileMetadataRepository) : BaseHillMetricsController(mediator)
+    public class RawController(IHMediator mediator, IMapper mapper, IRawFluxDataRepository rawFluxDataRepository, IFileMetadataRepository fileMetadataRepository) : BaseHillMetricsController(mediator)
     {
         [HttpGet("{id}")]
         public async Task<IActionResult> GetFile(string id)

@@ -23,13 +23,14 @@ using System.Text.Json;
 using HillMetrics.Normalized.Domain.Contracts.Providing.Flux.Cqrs;
 using HillMetrics.Core.Workflow.Models;
 using HillMetrics.Core.Contracts;
+using HillMetrics.Core.Mediator;
 
 namespace HillMetrics.MIND.API.Controllers
 {
     [Route("api/v{v:apiVersion}/[controller]")]
     //[EnableRateLimiting("allow5000requestsPerSecond_fixed")]
     public class FluxController(
-        IMediator mediator, 
+        IHMediator mediator, 
         IMapper mapper, 
         IWorkflowService workflowService, 
         ILogger<FluxController> logger, 
