@@ -12,6 +12,7 @@ using HillMetrics.Orchestrator.ServicesNames;
 using HillMetrics.Normalized.Infrastructure.Database.Repository;
 using HillMetrics.Core.Blazor.AuthModule.AuthHandler;
 using HillMetrics.Core.Blazor.AuthModule;
+using HillMetrics.MIND.FrontApp.Configs;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -25,12 +26,25 @@ builder.AddHillMetricsServiceDefaults();
 builder.Services.ConfigureHillMetricsDefaultHttpClient();
 
 var mindApi = builder.Configuration.GetValue<string>("Services:MindApi", $"https+http://{HillMetrics.Orchestrator.ServicesNames.Services.MindAPI}");
+//var signalRApi = builder.Configuration.GetValue<string>("Services:SignalRApi", $"https+http://{HillMetrics.Orchestrator.ServicesNames.Services.SignalRService}");
 //mindApi = "https://mindapi.hillm.bildhosting.me";
 
 builder.Services.AddHillMetricsHttpClient("MindAPI", client =>
 {
     client.BaseAddress = new Uri(mindApi);
     client.Timeout = TimeSpan.FromMinutes(5);
+});
+//ServicesSettings settings = new ServicesSettings();
+//builder.Services.Configure<ServicesSettings>(builder.Configuration.GetSection("Services"));
+
+//builder.Configuration.GetSection("Services").Bind(settings);
+
+
+builder.Services.Configure<ServicesSettings>(options => 
+{
+    builder.Configuration.GetSection("Services").Bind(options);
+    if (string.IsNullOrEmpty(options.SignalRApi))
+        options.SignalRApi = "https://localhost:7228";
 });
 
 builder.Services.AddTransient<FileUploadService>();

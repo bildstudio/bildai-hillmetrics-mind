@@ -61,6 +61,8 @@ spec:
   - data:
     - key: Services__MindApi
       objectName: services-mindapi
+    - key: Services__SignalRApi
+      objectName: services-signalrapi
     - key: ASPNETCORE_ENVIRONMENT
       objectName: aspnetcore-environment
     - key: OTEL_EXPORTER_OTLP_ENDPOINT
@@ -77,6 +79,9 @@ spec:
       array:
         - |
           objectName: services-mindapi
+          objectType: secret
+        - |
+          objectName: services-signalrapi
           objectType: secret
         - |
           objectName: aspnetcore-environment
