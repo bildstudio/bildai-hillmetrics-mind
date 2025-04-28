@@ -528,7 +528,7 @@
             if (result?.Data != null)
             {
                 // Rediriger vers la page du workflow avec l'ID du workflow
-                NavigationManager.NavigateTo($"/flux/workflow-live/{id}/{result.Data.WorkflowId}/false");
+                NavigationManager.NavigateTo($"/flux/workflow-live/{id}/{result.Data.WorkflowId}/true");
                 Snackbar.Add($"Suivi du traitement en cours. WorkflowId: {result.Data.WorkflowId}", Severity.Info);
             }
             else
