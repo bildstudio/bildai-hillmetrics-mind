@@ -1,7 +1,10 @@
 @using HillMetrics.Core.Workflow
 @using HillMetrics.Core.Workflow.Models
+@using HillMetrics.MIND.FrontApp.Configs
 @using Microsoft.AspNetCore.SignalR.Client
+@using Microsoft.Extensions.Options
 @inject NavigationManager NavigationManager
+@inject IOptions<ServicesSettings> ServiceOptions
 @implements IAsyncDisposable
 
 <MudCard Class="mt-4">
@@ -38,7 +41,7 @@
                         <MudTd DataLabel="Duration">@Math.Round(context.Duration.TotalMinutes, 1) min</MudTd>
                         <MudTd>
                             <MudIconButton Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" 
-                                           OnClick="@(() => NavigateToWorkflow(context.FluxId, context.WorkflowId))" />
+                            OnClick="@(() => NavigateToWorkflow(context.FluxId, context.WorkflowId))" />
                         </MudTd>
                     </RowTemplate>
                 </MudTable>
@@ -60,7 +63,7 @@
                         <MudTd DataLabel="Duration">@Math.Round(context.Duration.TotalMinutes, 1) min</MudTd>
                         <MudTd>
                             <MudIconButton Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" 
-                                           OnClick="@(() => NavigateToWorkflow(context.FluxId, context.WorkflowId))" />
+                            OnClick="@(() => NavigateToWorkflow(context.FluxId, context.WorkflowId))" />
                         </MudTd>
                     </RowTemplate>
                 </MudTable>
@@ -85,6 +88,8 @@
 
     private async Task SetupSignalRConnection()
     {
+        string signalREndpoint = ServiceOptions.Value.SignalRApi;
+
         hubConnection = new HubConnectionBuilder()
             .WithUrl(NavigationManager.ToAbsoluteUri("/workflow-hub"))
             .WithAutomaticReconnect()

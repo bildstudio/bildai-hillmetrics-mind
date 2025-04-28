@@ -7,11 +7,13 @@
 @using HillMetrics.Core.Workflow.Models
 @using HillMetrics.MIND.API.Contracts.Responses.Flux
 @using HillMetrics.MIND.API.SDK.V1
+@using HillMetrics.MIND.FrontApp.Configs
 @using Microsoft.AspNetCore.Components.Rendering
 @using Microsoft.AspNetCore.SignalR.Client
 @using Microsoft.Extensions.Options
 @using HillMetrics.Core.Authentication.Contracts
 @using System.Text.Json
+@inject IOptions<ServicesSettings> ServiceOptions
 @inject IMindAPI MindApi
 @inject IJSRuntime JSRuntime
 @inject NavigationManager NavigationManager
@@ -48,8 +50,8 @@
 
         <div>
             <MudSwitch @bind-Checked="@UseSignalR" Color="Color.Primary" Label="Use SignalR"
-            Class="mr-2" T="bool" Style="display: inline-flex"
-            ThumbIcon="@(UseSignalR==true ? Icons.Material.Filled.Done : Icons.Material.Filled.Close)"
+            Class="mr-2" T="bool" Style="display: inline-flex" 
+            ThumbIcon="@(UseSignalR==true ? Icons.Material.Filled.Done : Icons.Material.Filled.Close)" 
             ThumbIconColor="@(UseSignalR==true ? Color.Success : Color.Error)" />
             <MudButton Variant="Variant.Text"
             Color="Color.Secondary"
@@ -80,8 +82,8 @@
             <MudItem xs="12" md="6">
                 <MudText Typo="Typo.body2" Align="Align.Center">
                     @(WorkflowDetails?.IsCompleted == true
-                        ? "Completed"
-                        : "In progress...")
+                                ? "Completed"
+                                : "In progress...")
                 </MudText>
             </MudItem>
         </MudGrid>
@@ -150,8 +152,8 @@
                     <MudText Typo="Typo.subtitle2" Class="mt-3">Duration</MudText>
                     <MudText Typo="Typo.body2">
                         @(SelectedStep.DurationSeconds.HasValue
-                          ? FormatDuration(SelectedStep.DurationSeconds.Value)
-                          : "Calculating...")
+                                  ? FormatDuration(SelectedStep.DurationSeconds.Value)
+                                  : "Calculating...")
                     </MudText>
 
                     @if (GetParentStep(SelectedStep) != null)
@@ -221,12 +223,12 @@
     private ElementReference canvasRef;
     private FluxWorkflowDetailsDto? WorkflowDetails { get; set; }
     private HistoryEntryDto? SelectedStep { get; set; }
-    private HubConnection? hubConnection;
+    private HubConnection? notificationHub;
+    private HubConnection? workflowHub;
     private List<FluxWorkflowDetailsDto> availableWorkflows = new();
     private Guid? selectedWorkflowId;
     private List<PositionedHistoryEntry> positionedSteps = new();
     private List<HistoryEntryDto> rootSteps = new();
-    private string? signalRServiceUrl;
     private bool isSignalRConnected = false;
     private bool isStepDetailOpen = false;
 
@@ -263,84 +265,94 @@
     {
         selectedWorkflowId = WorkflowId;
 
-        if (UseSignalR)
-        {
-            await GetSignalRServiceUrl();
-            await SetupSignalRConnection();
-        }
+
+        await SetupSignalRConnection();
+        // if (UseSignalR)
+        // {
+        //     //await GetSignalRServiceUrl();
+
+        // }
 
         await RefreshData();
     }
 
-    private async Task GetSignalRServiceUrl()
-    {
-        try
-        {
-            // Tenter de récupérer l'URL du service SignalR depuis la configuration
-            signalRServiceUrl = Configuration["Services:SignalR:BaseUrl"];
+    // private async Task GetSignalRServiceUrl()
+    // {
+    //     try
+    //     {
+    //         // Tenter de récupérer l'URL du service SignalR depuis la configuration
+    //         signalRServiceUrl = Configuration["Services:SignalR:BaseUrl"];
 
-            if (string.IsNullOrEmpty(signalRServiceUrl))
-            {
-                // Utiliser une URL par défaut si non trouvée dans la configuration
-                signalRServiceUrl = "https://localhost:7228";
-                Logger.LogInformation($"Using default SignalR service URL: {signalRServiceUrl}");
-            }
-            else
-            {
-                Logger.LogInformation($"Found SignalR service URL in configuration: {signalRServiceUrl}");
-            }
+    //         if (string.IsNullOrEmpty(signalRServiceUrl))
+    //         {
+    //             // Utiliser une URL par défaut si non trouvée dans la configuration
+    //             signalRServiceUrl = "https://localhost:7228";
+    //             Logger.LogInformation($"Using default SignalR service URL: {signalRServiceUrl}");
+    //         }
+    //         else
+    //         {
+    //             Logger.LogInformation($"Found SignalR service URL in configuration: {signalRServiceUrl}");
+    //         }
 
-            // Vérifier si l'URL se termine par un slash
-            if (!signalRServiceUrl.EndsWith("/"))
-            {
-                signalRServiceUrl += "/";
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError($"Error getting SignalR service URL: {ex.Message}");
-            // Fallback sur une URL par défaut en cas d'erreur
-            signalRServiceUrl = "https://localhost:8080/";
-        }
-    }
+    //         // Vérifier si l'URL se termine par un slash
+    //         if (!signalRServiceUrl.EndsWith("/"))
+    //         {
+    //             signalRServiceUrl += "/";
+    //         }
+    //     }
+    //     catch (Exception ex)
+    //     {
+    //         Logger.LogError($"Error getting SignalR service URL: {ex.Message}");
+    //         // Fallback sur une URL par défaut en cas d'erreur
+    //         signalRServiceUrl = "https://localhost:8080/";
+    //     }
+    // }
 
     private async Task SetupSignalRConnection()
     {
         try
         {
-            if (!UseSignalR)
-            {
-                isSignalRConnected = false;
-                return;
-            }
 
-            Logger.LogInformation($"Connecting to SignalR hub at: {signalRServiceUrl}notification-hub");
+            Logger.LogInformation($"Connecting to SignalR hub at: {ServiceOptions.Value.SignalRApi}notification-hub");
 
             // Récupérer un jeton d'accès pour l'authentification
             var accessToken = await GetAccessTokenAsync();
 
-            hubConnection = new HubConnectionBuilder()
-                .WithUrl($"{signalRServiceUrl}notification-hub", options =>
+            notificationHub = new HubConnectionBuilder()
+                .WithUrl($"{ServiceOptions.Value.SignalRApi}/notification-hub", options =>
                 {
-                    // Ajouter le jeton d'accès comme en-tête d'autorisation
                     options.AccessTokenProvider = () => Task.FromResult(accessToken);
-
-                    // Configurer d'autres options si nécessaire
-                    options.SkipNegotiation = false;
-                    options.Transports = Microsoft.AspNetCore.Http.Connections.HttpTransportType.WebSockets;
                 })
                 .WithAutomaticReconnect(new[] { TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10) })
                 .Build();
 
+            // workflowHub = new HubConnectionBuilder()
+            //     .WithUrl($"{ServiceOptions.Value.SignalRApi}/workflow-hub", options =>
+            //     {
+            //         options.AccessTokenProvider = () => Task.FromResult(accessToken);
+            //     })
+            //     .WithAutomaticReconnect(new[] { TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10) })
+            //     .Build();
+
             // S'abonner aux messages de notification
-            hubConnection.On<object>("onTopicNotification", (message) =>
+            notificationHub.On<string,object>("onTopicNotification", (topic, message) =>
             {
                 // Cette méthode est appelée lorsqu'un message est reçu sur un topic
                 ProcessWorkflowMessage(message);
             });
 
+            // Démarrer la connexion
+            await notificationHub.StartAsync();
+            //await workflowHub.StartAsync();
+            isSignalRConnected = true;
+            Logger.LogInformation("SignalR connection started successfully");
+
+            // S'abonner au topic "workflow" pour recevoir les mises à jour de workflow
+            await notificationHub.InvokeAsync("Subscribe", "workflow");
+            Logger.LogInformation("Subscribed to 'workflow' topic");
+
             // S'abonner à l'événement de reconnexion
-            hubConnection.Reconnected += (connectionId) =>
+            notificationHub.Reconnected += (connectionId) =>
             {
                 isSignalRConnected = true;
                 InvokeAsync(StateHasChanged);
@@ -348,21 +360,14 @@
             };
 
             // S'abonner à l'événement de déconnexion
-            hubConnection.Closed += (error) =>
+            notificationHub.Closed += (error) =>
             {
                 isSignalRConnected = false;
                 InvokeAsync(StateHasChanged);
                 return Task.CompletedTask;
             };
 
-            // Démarrer la connexion
-            await hubConnection.StartAsync();
-            isSignalRConnected = true;
-            Logger.LogInformation("SignalR connection started successfully");
-
-            // S'abonner au topic "workflow" pour recevoir les mises à jour de workflow
-            await hubConnection.InvokeAsync("Subscribe", "workflow");
-            Logger.LogInformation("Subscribed to 'workflow' topic");
+            
         }
         catch (Exception ex)
         {
@@ -417,6 +422,7 @@
             {
                 await RefreshDataFromApi();
                 // StateHasChanged() is called within RefreshDataFromApi's finally block
+                await InvokeAsync(StateHasChanged); // trigger UI update
             });
         }
         catch (Exception ex)
@@ -430,23 +436,23 @@
     {
         try
         {
-            if (UseSignalR && hubConnection != null && hubConnection.State == HubConnectionState.Connected)
-            {
-                Logger.LogInformation("Refreshing data via SignalR connection");
+            // if (workflowHub != null && workflowHub.State == HubConnectionState.Connected)
+            // {
+            //     Logger.LogInformation("Refreshing data via SignalR connection");
 
-                // Demander les données via SignalR
-                await hubConnection.InvokeAsync("getWorkflowsForFlux", FluxId);
+            //     // Demander les données via SignalR
+            //     await workflowHub.InvokeAsync("getWorkflowsForFlux", FluxId);
 
-                if (selectedWorkflowId.HasValue)
-                {
-                    await hubConnection.InvokeAsync("getWorkflowById", selectedWorkflowId.Value);
-                }
-                else
-                {
-                    await hubConnection.InvokeAsync("getFluxDetails", FluxId);
-                }
-                return;
-            }
+            //     if (selectedWorkflowId.HasValue)
+            //     {
+            //         await workflowHub.InvokeAsync("getWorkflowById", selectedWorkflowId.Value);
+            //     }
+            //     else
+            //     {
+            //         await workflowHub.InvokeAsync("getFluxDetails", FluxId);
+            //     }
+            //     return;
+            // }
 
             // Fallback API si SignalR n'est pas disponible ou n'est pas utilisé
             Logger.LogInformation($"Refreshing data via API ({(UseSignalR ? "SignalR not available" : "SignalR disabled")})");
@@ -660,14 +666,14 @@
 
     public async ValueTask DisposeAsync()
     {
-        if (hubConnection != null)
+        if (notificationHub != null)
         {
             // Se désabonner du topic avant de fermer la connexion
             try
             {
-                if (hubConnection.State == HubConnectionState.Connected)
+                if (notificationHub.State == HubConnectionState.Connected)
                 {
-                    await hubConnection.InvokeAsync("Unsubscribe", "workflow");
+                    await notificationHub.InvokeAsync("Unsubscribe", "workflow");
                     Logger.LogInformation("Unsubscribed from 'workflow' topic");
                 }
             }
@@ -676,7 +682,7 @@
                 Logger.LogError($"Error unsubscribing from topic: {ex.Message}");
             }
 
-            await hubConnection.DisposeAsync();
+            await notificationHub.DisposeAsync();
         }
     }
 
