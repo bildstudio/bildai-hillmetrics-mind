@@ -1,6 +1,5 @@
 @page "/flux/workflow-live/{FluxId:int}"
 @page "/flux/workflow-live/{FluxId:int}/{WorkflowId:guid}"
-@page "/flux/workflow-live/{FluxId:int}/{WorkflowId:guid}/{UseSignalR:bool}"
 @using HillMetrics.Core.Blazor.AuthModule.Services
 @using HillMetrics.Core.Monitoring.Workflow
 @using HillMetrics.Core.Workflow
@@ -13,6 +12,7 @@
 @using Microsoft.Extensions.Options
 @using HillMetrics.Core.Authentication.Contracts
 @using System.Text.Json
+@using HillMetrics.MIND.FrontApp.Services
 @inject IOptions<ServicesSettings> ServiceOptions
 @inject IMindAPI MindApi
 @inject IJSRuntime JSRuntime
@@ -21,8 +21,7 @@
 @inject IConfiguration Configuration
 @inject ILogger<FluxWorkflowLive> Logger
 @inject ISnackbar Snackbar
-@* @inject IAuthenticationService AuthService *@
-@inject IAuthService AuthService
+@inject ISignalRNotificationService SignalRService
 @implements IAsyncDisposable
 @attribute [Authorize]
 
@@ -49,14 +48,13 @@
         }
 
         <div>
-            <MudSwitch @bind-Checked="@UseSignalR" Color="Color.Primary" Label="Use SignalR"
-            Class="mr-2" T="bool" Style="display: inline-flex" 
-            ThumbIcon="@(UseSignalR==true ? Icons.Material.Filled.Done : Icons.Material.Filled.Close)" 
-            ThumbIconColor="@(UseSignalR==true ? Color.Success : Color.Error)" />
+            <MudChip T="Color" Size="Size.Small" Color="@(SignalRService.IsConnected ? Color.Success : Color.Error)">
+                @(SignalRService.IsConnected ? "Live Update Active" : "Live Update Inactive")
+            </MudChip>
             <MudButton Variant="Variant.Text"
             Color="Color.Secondary"
             StartIcon="@Icons.Material.Filled.Refresh"
-            OnClick="@RefreshData">
+            OnClick="@RefreshDataFromApi">
                 Refresh
             </MudButton>
         </div>
@@ -76,7 +74,7 @@
                     <MudText Typo="Typo.body2">Started: <strong>@WorkflowDetails.StartTime.ToLocalTime().ToString("g")</strong></MudText>
                     <MudText Typo="Typo.body2">Duration: <strong>@Math.Round(WorkflowDetails.DurationMinutes, 1) min</strong></MudText>
                     <MudText Typo="Typo.body2">WorkflowId: <strong>@WorkflowDetails.WorkflowId</strong></MudText>
-                    <MudText Typo="Typo.body2">Updated via: <strong>@(UseSignalR && isSignalRConnected ? "SignalR" : "API")</strong></MudText>
+                    <MudText Typo="Typo.body2">Updated via: <strong>@(SignalRService.IsConnected ? "SignalR" : "Manual Refresh")</strong></MudText>
                 }
             </MudItem>
             <MudItem xs="12" md="6">
@@ -218,18 +216,14 @@
 
     [Parameter] public int FluxId { get; set; }
     [Parameter] public Guid? WorkflowId { get; set; }
-    [Parameter] public bool UseSignalR { get; set; } = true;
 
     private ElementReference canvasRef;
     private FluxWorkflowDetailsDto? WorkflowDetails { get; set; }
     private HistoryEntryDto? SelectedStep { get; set; }
-    private HubConnection? notificationHub;
-    private HubConnection? workflowHub;
     private List<FluxWorkflowDetailsDto> availableWorkflows = new();
     private Guid? selectedWorkflowId;
     private List<PositionedHistoryEntry> positionedSteps = new();
     private List<HistoryEntryDto> rootSteps = new();
-    private bool isSignalRConnected = false;
     private bool isStepDetailOpen = false;
 
     private class PositionedHistoryEntry : HistoryEntryDto
@@ -265,203 +259,43 @@
     {
         selectedWorkflowId = WorkflowId;
 
+        // Subscribe to connection status changes to update UI
+        SignalRService.ConnectionStatusChanged += HandleConnectionStatusChanged;
 
-        await SetupSignalRConnection();
-        // if (UseSignalR)
-        // {
-        //     //await GetSignalRServiceUrl();
+        // Subscribe to the relevant topic
+        await SignalRService.SubscribeAsync("workflow", HandleWorkflowUpdate);
 
-        // }
-
-        await RefreshData();
+        // Initial data load always comes from API
+        await RefreshDataFromApi();
     }
 
-    // private async Task GetSignalRServiceUrl()
-    // {
-    //     try
-    //     {
-    //         // Tenter de récupérer l'URL du service SignalR depuis la configuration
-    //         signalRServiceUrl = Configuration["Services:SignalR:BaseUrl"];
-
-    //         if (string.IsNullOrEmpty(signalRServiceUrl))
-    //         {
-    //             // Utiliser une URL par défaut si non trouvée dans la configuration
-    //             signalRServiceUrl = "https://localhost:7228";
-    //             Logger.LogInformation($"Using default SignalR service URL: {signalRServiceUrl}");
-    //         }
-    //         else
-    //         {
-    //             Logger.LogInformation($"Found SignalR service URL in configuration: {signalRServiceUrl}");
-    //         }
-
-    //         // Vérifier si l'URL se termine par un slash
-    //         if (!signalRServiceUrl.EndsWith("/"))
-    //         {
-    //             signalRServiceUrl += "/";
-    //         }
-    //     }
-    //     catch (Exception ex)
-    //     {
-    //         Logger.LogError($"Error getting SignalR service URL: {ex.Message}");
-    //         // Fallback sur une URL par défaut en cas d'erreur
-    //         signalRServiceUrl = "https://localhost:8080/";
-    //     }
-    // }
-
-    private async Task SetupSignalRConnection()
+    private void HandleConnectionStatusChanged(bool isConnected)
     {
-        try
-        {
-
-            Logger.LogInformation($"Connecting to SignalR hub at: {ServiceOptions.Value.SignalRApi}notification-hub");
-
-            // Récupérer un jeton d'accès pour l'authentification
-            var accessToken = await GetAccessTokenAsync();
-
-            notificationHub = new HubConnectionBuilder()
-                .WithUrl($"{ServiceOptions.Value.SignalRApi}/notification-hub", options =>
-                {
-                    options.AccessTokenProvider = () => Task.FromResult(accessToken);
-                })
-                .WithAutomaticReconnect(new[] { TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10) })
-                .Build();
-
-            // workflowHub = new HubConnectionBuilder()
-            //     .WithUrl($"{ServiceOptions.Value.SignalRApi}/workflow-hub", options =>
-            //     {
-            //         options.AccessTokenProvider = () => Task.FromResult(accessToken);
-            //     })
-            //     .WithAutomaticReconnect(new[] { TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10) })
-            //     .Build();
-
-            // S'abonner aux messages de notification
-            notificationHub.On<string,object>("onTopicNotification", (topic, message) =>
-            {
-                // Cette méthode est appelée lorsqu'un message est reçu sur un topic
-                ProcessWorkflowMessage(message);
-            });
-
-            // Démarrer la connexion
-            await notificationHub.StartAsync();
-            //await workflowHub.StartAsync();
-            isSignalRConnected = true;
-            Logger.LogInformation("SignalR connection started successfully");
-
-            // S'abonner au topic "workflow" pour recevoir les mises à jour de workflow
-            await notificationHub.InvokeAsync("Subscribe", "workflow");
-            Logger.LogInformation("Subscribed to 'workflow' topic");
-
-            // S'abonner à l'événement de reconnexion
-            notificationHub.Reconnected += (connectionId) =>
-            {
-                isSignalRConnected = true;
-                InvokeAsync(StateHasChanged);
-                return Task.CompletedTask;
-            };
-
-            // S'abonner à l'événement de déconnexion
-            notificationHub.Closed += (error) =>
-            {
-                isSignalRConnected = false;
-                InvokeAsync(StateHasChanged);
-                return Task.CompletedTask;
-            };
-
-            
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError($"Error setting up SignalR connection: {ex.Message}");
-            isSignalRConnected = false;
-        }
+        // Trigger a UI update when connection status changes
+        InvokeAsync(StateHasChanged);
     }
 
-    private async Task<string> GetAccessTokenAsync()
+    // This is the handler passed to the SignalR service
+    private Task HandleWorkflowUpdate(object message)
     {
+        // Logic moved from ProcessWorkflowMessage
         try
         {
-            // Utiliser le service d'authentification injecté pour obtenir le jeton
-            var token = await AuthService.GetAccessTokenAsync();
+             // Simplification: Assume any message on the 'workflow' topic means potential changes
+             // relevant to the current view. Trigger a full refresh from the API.
+             Logger.LogInformation("Received workflow update notification via service. Refreshing data from API.");
 
-            if (!string.IsNullOrEmpty(token))
-            {
-                Logger.LogInformation("Retrieved token from AuthenticationService");
-                return token;
-            }
-
-            // Option de secours : Utiliser JSRuntime pour récupérer le jeton stocké côté client
-            token = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "auth_token");
-
-            if (!string.IsNullOrEmpty(token))
-            {
-                Logger.LogInformation("Retrieved token from localStorage");
-                return token;
-            }
-
-            // Si aucun jeton n'est trouvé, renvoyer null ou une chaîne vide
-            Logger.LogError("No access token found");
-            return string.Empty;
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError($"Error getting access token: {ex.Message}");
-            return string.Empty;
-        }
-    }
-
-    private void ProcessWorkflowMessage(object message)
-    {
-        try
-        {
-            // Simplification: Assume any message on the 'workflow' topic means potential changes
-            // relevant to the current view (either the selected workflow or the list of workflows).
-            // Just trigger a full refresh from the API.
-            Logger.LogInformation($"Received generic workflow update notification. Refreshing data from API.");
-
-            InvokeAsync(async () =>
+             // Use InvokeAsync to marshal back to the UI thread for UI updates and API calls
+            return InvokeAsync(async () =>
             {
                 await RefreshDataFromApi();
-                // StateHasChanged() is called within RefreshDataFromApi's finally block
-                await InvokeAsync(StateHasChanged); // trigger UI update
+                 // StateHasChanged() is called within RefreshDataFromApi's finally block
             });
         }
         catch (Exception ex)
         {
-            // Log any unexpected errors during the InvokeAsync process
-            Logger.LogError(ex, "Error invoking API refresh after SignalR notification");
-        }
-    }
-
-    private async Task RefreshData()
-    {
-        try
-        {
-            // if (workflowHub != null && workflowHub.State == HubConnectionState.Connected)
-            // {
-            //     Logger.LogInformation("Refreshing data via SignalR connection");
-
-            //     // Demander les données via SignalR
-            //     await workflowHub.InvokeAsync("getWorkflowsForFlux", FluxId);
-
-            //     if (selectedWorkflowId.HasValue)
-            //     {
-            //         await workflowHub.InvokeAsync("getWorkflowById", selectedWorkflowId.Value);
-            //     }
-            //     else
-            //     {
-            //         await workflowHub.InvokeAsync("getFluxDetails", FluxId);
-            //     }
-            //     return;
-            // }
-
-            // Fallback API si SignalR n'est pas disponible ou n'est pas utilisé
-            Logger.LogInformation($"Refreshing data via API ({(UseSignalR ? "SignalR not available" : "SignalR disabled")})");
-            await RefreshDataFromApi();
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError($"Error refreshing workflow data: {ex.Message}");
-            await RefreshDataFromApi();
+            Logger.LogError(ex, "Error processing workflow update from SignalR service");
+            return Task.CompletedTask; // Return completed task even on error
         }
     }
 
@@ -496,64 +330,6 @@
         {
             Logger.LogError($"Error refreshing data from API: {ex.Message}");
         }
-    }
-
-    private void MapWorkflowStateToDetails(WorkflowStateModel state)
-    {
-        WorkflowDetails = MapToFluxWorkflowDetailsDto(state);
-    }
-
-    private FluxWorkflowDetailsDto MapToFluxWorkflowDetailsDto(WorkflowStateModel state)
-    {
-        // Convertir les étapes du workflow
-        var historyEntries = MapHistoryEntries(state.Steps);
-
-        // Convertir WorkflowStateModel en FluxWorkflowDetailsDto
-        return new FluxWorkflowDetailsDto
-            {
-                WorkflowId = state.WorkflowId,
-                FluxId = state.FluxId,
-                FluxName = state.FluxName,
-                StageDetails = state.Steps.LastOrDefault()?.Description,
-                StartTime = state.StartTime,
-                LastUpdateTime = state.LastUpdateTime,
-                EndTime = state.EndTime,
-                DurationMinutes = state.Duration.TotalMinutes,
-                IsCompleted = state.IsCompleted,
-                History = historyEntries
-            };
-    }
-
-    private List<HistoryEntryDto> MapHistoryEntries(List<WorkflowStepModel> steps)
-    {
-        var entries = new List<HistoryEntryDto>();
-
-        foreach (var step in steps)
-        {
-            var entry = new HistoryEntryDto
-                {
-                    Id = step.Id,
-                    ParentId = step.ParentId,
-                    Stage = step.Stage,
-                    Description = step.Description,
-                    Timestamp = step.Timestamp,
-                    TimeSinceStart = step.TimeSinceStart,
-                    RowsAdded = step.LinesAdded,
-                    RowsModified = step.LinesModified,
-                    RowsIgnored = step.LinesIgnored,
-                    RowsWithErrors = step.LinesWithErrors,
-                    Status = step.Status,
-                    ErrorMessage = step.ErrorMessage,
-                    CompletionTimestamp = step.CompletionTimestamp,
-                    DurationSeconds = step.DurationSeconds,
-                    ActionId = step.ActionId,
-                    Children = MapHistoryEntries(step.Children)
-                };
-
-            entries.Add(entry);
-        }
-
-        return entries;
     }
 
     private void PositionWorkflowSteps()
@@ -597,93 +373,39 @@
 
     private async Task OnWorkflowSelectionChanged(Guid? workflowId)
     {
-        selectedWorkflowId = workflowId;
+        if (selectedWorkflowId == workflowId) return; // No change
 
-        // Mettre à jour l'URL pour refléter le workflow sélectionné
+        selectedWorkflowId = workflowId;
+         WorkflowId = workflowId; // Update parameter state
+
+        // Update the URL
         if (workflowId.HasValue)
         {
-            NavigationManager.NavigateTo($"/flux/workflow-live/{FluxId}/{workflowId}/{UseSignalR}", false);
-
-            // Mise à jour du paramètre WorkflowId
-            WorkflowId = workflowId;
-
-            // Rafraîchir les données pour ce workflow spécifique
-            await RefreshSpecificWorkflow(workflowId.Value);
+            NavigationManager.NavigateTo($"/flux/workflow-live/{FluxId}/{workflowId.Value}", false);
         }
         else
         {
-            NavigationManager.NavigateTo($"/flux/workflow-live/{FluxId}/{UseSignalR}", false);
-            WorkflowId = null;
+            // If user selected "none" or cleared selection, maybe load latest? Or show message?
+            // For now, let's assume clearing selection isn't an option or we load latest.
+            // The RefreshDataFromApi logic handles loading latest if selectedWorkflowId becomes null.
+            NavigationManager.NavigateTo($"/flux/workflow-live/{FluxId}", false);
+        }
 
-            // Rafraîchir les données générales du flux
-            await RefreshFluxData();
-        }
-    }
-
-    private async Task RefreshSpecificWorkflow(Guid workflowId)
-    {
-        try
-        {
-            // Récupérer les détails du workflow spécifique
-            var response = await MindApi.GetWorkflowByIdAsync(workflowId);
-            if (response?.Data != null)
-            {
-                WorkflowDetails = response.Data;
-                PositionWorkflowSteps();
-                StateHasChanged();
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError($"Error refreshing specific workflow {workflowId}: {ex.Message}");
-        }
-    }
-
-    private async Task RefreshFluxData()
-    {
-        try
-        {
-            // Récupérer les détails globaux du flux
-            var response = await MindApi.GetFluxWorkflowDetailsAsync(FluxId);
-            if (response?.Data != null)
-            {
-                WorkflowDetails = response.Data;
-                PositionWorkflowSteps();
-                StateHasChanged();
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError($"Error refreshing flux data for FluxId {FluxId}: {ex.Message}");
-        }
-    }
-
-    // Method to handle UseSignalR property changes
-    protected override async Task OnParametersSetAsync()
-    {
-        await base.OnParametersSetAsync();
+        // Refresh data based on the new selection
+        await RefreshDataFromApi();
     }
 
     public async ValueTask DisposeAsync()
     {
-        if (notificationHub != null)
-        {
-            // Se désabonner du topic avant de fermer la connexion
-            try
-            {
-                if (notificationHub.State == HubConnectionState.Connected)
-                {
-                    await notificationHub.InvokeAsync("Unsubscribe", "workflow");
-                    Logger.LogInformation("Unsubscribed from 'workflow' topic");
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError($"Error unsubscribing from topic: {ex.Message}");
-            }
+        // Unsubscribe from service events
+        SignalRService.ConnectionStatusChanged -= HandleConnectionStatusChanged;
 
-            await notificationHub.DisposeAsync();
+        // Unsubscribe from the specific topic handler
+        if (SignalRService != null)
+        {
+            await SignalRService.UnsubscribeAsync("workflow", HandleWorkflowUpdate);
         }
+         GC.SuppressFinalize(this); // Standard practice
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -1102,7 +824,7 @@
             Snackbar.Add("Force process started in the background", Severity.Success);
 
             // Rafraîchir les données
-            await RefreshData();
+            await RefreshDataFromApi();
         }
         catch (Exception ex)
         {
@@ -1154,7 +876,7 @@
                 Snackbar.Add("Force process started in the background", Severity.Success);
 
                 // Rafraîchir les données
-                await RefreshData();
+                await RefreshDataFromApi();
             }
             else
             {

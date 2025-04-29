@@ -437,7 +437,7 @@ else
                     ElementValues = m.ElementValues.Select(ev => new ElementValueRequest()
                     {
                         Id = ev.Id,
-                        ExtractedValue = ev.ExtractedValue,
+                        ExtractedValue = ev.ExtractedValue ?? "",
                         PropertyDataTypeId = ev.PropertyDataTypeId,
                         FileDataMappingId = ev.FileDataMappingId,
                         FinancialDataPointElementId = ev.FinancialDataPointElementId,
