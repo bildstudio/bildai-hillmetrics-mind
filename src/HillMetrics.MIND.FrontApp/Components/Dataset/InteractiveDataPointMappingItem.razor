@@ -6,85 +6,93 @@
 @inject IMindAPI MindApi
 @inject ISnackbar Snackbar
 
-<MudExpansionPanel>
-    <TitleContent>
-        <div class="d-flex align-center">
-            <MudText Typo="Typo.h6">@Mapping.FinancialDataPoint.Name</MudText>
+@if (isLoading)
+{
+    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+}
+else
+{
+    <MudExpansionPanel>
+        <TitleContent>
+            <div class="d-flex align-center">
+                <MudText Typo="Typo.h6">@Mapping.FinancialDataPoint.Name</MudText>
+                @if (!string.IsNullOrEmpty(Mapping.InstanceName))
+                {
+                    <MudChip T="Color" Size="Size.Small" Color="Color.Secondary" Class="ml-2">@Mapping.InstanceName</MudChip>
+                }
+            </div>
+        </TitleContent>
+        <ChildContent>
             @if (!string.IsNullOrEmpty(Mapping.InstanceName))
             {
-                <MudChip T="Color" Size="Size.Small" Color="Color.Secondary" Class="ml-2">@Mapping.InstanceName</MudChip>
+                <MudTextField @bind-Value="Mapping.InstanceName"
+                             Label="Instance Name"
+                             Class="mb-4" />
             }
-        </div>
-    </TitleContent>
-    <ChildContent>
-        @if (!string.IsNullOrEmpty(Mapping.InstanceName))
-        {
-            <MudTextField @bind-Value="Mapping.InstanceName"
-                         Label="Instance Name"
-                         Class="mb-4" />
-        }
 
-        <MudText Typo="Typo.subtitle1" Class="mb-3">Elements</MudText>
+            <MudText Typo="Typo.subtitle1" Class="mb-3">Elements</MudText>
 
-        @foreach (var element in Mapping.FinancialDataPoint.Elements)
-        {
-            var elementValue = Mapping.ElementValues.FirstOrDefault(v => v.FinancialDataPointElementId == element.Id);
-            if (elementValue == null)
+            @foreach (var element in Mapping.FinancialDataPoint.Elements)
             {
-                elementValue = new FileDataElementValue
+                var elementValue = Mapping.ElementValues.FirstOrDefault(v => v.FinancialDataPointElementId == element.Id);
+                if (elementValue == null)
                 {
-                    FinancialDataPointElementId = element.Id,
-                    FileDataMappingId = Mapping.Id
-                };
-                Mapping.ElementValues.Add(elementValue);
+                    elementValue = new FileDataElementValue
+                    {
+                        FinancialDataPointElementId = element.Id,
+                        FileDataMappingId = Mapping.Id,
+                        PropertyDataTypeId = propertyTypes.FirstOrDefault()?.Id ?? 0
+                    };
+                    Mapping.ElementValues.Add(elementValue);
+                }
+
+                <MudPaper Class="pa-3 mb-3" Elevation="0">
+                    <MudGrid>
+                        <MudItem xs="12" md="4">
+                            <MudText><strong>@element.PropertyName</strong></MudText>
+                            @if (!string.IsNullOrEmpty(element.Description))
+                            {
+                                <MudText Typo="Typo.caption">@element.Description</MudText>
+                            }
+                        </MudItem>
+                        <MudItem xs="12" md="8">
+                            <div class="d-flex">
+                                <MudTextField @bind-Value="elementValue.ExtractedValue"
+                                            Label="Value"
+                                            Variant="Variant.Outlined"
+                                            Class="flex-grow-1" />
+                                <MudIconButton Icon="@Icons.Material.Filled.ContentCopy"
+                                             Color="Color.Primary"
+                                             Size="Size.Small"
+                                             Class="ml-2 mt-2"
+                                             OnClick="() => SelectElementField(element.PropertyName, element.Id)" />
+                            </div>
+
+                            <MudSelect T="int"
+                                       @bind-Value="elementValue.PropertyDataTypeId"
+                                       Label="Data Type"
+                                       Class="mt-2">
+                                @foreach (var propertyType in propertyTypes)
+                                {
+                                    <MudSelectItem Value="@propertyType.Id">@propertyType.Name</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
             }
 
-            <MudPaper Class="pa-3 mb-3" Elevation="0">
-                <MudGrid>
-                    <MudItem xs="12" md="4">
-                        <MudText><strong>@element.PropertyName</strong></MudText>
-                        @if (!string.IsNullOrEmpty(element.Description))
-                        {
-                            <MudText Typo="Typo.caption">@element.Description</MudText>
-                        }
-                    </MudItem>
-                    <MudItem xs="12" md="8">
-                        <div class="d-flex">
-                            <MudTextField @bind-Value="elementValue.ExtractedValue"
-                                        Label="Value"
-                                        Variant="Variant.Outlined"
-                                        Class="flex-grow-1" />
-                            <MudIconButton Icon="@Icons.Material.Filled.ContentCopy"
-                                         Color="Color.Primary"
-                                         Size="Size.Small"
-                                         Class="ml-2 mt-2"
-                                         OnClick="() => SelectElementField(element.PropertyName, element.Id)" />
-                        </div>
-
-                        <MudSelect T="int"
-                                   @bind-Value="elementValue.PropertyDataTypeId"
-                                   Label="Data Type"
-                                   Class="mt-2">
-                            @foreach (var propertyType in propertyTypes)
-                            {
-                                <MudSelectItem Value="@propertyType.Id">@propertyType.Name</MudSelectItem>
-                            }
-                        </MudSelect>
-                    </MudItem>
-                </MudGrid>
-            </MudPaper>
-        }
-
-        <div class="d-flex justify-end mt-4">
-            <MudButton OnClick="@(() => OnRemove.InvokeAsync())"
-                       Color="Color.Error"
-                       Variant="Variant.Text"
-                       StartIcon="@Icons.Material.Filled.Delete">
-                Remove Data Point
-            </MudButton>
-        </div>
-    </ChildContent>
-</MudExpansionPanel>
+            <div class="d-flex justify-end mt-4">
+                <MudButton OnClick="@(() => OnRemove.InvokeAsync())"
+                           Color="Color.Error"
+                           Variant="Variant.Text"
+                           StartIcon="@Icons.Material.Filled.Delete">
+                    Remove Data Point
+                </MudButton>
+            </div>
+        </ChildContent>
+    </MudExpansionPanel>
+}
 
 @code {
     [Parameter]
@@ -100,10 +108,23 @@
     public ContentType ContentType { get; set; }
 
     private List<PropertyMappingResponse> propertyTypes = new();
+    private bool isLoading = true;
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadPropertyTypes();
+        isLoading = true;
+        try
+        {
+            await LoadPropertyTypes();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading initial data: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+        }
     }
 
     private async Task LoadPropertyTypes()

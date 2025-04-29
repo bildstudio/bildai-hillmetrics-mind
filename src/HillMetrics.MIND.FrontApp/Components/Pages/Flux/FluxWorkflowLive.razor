@@ -126,6 +126,14 @@
                     <MudText Typo="Typo.h6" Color="Color.Primary">@GetWorkflowStageDisplayName(SelectedStep.Stage)</MudText>
                     <MudText Typo="Typo.body1" Class="mt-2">@SelectedStep.Description</MudText>
 
+                    @if (SelectedStep.Status == WorkflowStepStatus.Failed && !string.IsNullOrEmpty(SelectedStep.ErrorMessage))
+                    {
+                        <MudDivider Class="my-3" />
+                        <MudAlert Severity="Severity.Error" Class="mt-3">
+                            <MudText Typo="Typo.body2">@SelectedStep.ErrorMessage</MudText>
+                        </MudAlert>
+                    }
+
                     <MudDivider Class="my-3" />
 
                     <MudGrid>
@@ -134,12 +142,10 @@
                             <MudText Typo="Typo.body2">@SelectedStep.Timestamp.ToLocalTime().ToString("g")</MudText>
                         </MudItem>
                         <MudItem xs="6">
-                            <MudText Typo="Typo.subtitle2">Ended At</MudText>
-                            <MudText Typo="Typo.body2">
-                                @(SelectedStep.CompletionTimestamp.HasValue
-                                          ? SelectedStep.CompletionTimestamp.Value.ToLocalTime().ToString("g")
-                                          : "In progress...")
-                            </MudText>
+                            <MudText Typo="Typo.subtitle2">Status</MudText>
+                            <MudChip T="Color" Size="Size.Small" Color="@GetStatusColor(SelectedStep.Status)">
+                                @SelectedStep.Status.ToString()
+                            </MudChip>
                         </MudItem>
                     </MudGrid>
 
@@ -245,7 +251,8 @@
             RowsModified = entry.RowsModified;
             RowsIgnored = entry.RowsIgnored;
             RowsWithErrors = entry.RowsWithErrors;
-            IsCompleted = entry.IsCompleted;
+            Status = entry.Status;
+            ErrorMessage = entry.ErrorMessage;
             CompletionTimestamp = entry.CompletionTimestamp;
             DurationSeconds = entry.DurationSeconds;
             Children = entry.Children;
@@ -535,7 +542,8 @@
                     RowsModified = step.LinesModified,
                     RowsIgnored = step.LinesIgnored,
                     RowsWithErrors = step.LinesWithErrors,
-                    IsCompleted = step.IsCompleted,
+                    Status = step.Status,
+                    ErrorMessage = step.ErrorMessage,
                     CompletionTimestamp = step.CompletionTimestamp,
                     DurationSeconds = step.DurationSeconds,
                     ActionId = step.ActionId,
@@ -556,8 +564,12 @@
         rootSteps = WorkflowDetails.History.Where(h => h.ParentId == null).ToList();
     }
 
-    private string GetStepStatusClass(WorkflowStage stage)
+    private string GetStepStatusClass(WorkflowStage stage, WorkflowStepStatus status = WorkflowStepStatus.InProgress)
     {
+        // Check for failed status first regardless of stage
+        if (status == WorkflowStepStatus.Failed)
+            return "status-error";
+
         return stage switch
         {
             WorkflowStage.Failed => "status-error",
@@ -697,8 +709,9 @@
     // Méthode pour rendu récursif des étapes de workflow en forme de diagramme
     private RenderFragment RenderWorkflowDiagram(HistoryEntryDto step, int level) => builder =>
     {
-        var statusClass = GetStepStatusClass(step.Stage);
-        var completionClass = step.IsCompleted ? "node-completed" : "node-inprogress";
+        var statusClass = GetStepStatusClass(step.Stage, step.Status);
+        var completionClass = step.Status == WorkflowStepStatus.Completed ? "node-completed" :
+                              step.Status == WorkflowStepStatus.Failed ? "node-failed" : "node-inprogress";
 
         string nodePositionClass = level == 0 ? "node-center" : "";
 
@@ -723,6 +736,10 @@
         {
             tooltipText += $"\nDuration: {FormatDuration(step.DurationSeconds.Value)}";
         }
+        if (step.Status == WorkflowStepStatus.Failed && !string.IsNullOrEmpty(step.ErrorMessage))
+        {
+            tooltipText += $"\nError: {step.ErrorMessage}";
+        }
 
         builder.AddAttribute(6, "title", $"{tooltipTitle}\n{tooltipText}"); // Keep tooltip detailed
 
@@ -733,22 +750,27 @@
         builder.OpenElement(9, "div");
         builder.AddAttribute(10, "class", "node-header");
         builder.OpenElement(11, "i"); // Icon wrapper
-        if (step.IsCompleted)
+        if (step.Status == WorkflowStepStatus.Completed)
         {
             builder.AddAttribute(12, "class", "mud-icon-root mud-icon-default mud-icon-size-small mud-color-success");
             builder.AddMarkupContent(14, "<svg viewBox='0 0 24 24' style='width: 18px; height: 18px;'><path d='M12 2C6.5 2 2 6.5 2 12S6.5 22 12 22 22 17.5 22 12 17.5 2 12 2M10 17L5 12L6.41 10.59L10 14.17L17.59 6.58L19 8L10 17Z' fill='currentColor'></path></svg>");
         }
-        else if (step.Stage == WorkflowStage.Failed)
+        else if (step.Status == WorkflowStepStatus.Failed || step.Stage == WorkflowStage.Failed)
         {
             builder.AddAttribute(12, "class", "mud-icon-root mud-icon-default mud-icon-size-small mud-color-error");
             builder.AddMarkupContent(14, "<svg viewBox='0 0 24 24' style='width: 18px; height: 18px;'><path d='M13,13H11V7H13M13,17H11V15H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z' fill='currentColor'></path></svg>");
         }
         else // In progress
         {
-            builder.AddAttribute(12, "class", "mud-icon-root mud-icon-default mud-icon-size-small mud-color-info");
-            builder.AddMarkupContent(14, "<svg viewBox='0 0 24 24' style='width: 18px; height: 18px;'><path d='M12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22C6.47,22 2,17.5 2,12A10,10 0 0,1 12,2M12.5,7V12.25L17,14.92L16.25,16.15L11,13V7H12.5Z' fill='currentColor'></path></svg>");
+            // Show a small progress spinner instead of the clock icon
+            builder.OpenComponent<MudProgressCircular>(12);
+            builder.AddAttribute(13, "Color", Color.Info);
+            builder.AddAttribute(14, "Size", Size.Small);
+            builder.AddAttribute(15, "Indeterminate", true);
+            builder.AddAttribute(16, "Style", "width: 18px; height: 18px;"); // Match icon size
+            builder.CloseComponent(); // MudProgressCircular
         }
-        builder.CloseElement(); // i icon wrapper
+        builder.CloseElement(); // i icon wrapper (or spinner wrapper)
 
         builder.OpenElement(15, "div");
         builder.AddAttribute(16, "class", "node-title");
@@ -771,12 +793,29 @@
             builder.CloseElement(); // node-description
         }
 
+        // Error Message for Failed status
+        if (step.Status == WorkflowStepStatus.Failed && !string.IsNullOrEmpty(step.ErrorMessage))
+        {
+            builder.OpenElement(120, "div");
+            builder.AddAttribute(121, "class", "node-error-message");
+            var errorMsg = step.ErrorMessage.Length > 100 ? step.ErrorMessage.Substring(0, 97) + "..." : step.ErrorMessage;
+            builder.AddContent(122, errorMsg);
+            builder.CloseElement(); // node-error-message
+        }
+
         // Completion Timestamp
-        if (step.IsCompleted && step.CompletionTimestamp.HasValue)
+        if (step.Status == WorkflowStepStatus.Completed && step.CompletionTimestamp.HasValue)
         {
             builder.OpenElement(105, "div");
             builder.AddAttribute(106, "class", "node-completion-time");
             builder.AddContent(107, $"Completed: {step.CompletionTimestamp.Value.ToLocalTime():g}");
+            builder.CloseElement(); // node-completion-time
+        }
+        else if (step.Status == WorkflowStepStatus.Failed && step.CompletionTimestamp.HasValue)
+        {
+            builder.OpenElement(108, "div");
+            builder.AddAttribute(109, "class", "node-completion-time node-failed-time");
+            builder.AddContent(110, $"Failed: {step.CompletionTimestamp.Value.ToLocalTime():g}");
             builder.CloseElement(); // node-completion-time
         }
         builder.CloseElement(); // node-body
@@ -792,7 +831,7 @@
             builder.OpenElement(112, "span");
             builder.AddAttribute(116, "title", $"Duration: {FormatDuration(step.DurationSeconds.Value)}");
             builder.AddAttribute(113, "class", "detail-item duration");
-            builder.AddMarkupContent(114, "<i class='mud-icon-root mud-icon-default mud-icon-size-small mr-1'><svg viewBox='0 0 24 24' style='width: 1em; height: 1em;'><path d='M12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22C6.47,22 2,17.5 2,12A10,10 0 0,1 12,2Z' fill='currentColor'></path></svg></i>");
+            builder.AddMarkupContent(114, "<i class='mud-icon-root mud-icon-default mud-icon-size-small mr-1'><svg viewBox='0 0 24 24' style='width: 1em; height: 1em;'><path d='M12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22C6.47,22 2,17.5 2,12A10,10 0 0,1 12,2M12.5,7V12.25L17,14.92L16.25,16.15L11,13V7H12.5Z' fill='currentColor'></path></svg></i>");
             builder.AddContent(115, FormatDuration(step.DurationSeconds.Value));
             builder.CloseElement(); // span duration
         }
@@ -866,7 +905,7 @@
                 builder.AddAttribute(169, "Title", "View Fetching Details");
                 builder.CloseComponent(); // MudIconButton Fetching Details
 
-                if(step.IsCompleted) {
+                if(step.Status == WorkflowStepStatus.Completed) {
                     // Force Process Button (icon only)
                     builder.OpenComponent<MudIconButton>(152);
                     builder.AddAttribute(153, "Icon", Icons.Material.Filled.Refresh);
@@ -1101,7 +1140,7 @@
         try
         {
             // Vérifier si l'étape a un ActionId et si c'est une étape de type FetchingData
-            if (step.Stage == WorkflowStage.FetchingData && step.IsCompleted)
+            if (step.Stage == WorkflowStage.FetchingData && step.Status == WorkflowStepStatus.Completed)
             {
                 var fetchingHistoryId = step.ActionId;
 
@@ -1177,6 +1216,18 @@
             return null;
 
         return WorkflowDetails.History.FirstOrDefault(h => h.Id == step.ParentId);
+    }
+
+    // Add this helper method to get a MudBlazor Color for a WorkflowStepStatus
+    private Color GetStatusColor(WorkflowStepStatus status)
+    {
+        return status switch
+        {
+            WorkflowStepStatus.Completed => Color.Success,
+            WorkflowStepStatus.Failed => Color.Error,
+            WorkflowStepStatus.InProgress => Color.Info,
+            _ => Color.Default
+        };
     }
 }
 
@@ -1502,5 +1553,32 @@
         display: flex;
         flex-direction: column;
         align-items: center;
+    }
+
+    /* Style for the loader in the header */
+    .node-header .mud-progress-circular {
+        margin-right: 8px; /* Maintain spacing like the icon */
+    }
+
+    /* Additional styles for WorkflowStepStatus */
+    .node-failed {
+        background-color: rgba(244, 67, 54, 0.1); /* Light red background */
+        border-left-color: #F44336; /* Red border */
+    }
+
+    .node-error-message {
+        font-size: 0.8rem;
+        color: #F44336; /* Red text for error message */
+        margin-top: 4px;
+        font-style: italic;
+        border-left: 2px solid #F44336;
+        padding-left: 8px;
+        margin-bottom: 8px;
+        white-space: normal;
+        line-height: 1.3;
+    }
+
+    .node-failed-time {
+        color: #d32f2f; /* Darker red for the failed timestamp */
     }
 </style>

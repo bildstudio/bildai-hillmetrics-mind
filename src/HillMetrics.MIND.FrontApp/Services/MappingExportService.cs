@@ -3,6 +3,12 @@ using System.Text.Json;
 using System.Text;
 using Microsoft.JSInterop;
 using HillMetrics.Normalized.Domain.Contracts.AI.Dataset;
+using System.IO;
+using System.IO.Compression;
+using HillMetrics.MIND.API.Contracts.Requests.AiDataset;
+using HillMetrics.MIND.API.Contracts.Responses.AiDataset;
+using HillMetrics.Core.Search;
+using System.Text.RegularExpressions;
 
 namespace HillMetrics.MIND.FrontApp.Services
 {
@@ -14,6 +20,7 @@ namespace HillMetrics.MIND.FrontApp.Services
         private readonly IMindAPI _mindApi;
         private readonly IJSRuntime _jsRuntime;
         private readonly ILogger<MappingExportService> _logger;
+        private readonly FileUploadService _fileUploadService;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="MappingExportService"/> class.
@@ -21,14 +28,17 @@ namespace HillMetrics.MIND.FrontApp.Services
         /// <param name="mindApi">The MIND API client.</param>
         /// <param name="jsRuntime">The JavaScript runtime.</param>
         /// <param name="logger">The logger.</param>
+        /// <param name="fileUploadService">Service to handle file uploads/downloads.</param>
         public MappingExportService(
             IMindAPI mindApi,
             IJSRuntime jsRuntime,
-            ILogger<MappingExportService> logger)
+            ILogger<MappingExportService> logger,
+            FileUploadService fileUploadService)
         {
             _mindApi = mindApi;
             _jsRuntime = jsRuntime;
             _logger = logger;
+            _fileUploadService = fileUploadService;
         }
 
         /// <summary>
@@ -208,6 +218,160 @@ namespace HillMetrics.MIND.FrontApp.Services
                 _logger.LogError(ex, "Error downloading JSON file {FileName}", fileName);
                 throw;
             }
+        }
+
+        /// <summary>
+        /// Exports the provided file mappings into a ZIP archive.
+        /// Each file gets its own folder containing the original file and its mapping JSON.
+        /// </summary>
+        /// <param name="fileUploadsToExport">The collection of file uploads to include in the export.</param>
+        /// <returns>A tuple containing the ZIP file content as bytes and the filename. Returns null bytes if no files are provided or an error occurs.</returns>
+        public async Task<(byte[]? ZipBytes, string FileName)> ExportFilteredMappingsToZipAsync(IEnumerable<FileUploadSearchResponse> fileUploadsToExport)
+        {
+            string tempDirectoryPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            string zipFileName = $"Export_Mappings_{DateTime.UtcNow:yyyyMMddHHmmss}.zip";
+            string zipFilePath = Path.Combine(Path.GetTempPath(), zipFileName);
+            bool directoryCreated = false;
+            int filesProcessedCount = 0;
+
+            try
+            {
+                if (fileUploadsToExport == null || !fileUploadsToExport.Any())
+                {
+                    _logger.LogWarning("No file uploads provided for export.");
+                    return (null, zipFileName);
+                }
+
+                _logger.LogInformation("Found {Count} files to export. Creating temporary directory: {TempPath}", fileUploadsToExport.Count(), tempDirectoryPath);
+                Directory.CreateDirectory(tempDirectoryPath);
+                directoryCreated = true;
+
+                foreach (var fileUpload in fileUploadsToExport)
+                {
+                    try
+                    {
+                        string sanitizedFolderName = SanitizeFileName(Path.GetFileNameWithoutExtension(fileUpload.FileName));
+                        string fileSpecificTempPath = Path.Combine(tempDirectoryPath, sanitizedFolderName);
+                        Directory.CreateDirectory(fileSpecificTempPath);
+
+                        _logger.LogInformation("Processing file ID {FileId}: {FileName}", fileUpload.Id, fileUpload.FileName);
+
+                        // 1. Download Original File
+                        try
+                        {
+                            _logger.LogDebug("Downloading original file for ID {FileId}", fileUpload.Id);
+                            using var fileStream = await _fileUploadService.GetFileStreamAsync(fileUpload.Id);
+                            if (fileStream != null)
+                            {
+                                // Copy to MemoryStream first to ensure Length property is available and stream is seekable
+                                using var memoryStream = new MemoryStream();
+                                await fileStream.CopyToAsync(memoryStream);
+
+                                if (memoryStream.Length > 0) // Check length on MemoryStream
+                                {
+                                    memoryStream.Position = 0; // Reset MemoryStream position before reading
+                                    string originalFilePath = Path.Combine(fileSpecificTempPath, fileUpload.FileName);
+                                    using var fileWriteStream = new FileStream(originalFilePath, FileMode.Create, FileAccess.Write);
+                                    await memoryStream.CopyToAsync(fileWriteStream); // Copy from MemoryStream to FileStream
+                                    _logger.LogDebug("Successfully saved original file to {Path}", originalFilePath);
+                                }
+                                else
+                                {
+                                     _logger.LogWarning("Retrieved file stream was empty for file ID {FileId}", fileUpload.Id);
+                                }
+                            }
+                            else
+                            {
+                                _logger.LogWarning("Could not retrieve file stream for file ID {FileId}", fileUpload.Id);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Error downloading original file for ID {FileId}", fileUpload.Id);
+                            // Decide if you want to continue without the original file or skip this entry
+                        }
+
+                        // 2. Generate Mapping JSON
+                        try
+                        {
+                            _logger.LogDebug("Generating mapping JSON for file ID {FileId}", fileUpload.Id);
+                            string jsonContent = await ExportFileMappingsToJsonAsync(fileUpload.Id);
+                            if (!string.IsNullOrWhiteSpace(jsonContent))
+                            {
+                                string jsonFileName = $"{sanitizedFolderName}_mapping.json";
+                                string jsonFilePath = Path.Combine(fileSpecificTempPath, jsonFileName);
+                                await File.WriteAllTextAsync(jsonFilePath, jsonContent, Encoding.UTF8);
+                                _logger.LogDebug("Successfully saved mapping JSON to {Path}", jsonFilePath);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            // ExportFileMappingsToJsonAsync already logs errors, but we might want to log context here.
+                            _logger.LogWarning(ex, "Could not generate or save mapping JSON for file ID {FileId}. This might happen if no mappings exist.", fileUpload.Id);
+                            // Continue processing other files
+                        }
+                        filesProcessedCount++;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to process file entry for export: ID {FileId}, Name {FileName}", fileUpload.Id, fileUpload.FileName);
+                        // Continue to next file
+                    }
+                }
+
+                if (filesProcessedCount == 0)
+                {
+                     _logger.LogWarning("Although files were found, none could be successfully processed for the export.");
+                     return (null, zipFileName);
+                }
+
+                _logger.LogInformation("Creating ZIP archive at {ZipPath} from directory {TempPath}", zipFilePath, tempDirectoryPath);
+                ZipFile.CreateFromDirectory(tempDirectoryPath, zipFilePath);
+
+                _logger.LogDebug("Reading ZIP file into byte array.");
+                byte[] zipBytes = await File.ReadAllBytesAsync(zipFilePath);
+
+                _logger.LogInformation("Successfully created ZIP file with {Count} processed entries.", filesProcessedCount);
+                return (zipBytes, zipFileName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred during the filtered mapping export process.");
+                return (null, zipFileName); // Return null bytes on error
+            }
+            finally
+            {
+                // Clean up temporary files and directory
+                try
+                {
+                    if (File.Exists(zipFilePath))
+                    {
+                        _logger.LogDebug("Deleting temporary ZIP file: {ZipPath}", zipFilePath);
+                        File.Delete(zipFilePath);
+                    }
+                    if (directoryCreated && Directory.Exists(tempDirectoryPath))
+                    {
+                        _logger.LogDebug("Deleting temporary directory: {TempPath}", tempDirectoryPath);
+                        Directory.Delete(tempDirectoryPath, true);
+                    }
+                }
+                catch (IOException ioEx)
+                {
+                    // Log cleanup errors but don't throw, as the main operation might have succeeded
+                    _logger.LogError(ioEx, "Error cleaning up temporary files/directory during export.");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Sanitizes a filename to remove characters invalid for directory or file names.
+        /// </summary>
+        private static string SanitizeFileName(string name)
+        {
+            string invalidChars = Regex.Escape(new string(Path.GetInvalidFileNameChars()) + new string(Path.GetInvalidPathChars()));
+            string invalidRegStr = string.Format(@"([{0}]*\.\.+|[{0}]+)", invalidChars);
+            string sanitized = Regex.Replace(name, invalidRegStr, "_");
+            return string.IsNullOrWhiteSpace(sanitized) ? "_fallback_name_" : sanitized;
         }
     }
 }

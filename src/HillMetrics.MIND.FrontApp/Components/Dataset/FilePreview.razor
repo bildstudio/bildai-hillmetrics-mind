@@ -1,13 +1,26 @@
-﻿@using MudBlazor
+﻿@using HillMetrics.MIND.FrontApp.Components.Pages.Dataset.FileUpload
+@using MudBlazor
 @using HillMetrics.Normalized.Domain.Contracts.AI.Dataset
+@using System.Text.Json
+@using System.Xml.Linq
+@using ExcelDataReader
+@using System.IO
+@using Microsoft.AspNetCore.Components.Forms
+
+@* Inject necessary services *@
+@inject FileUploadService FileUploadService
+@inject IMindAPI MindApi
+@inject ILogger<FilePreview> Logger
+@inject IJSRuntime JSRuntime
+@inject IDialogService DialogService
 
 <MudCard Elevation="3" Class="mb-4">
     <MudCardHeader>
         <CardHeaderContent>
             <div class="d-flex align-center">
                 <MudText Typo="Typo.h6">
-                    <MudIcon Icon="@Icons.Material.Filled.TableChart" Class="mr-2" />
-                    File Preview
+                    <MudIcon Icon="@PreviewIcon" Class="mr-2" />
+                    File Preview (@previewType)
                 </MudText>
                 @if (IsSelectingField)
                 {
@@ -17,14 +30,15 @@
                     <MudIconButton Icon="@Icons.Material.Filled.Close"
                                  Size="Size.Small"
                                  Color="Color.Error"
-                                 OnClick="OnCancelFieldSelection" />
+                                 OnClick="HandleCancelFieldSelection" />
                 }
             </div>
         </CardHeaderContent>
         <CardHeaderActions>
             <MudTooltip Text="Refresh Preview">
                 <MudIconButton Icon="@Icons.Material.Filled.Refresh"
-                             OnClick="OnRefreshPreview" />
+                             OnClick="LoadPreviewAsync"
+                             Disabled="isLoadingPreview"/>
             </MudTooltip>
             @if (File != null)
             {
@@ -33,82 +47,119 @@
         </CardHeaderActions>
     </MudCardHeader>
     <MudCardContent>
-        @if (IsLoadingPreview)
+        @if (isLoadingPreview)
         {
             <MudProgressLinear Color="Color.Secondary" Indeterminate="true" Class="my-7" />
         }
-        else if (FilePreviewData.Count > 0)
+        else if (!string.IsNullOrEmpty(errorMessage))
         {
-            <div class="excel-container">
-                <div class="excel-header">
-                    <div class="excel-corner-cell"></div>
-                    @for (int col = 0; col < FilePreviewHeaders.Count; col++)
-                    {
-                        <div class="excel-header-cell">
-                            <div class="excel-column-letter">@GetExcelColumnName(col)</div>
-                            <div class="excel-header-text">@FilePreviewHeaders[col]</div>
-                        </div>
-                    }
-                </div>
-                <div class="excel-body">
-                    @for (int row = 0; row < FilePreviewData.Count; row++)
-                    {
-                        <div class="excel-row">
-                            <div class="excel-row-header">@(row + 1)</div>
-                            @for (int col = 0; col < FilePreviewData[row].Count; col++)
-                            {
-                                string cellValue = FilePreviewData[row][col];
-                                string cellAddress = $"{GetExcelColumnName(col)}{row + 1}";
-                                <div class="excel-cell @(IsSelectingField ? "selectable" : "")"
-                                     @onclick="() => OnCellClick(cellValue)">
-                                    <div class="excel-cell-content" title="@cellValue">
-                                        @cellValue
-                                    </div>
-                                    <div class="excel-cell-address">@cellAddress</div>
-                                </div>
-                            }
-                        </div>
-                    }
-                </div>
-            </div>
+             <MudAlert Severity="Severity.Error">@errorMessage</MudAlert>
         }
         else
         {
-            <MudAlert Severity="Severity.Info">
-                No preview available. The file may be empty or in an unsupported format.
-            </MudAlert>
+            @switch (previewType)
+            {
+                case PreviewType.Excel:
+                case PreviewType.Csv:
+                    <div class="excel-container" style="@($"font-size: {(14 * zoomLevel)}px;")">
+                        <div class="excel-header">
+                            <div class="excel-corner-cell" style="@($"min-width: {(40 * zoomLevel)}px;")"></div>
+                            @for (int col = 0; col < filePreviewHeaders.Count; col++)
+                            {
+                                <div class="excel-header-cell" style="@($"min-width: {(120 * zoomLevel)}px; padding: {(8 * zoomLevel)}px;")">
+                                    <div class="excel-column-letter">@GetExcelColumnName(col)</div>
+                                    <div class="excel-header-text">@filePreviewHeaders[col]</div>
+                                </div>
+                            }
+                        </div>
+                        <div class="excel-body">
+                            @for (int row = 0; row < filePreviewData.Count; row++)
+                            {
+                                <div class="excel-row">
+                                    <div class="excel-row-header" style="@($"min-width: {(40 * zoomLevel)}px;")">@(row + 1)</div>
+                                    @for (int col = 0; col < filePreviewData[row].Count; col++)
+                                    {
+                                        string cellValue = filePreviewData[row][col];
+                                        string cellAddress = $"{GetExcelColumnName(col)}{row + 1}";
+                                        <div class="excel-cell @(IsSelectingField ? "selectable" : "")"
+                                             style="@($"min-width: {(120 * zoomLevel)}px; padding: {(8 * zoomLevel)}px;")"
+                                             @onclick="() => HandleCellClick(cellValue)">
+                                            <div class="excel-cell-content" title="@cellValue">
+                                                @cellValue
+                                            </div>
+                                            <div class="excel-cell-address">@cellAddress</div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    </div>
+                    break;
+                case PreviewType.Json:
+                    <MudPaper Elevation="0" Class="code-preview-container pa-2">
+                        <pre><code class="language-json">@formattedContent</code></pre>
+                    </MudPaper>
+                    break;
+                case PreviewType.Xml:
+                    <MudPaper Elevation="0" Class="code-preview-container pa-2">
+                         <pre><code class="language-xml">@formattedContent</code></pre>
+                    </MudPaper>
+                    break;
+                case PreviewType.Pdf:
+                    @if (!string.IsNullOrEmpty(pdfUrl))
+                    {
+                         <iframe src="@pdfUrl" width="100%" height="500px" style="border: none;"></iframe>
+                    }
+                    else
+                    {
+                         <MudAlert Severity="Severity.Warning">PDF preview could not be generated. Try downloading the file.</MudAlert>
+                    }
+                    break;
+                default:
+                    <MudAlert Severity="Severity.Info">
+                        Preview not available for this file type (@File?.FileType).
+                    </MudAlert>
+                    break;
+            }
         }
     </MudCardContent>
-    <MudCardActions>
-        <MudButton Variant="Variant.Text"
-                   Color="Color.Primary"
-                   OnClick="OnShowSheetSelector"
-                   Disabled="@(Worksheets.Count <= 1)">
-            <MudIcon Icon="@Icons.Material.Filled.ViewList" Class="mr-2" />
-            @CurrentWorksheet
-        </MudButton>
-        <MudSpacer />
-        <MudButton Variant="Variant.Text"
-                   StartIcon="@Icons.Material.Filled.ZoomIn"
-                   OnClick="OnZoomIn">
-            Zoom In
-        </MudButton>
-        <MudButton Variant="Variant.Text"
-                   StartIcon="@Icons.Material.Filled.ZoomOut"
-                   OnClick="OnZoomOut">
-            Zoom Out
-        </MudButton>
-    </MudCardActions>
+    @if (previewType == PreviewType.Excel || previewType == PreviewType.Csv)
+    {
+        <MudCardActions>
+            @if (previewType == PreviewType.Excel)
+            {
+                 <MudButton Variant="Variant.Text"
+                           Color="Color.Primary"
+                           OnClick="ShowSheetSelector"
+                           Disabled="@(worksheets.Count <= 1)">
+                    <MudIcon Icon="@Icons.Material.Filled.ViewList" Class="mr-2" />
+                    @currentWorksheet
+                </MudButton>
+            }
+            <MudSpacer />
+            <MudButton Variant="Variant.Text"
+                       StartIcon="@Icons.Material.Filled.ZoomIn"
+                       OnClick="ZoomIn">
+                Zoom In
+            </MudButton>
+            <MudButton Variant="Variant.Text"
+                       StartIcon="@Icons.Material.Filled.ZoomOut"
+                       OnClick="ZoomOut">
+                Zoom Out
+            </MudButton>
+        </MudCardActions>
+    }
 </MudCard>
 
 <style>
+    /* Existing styles */
     .excel-container {
         border: 1px solid #e0e0e0;
         border-radius: 4px;
         overflow: auto;
         height: 400px;
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        font-size: 14px;
+        /* font-size: 14px; Removed - set dynamically by zoom */
         position: relative;
         background-color: white;
     }
@@ -123,7 +174,7 @@
     }
 
     .excel-corner-cell {
-        min-width: 40px;
+        /* min-width: 40px; Removed */
         border-right: 1px solid #e0e0e0;
         background-color: #f5f5f5;
         position: sticky;
@@ -132,8 +183,8 @@
     }
 
     .excel-header-cell {
-        min-width: 120px;
-        padding: 8px;
+       /* min-width: 120px; Removed */
+        /* padding: 8px; Removed */
         text-align: center;
         font-weight: bold;
         border-right: 1px solid #e0e0e0;
@@ -143,7 +194,7 @@
 
     .excel-column-letter {
         color: #666;
-        font-size: 12px;
+        font-size: 12px; /* Consider scaling this too? */
         margin-bottom: 4px;
     }
 
@@ -164,8 +215,8 @@
     }
 
     .excel-row-header {
-        min-width: 40px;
-        padding: 8px 0;
+        /* min-width: 40px; Removed */
+        padding: 8px 0; /* Padding might need adjustment */
         text-align: center;
         background-color: #f5f5f5;
         border-right: 1px solid #e0e0e0;
@@ -175,8 +226,8 @@
     }
 
     .excel-cell {
-        min-width: 120px;
-        padding: 8px;
+        /* min-width: 120px; Removed */
+        /* padding: 8px; Removed */
         border-right: 1px solid #e0e0e0;
         position: relative;
     }
@@ -199,7 +250,7 @@
         position: absolute;
         bottom: 2px;
         right: 2px;
-        font-size: 9px;
+        font-size: 9px; /* Consider scaling */
         color: #999;
         opacity: 0;
         transition: opacity 0.2s;
@@ -208,26 +259,404 @@
     .excel-cell:hover .excel-cell-address {
         opacity: 1;
     }
+
+    /* New styles for code preview */
+    .code-preview-container {
+        max-height: 400px;
+        overflow: auto;
+        background-color: #f8f8f8; /* Light background for code */
+        border: 1px solid #e0e0e0;
+        border-radius: 4px;
+        font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
+    }
+
+    .code-preview-container pre {
+        margin: 0;
+        padding: 10px;
+        white-space: pre-wrap; /* Wrap long lines */
+        word-break: break-all; /* Break long words/tokens */
+    }
 </style>
 
 @code {
-    [Parameter] public bool IsLoadingPreview { get; set; }
-    [Parameter] public List<List<string>> FilePreviewData { get; set; } = new();
-    [Parameter] public List<string> FilePreviewHeaders { get; set; } = new();
+    [Parameter] public FileUpload? File { get; set; }
     [Parameter] public bool IsSelectingField { get; set; }
     [Parameter] public string SelectedFieldName { get; set; } = string.Empty;
-    [Parameter] public List<string> Worksheets { get; set; } = new();
-    [Parameter] public string CurrentWorksheet { get; set; } = "Sheet1";
-    [Parameter] public FileUpload? File { get; set; }
-
     [Parameter] public EventCallback<string> OnCellSelected { get; set; }
     [Parameter] public EventCallback OnCancelFieldSelection { get; set; }
-    [Parameter] public EventCallback OnRefreshPreview { get; set; }
-    [Parameter] public EventCallback OnShowSheetSelector { get; set; }
-    [Parameter] public EventCallback OnZoomIn { get; set; }
-    [Parameter] public EventCallback OnZoomOut { get; set; }
 
-    private async Task OnCellClick(string cellValue)
+    private enum PreviewType { Unsupported, Excel, Csv, Json, Xml, Pdf }
+
+    private bool isLoadingPreview = false;
+    private PreviewType previewType = PreviewType.Unsupported;
+    private string errorMessage = string.Empty;
+
+    // Excel/CSV specific state
+    private List<List<string>> filePreviewData = new();
+    private List<string> filePreviewHeaders = new();
+    private List<string> worksheets = new();
+    private string currentWorksheet = "Sheet1";
+    private double zoomLevel = 1.0;
+
+    // JSON/XML specific state
+    private string formattedContent = string.Empty;
+
+    // PDF specific state
+    private string? pdfUrl;
+
+    private int? _currentFileId = null; // Track the ID of the currently loaded file
+    private bool _hasLoadedOnce = false; // Track if initial load occurred
+
+    private string PreviewIcon => previewType switch {
+        PreviewType.Excel => Icons.Custom.FileFormats.FileExcel,
+        PreviewType.Csv => Icons.Custom.FileFormats.FileExcel,
+        PreviewType.Json => Icons.Custom.FileFormats.FileCode,
+        PreviewType.Xml => Icons.Custom.FileFormats.FileCode,
+        PreviewType.Pdf => Icons.Custom.FileFormats.FilePdf,
+        _ => Icons.Material.Filled.BrokenImage
+    };
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Determine if the file has actually changed or if it's the initial load
+        bool fileChanged = File?.Id != _currentFileId;
+
+        if (File != null && (fileChanged || !_hasLoadedOnce))
+        {
+            _currentFileId = File.Id;
+            await LoadPreviewAsync();
+            _hasLoadedOnce = true; // Mark that initial load has happened
+        }
+        else if (File == null && _currentFileId != null)
+        {
+            // File was removed, clear the preview
+            _currentFileId = null;
+            _hasLoadedOnce = false; // Reset load state
+            ClearPreview();
+        }
+        // If File is the same and not null, and we've loaded once, do nothing automatically.
+    }
+
+    private void ClearPreview()
+    {
+        isLoadingPreview = false;
+        previewType = PreviewType.Unsupported;
+        errorMessage = string.Empty;
+        filePreviewData.Clear();
+        filePreviewHeaders.Clear();
+        worksheets.Clear();
+        currentWorksheet = "Sheet1";
+        formattedContent = string.Empty;
+        pdfUrl = null;
+        zoomLevel = 1.0;
+    }
+
+    private async Task LoadPreviewAsync()
+    {
+        if (File == null)
+        {
+            ClearPreview();
+            return;
+        }
+
+        isLoadingPreview = true;
+        errorMessage = string.Empty;
+        // Reset other states before loading
+        _currentFileId = File.Id; // Update current file ID when loading starts
+        filePreviewData.Clear();
+        filePreviewHeaders.Clear();
+        worksheets.Clear();
+        currentWorksheet = "Sheet1";
+        formattedContent = string.Empty;
+        pdfUrl = null;
+
+        try
+        {
+            DeterminePreviewType();
+
+            if (previewType == PreviewType.Unsupported)
+            {
+                errorMessage = $"Preview not supported for file type: {File.FileType ?? "unknown"}";
+                isLoadingPreview = false;
+                return;
+            }
+
+            Stream? fileStream = await FileUploadService.GetFileStreamAsync(File.Id);
+            if (fileStream == null)
+            {
+                errorMessage = "File stream could not be retrieved.";
+                isLoadingPreview = false;
+                return;
+            }
+
+            using (fileStream) // Ensure stream is disposed
+            {
+                switch (previewType)
+                {
+                    case PreviewType.Csv:
+                        await ParseCsvInternal(fileStream);
+                        break;
+                    case PreviewType.Excel:
+                        await ParseExcelInternal(fileStream, currentWorksheet);
+                        break;
+                    case PreviewType.Json:
+                        await ParseJsonInternal(fileStream);
+                        break;
+                    case PreviewType.Xml:
+                        await ParseXmlInternal(fileStream);
+                        break;
+                    case PreviewType.Pdf:
+                        await GetPdfUrlInternal(fileStream); // This might need adjustment based on how PDFs are served
+                        break;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading file preview for File ID {FileId}", File.Id);
+            errorMessage = $"Error loading preview: {ex.Message}";
+            previewType = PreviewType.Unsupported; // Fallback if parsing fails
+        }
+        finally
+        {
+            isLoadingPreview = false;
+            StateHasChanged(); // Ensure UI updates after loading
+        }
+    }
+
+    private void DeterminePreviewType()
+    {
+        if (File == null)
+        {
+            previewType = PreviewType.Unsupported;
+            return;
+        }
+
+        if (File.ContentType == Core.Common.ContentType.Csv)
+            previewType = PreviewType.Csv;
+        else if (File.ContentType == Core.Common.ContentType.Xls || File.ContentType == Core.Common.ContentType.Xlsx)
+            previewType = PreviewType.Excel;
+        else if (File.ContentType == Core.Common.ContentType.Json)
+            previewType = PreviewType.Json;
+        else if (File.ContentType == Core.Common.ContentType.Xml)
+            previewType = PreviewType.Xml;
+        else if (File.ContentType == Core.Common.ContentType.Pdf)
+            previewType = PreviewType.Pdf;
+        else
+            previewType = PreviewType.Unsupported;
+    }
+
+    // Internal Parsing Methods (moved from FileDataMappings)
+    private async Task ParseCsvInternal(Stream fileStream)
+    {
+        try
+        {
+            using var reader = new StreamReader(fileStream);
+            // Read header
+            var headerLine = await reader.ReadLineAsync();
+            if (headerLine != null)
+            {
+                // Basic CSV split - might need more robust parsing for quoted fields, etc.
+                filePreviewHeaders = headerLine.Split(',').Select(h => h.Trim('"')).ToList();
+            }
+
+            // Read data (limit rows)
+            int rowCount = 0;
+            while (!reader.EndOfStream && rowCount < 100)
+            {
+                var line = await reader.ReadLineAsync();
+                if (line != null)
+                {
+                    filePreviewData.Add(line.Split(',').Select(c => c.Trim('"')).ToList());
+                    rowCount++;
+                }
+            }
+             if (filePreviewData.Count == 0 && filePreviewHeaders.Count == 0) {
+                 errorMessage = "CSV file appears to be empty or header could not be read.";
+             }
+        }
+        catch (Exception ex) {
+            errorMessage = $"Error parsing CSV: {ex.Message}";
+            previewType = PreviewType.Unsupported;
+        }
+    }
+
+    private async Task ParseExcelInternal(Stream fileStream, string sheetNameToLoad)
+    {
+        try
+        {
+            System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+
+            // Copy the potentially non-seekable stream to a MemoryStream
+            using var memoryStream = new MemoryStream();
+            await fileStream.CopyToAsync(memoryStream);
+            memoryStream.Position = 0; // Reset the memory stream position to the beginning
+
+            // Use the MemoryStream with ExcelReaderFactory
+            using var reader = ExcelReaderFactory.CreateReader(memoryStream);
+            var result = reader.AsDataSet(new ExcelDataSetConfiguration()
+            {
+                ConfigureDataTable = (_) => new ExcelDataTableConfiguration() { UseHeaderRow = true }
+            });
+
+            worksheets.Clear();
+            foreach (System.Data.DataTable table in result.Tables)
+            {
+                worksheets.Add(table.TableName);
+            }
+
+            System.Data.DataTable? dataTable = null;
+            if (result.Tables.Contains(sheetNameToLoad))
+            {
+                dataTable = result.Tables[sheetNameToLoad];
+                currentWorksheet = sheetNameToLoad;
+            }
+            else if (result.Tables.Count > 0)
+            {
+                 dataTable = result.Tables[0]; // Fallback to first sheet
+                 currentWorksheet = dataTable.TableName;
+            }
+
+
+            if (dataTable == null)
+            {
+                errorMessage = "No readable worksheets found in the Excel file.";
+                return;
+            }
+
+            // Parse header and data (similar to previous implementation)
+             filePreviewHeaders.Clear();
+            filePreviewData.Clear();
+
+            foreach (System.Data.DataColumn column in dataTable.Columns)
+            {
+                filePreviewHeaders.Add(string.IsNullOrWhiteSpace(column.ColumnName) ? $"Column {column.Ordinal + 1}" : column.ColumnName);
+            }
+
+            int maxRows = Math.Min(dataTable.Rows.Count, 100);
+            for (int i = 0; i < maxRows; i++)
+            {
+                var rowData = new List<string>();
+                for (int j = 0; j < dataTable.Columns.Count; j++)
+                {
+                    var value = dataTable.Rows[i][j];
+                    string cellValue = FormatCellValue(value); // Use helper
+                    rowData.Add(cellValue);
+                }
+                filePreviewData.Add(rowData);
+            }
+             if (filePreviewData.Count == 0 && filePreviewHeaders.Count == 0 && dataTable.Rows.Count > 0) {
+                 // If headers exist but no data rows were read successfully
+                 errorMessage = "Could not read data rows, check format.";
+             } else if (filePreviewData.Count == 0 && filePreviewHeaders.Count == 0) {
+                 errorMessage = "Selected worksheet appears empty.";
+             }
+
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error parsing Excel file: {ex.Message}";
+            previewType = PreviewType.Unsupported;
+        }
+        await InvokeAsync(StateHasChanged); // Update UI after parsing
+    }
+
+     private string FormatCellValue(object? cellValue)
+    {
+        if (cellValue == null || cellValue == DBNull.Value) return string.Empty;
+        if (cellValue is DateTime dateTime) return dateTime.ToString("o"); // ISO 8601 for consistency
+        // Add other specific formatting if needed (e.g., percentages, currency)
+        // else if (value is double number && number >= 0 && number <= 1) return (number * 100).ToString("0.##") + "%";
+        return cellValue.ToString() ?? string.Empty;
+    }
+
+
+    private async Task ParseJsonInternal(Stream fileStream)
+    {
+        try
+        {
+            using var reader = new StreamReader(fileStream);
+            string rawJson = await reader.ReadToEndAsync();
+             // Attempt to parse and reformat for better readability
+             try {
+                 using var jsonDoc = JsonDocument.Parse(rawJson);
+                 formattedContent = JsonSerializer.Serialize(jsonDoc.RootElement, new JsonSerializerOptions { WriteIndented = true });
+             } catch (JsonException) {
+                 // If parsing fails, show raw content
+                 formattedContent = rawJson;
+                 errorMessage = "JSON is potentially malformed, displaying raw content.";
+             }
+
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error reading JSON file: {ex.Message}";
+            previewType = PreviewType.Unsupported;
+        }
+    }
+
+    private async Task ParseXmlInternal(Stream fileStream)
+    {
+         try
+        {
+            using var reader = new StreamReader(fileStream);
+            string rawXml = await reader.ReadToEndAsync();
+            // Attempt to parse and reformat
+            try {
+                var xmlDoc = XDocument.Parse(rawXml);
+                formattedContent = xmlDoc.ToString(); // Pretty prints by default
+            } catch (System.Xml.XmlException) {
+                formattedContent = rawXml; // Show raw if parsing fails
+                errorMessage = "XML is potentially malformed, displaying raw content.";
+            }
+        }
+        catch (Exception ex)
+        {
+             errorMessage = $"Error reading XML file: {ex.Message}";
+             previewType = PreviewType.Unsupported;
+        }
+    }
+
+    private async Task GetPdfUrlInternal(Stream fileStream)
+    {
+        // Strategy 1: Convert stream to Base64 data URL (might hit browser limits for large PDFs)
+        try
+        {
+            byte[] pdfBytes;
+            if (fileStream is MemoryStream ms) {
+                pdfBytes = ms.ToArray();
+            } else {
+                using var memoryStream = new MemoryStream();
+                await fileStream.CopyToAsync(memoryStream);
+                pdfBytes = memoryStream.ToArray();
+            }
+            pdfUrl = $"data:application/pdf;base64,{Convert.ToBase64String(pdfBytes)}";
+             if (pdfBytes.Length > 2 * 1024 * 1024) // Warn if PDF > 2MB due to potential browser issues
+            {
+                errorMessage = "PDF is large, preview might be slow or unstable. Consider downloading.";
+            }
+        }
+        catch (Exception ex)
+        {
+             errorMessage = $"Error creating PDF preview URL: {ex.Message}";
+             pdfUrl = null; // Ensure URL is null on error
+        }
+
+        // Strategy 2 (Alternative): Use Blob URL (more efficient for large files)
+        // This requires more JS interop to create the blob URL on the client.
+        // Example (conceptual - needs JS function `createBlobUrl`):
+        // try {
+        //     byte[] pdfBytes = ... // Get bytes as above
+        //     pdfUrl = await JSRuntime.InvokeAsync<string>("createBlobUrl", pdfBytes, "application/pdf");
+        // } catch ...
+
+        // Strategy 3 (Server-side): If FileUploadService could provide a temporary, secure URL
+        // pdfUrl = await FileUploadService.GetTemporaryFileUrlAsync(File.Id); // Fictional method
+    }
+
+
+    // Event Handlers
+    private async Task HandleCellClick(string cellValue)
     {
         if (IsSelectingField)
         {
@@ -235,6 +664,61 @@
         }
     }
 
+    private async Task HandleCancelFieldSelection()
+    {
+        await OnCancelFieldSelection.InvokeAsync();
+    }
+
+    // Excel/CSV Specific Actions
+    private async Task ShowSheetSelector()
+    {
+         if (worksheets.Count <= 1 || File == null) return;
+
+        var parameters = new DialogParameters
+            {
+                ["Worksheets"] = worksheets,
+                ["CurrentWorksheet"] = currentWorksheet
+            };
+
+        var dialog = await DialogService.ShowAsync<WorksheetSelectorDialog>("Select Worksheet", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled && result.Data is string selectedSheet && selectedSheet != currentWorksheet)
+        {
+            // Reload preview with the new sheet
+             isLoadingPreview = true;
+            errorMessage = string.Empty;
+            try {
+                Stream? fileStream = await FileUploadService.GetFileStreamAsync(File.Id);
+                 if (fileStream == null) {
+                    errorMessage = "File stream could not be retrieved for changing sheet.";
+                    return;
+                }
+                 using (fileStream) {
+                    await ParseExcelInternal(fileStream, selectedSheet);
+                }
+            } catch (Exception ex) {
+                Logger.LogError(ex, "Error loading worksheet '{SheetName}' for File ID {FileId}", selectedSheet, File.Id);
+                errorMessage = $"Error loading worksheet: {ex.Message}";
+                 // Optionally revert currentWorksheet or clear preview
+            } finally {
+                 isLoadingPreview = false;
+            }
+
+        }
+    }
+
+    private void ZoomIn()
+    {
+        zoomLevel = Math.Min(zoomLevel + 0.1, 2.0);
+    }
+
+    private void ZoomOut()
+    {
+        zoomLevel = Math.Max(zoomLevel - 0.1, 0.5);
+    }
+
+    // Helper method (moved)
     private string GetExcelColumnName(int columnIndex)
     {
         string columnName = "";
@@ -247,7 +731,6 @@
             columnName = Convert.ToChar(65 + modulo) + columnName;
             dividend = (dividend - modulo) / 26;
         }
-
         return columnName;
     }
 }

@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using HillMetrics.Core.API.Responses;
+using HillMetrics.Core.Mediator;
 using HillMetrics.Core.Workflow;
 using HillMetrics.MIND.API.Contracts.Requests.Prices;
 using HillMetrics.MIND.API.Contracts.Responses;
@@ -13,7 +14,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace HillMetrics.MIND.API.Controllers
 {
     [Route("api/v{v:apiVersion}/[controller]")]
-    public class PricesController(IMediator mediator, IMapper mapper, ILogger<PricesController> logger) : BaseHillMetricsController(mediator)
+    public class PricesController(IHMediator mediator, IMapper mapper, ILogger<PricesController> logger) : BaseHillMetricsController(mediator)
     {
         [HttpPost("update")]
         public async Task<ActionResult<bool>> UpdatePriceAsync([FromBody] UpdatePriceRequest request)

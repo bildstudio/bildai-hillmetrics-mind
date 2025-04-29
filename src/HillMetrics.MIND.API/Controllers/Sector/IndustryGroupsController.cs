@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using HillMetrics.Core.API.Responses;
 using HillMetrics.Core.Financial.Gics;
+using HillMetrics.Core.Mediator;
 using HillMetrics.MIND.API.Contracts.Responses.Sector;
 using HillMetrics.Normalized.Domain.Contracts.Sector;
 using MediatR;
@@ -10,7 +11,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace HillMetrics.MIND.API.Controllers.Sector
 {
     [Route("api/v{v:apiVersion}/[controller]")]
-    public class IndustryGroupsController(IMediator mediator, IMapper mapper) : BaseHillMetricsController(mediator)
+    public class IndustryGroupsController(IHMediator mediator, IMapper mapper) : BaseHillMetricsController(mediator)
     {
         // GET Industry Groups
         [HttpGet]

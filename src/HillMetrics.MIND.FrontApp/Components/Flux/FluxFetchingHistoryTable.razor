@@ -108,7 +108,7 @@
         <MudTd DataLabel="Workflow">
             @if (context.WorkflowId != Guid.Empty)
             {
-                <MudLink Href="@($"/flux/workflow-live/{context.FluxId}/{context.WorkflowId}/false")">
+                <MudLink Href="@($"/flux/workflow-live/{context.FluxId}/{context.WorkflowId}/true")">
                     <MudIcon Icon="@Icons.Material.Filled.Timeline" Color="Color.Primary" />
                 </MudLink>
             }

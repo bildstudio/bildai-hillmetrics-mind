@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using HillMetrics.Core.API.Responses;
+using HillMetrics.Core.Mediator;
 using HillMetrics.MIND.API.Contracts.Requests.TradingVenue;
 using HillMetrics.MIND.API.Contracts.Responses;
 using HillMetrics.MIND.API.Contracts.Responses.TradingVenue;
@@ -16,7 +17,7 @@ namespace HillMetrics.MIND.API.Controllers
         private readonly ILogger<TradingVenueController> _logger;
 
         public TradingVenueController(
-            IMediator mediator,
+            IHMediator mediator,
             ILogger<TradingVenueController> logger) : base(mediator)
         {
             _logger = logger;

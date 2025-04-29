@@ -144,10 +144,9 @@ namespace HillMetrics.MIND.API.Contracts.Responses.Flux
         /// </summary>
         public int RowsWithErrors { get; set; }
 
-        /// <summary>
-        /// Indicates whether this step has been completed
-        /// </summary>
-        public bool IsCompleted { get; set; }
+        public WorkflowStepStatus Status { get; set; }
+
+        public string? ErrorMessage { get; set; }
 
         /// <summary>
         /// The timestamp when the step was completed
