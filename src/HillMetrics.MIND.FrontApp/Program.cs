@@ -25,6 +25,8 @@ var logger = builder.InitAndAddHillMetricsLogger(HillMetrics.Orchestrator.Servic
 builder.AddHillMetricsServiceDefaults();
 builder.Services.ConfigureHillMetricsDefaultHttpClient();
 
+builder.Services.AddSingleton<ISignalRNotificationService, SignalRNotificationService>();
+
 var mindApi = builder.Configuration.GetValue<string>("Services:MindApi", $"https+http://{HillMetrics.Orchestrator.ServicesNames.Services.MindAPI}");
 //var signalRApi = builder.Configuration.GetValue<string>("Services:SignalRApi", $"https+http://{HillMetrics.Orchestrator.ServicesNames.Services.SignalRService}");
 //mindApi = "https://mindapi.hillm.bildhosting.me";

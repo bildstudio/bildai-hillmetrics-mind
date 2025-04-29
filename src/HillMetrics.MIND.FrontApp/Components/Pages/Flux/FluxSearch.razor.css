@@ -1,0 +1,40 @@
+﻿.workflow-status-icon {
+    animation: pulse-icon 1.5s infinite ease-in-out;
+}
+
+.workflow-active-row td {
+    /* Apply animation to table cells */
+    animation: pulse-background 2s infinite ease-in-out;
+}
+
+@keyframes pulse-background {
+    0% {
+        background-color: var(--mud-palette-table-striped-background); /* Start with normal striped color */
+    }
+
+    50% {
+        background-color: rgba(21, 101, 192, 0.1); /* Light blue pulse - adjust color/opacity */
+    }
+
+    100% {
+        background-color: var(--mud-palette-table-striped-background); /* End with normal striped color */
+    }
+}
+
+/* Optional: slight pulse for the icon itself */
+@keyframes pulse-icon {
+    0% {
+        opacity: 0.7;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 1;
+        transform: scale(1.1);
+    }
+
+    100% {
+        opacity: 0.7;
+        transform: scale(1);
+    }
+}
