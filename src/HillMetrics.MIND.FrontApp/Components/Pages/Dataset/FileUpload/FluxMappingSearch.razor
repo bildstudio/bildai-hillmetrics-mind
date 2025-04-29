@@ -9,6 +9,8 @@
 @using HillMetrics.MIND.API.Contracts.Responses.Flux;
 @using HillMetrics.MIND.FrontApp.Services
 @using System.Text.Json
+@using System.IO
+@using System.IO.Compression
 @inject IMindAPI MindApi
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
@@ -16,6 +18,7 @@
 @inject IJSRuntime JSRuntime;
 @inject FileUploadService FileUploadService;
 @inject MappingExportService MappingExportService;
+@inject ILogger<FluxMappingSearch> Logger;
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
     <MudGrid>
@@ -160,11 +163,20 @@
                 <MudText Typo="Typo.h6">Files</MudText>
                 <MudSpacer />
                 <MudButton Variant="Variant.Outlined"
-                Color="Color.Primary"
-                StartIcon="@Icons.Material.Filled.Download"
-                OnClick="ExportAllMappings"
-                Class="ml-2">
-                    Export All
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Download"
+                           OnClick="ExportAllMappings"
+                           Disabled="exportingAll"
+                           Class="ml-2">
+                    @if (exportingAll)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-1" />
+                        @("Exporting...")
+                    }
+                    else
+                    {
+                        @("Export All")
+                    }
                 </MudButton>
             </ToolBarContent>
             <HeaderContent>
@@ -209,7 +221,7 @@
                     }
                 </MudTd>
                 <MudTd DataLabel="Financial Type">
-                    <MudChip T="Color" Color="@(context.FinancialType == FinancialType.Undefined ? Color.Error : Color.Primary)" 
+                    <MudChip T="Color" Color="@(context.FinancialType == FinancialType.Undefined ? Color.Error : Color.Primary)"
                             Size="Size.Small">
                         @context.FinancialType
                     </MudChip>
@@ -221,8 +233,8 @@
                             @foreach (var dataPoint in context.DataPoints)
                             {
                                 <MudChip T="DataPointInfoResponse"
-                                    Size="Size.Small" 
-                                    Color="Color.Primary" 
+                                    Size="Size.Small"
+                                    Color="Color.Primary"
                                     OnClick="() => NavigateToDataPoint(dataPoint.Id)"
                                     Style="margin: 2px; cursor: pointer;">
                                     @dataPoint.Name
@@ -266,7 +278,7 @@
                 </MudTd>
             </RowTemplate>
             <PagerContent>
-                <MudTablePager />
+                <MudTablePager PageSizeOptions="@_pageSizeOptions" />
             </PagerContent>
             <NoRecordsContent>
                 <MudAlert Severity="Severity.Info" Class="my-2">No file mappings found matching your search criteria.</MudAlert>
@@ -333,17 +345,20 @@
     private bool isValid = false;
     private MudForm form;
     private FileUploadSearchResponse? selectedItem;
-    private TableState tableState;
-    
+    private TableState tableState = new() { PageSize = 10 }; // Default page size
+    private IEnumerable<FileUploadSearchResponse> currentTableItems = new List<FileUploadSearchResponse>();
+    private int[] _pageSizeOptions = { 10, 25, 50, 100, 1000 }; // Add 1000 to options
+
     // Flux filtering support
     private int? selectedFluxId;
     private Dictionary<int, string> fluxNames = new();
     private List<FluxSearchResponse> cachedFluxes = new();
-    
+
     // Dialog and selected item management
     private bool isDetailsDialogVisible;
     private MappingViewModel? selectedMapping;
     private DialogOptions dialogOptions = new() { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Medium };
+    private bool exportingAll = false;
 
     // Deprecated properties that can be removed in future versions
     // These are kept for backward compatibility
@@ -372,7 +387,7 @@
             selectedFluxId = FluxIdParameter.Value;
             searchRequest.FluxId = FluxIdParameter.Value;
             searchRequest.OriginType = FileOriginType.FluxOnly;
-            
+
             // If we have a flux ID, fetch its information
             try
             {
@@ -382,13 +397,11 @@
                     fluxNames[FluxIdParameter.Value] = flux.FluxName;
                 }
             }
-            catch (Exception) 
+            catch (Exception)
             {
                 // If we can't retrieve the flux, continue anyway
             }
         }
-        
-        await Search();
     }
 
     /// <summary>
@@ -428,6 +441,8 @@
     {
         tableState = state;
         loading = true;
+        currentTableItems = new List<FileUploadSearchResponse>(); // Clear previous items
+        // StateHasChanged(); // Update UI to show loading
 
         try
         {
@@ -436,7 +451,10 @@
             searchRequest.Sorting = new Sorting("FileName", Core.Search.SortDirection.Asc);
 
             var response = await MindApi.SearchFileUploadsAsync(searchRequest, token);
-            
+
+            // Store the fetched items for the current view
+            currentTableItems = response?.Data ?? new List<FileUploadSearchResponse>();
+
             return new TableData<FileUploadSearchResponse>
             {
                 Items = response.Data,
@@ -445,7 +463,6 @@
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Error searching files: {ex.Message}", Severity.Error);
             return new TableData<FileUploadSearchResponse>
             {
                 Items = new List<FileUploadSearchResponse>(),
@@ -549,10 +566,10 @@
         {
             // Generate JSON content for the mapping
             var jsonContent = await MappingExportService.ExportMappingToJsonAsync(mappingId);
-            
+
             // Download the JSON file
             await MappingExportService.DownloadJsonFileAsync(jsonContent, $"mapping_{mappingId}.json");
-            
+
             Snackbar.Add("Mapping exported successfully", Severity.Success);
         }
         catch (Exception ex)
@@ -562,56 +579,39 @@
     }
 
     /// <summary>
-    /// Exports all mappings to a JSON file and downloads it
+    /// Exports all mappings matching the current search criteria to a ZIP file.
+    /// The ZIP file contains a folder for each file, holding the original file and its mapping JSON.
     /// </summary>
     private async Task ExportAllMappings()
     {
+        exportingAll = true;
+        StateHasChanged();
+
         try
         {
-            // Get all file uploads to construct a complete export
-            var response = await MindApi.GetAllFileUploadsAsync();
-            
-            // Build a comprehensive document containing all file mappings
-            var exportData = new Dictionary<string, object>();
-            
-            foreach (var file in response.Data)
+            // Pass the currently displayed items to the service
+            var (zipBytes, zipFileName) = await MappingExportService.ExportFilteredMappingsToZipAsync(currentTableItems);
+
+            if (zipBytes == null || zipBytes.Length == 0)
             {
-                try 
-                {
-                    var fileJson = await MappingExportService.ExportFileMappingsToJsonAsync(file.Id);
-                    // Add to the export data if export was successful
-                    if (!string.IsNullOrEmpty(fileJson))
-                    {
-                        var fileData = JsonSerializer.Deserialize<Dictionary<string, object>>(fileJson);
-                        if (fileData != null)
-                        {
-                            // Use filename as key to avoid ID collisions
-                            exportData[file.FileName] = fileData;
-                        }
-                    }
-                }
-                catch
-                {
-                    // Continue with next file if one fails
-                    continue;
-                }
+                Snackbar.Add("No data found to export based on current filters.", Severity.Warning);
+                return;
             }
-            
-            var options = new JsonSerializerOptions
-            {
-                WriteIndented = true
-            };
-            
-            var jsonContent = JsonSerializer.Serialize(exportData, options);
-            
-            // Download the full export
-            await MappingExportService.DownloadJsonFileAsync(jsonContent, "all_mappings.json");
-            
-            Snackbar.Add("All mappings exported successfully", Severity.Success);
+
+            var base64 = Convert.ToBase64String(zipBytes);
+            await JSRuntime.InvokeVoidAsync("downloadFileFromBase64", zipFileName, base64, "application/zip");
+
+            Snackbar.Add("Export started successfully. Check your downloads.", Severity.Success);
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Error exporting all mappings: {ex.Message}", Severity.Error);
+            Logger.LogError(ex, "Error exporting all mappings to ZIP");
+            Snackbar.Add($"Error exporting mappings: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            exportingAll = false;
+            StateHasChanged();
         }
     }
 
@@ -629,18 +629,18 @@
                 Snackbar.Add("File not found", Severity.Error);
                 return;
             }
-            
+
             var fileName = fileDetails.Data.FileName;
-            
+
             // Generate JSON content for all mappings of this file
             var jsonContent = await MappingExportService.ExportFileMappingsToJsonAsync(fileUploadId);
-            
+
             // Construct a filename based on the original file
             var exportFileName = Path.GetFileNameWithoutExtension(fileName) + "_mappings.json";
-            
+
             // Download the JSON file
             await MappingExportService.DownloadJsonFileAsync(jsonContent, exportFileName);
-            
+
             Snackbar.Add("File mappings exported successfully", Severity.Success);
         }
         catch (Exception ex)
@@ -804,7 +804,7 @@
         searchRequest.FluxId = selectedFluxId;
         await Search();
     }
-    
+
     /// <summary>
     /// Searches for fluxes based on user input
     /// </summary>
@@ -815,7 +815,7 @@
         {
             return new List<int?> { null };
         }
-        
+
         try
         {
             var request = new FluxSearchRequest
@@ -823,20 +823,20 @@
                 Name = value,
                 Pagination = new Pagination(10, 1)
             };
-            
+
             var result = await MindApi.SearchFluxAsync(request);
-            
+
             cachedFluxes = result.Data.ToList();
-            
+
             // Update the flux names cache
             foreach (var flux in cachedFluxes)
             {
                 fluxNames[flux.FluxId] = flux.Name;
             }
-            
+
             var fluxIds = cachedFluxes.Select(f => (int?)f.FluxId).ToList();
             fluxIds.Insert(0, null); // Add "All" option
-            
+
             return fluxIds;
         }
         catch (Exception)
@@ -844,7 +844,7 @@
             return new List<int?> { null };
         }
     }
-    
+
     /// <summary>
     /// Gets a flux name from the cache or returns a default if not found
     /// </summary>

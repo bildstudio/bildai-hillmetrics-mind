@@ -1,6 +1,6 @@
 ﻿@page "/file-data-mapping"
-@page "/file-data-mapping/file/{FileUploadId:int}"
-@page "/file-data-mapping/flux/{FluxFetchingHistoryContentId:int}"
+@page "/file-data-mapping/file/{FileUploadId:int}/{AlreadyMapped:bool?}"
+@page "/file-data-mapping/flux/{FluxFetchingHistoryContentId:int}/{AlreadyMapped:bool?}"
 @using ExcelDataReader
 @using HillMetrics.Core.Financial
 @using HillMetrics.MIND.API.Contracts.Requests.AiDataset
@@ -37,41 +37,41 @@ else
         <!-- File Information and Preview -->
         <MudItem xs="12" md="6">
             <FileUploadCard IsEditMode="isEditMode"
-                            File="uploadedFile"
-                            SelectedFile="selectedFile"
-                            SelectedFileName="@selectedFileName"
-                            SelectedFileSize="@selectedFileSize"
-                            SelectedFileContentType="@selectedFileContentType"
-                            CustomFileName="@customFileName"
-                            FileDifficulty="fileDifficulty"
-                            IsUploading="isUploading"
-                            DuplicateFileFound="duplicateFileFound"
-                            CanUploadFile="CanUploadFile()"
-                            OnFileSelected="OnFileChanged"
-                            OnFileClear="ClearFile"
-                            OnSave="HandleSave" />
+            File="uploadedFile"
+            SelectedFile="selectedFile"
+            SelectedFileName="@selectedFileName"
+            SelectedFileSize="@selectedFileSize"
+            SelectedFileContentType="@selectedFileContentType"
+            CustomFileName="@customFileName"
+            FileDifficulty="fileDifficulty"
+            IsUploading="isUploading"
+            DuplicateFileFound="duplicateFileFound"
+            CanUploadFile="CanUploadFile()"
+            OnFileSelected="OnFileChanged"
+            OnFileClear="ClearFile"
+            OnSave="HandleSave" />
 
             @if (uploadedFile != null)
             {
                 <FilePreview File="uploadedFile"
-                             IsSelectingField="isSelectingField"
-                             SelectedFieldName="selectedFieldName"
-                             OnCellSelected="OnCellClick"
-                             OnCancelFieldSelection="CancelFieldSelection" />
+                IsSelectingField="isSelectingField"
+                SelectedFieldName="selectedFieldName"
+                OnCellSelected="OnCellClick"
+                OnCancelFieldSelection="CancelFieldSelection" />
             }
         </MudItem>
 
         <!-- Data Mapping Card -->
         <MudItem xs="12" md="6">
             <DataMappingCard IsEditMode="isEditMode"
-                             File="uploadedFile"
-                             AvailableDataPoints="availableDataPoints"
-                             DataMappings="dataMappings"
-                             OnAddDataPoint="AddDataPoint"
-                             OnRemoveMapping="RemoveDataMapping"
-                             OnFieldSelect="SelectField"
-                             OnExpandAll="ExpandAllPanels"
-                             OnCollapseAll="CollapseAllPanels" />
+            File="uploadedFile"
+            AvailableDataPoints="availableDataPoints"
+            DataMappings="dataMappings"
+            OnAddDataPoint="AddDataPoint"
+            OnRemoveMapping="RemoveDataMapping"
+            OnFieldSelect="SelectField"
+            OnExpandAll="ExpandAllPanels"
+            OnCollapseAll="CollapseAllPanels" />
         </MudItem>
 
         <!-- Action Buttons -->
@@ -82,12 +82,12 @@ else
                         @if (dataMappings.Count > 0)
                         {
                             <MudButton OnClick="SaveMappings"
-                                       Color="Color.Primary"
-                                       Variant="Variant.Filled"
-                                       Disabled="isSaving || dataMappings.Count == 0"
-                                       StartIcon="@Icons.Material.Filled.Save"
-                                       Size="Size.Large"
-                                       FullWidth="true">
+                            Color="Color.Primary"
+                            Variant="Variant.Filled"
+                            Disabled="isSaving || dataMappings.Count == 0"
+                            StartIcon="@Icons.Material.Filled.Save"
+                            Size="Size.Large"
+                            FullWidth="true">
                                 @if (isSaving)
                                 {
                                     <MudProgressCircular Class="mr-2" Size="Size.Small" Indeterminate="true" />
@@ -102,11 +102,11 @@ else
                     </MudItem>
                     <MudItem xs="12" md="6">
                         <MudButton OnClick="NavigateBack"
-                                   Color="Color.Secondary"
-                                   Variant="Variant.Outlined"
-                                   StartIcon="@Icons.Material.Filled.ArrowBack"
-                                   Size="Size.Large"
-                                   FullWidth="true">
+                        Color="Color.Secondary"
+                        Variant="Variant.Outlined"
+                        StartIcon="@Icons.Material.Filled.ArrowBack"
+                        Size="Size.Large"
+                        FullWidth="true">
                             Cancel
                         </MudButton>
                     </MudItem>
@@ -117,6 +117,9 @@ else
 }
 
 @code {
+    [Parameter]
+    public bool? AlreadyMapped { get; set; }
+
     [Parameter]
     public int? FileUploadId { get; set; }
 
@@ -238,6 +241,22 @@ else
             if (isEditMode)
             {
                 await LoadExistingFile();
+
+                // Check if we were redirected because the mapping already existed
+                if (AlreadyMapped == true)
+                {
+                    // Show Snackbar with desired configuration
+                    Snackbar.Add(
+                        $"Redirected to existing mapping (ID: {FileUploadId}) as the uploaded file already exists.",
+                        Severity.Info,
+                        config =>
+                        {
+                            config.ShowCloseIcon = true;       // Add close button
+                            config.VisibleStateDuration = 10000; // 10 seconds duration
+                            config.HideTransitionDuration = 500;
+                            config.ShowTransitionDuration = 500;
+                        });
+                }
             }
         }
         catch (Exception ex)
@@ -555,6 +574,15 @@ else
 
                 if (response.Data != null)
                 {
+                    if(response.Data.AlreadyExisted)
+                    {
+
+
+                        // Redirect to the page with FileUploadId AND the AlreadyMapped flag set to true
+                        NavigationManager.NavigateTo($"/file-data-mapping/file/{response.Data.Id}/true", forceLoad: true);
+                        return; // Stop further processing in this method
+                    }
+
                     uploadedFile = response.Data;
 
                     // Mise à jour des métadonnées après l'upload

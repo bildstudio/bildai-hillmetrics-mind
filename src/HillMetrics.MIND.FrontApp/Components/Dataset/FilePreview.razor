@@ -304,6 +304,9 @@
     // PDF specific state
     private string? pdfUrl;
 
+    private int? _currentFileId = null; // Track the ID of the currently loaded file
+    private bool _hasLoadedOnce = false; // Track if initial load occurred
+
     private string PreviewIcon => previewType switch {
         PreviewType.Excel => Icons.Custom.FileFormats.FileExcel,
         PreviewType.Csv => Icons.Custom.FileFormats.FileExcel,
@@ -315,16 +318,23 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        // Load preview when the File parameter changes
-        if (File != null)
+        // Determine if the file has actually changed or if it's the initial load
+        bool fileChanged = File?.Id != _currentFileId;
+
+        if (File != null && (fileChanged || !_hasLoadedOnce))
         {
+            _currentFileId = File.Id;
             await LoadPreviewAsync();
+            _hasLoadedOnce = true; // Mark that initial load has happened
         }
-        else
+        else if (File == null && _currentFileId != null)
         {
-            // Clear preview if File is null
+            // File was removed, clear the preview
+            _currentFileId = null;
+            _hasLoadedOnce = false; // Reset load state
             ClearPreview();
         }
+        // If File is the same and not null, and we've loaded once, do nothing automatically.
     }
 
     private void ClearPreview()
@@ -352,6 +362,7 @@
         isLoadingPreview = true;
         errorMessage = string.Empty;
         // Reset other states before loading
+        _currentFileId = File.Id; // Update current file ID when loading starts
         filePreviewData.Clear();
         filePreviewHeaders.Clear();
         worksheets.Clear();
@@ -476,7 +487,13 @@
         {
             System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
 
-            using var reader = ExcelReaderFactory.CreateReader(fileStream);
+            // Copy the potentially non-seekable stream to a MemoryStream
+            using var memoryStream = new MemoryStream();
+            await fileStream.CopyToAsync(memoryStream);
+            memoryStream.Position = 0; // Reset the memory stream position to the beginning
+
+            // Use the MemoryStream with ExcelReaderFactory
+            using var reader = ExcelReaderFactory.CreateReader(memoryStream);
             var result = reader.AsDataSet(new ExcelDataSetConfiguration()
             {
                 ConfigureDataTable = (_) => new ExcelDataTableConfiguration() { UseHeaderRow = true }
