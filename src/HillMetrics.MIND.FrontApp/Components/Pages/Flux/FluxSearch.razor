@@ -522,7 +522,7 @@
             if (result?.Data != null)
             {
                 // Rediriger vers la page du workflow avec l'ID du workflow
-                NavigationManager.NavigateTo($"/flux/workflow-live/{id}/{result.Data.WorkflowId}/true");
+                NavigationManager.NavigateTo($"/flux/workflow-live/{id}/{result.Data.WorkflowId}");
                 Snackbar.Add($"Suivi du traitement en cours. WorkflowId: {result.Data.WorkflowId}", Severity.Info);
             }
             else
@@ -551,7 +551,6 @@
             if (result?.Data != null)
             {
                 // Rediriger vers la page du workflow avec l'ID du workflow
-                // NavigationManager.NavigateTo($"/flux/workflow-live/{id}/{result.Data.WorkflowId}");
                 Snackbar.Add($"Suivi du traitement en cours. WorkflowId: {result.Data.WorkflowId}", Severity.Info);
             }
             else
