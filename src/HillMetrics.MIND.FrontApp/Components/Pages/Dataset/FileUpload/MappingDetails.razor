@@ -145,9 +145,9 @@ else
                         </HeaderContent>
                         <RowTemplate>
                             <MudTd DataLabel="Property">@context.FinancialDataPointElement.PropertyName</MudTd>
-                            <MudTd DataLabel="Value">@context.FinancialDataPointElement.PotentialValues</MudTd>
+                            <MudTd DataLabel="Value">@context.ExtractedValue</MudTd>
                             <MudTd DataLabel="Data Type">
-                                <MudChip T="Color" Size="Size.Small" Color="Color.Primary">@context.PropertyDataType</MudChip>
+                                <MudChip T="Color" Size="Size.Small" Color="Color.Primary">@context.PropertyDataType.Name</MudChip>
                             </MudTd>
                             <MudTd DataLabel="Description">@context.FinancialDataPointElement.Description</MudTd>
                         </RowTemplate>

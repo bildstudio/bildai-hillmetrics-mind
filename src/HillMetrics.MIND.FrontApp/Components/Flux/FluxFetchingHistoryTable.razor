@@ -108,7 +108,7 @@
         <MudTd DataLabel="Workflow">
             @if (context.WorkflowId != Guid.Empty)
             {
-                <MudLink Href="@($"/flux/workflow-live/{context.FluxId}/{context.WorkflowId}/true")">
+                <MudLink Href="@($"/flux/workflow-live/{context.FluxId}/{context.WorkflowId}")">
                     <MudIcon Icon="@Icons.Material.Filled.Timeline" Color="Color.Primary" />
                 </MudLink>
             }
@@ -198,7 +198,7 @@
 
     private void ViewWorkflow(int fluxId, Guid workflowId)
     {
-        NavigationManager.NavigateTo($"/flux/workflow-live/{fluxId}/{workflowId}/true");
+        NavigationManager.NavigateTo($"/flux/workflow-live/{fluxId}/{workflowId}");
     }
 
     private async Task ForceProcess(int fetchingHistoryId)
