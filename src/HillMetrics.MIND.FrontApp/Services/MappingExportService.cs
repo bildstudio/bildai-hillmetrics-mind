@@ -245,6 +245,12 @@ namespace HillMetrics.MIND.FrontApp.Services
                 _logger.LogInformation("Found {Count} files to export. Creating temporary directory: {TempPath}", fileUploadsToExport.Count(), tempDirectoryPath);
                 Directory.CreateDirectory(tempDirectoryPath);
                 directoryCreated = true;
+                
+                // Get all financial data points to include unmapped ones
+                _logger.LogInformation("Fetching all financial data points to include unmapped ones in the export");
+                var allDataPointsResponse = await _mindApi.GetAllFinancialDataPointsAsync();
+                var allDataPoints = allDataPointsResponse.Data ?? new List<FinancialDataPoint>();
+                _logger.LogInformation("Retrieved {Count} financial data points", allDataPoints.Count);
 
                 foreach (var fileUpload in fileUploadsToExport)
                 {
@@ -291,23 +297,22 @@ namespace HillMetrics.MIND.FrontApp.Services
                             // Decide if you want to continue without the original file or skip this entry
                         }
 
-                        // 2. Generate Mapping JSON
+                        // 2. Generate Mapping JSON with all data points, including unmapped ones
                         try
                         {
-                            _logger.LogDebug("Generating mapping JSON for file ID {FileId}", fileUpload.Id);
-                            string jsonContent = await ExportFileMappingsToJsonAsync(fileUpload.Id);
+                            _logger.LogDebug("Generating enhanced mapping JSON for file ID {FileId}", fileUpload.Id);
+                            string jsonContent = await ExportFileMappingsWithAllDataPointsAsync(fileUpload.Id, allDataPoints);
                             if (!string.IsNullOrWhiteSpace(jsonContent))
                             {
                                 string jsonFileName = $"{sanitizedFolderName}_mapping.json";
                                 string jsonFilePath = Path.Combine(fileSpecificTempPath, jsonFileName);
                                 await File.WriteAllTextAsync(jsonFilePath, jsonContent, Encoding.UTF8);
-                                _logger.LogDebug("Successfully saved mapping JSON to {Path}", jsonFilePath);
+                                _logger.LogDebug("Successfully saved enhanced mapping JSON to {Path}", jsonFilePath);
                             }
                         }
                         catch (Exception ex)
                         {
-                            // ExportFileMappingsToJsonAsync already logs errors, but we might want to log context here.
-                            _logger.LogWarning(ex, "Could not generate or save mapping JSON for file ID {FileId}. This might happen if no mappings exist.", fileUpload.Id);
+                            _logger.LogWarning(ex, "Could not generate or save mapping JSON for file ID {FileId}.", fileUpload.Id);
                             // Continue processing other files
                         }
                         filesProcessedCount++;
@@ -360,6 +365,91 @@ namespace HillMetrics.MIND.FrontApp.Services
                     // Log cleanup errors but don't throw, as the main operation might have succeeded
                     _logger.LogError(ioEx, "Error cleaning up temporary files/directory during export.");
                 }
+            }
+        }
+
+        /// <summary>
+        /// Exports file mappings to JSON format, including all data points even if they're not mapped.
+        /// </summary>
+        /// <param name="fileUploadId">The ID of the file to export mappings for.</param>
+        /// <param name="allDataPoints">All available financial data points.</param>
+        /// <returns>A JSON string representing all mappings for the file with unmapped data points included.</returns>
+        private async Task<string> ExportFileMappingsWithAllDataPointsAsync(int fileUploadId, List<FinancialDataPoint> allDataPoints)
+        {
+            try
+            {
+                // Get file details
+                var fileResponse = await _mindApi.GetFileUploadAsync(fileUploadId);
+
+                var fileUpload = fileResponse.Data;
+                if (fileUpload == null)
+                {
+                    throw new Exception($"File with ID {fileUploadId} not found.");
+                }
+
+                // Get mappings for the file
+                var mappingsResponse = await _mindApi.GetMappingsByFileUploadAsync(fileUploadId);
+                var mappings = mappingsResponse.Data ?? new List<FileDataMapping>();
+                
+                _logger.LogDebug("Found {Count} mappings for file ID {FileId}", mappings.Count, fileUploadId);
+
+                // Create the root JSON object
+                var rootObject = new Dictionary<string, object>();
+
+                // Create a dictionary of mapped data points for quick lookup
+                var mappedDataPoints = mappings
+                    .GroupBy(m => m.FinancialDataPoint.Name)
+                    .ToDictionary(g => g.Key, g => g.ToList());
+
+                // Process all data points, including those that aren't mapped
+                foreach (var dataPoint in allDataPoints)
+                {
+                    string dataPointName = dataPoint.Name;
+                    
+                    if (mappedDataPoints.TryGetValue(dataPointName, out var dataPointMappings))
+                    {
+                        // This data point is mapped - use existing logic
+                        var identifierArray = new List<Dictionary<string, object>>();
+                        foreach (var mapping in dataPointMappings)
+                        {
+                            var identifierObject = CreateElementsDictionary(mapping);
+                            identifierArray.Add(identifierObject);
+                        }
+                        rootObject[dataPointName] = identifierArray;
+                    }
+                    else
+                    {
+                        // This data point is not mapped - create empty entry
+                        var emptyMapping = new List<Dictionary<string, object>>();
+                        var emptyObject = new Dictionary<string, object>();
+                        
+                        // Add empty entries for each element in the data point
+                        foreach (var element in dataPoint.Elements)
+                        {
+                            emptyObject[element.PropertyName] = "";
+                        }
+                        
+                        // Only add if the data point has elements
+                        if (emptyObject.Count > 0)
+                        {
+                            emptyMapping.Add(emptyObject);
+                            rootObject[dataPointName] = emptyMapping;
+                        }
+                    }
+                }
+
+                var options = new JsonSerializerOptions
+                {
+                    WriteIndented = true,
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                };
+
+                return JsonSerializer.Serialize(rootObject, options);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error exporting file mappings with all data points to JSON for file ID {FileId}", fileUploadId);
+                throw;
             }
         }
 
