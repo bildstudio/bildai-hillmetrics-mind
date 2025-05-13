@@ -9,6 +9,7 @@ using HillMetrics.MIND.API.Contracts.Requests.AiDataset;
 using HillMetrics.MIND.API.Contracts.Responses.AiDataset;
 using HillMetrics.Core.Search;
 using System.Text.RegularExpressions;
+using HillMetrics.Core.Financial;
 
 namespace HillMetrics.MIND.FrontApp.Services
 {
@@ -178,7 +179,7 @@ namespace HillMetrics.MIND.FrontApp.Services
                     {
                         DataType = elementValue.PropertyDataType.Name.ToString(),
                         MappingType = element.MappingPrimitiveValue.ToString(),
-                        Value = elementValue.ExtractedValue
+                        Value = elementValue.ExtractedValue.Trim()
                     };
                 }
                 else
@@ -404,7 +405,7 @@ namespace HillMetrics.MIND.FrontApp.Services
                 // Process all data points, including those that aren't mapped
                 foreach (var dataPoint in allDataPoints)
                 {
-                    string dataPointName = dataPoint.Name;
+                    string dataPointName = dataPoint.Name.Trim();
                     
                     if (mappedDataPoints.TryGetValue(dataPointName, out var dataPointMappings))
                     {
@@ -426,7 +427,7 @@ namespace HillMetrics.MIND.FrontApp.Services
                         // Add empty entries for each element in the data point
                         foreach (var element in dataPoint.Elements)
                         {
-                            emptyObject[element.PropertyName] = "";
+                            emptyObject[element.PropertyName.Trim()] = "";
                         }
                         
                         // Only add if the data point has elements
