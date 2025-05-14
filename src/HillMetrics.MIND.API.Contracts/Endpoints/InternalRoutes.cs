@@ -57,5 +57,14 @@
                 public const string Search = "llm/prompts/search";
             }
         }
+
+        public static class Clients
+        {
+            public const string Get = "clients/{id}";
+            public const string Create = "clients";
+            public const string Update = "clients/{id}";
+            public const string Delete = "clients/{id}";
+            public const string Search = "clients/search";
+        }
     }
 }
