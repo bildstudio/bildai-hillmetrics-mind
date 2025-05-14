@@ -14,6 +14,7 @@ using Microsoft.AspNetCore.Authorization;
 using HillMetrics.MIND.API.Contracts.Responses.AiDataset;
 using HillMetrics.Normalized.Domain.Contracts.AI.Dataset.Cqrs.PropertyDataType;
 using HillMetrics.Core.Mediator;
+using HillMetrics.Core.Financial.DataPoint;
 
 namespace HillMetrics.MIND.API.Controllers;
 

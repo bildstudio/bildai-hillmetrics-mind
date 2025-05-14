@@ -1,5 +1,5 @@
 ﻿using AutoMapper;
-using HillMetrics.Core.Financial;
+using HillMetrics.Core.Financial.DataPoint;
 using HillMetrics.MIND.API.Contracts.Requests.AiDataset;
 using HillMetrics.MIND.API.Contracts.Responses.AiDataset;
 using HillMetrics.Normalized.Domain.Contracts.AI.Dataset;

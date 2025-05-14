@@ -1,9 +1,10 @@
 ﻿@page "/financial-data/create"
 @page "/financial-data/edit/{Id:int?}"
-@using HillMetrics.MIND.API.Contracts.Requests.AiDataset
-@using HillMetrics.Normalized.Domain.Contracts.AI.Dataset
-@using HillMetrics.MIND.API.SDK.V1
 @using HillMetrics.Core.Financial
+@using HillMetrics.Core.Financial.DataPoint
+@using HillMetrics.MIND.API.Contracts.Requests.AiDataset
+@using HillMetrics.MIND.API.SDK.V1
+@using HillMetrics.Normalized.Domain.Contracts.AI.Dataset
 @inject IMindAPI MindApi
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar

@@ -12,6 +12,7 @@ using System.Text.Json.Serialization;
 using HillMetrics.Core.Workflow;
 using HillMetrics.MIND.API.Contracts.Responses.AiDataset;
 using HillMetrics.Normalized.Domain.Contracts.AI.Dataset;
+using HillMetrics.Core.Financial.DataPoint;
 
 namespace HillMetrics.MIND.API.Contracts.Responses.Flux
 {
@@ -19,7 +20,7 @@ namespace HillMetrics.MIND.API.Contracts.Responses.Flux
     {
         public int Id { get; set; }
         public FluxType FluxType { get; set; }
-        public FinancialType? FinancialType { get; set; }
+        public FinancialType FinancialType { get; set; }
         public string FluxName { get; set; } = string.Empty;
         public string? Description { get; set; }
         public string? Comment { get; set; }

@@ -9,7 +9,7 @@ using HillMetrics.MIND.API.Contracts.Requests.AiDataset;
 using HillMetrics.MIND.API.Contracts.Responses.AiDataset;
 using HillMetrics.Core.Search;
 using System.Text.RegularExpressions;
-using HillMetrics.Core.Financial;
+using HillMetrics.Core.Financial.DataPoint;
 
 namespace HillMetrics.MIND.FrontApp.Services
 {
