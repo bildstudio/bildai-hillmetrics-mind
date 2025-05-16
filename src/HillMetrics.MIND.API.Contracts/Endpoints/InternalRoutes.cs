@@ -65,6 +65,10 @@
             public const string Update = "clients/{id}";
             public const string Delete = "clients/{id}";
             public const string Search = "clients/search";
+
+            public const string CreateFluxRule = "clients/{clientId}/flux-rules";
+            public const string UpdateFluxRule = "clients/{clientId}/flux-rules/{fluxRuleId}";
+            public const string GetFluxRule = "clients/{clientId}/flux-rules";
         }
     }
 }

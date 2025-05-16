@@ -8,10 +8,10 @@ using HillMetrics.MIND.API.Contracts.Responses.Clients;
 using HillMetrics.MIND.API.Contracts.Responses.Common;
 using HillMetrics.MIND.API.Endpoints;
 using HillMetrics.MIND.API.Mappers;
-using HillMetrics.Normalized.Domain.Contracts.Clients;
-using HillMetrics.Normalized.Domain.Contracts.Clients.Commands;
-using HillMetrics.Normalized.Domain.Contracts.Clients.Models;
-using HillMetrics.Normalized.Domain.Contracts.Clients.Queries;
+using HillMetrics.MIND.Domain.Contracts.Clients;
+using HillMetrics.MIND.Domain.Contracts.Clients.Commands;
+using HillMetrics.MIND.Domain.Contracts.Clients.Models;
+using HillMetrics.MIND.Domain.Contracts.Clients.Queries;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -23,6 +23,7 @@ namespace HillMetrics.MIND.API.Controllers
         public ClientsController(IHMediator mediator) : base(mediator)
         {
         }
+
 
         [HttpGet(InternalRoutes.Clients.Get)]
         public async Task<ActionResult<GetClientResponse>> GetAsync([FromRoute] int id)
@@ -36,7 +37,7 @@ namespace HillMetrics.MIND.API.Controllers
             return new GetClientResponse(dto);
         }
 
-        
+        [Authorize(Roles = Roles.Mind.ManageClients)]
         [HttpGet(InternalRoutes.Clients.Search)]
         public async Task<ActionResult<ListClientsResponse>> SearchAsync(
             [FromQuery] string? name,
@@ -90,6 +91,50 @@ namespace HillMetrics.MIND.API.Controllers
                 return new ErrorApiActionResult(result.Errors.ToApiResult());
 
             return new DeletedResponse($"Client with id: {id} deleted.");
+        }
+
+        [HttpPost(InternalRoutes.Clients.CreateFluxRule)]
+        public async Task<ActionResult<GetClientFluxRuleResponse>> CreateFluxRuleAsync(
+            [FromRoute] int clientId, 
+            [FromBody] SaveClientFluxRuleRequest request)
+        {
+            var command = new CreateFluxRuleCommand(new SaveClientFluxRuleModel(request.DataPointId, request.PeerGroupId, request.Ranking, request.FluxPriorityList, clientId));
+            var result = await Mediator.Send(command);
+            if (result.IsFailed)
+                return new ErrorApiActionResult(result.Errors.ToApiResult());
+
+            var dto = result.Value.FromDomain();
+
+            return new GetClientFluxRuleResponse(dto);
+        }
+
+        [HttpPut(InternalRoutes.Clients.UpdateFluxRule)]
+        public async Task<ActionResult<GetClientFluxRuleResponse>> UpdateFluxRuleAsync(
+            [FromRoute] int clientId, 
+            [FromRoute] int fluxRuleId, 
+            [FromBody] SaveClientFluxRuleRequest request)
+        {
+            var command = new UpdateFluxRuleCommand(fluxRuleId, new SaveClientFluxRuleModel(request.DataPointId, request.PeerGroupId, request.Ranking, request.FluxPriorityList, clientId));
+            var result = await Mediator.Send(command);
+            if (result.IsFailed)
+                return new ErrorApiActionResult(result.Errors.ToApiResult());
+
+            var dto = result.Value.FromDomain();
+
+            return new GetClientFluxRuleResponse(dto);
+        }
+
+        [HttpGet(InternalRoutes.Clients.GetFluxRule)]
+        public async Task<ActionResult<ListClientFluxRulesResponse>> GetFluxRulesAsync([FromRoute] int clientId)
+        {
+            var query = new ListClientFluxRulesQuery(clientId);
+            var result = await Mediator.Send(query);
+            if (result.IsFailed)
+                return new ErrorApiActionResult(result.Errors.ToApiResult());
+
+            var dtos = result.Value.Data.Select(s => s.FromDomain());
+
+            return new ListClientFluxRulesResponse(dtos, result.Value.TotalRecords);
         }
     }
 }

@@ -25,10 +25,12 @@
     <ProjectReference Include="..\..\..\HillMetrics.Core\src\HillMetrics.Core.Authentication\HillMetrics.Core.Authentication\HillMetrics.Core.Authentication.csproj" />
     <ProjectReference Include="..\..\..\HillMetrics.Core\src\HillMetrics.Core.Flux.Extension\HillMetrics.Core.Flux.Extension.csproj" />
     <ProjectReference Include="..\..\..\HillMetrics.Core\src\HillMetrics.Core.Monitoring\HillMetrics.Core.Monitoring.csproj" />
+    <ProjectReference Include="..\..\..\HillMetrics.FinancialData\src\HillMetrics.Normalized.Domain\HillMetrics.Normalized.Domain.csproj" />
     <ProjectReference Include="..\..\..\HillMetrics.Orchestrator\HillMetrics.Orchestrator.ServiceDefaults\HillMetrics.Orchestrator.ServiceDefaults.csproj" />
     <ProjectReference Include="..\..\..\HillMetrics.PythonApp\src\HillMetrics.Python.API.SDK\HillMetrics.Python.API.SDK.csproj" />
     <ProjectReference Include="..\HillMetrics.MIND.API.Contracts\HillMetrics.MIND.API.Contracts.csproj" />
     <ProjectReference Include="..\HillMetrics.MIND.Domain\HillMetrics.MIND.Domain.csproj" />
+    <ProjectReference Include="..\HillMetrics.MIND.Infrastructure.Database\HillMetrics.MIND.Infrastructure.Database.csproj" />
     <ProjectReference Include="..\HillMetrics.MIND.Infrastructure\HillMetrics.MIND.Infrastructure.csproj" />
   </ItemGroup>
 

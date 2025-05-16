@@ -1,6 +1,6 @@
 ﻿using HillMetrics.Core.Extensions;
 using HillMetrics.MIND.API.Contracts.Responses.Clients;
-using HillMetrics.Normalized.Domain.Contracts.Clients;
+using HillMetrics.MIND.Domain.Contracts.Clients;
 
 namespace HillMetrics.MIND.API.Mappers
 {
@@ -17,6 +17,16 @@ namespace HillMetrics.MIND.API.Mappers
                 return [];
 
             return entities.Select(FromDomain).ToList();
+        }
+
+        public static ClientFluxRuleDto FromDomain(this ClientFluxRule entity)
+        {
+            return new ClientFluxRuleDto(entity.Id, entity.DataPointId, entity.PeerGroupId, entity.Ranking, entity.FluxPriorityList.Select(s => s.FromDomain()).ToList());
+        }
+
+        public static FluxPriorityDto FromDomain(this FluxPriority entity)
+        {
+            return new FluxPriorityDto(entity.FluxId, entity.Priority);
         }
     }
 }

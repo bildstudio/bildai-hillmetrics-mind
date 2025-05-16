@@ -30,6 +30,9 @@ using HillMetrics.MIND.API.Contracts.Converter;
 using HillMetrics.MIND.API.Consumers;
 using HillMetrics.Core.Messaging.Services;
 using HillMetrics.Core.Converters;
+using HillMetrics.MIND.Infrastructure.Database.Extensions;
+using HillMetrics.MIND.Infrastructure.Database.Database;
+using HillMetrics.MIND.Domain;
 
 
 namespace HillMetrics.MIND.API;
@@ -114,6 +117,9 @@ public partial class Program
         builder.Services.AddHillMetricsAuditServices(Core.AuditApplicationName.HillMetrics_Mind);
 
         builder.Services.AddHillMetricsSignalRServices();
+        builder.AddHillMetricsMINDServices();
+        builder.AddMindAppDatabaseProvider(builder.Configuration.GetConnectionString(Services.MindApplicationDb));
+        builder.Services.AddClientsManagementServices();
 
         var app = builder.Build();
 
@@ -156,6 +162,7 @@ public partial class Program
 
         app.MigrateAuditDatabase(logger);
         app.MigrateNormalizedDatabase(logger);
+        app.MigrateMindAppDatabase(logger);
 
         app.Run();
     }
