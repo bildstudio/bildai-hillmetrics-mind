@@ -7,4 +7,9 @@
     <SonarQubeExclude>true</SonarQubeExclude>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\HillMetrics.Core\src\HillMetrics.Core.Mediator\HillMetrics.Core.Mediator.csproj" />
+    <ProjectReference Include="..\..\..\HillMetrics.Core\src\HillMetrics.Core\HillMetrics.Core.csproj" />
+  </ItemGroup>
+
 </Project>

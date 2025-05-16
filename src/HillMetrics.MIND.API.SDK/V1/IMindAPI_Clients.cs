@@ -55,6 +55,34 @@ namespace HillMetrics.MIND.API.SDK.V1
         /// <returns></returns>
         [Delete("/api/v1/clients/{id}")]
         Task<DeletedResponse> DeleteClientAsync(int id);
+
+
+        /// <summary>
+        /// Create a flux rule for a client
+        /// </summary>
+        /// <param name="clientId"></param>
+        /// <param name="request"></param>
+        /// <returns></returns>
+        [Post("/api/v1/clients/{clientId}/flux-rules")]
+        Task<GetClientFluxRuleResponse> CreateFluxRuleAsync(int clientId, [Body] SaveClientFluxRuleRequest request);
+
+        /// <summary>
+        /// Update a flux rule for a client
+        /// </summary>
+        /// <param name="clientId"></param>
+        /// <param name="fluxRuleId"></param>
+        /// <param name="request"></param>
+        /// <returns></returns>
+        [Put("/api/v1/clients/{clientId}/flux-rules/{fluxRuleId}")]
+        Task<GetClientFluxRuleResponse> UpdateFluxRuleAsync(int clientId, int fluxRuleId, [Body] SaveClientFluxRuleRequest request);
+
+        /// <summary>
+        /// List all flux rules for a client
+        /// </summary>
+        /// <param name="clientId"></param>
+        /// <returns></returns>
+        [Get("/api/v1/clients/{clientId}/flux-rules")]
+        Task<ListClientFluxRulesResponse> ListClientFluxRulesAsync(int clientId);
     }                                                
 }                                                    
                                                      
