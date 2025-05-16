@@ -69,6 +69,8 @@ spec:
       objectName: connectionstrings-redis
     - key: ConnectionStrings__FinancialRawDb
       objectName: connectionstrings-financialrawdb
+    - key: ConnectionStrings__MindApplicationDb
+      objectName: connectionstrings-mindapplicationdb
     - key: ASPNETCORE_ENVIRONMENT
       objectName: aspnetcore-environment
     - key: Keycloak__Endpoint
@@ -111,6 +113,9 @@ spec:
           objectType: secret
         - |
           objectName: connectionstrings-financialrawdb
+          objectType: secret
+        - |
+          objectName: connectionstrings-mindapplicationdb
           objectType: secret
         - |
           objectName: aspnetcore-environment
