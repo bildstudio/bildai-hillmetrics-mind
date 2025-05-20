@@ -154,7 +154,7 @@ namespace HillMetrics.MIND.API.Controllers
                 Lei = venue.Lei,
                 Country = new CountryResponse
                 {
-                    Code = venue.Country.Code,
+                    Code = venue.Country.CodeAlpha2,
                     Name = venue.Country.Name
                 },
                 City = new CityResponse
@@ -187,7 +187,7 @@ namespace HillMetrics.MIND.API.Controllers
                 Acronym = venue.Acronym,
                 Country = new CountryResponse
                 {
-                    Code = venue.Country.Code,
+                    Code = venue.Country.CodeAlpha2,
                     Name = venue.Country.Name
                 },
                 City = new CityResponse
