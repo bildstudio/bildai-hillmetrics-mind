@@ -33,6 +33,7 @@ using HillMetrics.Core.Converters;
 using HillMetrics.MIND.Infrastructure.Database.Extensions;
 using HillMetrics.MIND.Infrastructure.Database.Database;
 using HillMetrics.MIND.Domain;
+using HillMetrics.Core.Rules;
 
 
 namespace HillMetrics.MIND.API;
@@ -61,6 +62,7 @@ public partial class Program
 
         builder.Services.AddDomainServices();
         builder.Services.AddFluxWorkflowTracker();
+        builder.Services.AddFinancialRules();
 
         builder.Services.AddAutoMapper(typeof(FluxMappingProfile));
         builder.Services.AddAutoMapper(typeof(GicsMappingProfile));

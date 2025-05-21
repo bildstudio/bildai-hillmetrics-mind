@@ -405,7 +405,7 @@ namespace HillMetrics.MIND.API.Controllers
                         var scopedMediator = scope.ServiceProvider.GetRequiredService<IMediator>();
                         var scopedLogger = scope.ServiceProvider.GetRequiredService<ILogger<FluxController>>();
 
-                        var command = new ProcessElementFetchCommand()
+                        var command = new ProcessElementCommand()
                         {
                             FluxFetchingHistoryId = fluxFetchingHistoryId,
                             CalledManually = true,
