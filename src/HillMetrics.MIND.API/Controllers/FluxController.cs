@@ -410,7 +410,7 @@ namespace HillMetrics.MIND.API.Controllers
                             FluxFetchingHistoryId = fluxFetchingHistoryId,
                             CalledManually = true,
                             FluxId = fluxId,
-                            WorkflowStepId = fetchStep.Value
+                            //WorkflowStepId = fetchStep.Value
                         };
                         command.Audit = requestAudit;
 

@@ -1,0 +1,196 @@
+@using HillMetrics.Core.Financial.DataPoint
+@using HillMetrics.Core.Rules
+@using HillMetrics.MIND.API.SDK.V1
+@using HillMetrics.Normalized.Domain.Contracts.Market.Cqrs.Rule
+@inject IMindAPI MindApi
+@inject ISnackbar Snackbar
+@inject MudBlazor.IDialogService DialogService
+
+<MudDialog>
+    <DialogContent>
+        <MudContainer Style="max-height: 500px; overflow-y: auto; padding: 0;">
+            @if (loading)
+            {
+                <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+                <MudText Align="Align.Center">Loading rules...</MudText>
+            }
+            else if (error != null)
+            {
+                <MudAlert Severity="Severity.Error" Class="my-4">@error</MudAlert>
+            }
+            else
+            {
+                <MudText Typo="Typo.h5" Class="mb-4">Rules for @DataPoint.ToString()</MudText>
+                
+                @if (rules?.Any() == true)
+                {
+                    <MudExpansionPanels>
+                        @foreach (var rule in rules)
+                        {
+                            <MudExpansionPanel>
+                                <TitleContent>
+                                    <MudText Typo="Typo.h6">
+                                        <MudIcon Icon="@Icons.Material.Filled.Rule" Class="mr-2" />
+                                        @rule.Name
+                                    </MudText>
+                                </TitleContent>
+                                <ChildContent>
+                                    <MudCard Elevation="0" Class="mt-2">
+                                        <MudCardContent>
+                                            <MudText Typo="Typo.body1" Style="white-space: pre-line;">
+                                                <strong>Description:</strong> @rule.Description
+                                            </MudText>
+                                            
+                                            <MudText Typo="Typo.body1" Class="mt-3">
+                                                <strong>Priority:</strong> @rule.Priority @(rule.IsOptional ? " (Optional)" : "")
+                                            </MudText>
+                                            
+                                            @if (rule.Examples?.Any() == true)
+                                            {
+                                                <MudText Typo="Typo.body1" Class="mt-3">
+                                                    <strong>Examples:</strong>
+                                                </MudText>
+                                                <MudList T="string" Dense="true" DisablePadding="true">
+                                                    @foreach (var example in rule.Examples)
+                                                    {
+                                                        <MudListItem Icon="@Icons.Material.Filled.Code">
+                                                            @example
+                                                        </MudListItem>
+                                                    }
+                                                </MudList>
+                                            }
+                                            
+                                            @if (rule.TestInfo != null)
+                                            {
+                                                <MudText Typo="Typo.body1" Class="mt-3">
+                                                    <strong>Test Information:</strong>
+                                                </MudText>
+                                                <MudPaper Elevation="0" Class="pa-2 mt-1" Style="background-color: #f5f5f5;">
+                                                    <MudText>Test Class: @rule.TestInfo.TestClassName</MudText>
+                                                    <MudText>Test Assembly: @rule.TestInfo.TestAssemblyName</MudText>
+                                                </MudPaper>
+                                                
+                                                @if (rule.TestInfo.SuccessTests.Any())
+                                                {
+                                                    <MudText Typo="Typo.body1" Class="mt-2">
+                                                        <strong>Success Tests:</strong>
+                                                    </MudText>
+                                                    <MudList T="string" Dense="true" DisablePadding="true">
+                                                        @foreach (var test in rule.TestInfo.SuccessTests)
+                                                        {
+                                                            <MudListItem Icon="@Icons.Material.Filled.CheckCircle" IconColor="Color.Success">
+                                                                @test
+                                                            </MudListItem>
+                                                        }
+                                                    </MudList>
+                                                }
+                                                
+                                                @if (rule.TestInfo.FailureTests.Any())
+                                                {
+                                                    <MudText Typo="Typo.body1" Class="mt-2">
+                                                        <strong>Failure Tests:</strong>
+                                                    </MudText>
+                                                    <MudList T="string" Dense="true" DisablePadding="true">
+                                                        @foreach (var test in rule.TestInfo.FailureTests)
+                                                        {
+                                                            <MudListItem Icon="@Icons.Material.Filled.Cancel" IconColor="Color.Error">
+                                                                @test
+                                                            </MudListItem>
+                                                        }
+                                                    </MudList>
+                                                }
+                                                
+                                                @if (rule.TestInfo.EdgeCases.Any())
+                                                {
+                                                    <MudText Typo="Typo.body1" Class="mt-2">
+                                                        <strong>Edge Cases:</strong>
+                                                    </MudText>
+                                                    <MudList T="string" Dense="true" DisablePadding="true">
+                                                        @foreach (var test in rule.TestInfo.EdgeCases)
+                                                        {
+                                                            <MudListItem Icon="@Icons.Material.Filled.BugReport" IconColor="Color.Warning">
+                                                                @test
+                                                            </MudListItem>
+                                                        }
+                                                    </MudList>
+                                                }
+                                            }
+                                        </MudCardContent>
+                                    </MudCard>
+                                </ChildContent>
+                            </MudExpansionPanel>
+                        }
+                    </MudExpansionPanels>
+                }
+                else
+                {
+                    <MudAlert Severity="Severity.Info" Class="my-4">No rules found for this data point.</MudAlert>
+                }
+                
+                @if (!string.IsNullOrEmpty(documentation))
+                {
+                    <MudDivider Class="my-4" />
+                    <MudText Typo="Typo.h6" Class="mb-2">Documentation</MudText>
+                    <MudPaper Class="pa-4" Style="max-height: 300px; overflow-y: auto;">
+                        <MudMarkdown Value="@documentation" />
+                    </MudPaper>
+                }
+            }
+        </MudContainer>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Close">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+    
+    [Parameter] public FinancialTechnicalDataPoint DataPoint { get; set; }
+    
+    private List<RuleInfo> rules;
+    private string documentation;
+    private bool loading = true;
+    private string error;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRules();
+    }
+    
+    private async Task LoadRules()
+    {
+        loading = true;
+        error = null;
+        
+        try
+        {
+            var result = await MindApi.SearchFinancialRulesAsync(DataPoint);
+            
+            if (result.Data != null)
+            {
+                documentation = result.Data.MarkdownDocumentation;
+                
+                if (result.Data.RulesByDataPoint.TryGetValue(DataPoint, out var dataPointRules))
+                {
+                    rules = dataPointRules;
+                }
+                else
+                {
+                    rules = new List<RuleInfo>();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            error = $"Error loading rules: {ex.Message}";
+            Snackbar.Add(error, Severity.Error);
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+    
+    private void Close() => MudDialog.Close();
+} 

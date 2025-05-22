@@ -14,6 +14,8 @@ using HillMetrics.MIND.API.Contracts.Responses.TradingVenue;
 using HillMetrics.Normalized.Domain.Contracts.AI.Dataset;
 using HillMetrics.Normalized.Domain.Contracts.AI.Dataset.Cqrs.ElementValue;
 using HillMetrics.Normalized.Domain.Contracts.AI.Dataset.Cqrs.FinancialDataPoint;
+using HillMetrics.Normalized.Domain.Contracts.Market.Cqrs.Rule;
+using HillMetrics.Core.Rules;
 using Refit;
 
 namespace HillMetrics.MIND.API.SDK.V1
@@ -586,6 +588,21 @@ namespace HillMetrics.MIND.API.SDK.V1
             [Body] EditTradingVenueRequest request,
             CancellationToken cancellationToken = default);
 
+        #endregion
+
+        #region FinancialRules
+        
+        /// <summary>
+        /// Search for financial rules based on a specific data point or get all rules
+        /// </summary>
+        /// <param name="dataPoint">Optional financial technical data point to filter rules</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Financial rules with markdown documentation</returns>
+        [Get("/api/v1/fluxcarac/financial-rules")]
+        Task<ApiResponseBase<SearchFinancialRuleQueryResult>> SearchFinancialRulesAsync(
+            [Query] FinancialTechnicalDataPoint? dataPoint = null,
+            CancellationToken cancellationToken = default);
+            
         #endregion
     }
 }
