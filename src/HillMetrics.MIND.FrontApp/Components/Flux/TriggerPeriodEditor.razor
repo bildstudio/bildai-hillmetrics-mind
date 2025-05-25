@@ -8,7 +8,8 @@
                 <MudSelect T="FrequencyType" @bind-Value="TriggerPeriod.FrequencyType"
                            Label="Frequency Type"
                            Variant="Variant.Outlined"
-                           SelectedValuesChanged="OnFrequencyTypeChanged">
+                           SelectedValuesChanged="OnFrequencyTypeChanged"
+                           Disabled="@Disabled">
                     <MudSelectItem Value="@FrequencyType.Never">Never</MudSelectItem>
                     <MudSelectItem Value="@FrequencyType.Immediately">Immediately</MudSelectItem>
                     <MudSelectItem Value="@FrequencyType.Minute">Every X Minutes</MudSelectItem>
@@ -20,9 +21,9 @@
             </MudItem>
 
             <MudItem xs="12" md="6">
-                <MudRadioGroup T="bool" @bind-SelectedOption="IsEnabled">
-                    <MudRadio Value="true" Color="Color.Primary">Active</MudRadio>
-                    <MudRadio Value="false" Color="Color.Secondary">Inactive</MudRadio>
+                <MudRadioGroup T="bool" @bind-SelectedOption="IsEnabled" Disabled="@Disabled">
+                    <MudRadio Value="true" Color="Color.Primary" Disabled="@Disabled">Active</MudRadio>
+                    <MudRadio Value="false" Color="Color.Secondary" Disabled="@Disabled">Inactive</MudRadio>
                 </MudRadioGroup>
             </MudItem>
 
@@ -39,7 +40,8 @@
                     <MudNumericField @bind-Value="TriggerPeriod.Interval"
                                     Label="@GetIntervalLabel()"
                                     Min="1"
-                                    Variant="Variant.Outlined" />
+                                    Variant="Variant.Outlined"
+                                    Disabled="@Disabled" />
                 </MudItem>
             }
 
@@ -51,7 +53,8 @@
                     <MudTimePicker @bind-Time="StartTime"
                                   Label="Start Time"
                                   Variant="Variant.Outlined"
-                                  AmPm="false" />
+                                  AmPm="false"
+                                  Disabled="@Disabled" />
                 </MudItem>
             }
 
@@ -60,7 +63,8 @@
                 <MudItem xs="12" md="6">
                     <MudSelect T="DayOfWeek" @bind-Value="TriggerPeriod.DayOfWeek"
                               Label="Day of Week"
-                              Variant="Variant.Outlined">
+                              Variant="Variant.Outlined"
+                              Disabled="@Disabled">
                         <MudSelectItem Value="@DayOfWeek.Monday">Monday</MudSelectItem>
                         <MudSelectItem Value="@DayOfWeek.Tuesday">Tuesday</MudSelectItem>
                         <MudSelectItem Value="@DayOfWeek.Wednesday">Wednesday</MudSelectItem>
@@ -79,7 +83,8 @@
                                     Label="Day of Month"
                                     Min="1"
                                     Max="31"
-                                    Variant="Variant.Outlined" />
+                                    Variant="Variant.Outlined"
+                                    Disabled="@Disabled" />
                 </MudItem>
             }
 
@@ -105,6 +110,9 @@
 
     [Parameter]
     public bool ReadOnly { get; set; } = false;
+
+    [Parameter]
+    public bool Disabled { get; set; } = false;
 
     private TimeSpan? _startTime;
     private TimeSpan? StartTime

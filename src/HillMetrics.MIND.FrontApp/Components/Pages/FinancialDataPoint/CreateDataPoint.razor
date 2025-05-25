@@ -129,17 +129,16 @@ else
                                         </MudSelect>
                                     </MudItem>
                                     <MudItem xs="12" sm="4" md="3">
-                                        <MudSelect T="FinancialTechnicalDataPoint?"
-                                                  @bind-Value="context.FinancialTechnicalDataPoint"
-                                                  Label="Technical Type"
-                                                  Margin="Margin.Dense"
-                                                  AnchorOrigin="Origin.BottomCenter">
-                                            <MudSelectItem Value="@((FinancialTechnicalDataPoint?)null)">None</MudSelectItem>
-                                            @foreach (var type in Enum.GetValues<FinancialTechnicalDataPoint>())
-                                            {
-                                                <MudSelectItem T="FinancialTechnicalDataPoint?" Value="@type">@type</MudSelectItem>
-                                            }
-                                        </MudSelect>
+                                        <MudAutocomplete T="FinancialTechnicalDataPoint?"
+                                                        @bind-Value="context.FinancialTechnicalDataPoint"
+                                                        Label="Technical Type"
+                                                        Margin="Margin.Dense"
+                                                        SearchFunc="@SearchTechnicalDataPoints"
+                                                        ToStringFunc="@(x => x?.ToString() ?? "None")"
+                                                        Clearable="true"
+                                                        Placeholder="Search technical type..."
+                                                        ShowProgressIndicator="false"
+                                                        Dense="true" />
                                     </MudItem>
                                 </MudGrid>
                             </MudTabPanel>
@@ -205,6 +204,15 @@ else
     private bool IsEditMode => Id.HasValue;
     private CreateFinancialDataPointRequest dataPoint = new();
     private bool isLoading = true;
+    private readonly List<FinancialTechnicalDataPoint?> technicalDataPoints;
+
+    public CreateDataPoint()
+    {
+        // Initialize the list with null (None) option and all enum values
+        technicalDataPoints = new List<FinancialTechnicalDataPoint?> { null }
+            .Concat(Enum.GetValues<FinancialTechnicalDataPoint>().Cast<FinancialTechnicalDataPoint?>())
+            .ToList();
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -312,6 +320,15 @@ else
         return dataPoint.Elements.All(e => !string.IsNullOrWhiteSpace(e.PropertyName));
     }
 
+    private async Task<IEnumerable<FinancialTechnicalDataPoint?>> SearchTechnicalDataPoints(string value, CancellationToken token)
+    {
+        if (string.IsNullOrEmpty(value))
+            return technicalDataPoints;
+
+        return technicalDataPoints.Where(x =>
+            (x?.ToString() ?? "None").Contains(value, StringComparison.InvariantCultureIgnoreCase));
+    }
+
     private async Task SaveDataPoint()
     {
         try
@@ -348,36 +365,36 @@ else
     .mud-drop-item-draghandle {
         cursor: move;
     }
-    
+
     .drag-indicator {
         cursor: move;
     }
-    
+
     .element-card {
         border: 1px solid #e0e0e0;
         transition: all 0.3s ease;
         margin-bottom: 8px;
     }
-    
+
     .element-card:hover {
         border-color: var(--mud-palette-primary);
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
-    
+
     .drag-item {
         opacity: 0.7;
         transform: scale(1.02);
         box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2) !important;
         border: 2px dashed var(--mud-palette-primary) !important;
     }
-    
+
     .drop-zone {
         min-height: 80px;
         border: 2px dashed transparent;
         transition: all 0.3s ease;
         padding: 4px;
     }
-    
+
     .drop-zone-active {
         border: 2px dashed var(--mud-palette-primary);
         background-color: rgba(var(--mud-palette-primary-rgb), 0.05);

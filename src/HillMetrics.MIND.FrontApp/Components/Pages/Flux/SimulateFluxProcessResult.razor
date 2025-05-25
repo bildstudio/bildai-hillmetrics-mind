@@ -1,0 +1,354 @@
+@page "/flux/simulate-result/{fetchingHistoryId:int}"
+@using HillMetrics.MIND.API.Contracts.Responses.Flux
+@using HillMetrics.MIND.API.SDK.V1
+@using HillMetrics.Core.Financial.DataPoint
+@inject IMindAPI MindApi
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+@inject ILogger<SimulateFluxProcessResult> Logger
+
+@attribute [Authorize]
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudGrid>
+        <MudItem xs="12">
+            <MudText Typo="Typo.h4" Class="mb-4">Simulation Results</MudText>
+        </MudItem>
+    </MudGrid>
+
+    @if (loading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-2" />
+    }
+    else if (simulationResult != null)
+    {
+        <!-- Summary Information -->
+        <MudCard Class="mb-4">
+            <MudCardContent>
+                <MudGrid>
+                    <MudItem xs="12" md="3">
+                        <MudText Typo="Typo.h6">Status</MudText>
+                        <MudChip T="Color" Color="@GetStatusColor(simulationResult.Status)" Size="Size.Small">
+                            @simulationResult.Status
+                        </MudChip>
+                    </MudItem>
+                    <MudItem xs="12" md="3">
+                        <MudText Typo="Typo.h6">Flux ID</MudText>
+                        <MudText>@simulationResult.FluxId</MudText>
+                    </MudItem>
+                    <MudItem xs="12" md="3">
+                        <MudText Typo="Typo.h6">Processing Time</MudText>
+                        <MudText>@simulationResult.ProcessingTimeMs ms</MudText>
+                    </MudItem>
+                    <MudItem xs="12" md="3">
+                        <MudText Typo="Typo.h6">Fetching History ID</MudText>
+                        <MudText>@FetchingHistoryId</MudText>
+                    </MudItem>
+                </MudGrid>
+            </MudCardContent>
+        </MudCard>
+
+        @if (simulationResult.ExtractedData != null && simulationResult.ExtractedData.ExecutorResults.Any())
+        {
+            <!-- Simulation Results Table -->
+            <MudCard>
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Processing Results</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    @foreach (var (executorResult, executorIndex) in simulationResult.ExtractedData.ExecutorResults.Select((er, i) => (er, i)))
+                    {
+                        <MudText Typo="Typo.h6" Class="mb-3">Executor @(executorIndex + 1)</MudText>
+
+                        <MudTable Items="@executorResult.Rows" Dense="true" Hover="true" Bordered="true" Striped="true" Class="mb-4">
+                            <HeaderContent>
+                                <MudTh>Row #</MudTh>
+                                <MudTh>Financial Data Point</MudTh>
+                                <MudTh>Status</MudTh>
+                                <MudTh>Original Data</MudTh>
+                                <MudTh>Processed Data</MudTh>
+                                <MudTh>Error Message</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                @{
+                                    var rowIndex = executorResult.Rows.IndexOf(context) + 1;
+                                    var ruleResult = context.RuleResult;
+                                    var hasValidationMessages = ruleResult.ValidationMessages?.Any() == true;
+                                    var validationTooltip = hasValidationMessages ?
+                                        string.Join("\n", ruleResult.ValidationMessages.Select(vm => $"[{vm.Level}] {vm.Message}")) :
+                                        string.Empty;
+                                }
+                                <MudTd DataLabel="Row #">@rowIndex</MudTd>
+                                <MudTd DataLabel="Financial Data Point">
+                                    @if (hasValidationMessages)
+                                    {
+                                        <MudTooltip Text="@validationTooltip">
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Info">
+                                                @context.FinancialTechnicalDataPoint.ToString()
+                                            </MudChip>
+                                        </MudTooltip>
+                                    }
+                                    else
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Info">
+                                            @context.FinancialTechnicalDataPoint.ToString()
+                                        </MudChip>
+                                    }
+                                </MudTd>
+                                <MudTd DataLabel="Status">
+                                    @if (hasValidationMessages)
+                                    {
+                                        <MudTooltip Text="@validationTooltip">
+                                            <MudIcon Icon="@GetRuleStatusIcon(ruleResult.IsSuccess)"
+                                                     Color="@GetRuleStatusColor(ruleResult.IsSuccess)" />
+                                        </MudTooltip>
+                                    }
+                                    else
+                                    {
+                                        <MudIcon Icon="@GetRuleStatusIcon(ruleResult.IsSuccess)"
+                                                 Color="@GetRuleStatusColor(ruleResult.IsSuccess)" />
+                                    }
+                                </MudTd>
+                                <MudTd DataLabel="Original Data">
+                                    @if (hasValidationMessages)
+                                    {
+                                        <MudTooltip Text="@validationTooltip">
+                                            <div class="text-truncate" style="max-width: 200px;">
+                                                @FormatData(ruleResult.OriginalData)
+                                            </div>
+                                        </MudTooltip>
+                                    }
+                                    else
+                                    {
+                                        <div class="text-truncate" style="max-width: 200px;">
+                                            @FormatData(ruleResult.OriginalData)
+                                        </div>
+                                    }
+                                </MudTd>
+                                <MudTd DataLabel="Processed Data">
+                                    @if (hasValidationMessages)
+                                    {
+                                        <MudTooltip Text="@validationTooltip">
+                                            <div class="text-truncate" style="max-width: 200px;">
+                                                @FormatData(ruleResult.ProcessedData)
+                                            </div>
+                                        </MudTooltip>
+                                    }
+                                    else
+                                    {
+                                        <div class="text-truncate" style="max-width: 200px;">
+                                            @FormatData(ruleResult.ProcessedData)
+                                        </div>
+                                    }
+                                </MudTd>
+                                <MudTd DataLabel="Error Message">
+                                    @if (!string.IsNullOrEmpty(ruleResult.ErrorMessage))
+                                    {
+                                        @if (hasValidationMessages)
+                                        {
+                                            <MudTooltip Text="@validationTooltip">
+                                                <MudAlert Severity="Severity.Error" Dense="true" Class="my-1">
+                                                    @ruleResult.ErrorMessage
+                                                </MudAlert>
+                                            </MudTooltip>
+                                        }
+                                        else
+                                        {
+                                            <MudAlert Severity="Severity.Error" Dense="true" Class="my-1">
+                                                @ruleResult.ErrorMessage
+                                            </MudAlert>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        @if (hasValidationMessages)
+                                        {
+                                            <MudTooltip Text="@validationTooltip">
+                                                <span>-</span>
+                                            </MudTooltip>
+                                        }
+                                        else
+                                        {
+                                            <span>-</span>
+                                        }
+                                    }
+                                </MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    }
+                </MudCardContent>
+            </MudCard>
+        }
+        else
+        {
+            <MudAlert Severity="Severity.Warning" Class="my-4">
+                No extraction data available for this simulation.
+            </MudAlert>
+        }
+
+        @if (simulationResult.CommandExecution != null)
+        {
+            <!-- Command Execution Results -->
+            <MudCard Class="mt-4">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Command Execution Results</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    @if (simulationResult.CommandExecution.ExecutableCommandsByFinancialId.Any())
+                    {
+                        <MudText Typo="Typo.subtitle1" Class="mb-2">Executable Commands by Financial ID:</MudText>
+                        @foreach (var kvp in simulationResult.CommandExecution.ExecutableCommandsByFinancialId)
+                        {
+                            <MudExpansionPanels>
+                                <MudExpansionPanel>
+                                    <TitleContent>
+                                        <div style="display: flex; align-items: center;">
+                                            <MudIcon Icon="@Icons.Material.Filled.AccountBalanceWallet" class="mr-3"></MudIcon>
+                                            <MudText>Financial ID: @kvp.Key (@kvp.Value.Count commands)</MudText>
+                                        </div>
+                                    </TitleContent>
+                                    <ChildContent>
+                                        <MudList T="string">
+                                            @foreach (var command in kvp.Value)
+                                            {
+                                                <MudListItem>
+                                                    <MudText Typo="Typo.body2">@command</MudText>
+                                                </MudListItem>
+                                            }
+                                        </MudList>
+                                    </ChildContent>
+                                </MudExpansionPanel>
+                            </MudExpansionPanels>
+                        }
+                    }
+
+                    @if (simulationResult.CommandExecution.PartiallyMatchedCommands.Any())
+                    {
+                        <MudText Typo="Typo.subtitle1" Class="mb-2 mt-4">Partially Matched Commands:</MudText>
+                        <MudList T="string">
+                            @foreach (var command in simulationResult.CommandExecution.PartiallyMatchedCommands)
+                            {
+                                <MudListItem>
+                                    <MudText Typo="Typo.body2" Color="Color.Warning">@command</MudText>
+                                </MudListItem>
+                            }
+                        </MudList>
+                    }
+                </MudCardContent>
+            </MudCard>
+        }
+
+        <!-- Back Button -->
+        <MudGrid Class="mt-4">
+            <MudItem xs="12" Class="d-flex justify-center">
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           OnClick="GoBack"
+                           StartIcon="@Icons.Material.Filled.ArrowBack">
+                    Back to Fetching History
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+    }
+    else if (!loading)
+    {
+        <MudAlert Severity="Severity.Error" Class="my-2">
+            Failed to load simulation results or no data available.
+        </MudAlert>
+    }
+</MudContainer>
+
+@code {
+    [Parameter] public int FetchingHistoryId { get; set; }
+
+    private SimulateProcessElementResponse? simulationResult;
+    private bool loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSimulationResult();
+    }
+
+    private async Task LoadSimulationResult()
+    {
+        try
+        {
+            loading = true;
+            var response = await MindApi.SimulateProcessElementAsync(FetchingHistoryId);
+
+            if (response?.Data != null)
+            {
+                simulationResult = response.Data;
+
+                if (simulationResult.Status != SimulateProcessElementResponse.SimulationStatus.Success)
+                {
+                    Snackbar.Add($"Simulation completed with status: {simulationResult.Status}", Severity.Warning);
+                }
+                else
+                {
+                    Snackbar.Add("Simulation completed successfully!", Severity.Success);
+                }
+            }
+            else
+            {
+                Snackbar.Add("Failed to load simulation results.", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading simulation results for FetchingHistoryId: {FetchingHistoryId}", FetchingHistoryId);
+            Snackbar.Add($"Error loading simulation results: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private void GoBack()
+    {
+        NavigationManager.NavigateTo("/flux/fetching-history");
+    }
+
+    private Color GetStatusColor(SimulateProcessElementResponse.SimulationStatus status)
+    {
+        return status switch
+        {
+            SimulateProcessElementResponse.SimulationStatus.Success => Color.Success,
+            SimulateProcessElementResponse.SimulationStatus.Fail => Color.Error,
+            SimulateProcessElementResponse.SimulationStatus.NoRawId => Color.Warning,
+            SimulateProcessElementResponse.SimulationStatus.ContentNull => Color.Warning,
+            SimulateProcessElementResponse.SimulationStatus.NoCustomProcessingImplementation => Color.Info,
+            SimulateProcessElementResponse.SimulationStatus.JsonConversionFailed => Color.Error,
+            SimulateProcessElementResponse.SimulationStatus.DataExtractionFailed => Color.Error,
+            SimulateProcessElementResponse.SimulationStatus.NoExecutableCommands => Color.Warning,
+            _ => Color.Default
+        };
+    }
+
+    private Color GetRuleStatusColor(bool isSuccess)
+    {
+        return isSuccess ? Color.Success : Color.Error;
+    }
+
+    private string GetRuleStatusIcon(bool isSuccess)
+    {
+        return isSuccess ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Error;
+    }
+
+    private string FormatData(object? data)
+    {
+        if (data == null) return "-";
+
+        if (data is string str && str.Length > 50)
+        {
+            return str.Substring(0, 50) + "...";
+        }
+
+        return data.ToString() ?? "-";
+    }
+}

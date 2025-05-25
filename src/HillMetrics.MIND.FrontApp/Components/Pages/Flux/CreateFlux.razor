@@ -100,6 +100,7 @@
                                             <MudSelectItem T="FluxType?" Value="@FluxType.Sftp">SFTP</MudSelectItem>
                                             <MudSelectItem T="FluxType?" Value="@FluxType.Webhook">Webhook</MudSelectItem>
                                             <MudSelectItem T="FluxType?" Value="@FluxType.Scraping">Scraping</MudSelectItem>
+                                            <MudSelectItem T="FluxType?" Value="@FluxType.Manual">Manual</MudSelectItem>
                                         </MudSelect>
                                     </MudItem>
                                     <MudItem xs="12" md="4">
@@ -149,11 +150,15 @@
                                 <MudGrid>
                                     <MudItem xs="12" md="6">
                                         <MudText Typo="Typo.subtitle1" Class="mb-2">Fetch Schedule</MudText>
-                                        <TriggerPeriodEditor TriggerPeriod="@fetchTriggerPeriod" TriggerPeriodChanged="@(tp => { fetchTriggerPeriod = tp; StateHasChanged(); })" />
+                                        <TriggerPeriodEditor TriggerPeriod="@fetchTriggerPeriod"
+                                                           TriggerPeriodChanged="@(tp => { fetchTriggerPeriod = tp; StateHasChanged(); })"
+                                                           Disabled="@IsManualFluxType()" />
                                     </MudItem>
                                     <MudItem xs="12" md="6">
                                         <MudText Typo="Typo.subtitle1" Class="mb-2">Process Schedule</MudText>
-                                        <TriggerPeriodEditor TriggerPeriod="@processTriggerPeriod" TriggerPeriodChanged="@(tp => { processTriggerPeriod = tp; StateHasChanged(); })" />
+                                        <TriggerPeriodEditor TriggerPeriod="@processTriggerPeriod"
+                                                           TriggerPeriodChanged="@(tp => { processTriggerPeriod = tp; StateHasChanged(); })"
+                                                           Disabled="@IsManualFluxType()" />
                                     </MudItem>
                                 </MudGrid>
                             </MudCardContent>
@@ -179,6 +184,9 @@
                                     break;
                                 case FluxType.Sftp:
                                     <FluxMetadataFileLocationComponent Metadata="@fileLocationMetadata" MetadataChanged="@(md => { fileLocationMetadata = md; StateHasChanged(); })" />
+                                    break;
+                                case FluxType.Manual:
+                                    <FluxMetadataManualComponent Metadata="@manualMetadata" MetadataChanged="@(md => { manualMetadata = md; StateHasChanged(); })" />
                                     break;
                             }
                         </MudItem>
@@ -215,6 +223,7 @@
     private FluxMetadataApiDto apiMetadata = new();
     private FluxMetadataDownloadDto downloadMetadata = new();
     private FluxMetadataFileLocationDto fileLocationMetadata = new();
+    private FluxMetadataManualDto manualMetadata = new();
 
     private TriggerPeriod fetchTriggerPeriod = TriggerPeriod.CreateDailyTrigger(new TimeSpan(0, 0, 0));
     private TriggerPeriod processTriggerPeriod = TriggerPeriod.CreateDailyTrigger(new TimeSpan(1, 0, 0));
@@ -396,9 +405,25 @@
                     Metadata = new Dictionary<string, object>()
                 };
                 break;
+            case FluxType.Manual:
+                manualMetadata = new FluxMetadataManualDto
+                {
+                    ContentType = Core.Common.ContentType.Csv,
+                    Metadata = new Dictionary<string, object>()
+                };
+                // For Manual flux type, set trigger periods to Never
+                fetchTriggerPeriod = TriggerPeriod.CreateNeverTrigger();
+                processTriggerPeriod = TriggerPeriod.CreateNeverTrigger();
+                break;
         }
 
         StateHasChanged();
+    }
+
+    // Helper method to check if the current flux type is Manual
+    private bool IsManualFluxType()
+    {
+        return fluxRequest.FluxType == FluxType.Manual;
     }
 
     private TriggerPeriodDto MapToTriggerPeriodDto(TriggerPeriod triggerPeriod)

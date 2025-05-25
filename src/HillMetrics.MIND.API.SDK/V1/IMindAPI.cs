@@ -100,6 +100,20 @@ namespace HillMetrics.MIND.API.SDK.V1
         [Get("/api/v1/flux/fetching-history/{fluxFetchingHistoryId}/force-process-async")]
         Task<ApiResponseBase<ProcessStartedResponse>> ForceProcessElementFetchBackgroundAsync(int fluxId, int fluxFetchingHistoryId);
 
+        /// <summary>
+        /// Upload and process a file for a manual flux
+        /// </summary>
+        /// <param name="fluxId">The flux identifier</param>
+        /// <param name="fileName">The name of the uploaded file</param>
+        /// <param name="file">The file content stream</param>
+        /// <returns>Status message indicating that the operation has started</returns>
+        [Multipart]
+        [Post("/api/v1/flux/{fluxId}/upload-manual")]
+        Task<ApiResponseBase<ProcessStartedResponse>> FetchManualFluxAsync(
+            int fluxId,
+            [AliasAs("fileName")] string fileName,
+            [AliasAs("file")] StreamPart file);
+
         #endregion
 
         #region Financial Data Point
@@ -145,6 +159,14 @@ namespace HillMetrics.MIND.API.SDK.V1
         /// <returns>API response indicating success or failure</returns>
         [Delete("/api/v1/flux/fetching-history/{fetchingHistoryId}")]
         Task<ApiResponseBase<bool>> DeleteFetchingHistoryAsync(int fetchingHistoryId);
+
+        /// <summary>
+        /// Simulate the processing of a specific flux fetching history
+        /// </summary>
+        /// <param name="fetchingHistoryId">The ID of the fetching history to simulate processing</param>
+        /// <returns>Simulation result with detailed processing information</returns>
+        [Get("/api/v1/flux/fetching-history/{fetchingHistoryId}/simulate-process")]
+        Task<ApiResponseBase<SimulateProcessElementResponse>> SimulateProcessElementAsync(int fetchingHistoryId);
 
         /// <summary>
         /// Get the details of a specific fetching content
@@ -591,7 +613,7 @@ namespace HillMetrics.MIND.API.SDK.V1
         #endregion
 
         #region FinancialRules
-        
+
         /// <summary>
         /// Search for financial rules based on a specific data point or get all rules
         /// </summary>
@@ -602,7 +624,7 @@ namespace HillMetrics.MIND.API.SDK.V1
         Task<ApiResponseBase<SearchFinancialRuleQueryResult>> SearchFinancialRulesAsync(
             [Query] FinancialTechnicalDataPoint? dataPoint = null,
             CancellationToken cancellationToken = default);
-            
+
         #endregion
     }
 }

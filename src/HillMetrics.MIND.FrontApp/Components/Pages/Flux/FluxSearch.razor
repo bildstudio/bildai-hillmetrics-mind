@@ -517,6 +517,16 @@
         try
         {
             loading = true;
+
+            // First, get flux details to check if it's manual
+            var fluxResponse = await MindApi.GetFluxAsync(id);
+            if (fluxResponse?.FluxType == FluxType.Manual)
+            {
+                // Redirect to upload page for manual flux
+                NavigationManager.NavigateTo($"/flux/upload/{id}");
+                return;
+            }
+
             var result = await MindApi.ForceFetchBackgroundAsync(id);
 
             if (result?.Data != null)
@@ -625,6 +635,7 @@
             FluxType.Api => Color.Primary,
             FluxType.HttpDownload => Color.Warning,
             FluxType.Scraping => Color.Warning,
+            FluxType.Manual => Color.Secondary,
             _ => Color.Default
         };
     }

@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="8.0.4" />
+    <PackageReference Include="ModelContextProtocol" Version="0.2.0-preview.1" />
     <PackageReference Include="MudBlazor" Version="7.8.0" />
     <PackageReference Include="MudBlazor.Markdown" Version="7.8.0" />
   </ItemGroup>
@@ -22,6 +23,7 @@
     <ProjectReference Include="..\..\..\HillMetrics.Orchestrator\HillMetrics.Orchestrator.ServiceDefaults\HillMetrics.Orchestrator.ServiceDefaults.csproj" />
     <ProjectReference Include="..\HillMetrics.MIND.API.Contracts\HillMetrics.MIND.API.Contracts.csproj" />
     <ProjectReference Include="..\HillMetrics.MIND.API.SDK\HillMetrics.MIND.API.SDK.csproj" />
+    <ProjectReference Include="..\HillMetrics.MIND.Infrastructure\HillMetrics.MIND.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>

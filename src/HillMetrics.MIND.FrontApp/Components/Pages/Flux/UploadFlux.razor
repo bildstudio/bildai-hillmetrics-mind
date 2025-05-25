@@ -1,0 +1,247 @@
+@page "/flux/upload/{fluxId:int}"
+@using HillMetrics.Core.Common
+@using HillMetrics.MIND.API.Contracts.Responses.Flux
+@using HillMetrics.MIND.API.SDK.V1
+@using HillMetrics.Normalized.Domain.Contracts.Providing.Flux
+@inject IMindAPI MindApi
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+@inject ILogger<UploadFlux> Logger
+
+@attribute [Authorize]
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
+    <MudGrid>
+        <MudItem xs="12">
+            <MudText Typo="Typo.h4" Class="mb-4">Upload Manual Flux Data</MudText>
+        </MudItem>
+    </MudGrid>
+
+    @if (loading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-2" />
+    }
+    else if (flux != null)
+    {
+        <MudCard Class="mb-4">
+            <MudCardContent>
+                <MudGrid Spacing="2">
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.h6">Flux Information</MudText>
+                        <MudDivider Class="my-2" />
+                    </MudItem>
+
+                    <MudItem xs="6">
+                        <MudTextField Label="Flux ID" Value="@flux.Id" ReadOnly="true" Variant="Variant.Outlined" />
+                    </MudItem>
+
+                    <MudItem xs="6">
+                        <MudTextField Label="Flux Name" Value="@flux.FluxName" ReadOnly="true" Variant="Variant.Outlined" />
+                    </MudItem>
+
+                    <MudItem xs="6">
+                        <MudTextField Label="Flux Type" Value="@flux.FluxType.ToString()" ReadOnly="true" Variant="Variant.Outlined" />
+                    </MudItem>
+
+                    <MudItem xs="6">
+                        <MudTextField Label="Financial Type" Value="@flux.FinancialType.ToString()" ReadOnly="true" Variant="Variant.Outlined" />
+                    </MudItem>
+
+                    @if (!string.IsNullOrEmpty(expectedMimeType))
+                    {
+                        <MudItem xs="12">
+                            <MudAlert Severity="Severity.Info" Class="my-2">
+                                Expected file type: <strong>@expectedMimeType</strong>
+                            </MudAlert>
+                        </MudItem>
+                    }
+
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.h6" Class="mt-4">File Upload</MudText>
+                        <MudDivider Class="my-2" />
+                    </MudItem>
+
+                    <MudItem xs="12">
+                        <MudFileUpload T="IBrowserFile"
+                        Accept="@expectedMimeType"
+                        MaximumFileCount="1"
+                        @bind-Files="selectedFile">
+                            <ActivatorContent>
+                                <MudButton HtmlTag="label"
+                                Variant="Variant.Filled"
+                                Color="Color.Primary"
+                                StartIcon="@Icons.Material.Filled.CloudUpload" >
+                                    Select File
+                                </MudButton>
+                            </ActivatorContent>
+                            <SelectedTemplate>
+                                @if (selectedFile != null)
+                                {
+                                    <MudList T="string">
+                                        <MudListItem T="string" Icon="@Icons.Material.Filled.AttachFile" Text="@selectedFile.Name" />
+                                    </MudList>
+                                }
+                            </SelectedTemplate>
+                        </MudFileUpload>
+                    </MudItem>
+
+                    @if (uploadError != null)
+                    {
+                        <MudItem xs="12">
+                            <MudAlert Severity="Severity.Error" Class="my-2">
+                                @uploadError
+                            </MudAlert>
+                        </MudItem>
+                    }
+                </MudGrid>
+            </MudCardContent>
+
+            <MudCardActions>
+                <MudButton Variant="Variant.Filled"
+                Color="Color.Primary"
+                OnClick="UploadAndProcess"
+                Disabled="@(selectedFile == null || uploading)"
+                StartIcon="@Icons.Material.Filled.Upload">
+                    @if (uploading)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                        <span class="ml-2">Uploading...</span>
+                    }
+                    else
+                    {
+                        <span>Upload and Process</span>
+                    }
+                </MudButton>
+
+                <MudButton Variant="Variant.Outlined"
+                Color="Color.Secondary"
+                OnClick="Cancel"
+                Disabled="@uploading">
+                    Cancel
+                </MudButton>
+            </MudCardActions>
+        </MudCard>
+    }
+    else if (!loading)
+    {
+        <MudAlert Severity="Severity.Error" Class="my-2">
+            Flux not found or is not a manual flux.
+        </MudAlert>
+    }
+</MudContainer>
+
+@code {
+    [Parameter] public int FluxId { get; set; }
+
+    private FluxResponseWrapper? flux;
+    private bool loading = true;
+    private bool uploading = false;
+    private IBrowserFile? selectedFile;
+    private string? expectedMimeType;
+    private string? uploadError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadFluxDetails();
+    }
+
+    private async Task LoadFluxDetails()
+    {
+        try
+        {
+            loading = true;
+            var response = await MindApi.GetFluxAsync(FluxId);
+
+            if (response != null)
+            {
+                flux = response;
+
+                // Verify it's a manual flux
+                if (flux.FluxType != FluxType.Manual)
+                {
+                    Snackbar.Add("This flux is not a manual flux.", Severity.Error);
+                    NavigationManager.NavigateTo("/flux/search");
+                    return;
+                }
+
+                // Get expected content type from metadata
+                if (flux.ManualMetadata != null)
+                {
+                    expectedMimeType = ContentTypeMapper.GetMimeType(flux.ManualMetadata.ContentType);
+                }
+            }
+            else
+            {
+                Snackbar.Add("Flux not found.", Severity.Error);
+                NavigationManager.NavigateTo("/flux/search");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading flux details for FluxId: {FluxId}", FluxId);
+            Snackbar.Add($"Error loading flux details: {ex.Message}", Severity.Error);
+            NavigationManager.NavigateTo("/flux/search");
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task UploadAndProcess()
+    {
+        if (selectedFile == null || flux == null)
+            return;
+
+        try
+        {
+            uploading = true;
+            uploadError = null;
+
+            // Validate file type if expected type is specified
+            if (!string.IsNullOrEmpty(expectedMimeType))
+            {
+                var fileMimeType = ContentTypeMapper.GetMimeType(selectedFile.Name);
+                if (fileMimeType != expectedMimeType)
+                {
+                    uploadError = $"Invalid file type. Expected: {expectedMimeType}, but got: {fileMimeType}";
+                    return;
+                }
+            }
+
+            // Convert file to stream
+            using var stream = selectedFile.OpenReadStream(maxAllowedSize: 50 * 1024 * 1024); // 50MB max
+
+            // Create StreamPart for Refit multipart upload
+            var streamPart = new Refit.StreamPart(stream, selectedFile.Name, selectedFile.ContentType);
+
+            // Call the new API endpoint
+            var result = await MindApi.FetchManualFluxAsync(FluxId, selectedFile.Name, streamPart);
+
+            if (result?.Data != null)
+            {
+                Snackbar.Add("File uploaded and processing started successfully!", Severity.Success);
+                // Redirect to workflow tracking page
+                NavigationManager.NavigateTo($"/flux/workflow-live/{FluxId}/{result.Data.WorkflowId}");
+            }
+            else
+            {
+                uploadError = "Upload failed. Please try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error uploading file for FluxId: {FluxId}", FluxId);
+            uploadError = $"Error uploading file: {ex.Message}";
+        }
+        finally
+        {
+            uploading = false;
+        }
+    }
+
+    private void Cancel()
+    {
+        NavigationManager.NavigateTo("/flux/search");
+    }
+}

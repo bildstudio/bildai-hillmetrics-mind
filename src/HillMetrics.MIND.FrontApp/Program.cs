@@ -7,13 +7,13 @@ using HillMetrics.Core.Monitoring.Logging;
 using HillMetrics.Core.Monitoring;
 using HillMetrics.Core.Http.Extensions;
 using HillMetrics.MIND.FrontApp.Services;
-using HillMetrics.Normalized.Domain.Contracts.Repository;
-using HillMetrics.Orchestrator.ServicesNames;
-using HillMetrics.Normalized.Infrastructure.Database.Repository;
 using HillMetrics.Core.Blazor.AuthModule.AuthHandler;
 using HillMetrics.Core.Blazor.AuthModule;
 using HillMetrics.MIND.FrontApp.Configs;
-
+using HillMetrics.MIND.Infrastructure.AI;
+using HillMetrics.MIND.Infrastructure;
+using HillMetrics.Core.AI.Configs;
+using ModelContextProtocol.Client;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,6 +24,13 @@ var logger = builder.InitAndAddHillMetricsLogger(HillMetrics.Orchestrator.Servic
 
 builder.AddHillMetricsServiceDefaults();
 builder.Services.ConfigureHillMetricsDefaultHttpClient();
+
+// Configuration des fonctionnalités
+builder.Services.Configure<FeaturesConfig>(builder.Configuration.GetSection("Features"));
+var featuresConfig = builder.Configuration.GetSection("Features").Get<FeaturesConfig>() ?? new FeaturesConfig();
+
+// Configuration AI
+builder.Services.Configure<AiLlmConfig>(builder.Configuration.GetSection("AI"));
 
 builder.Services.AddSingleton<ISignalRNotificationService, SignalRNotificationService>();
 
@@ -42,7 +49,7 @@ builder.Services.AddHillMetricsHttpClient("MindAPI", client =>
 //builder.Configuration.GetSection("Services").Bind(settings);
 
 
-builder.Services.Configure<ServicesSettings>(options => 
+builder.Services.Configure<ServicesSettings>(options =>
 {
     builder.Configuration.GetSection("Services").Bind(options);
     if (string.IsNullOrEmpty(options.SignalRApi))
@@ -51,6 +58,9 @@ builder.Services.Configure<ServicesSettings>(options =>
 
 builder.Services.AddTransient<FileUploadService>();
 builder.Services.AddTransient<MappingExportService>();
+
+// Add AI chat services based on configuration
+builder.Services.AddAiChatServices(featuresConfig.AiChat.Enabled, builder.Configuration);
 
 builder.Services.AddHillMetricsBlazorMindCookieAuth(builder.Configuration, mindApi, "HillMetrics_MIND", "HillMetrics_MIND");
 
@@ -80,6 +90,33 @@ builder.Services.AddMudMarkdownServices();
 builder.Services.AddAuthorization();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddCascadingAuthenticationState();
+
+builder.Services.AddSingleton<IMcpClient>(sp =>
+{
+    McpClientOptions mcpClientOptions = new()
+    { ClientInfo = new() { Name = "AspNetCoreSseClient", Version = "1.0.0" } };
+
+    var client = new HttpClient();
+    client.BaseAddress = new($"https+http://{HillMetrics.Orchestrator.ServicesNames.Services.McpFinance}");
+
+    // can't use the service discovery for ["https +http://aspnetsseserver"]
+    // fix: read the environment value for the key 'services__aspnetsseserver__https__0' to get the url for the aspnet core sse server
+    var serviceName = HillMetrics.Orchestrator.ServicesNames.Services.McpFinance;
+    var name = $"services__{serviceName}__https__0";
+    var url = Environment.GetEnvironmentVariable(name) + "/sse";
+
+    SseClientTransportOptions sseTransportOptions = new()
+    {
+        //Endpoint = new Uri("https+http://aspnetsseserver")
+        Endpoint = client.BaseAddress
+    };
+
+    SseClientTransport sseClientTransport = new(transportOptions: sseTransportOptions);
+
+    var mcpClient = McpClientFactory.CreateAsync(
+        sseClientTransport, mcpClientOptions).GetAwaiter().GetResult();
+    return mcpClient;
+});
 
 var app = builder.Build();
 

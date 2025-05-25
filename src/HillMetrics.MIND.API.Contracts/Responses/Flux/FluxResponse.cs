@@ -161,6 +161,12 @@ namespace HillMetrics.MIND.API.Contracts.Responses.Flux
         public FluxAttachmentRuleDto? FluxAttachmentRule { get; set; }
     }
 
+    public class FluxMetadataManualDto : FluxMetadataDto
+    {
+        public override string TypeDiscriminator => nameof(FluxMetadataManualDto);
+        public ContentType ContentType { get; set; }
+    }
+
     public class FluxRuleSettingsDto
     {
         public int Id { get; set; }
