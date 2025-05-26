@@ -109,7 +109,8 @@ builder.Services.AddSingleton<IMcpClient>(sp =>
     SseClientTransportOptions sseTransportOptions = new()
     {
         //Endpoint = new Uri("https+http://aspnetsseserver")
-        Endpoint = new Uri(url)
+        Endpoint = new Uri(url),
+        Name = "Finance Server"
         
     };
 
@@ -117,6 +118,9 @@ builder.Services.AddSingleton<IMcpClient>(sp =>
 
     var mcpClient = McpClientFactory.CreateAsync(
         sseClientTransport, mcpClientOptions).GetAwaiter().GetResult();
+
+    var tools = mcpClient.ListToolsAsync();
+    var ping = mcpClient.PingAsync();
     return mcpClient;
 });
 
