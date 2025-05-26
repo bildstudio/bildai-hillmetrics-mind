@@ -17,7 +17,7 @@ namespace HillMetrics.MIND.Infrastructure.AI
             _logger.LogInformation("Le service de chat AI est désactivé.");
         }
 
-        public IChatClient GetChatClient()
+        public IChatClient GetChatClient(string? model)
         {
             _logger.LogWarning("Tentative d'utilisation du service de chat AI désactivé: GetChatClient");
             // Retourner un client par défaut même si désactivé

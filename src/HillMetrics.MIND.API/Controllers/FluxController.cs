@@ -464,7 +464,10 @@ namespace HillMetrics.MIND.API.Controllers
         /// <param name="file">The uploaded file</param>
         /// <returns>Status indication that the operation has started</returns>
         [HttpPost("{fluxId}/upload-manual")]
-        public async Task<ActionResult<ApiResponseBase<ProcessStartedResponse>>> FetchManualFluxAsync(int fluxId, string fileName, IFormFile file)
+        public async Task<ActionResult<ApiResponseBase<ProcessStartedResponse>>> FetchManualFluxAsync(
+            int fluxId, 
+            [FromForm] string fileName, 
+            IFormFile file)
         {
             try
             {
@@ -494,6 +497,12 @@ namespace HillMetrics.MIND.API.Controllers
                     return BadRequest("This flux is not a manual flux");
                 }
 
+                // Convert IFormFile to Stream
+                using var fileStream = file.OpenReadStream();
+                using var memoryStream = new MemoryStream();
+                await fileStream.CopyToAsync(memoryStream);
+                memoryStream.Position = 0;
+
                 // Create workflow tracking
                 var workflowResult = await workflowService.StartWorkflowTrackingAsync(fluxId, WorkflowStage.Created, "Manual file upload started", FluxActionType.Initializing, fluxId);
                 var existingWorkflowId = workflowResult.Value.Item1;
@@ -502,67 +511,43 @@ namespace HillMetrics.MIND.API.Controllers
                 // Store in context for subsequent background operations
                 WorkflowContext.SetCurrentWorkflowId(fluxId, existingWorkflowId);
 
-                // Start the background processing task without awaiting it
-                _ = Task.Run(async () =>
+                logger.LogInformation("Starting manual flux processing for flux {FluxId} with workflow {WorkflowId}",
+                    fluxId, existingWorkflowId);
+
+                // Create command with manual content
+                var command = FetchFluxCommand.CreateManual(fluxId, stepId, memoryStream, fileName);
+                command.Audit = requestAudit;
+
+                var fetchResult = await Mediator.Send(command);
+
+                if (fetchResult.IsSuccess)
                 {
-                    // Create a new scope for the long-running operation
-                    using var scope = serviceScopeFactory.CreateScope();
-
-                    try
+                    logger.LogInformation("Manual flux processing completed successfully for flux {FluxId}", fluxId);
+                    
+                    // Create a response with the workflow ID for tracking
+                    var response = new ProcessStartedResponse
                     {
-                        // Resolve required services from the new scope
-                        var scopedMediator = scope.ServiceProvider.GetRequiredService<IMediator>();
-                        var scopedLogger = scope.ServiceProvider.GetRequiredService<ILogger<FluxController>>();
+                        Message = $"Manual flux upload operation completed successfully for flux {fluxId}.",
+                        FluxId = fluxId,
+                        WorkflowId = existingWorkflowId
+                    };
 
-                        scopedLogger.LogInformation("Starting manual flux processing for flux {FluxId} with workflow {WorkflowId}",
-                            fluxId, existingWorkflowId);
-
-                        // Convert IFormFile to Stream
-                        using var fileStream = file.OpenReadStream();
-                        using var memoryStream = new MemoryStream();
-                        await fileStream.CopyToAsync(memoryStream);
-                        memoryStream.Position = 0;
-
-                        // Create command with manual content
-                        var command = FetchFluxCommand.CreateManual(fluxId, stepId, memoryStream, fileName);
-                        command.Audit = requestAudit;
-
-                        var fetchResult = await scopedMediator.Send(command);
-
-                        if (fetchResult.IsSuccess)
-                        {
-                            scopedLogger.LogInformation("Manual flux processing completed successfully for flux {FluxId}", fluxId);
-                        }
-                        else
-                        {
-                            scopedLogger.LogWarning("Manual flux processing failed for flux {FluxId}: {Errors}",
-                                fluxId, string.Join(", ", fetchResult.Errors.Select(e => e.Message)));
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        // Use logger from the scope
-                        var scopedLogger = scope.ServiceProvider.GetRequiredService<ILogger<FluxController>>();
-                        scopedLogger.LogError(ex, "Error in manual flux processing for flux {FluxId}", fluxId);
-                    }
-                });
-
-                // Create a response with the workflow ID for tracking
-                var response = new ProcessStartedResponse
+                    return new ApiResponseBase<ProcessStartedResponse>(response);
+                }
+                else
                 {
-                    Message = $"Manual flux upload operation started for flux {fluxId}. The operation will continue in the background.",
-                    FluxId = fluxId,
-                    WorkflowId = existingWorkflowId
-                };
-
-                return new ApiResponseBase<ProcessStartedResponse>(response);
+                    logger.LogWarning("Manual flux processing failed for flux {FluxId}: {Errors}",
+                        fluxId, string.Join(", ", fetchResult.Errors.Select(e => e.Message)));
+                    
+                    return new ErrorApiActionResult(fetchResult.Errors.ToApiResult());
+                }
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Error initiating manual flux upload for flux {FluxId}", fluxId);
+                logger.LogError(ex, "Error processing manual flux upload for flux {FluxId}", fluxId);
                 return new ErrorApiActionResult(
                     new ErrorApiResponse(
-                        new Core.API.Exceptions.ApiException($"Error starting manual flux upload: {ex.Message}"),
+                        new Core.API.Exceptions.ApiException($"Error processing manual flux upload: {ex.Message}"),
                         System.Net.HttpStatusCode.InternalServerError));
             }
         }

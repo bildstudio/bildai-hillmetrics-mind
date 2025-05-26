@@ -106,13 +106,15 @@ namespace HillMetrics.MIND.API.SDK.V1
         /// <param name="fluxId">The flux identifier</param>
         /// <param name="fileName">The name of the uploaded file</param>
         /// <param name="file">The file content stream</param>
+        /// <param name="cancellationToken"></param>
         /// <returns>Status message indicating that the operation has started</returns>
         [Multipart]
         [Post("/api/v1/flux/{fluxId}/upload-manual")]
         Task<ApiResponseBase<ProcessStartedResponse>> FetchManualFluxAsync(
             int fluxId,
-            [AliasAs("fileName")] string fileName,
-            [AliasAs("file")] StreamPart file);
+            string fileName,
+            [AliasAs("file")] StreamPart file,
+            CancellationToken cancellationToken = default);
 
         #endregion
 

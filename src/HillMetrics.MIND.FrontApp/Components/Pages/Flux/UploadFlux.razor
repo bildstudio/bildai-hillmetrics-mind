@@ -213,7 +213,8 @@
             using var stream = selectedFile.OpenReadStream(maxAllowedSize: 50 * 1024 * 1024); // 50MB max
 
             // Create StreamPart for Refit multipart upload
-            var streamPart = new Refit.StreamPart(stream, selectedFile.Name, selectedFile.ContentType);
+            // var streamPart = new Refit.StreamPart(stream, selectedFile.Name, selectedFile.ContentType);
+            var streamPart = new Refit.StreamPart(stream!, selectedFile.Name, selectedFile.ContentType);
 
             // Call the new API endpoint
             var result = await MindApi.FetchManualFluxAsync(FluxId, selectedFile.Name, streamPart);

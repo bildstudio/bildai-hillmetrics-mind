@@ -134,11 +134,14 @@ else
                                                         Label="Technical Type"
                                                         Margin="Margin.Dense"
                                                         SearchFunc="@SearchTechnicalDataPoints"
-                                                        ToStringFunc="@(x => x?.ToString() ?? "None")"
+                                                        ToStringFunc="@GetTechnicalDataPointDisplayName"
                                                         Clearable="true"
                                                         Placeholder="Search technical type..."
                                                         ShowProgressIndicator="false"
-                                                        Dense="true" />
+                                                        Dense="true"
+                                                        ResetValueOnEmptyText="false"
+                                                        CoerceText="false"
+                                                        CoerceValue="false" />
                                     </MudItem>
                                 </MudGrid>
                             </MudTabPanel>
@@ -240,10 +243,13 @@ else
                         Id = e.Id,
                         FinancialDataPointId = e.FinancialDataPointId,
                         PropertyName = e.PropertyName,
+                        ExternalName = e.ExternalName,
                         Description = e.Description,
+                        Commentary = e.Commentary,
                         PotentialValues = e.PotentialValues.ToList(),
                         Position = e.Position,
-                        MappingPrimitiveValue = e.MappingPrimitiveValue
+                        MappingPrimitiveValue = e.MappingPrimitiveValue,
+                        FinancialTechnicalDataPoint = e.FinancialTechnicalDataPoint
                     }).ToList(),
                     FinancialType = result.Data.FinancialType,
                     Id = result.Data.Id,
@@ -322,11 +328,21 @@ else
 
     private async Task<IEnumerable<FinancialTechnicalDataPoint?>> SearchTechnicalDataPoints(string value, CancellationToken token)
     {
-        if (string.IsNullOrEmpty(value))
+        // Always return all items if search is empty or null
+        if (string.IsNullOrWhiteSpace(value))
             return technicalDataPoints;
 
+        // Filter based on the display name
         return technicalDataPoints.Where(x =>
-            (x?.ToString() ?? "None").Contains(value, StringComparison.InvariantCultureIgnoreCase));
+        {
+            var displayName = GetTechnicalDataPointDisplayName(x);
+            return displayName.Contains(value, StringComparison.InvariantCultureIgnoreCase);
+        });
+    }
+
+    private string GetTechnicalDataPointDisplayName(FinancialTechnicalDataPoint? technicalDataPoint)
+    {
+        return technicalDataPoint?.ToString() ?? "None";
     }
 
     private async Task SaveDataPoint()

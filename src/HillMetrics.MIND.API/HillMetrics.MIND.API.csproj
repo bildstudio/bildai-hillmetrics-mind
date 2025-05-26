@@ -26,6 +26,7 @@
     <ProjectReference Include="..\..\..\HillMetrics.Core\src\HillMetrics.Core.Flux.Extension\HillMetrics.Core.Flux.Extension.csproj" />
     <ProjectReference Include="..\..\..\HillMetrics.Core\src\HillMetrics.Core.Monitoring\HillMetrics.Core.Monitoring.csproj" />
     <ProjectReference Include="..\..\..\HillMetrics.Core\src\HillMetrics.Core.Rules\HillMetrics.Core.Rules.csproj" />
+    <ProjectReference Include="..\..\..\HillMetrics.Core\tests\HillMetrics.Core.Rules.Tests\HillMetrics.Core.Rules.Tests.csproj" />
     <ProjectReference Include="..\..\..\HillMetrics.FinancialData\src\HillMetrics.Normalized.Domain\HillMetrics.Normalized.Domain.csproj" />
     <ProjectReference Include="..\..\..\HillMetrics.Orchestrator\HillMetrics.Orchestrator.ServiceDefaults\HillMetrics.Orchestrator.ServiceDefaults.csproj" />
     <ProjectReference Include="..\..\..\HillMetrics.PythonApp\src\HillMetrics.Python.API.SDK\HillMetrics.Python.API.SDK.csproj" />

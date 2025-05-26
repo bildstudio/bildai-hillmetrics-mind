@@ -364,6 +364,16 @@
                             };
                         }
                         break;
+                    case FluxType.Manual:
+                        if (response.DownloadMetadata != null)
+                        {
+                            manualMetadata = response.ManualMetadata;
+                        }
+                        else
+                        {
+                            manualMetadata = new FluxMetadataManualDto();
+                        }
+                        break;
                 }
             }
             else
@@ -474,6 +484,9 @@
                         break;
                     case FluxType.Sftp:
                         fluxRequest.FluxMetadata = fileLocationMetadata;
+                        break;
+                    case FluxType.Manual:
+                        fluxRequest.FluxMetadata = manualMetadata;
                         break;
                 }
             }
