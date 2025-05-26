@@ -29,18 +29,24 @@ namespace HillMetrics.MIND.Infrastructure.AI
             _aiLlmConfig = aiLlmConfig.Value;
         }
 
-        public IChatClient GetChatClient()
+        public IChatClient GetChatClient(string? model = "llama3.2:1b")
         {
             // Utiliser la configuration Ollama par défaut ou la première configuration disponible
             var ollamaConfig = _aiLlmConfig.Models.FirstOrDefault(m => m.Provider == AiProvider.Ollama);
 
             if (ollamaConfig != null)
             {
-                return new OllamaChatClient(ollamaConfig.Endpoint, "llama3.2:1b");
+                return new OllamaChatClient(ollamaConfig.Endpoint, "llama3.2:1b")
+                    .AsBuilder()
+                    .UseFunctionInvocation()
+                    .Build();
             }
 
             // Fallback vers la configuration par défaut
-            return new OllamaChatClient("http://localhost:11434", "llama3.2:1b");
+            return new OllamaChatClient("http://localhost:11434", "llama3.2:1b")
+                .AsBuilder()
+                    .UseFunctionInvocation()
+                    .Build(); ;
         }
 
         public async Task<Result<int>> CreateNewChatAsync(string title, CancellationToken cancellationToken = default)

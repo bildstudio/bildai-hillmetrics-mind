@@ -97,7 +97,8 @@ builder.Services.AddSingleton<IMcpClient>(sp =>
     { ClientInfo = new() { Name = "AspNetCoreSseClient", Version = "1.0.0" } };
 
     var client = new HttpClient();
-    client.BaseAddress = new($"https+http://{HillMetrics.Orchestrator.ServicesNames.Services.McpFinance}");
+    var mcpFinance = builder.Configuration.GetValue<string>("Services:Mcp:Finance", $"https+http://{HillMetrics.Orchestrator.ServicesNames.Services.McpFinance}");
+    //client.BaseAddress = new($"https+http://{HillMetrics.Orchestrator.ServicesNames.Services.McpFinance}");
 
     // can't use the service discovery for ["https +http://aspnetsseserver"]
     // fix: read the environment value for the key 'services__aspnetsseserver__https__0' to get the url for the aspnet core sse server
@@ -108,7 +109,8 @@ builder.Services.AddSingleton<IMcpClient>(sp =>
     SseClientTransportOptions sseTransportOptions = new()
     {
         //Endpoint = new Uri("https+http://aspnetsseserver")
-        Endpoint = client.BaseAddress
+        Endpoint = new Uri(url)
+        
     };
 
     SseClientTransport sseClientTransport = new(transportOptions: sseTransportOptions);

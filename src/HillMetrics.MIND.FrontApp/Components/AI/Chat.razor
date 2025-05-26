@@ -355,7 +355,7 @@
         try
         {
             // Utiliser directement le ChatClient avec les outils MCP
-            var chatClient = ChatService.GetChatClient();
+            var chatClient = ChatService.GetChatClient("mistral");
 
             // Construire le client avec support des fonctions
             var clientWithTools = chatClient.AsBuilder()
