@@ -60,6 +60,7 @@ namespace HillMetrics.MIND.Infrastructure.Database.Services
                     Name = model.Name,
                     DtInsert = _timeProvider.Now,
                     DtUpdate = _timeProvider.Now,
+                    IsActive = model.IsActive
                 };
 
                 var clientUnique = await IsClientUniqueAsync(entity);
@@ -91,6 +92,7 @@ namespace HillMetrics.MIND.Infrastructure.Database.Services
                 entity.Name = model.Name;
                 entity.Email = model.Email;
                 entity.DtUpdate = _timeProvider.Now;
+                entity.IsActive = model.IsActive;
 
                 var clientUnique = await IsClientUniqueAsync(entity);
                 if (!clientUnique.Item1)
@@ -171,7 +173,8 @@ namespace HillMetrics.MIND.Infrastructure.Database.Services
                 FinancialDataPointId = model.DataPointId,
                 Ranking = model.Ranking,
                 DtInsert = _timeProvider.Now,
-                DtUpdate = _timeProvider.Now
+                DtUpdate = _timeProvider.Now,
+                UseHmDefaultRules = model.UseHmDefaultRules
             };
 
             entity.SetFluxPriorities(model.FluxPriorityList);
@@ -211,6 +214,7 @@ namespace HillMetrics.MIND.Infrastructure.Database.Services
             entityToUpdate.FinancialDataPointId = model.DataPointId;
             entityToUpdate.PeerGroupId = model.PeerGroupId;
             entityToUpdate.DtUpdate = _timeProvider.Now;
+            entityToUpdate.UseHmDefaultRules = model.UseHmDefaultRules;
 
 
             

@@ -10,6 +10,7 @@ namespace HillMetrics.MIND.Infrastructure.Contracts.Database.Entity.Clients
     {
         public int Id { get; set; }
         public bool IsDeleted { get; set; }
+        public bool IsActive { get; set; } = true;
         public required string Name { get; set; }
         public required string Email { get; set; }
         public ICollection<ClientFluxRuleEntity> FluxRules { get; set; } = new List<ClientFluxRuleEntity>();
@@ -31,7 +32,7 @@ namespace HillMetrics.MIND.Infrastructure.Contracts.Database.Entity.Clients
 
         public Domain.Contracts.Clients.ClientEntity ToDomain()
         {
-            Domain.Contracts.Clients.ClientEntity domainEntity = new(Id, Name, Email);
+            Domain.Contracts.Clients.ClientEntity domainEntity = new(Id, Name, Email, IsActive);
 
             return domainEntity;
         }
@@ -48,6 +49,7 @@ namespace HillMetrics.MIND.Infrastructure.Contracts.Database.Entity.Clients
             DtUpdate = DateTime.UtcNow.AsUtc();
             Name = domainEntity.Name;
             Email = domainEntity.Email;
+            IsActive = domainEntity.IsActive;
         }
     }
 
@@ -61,6 +63,7 @@ namespace HillMetrics.MIND.Infrastructure.Contracts.Database.Entity.Clients
 
             builder.Property(s => s.Name).IsRequired(true);
             builder.Property(s => s.Email).IsRequired(true);
+            builder.Property(s => s.IsActive).HasDefaultValue(true);
 
             builder.HasQueryFilter(s => !s.IsDeleted);
         }

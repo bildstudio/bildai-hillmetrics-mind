@@ -12,11 +12,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\..\HillMetrics.Business\src\HillMetrics.Business.API.SDK\HillMetrics.Business.API.SDK.csproj" />
+    <ProjectReference Include="..\..\..\HillMetrics.Calculs\src\HillMetrics.Refined.Infrastructure.Database\HillMetrics.Refined.Infrastructure.Database.csproj" />
     <ProjectReference Include="..\..\..\HillMetrics.Core\src\HillMetrics.Core.Authentication\HillMetrics.Core.Authentication\HillMetrics.Core.Authentication.csproj" />
     <ProjectReference Include="..\..\..\HillMetrics.Core\src\HillMetrics.Core.Storage\HillMetrics.Core.Storage.csproj" />
     <ProjectReference Include="..\..\..\HillMetrics.FinancialData\src\HillMetrics.Normalized.Infrastructure.Contracts\HillMetrics.Normalized.Infrastructure.Contracts.csproj" />
     <ProjectReference Include="..\..\..\HillMetrics.FinancialData\src\HillMetrics.Normalized.Infrastructure.Database\HillMetrics.Normalized.Infrastructure.Database.csproj" />
     <ProjectReference Include="..\HillMetrics.MIND.Domain.Contracts\HillMetrics.MIND.Domain.Contracts.csproj" />
+    <ProjectReference Include="..\HillMetrics.MIND.Infrastructure.Contracts\HillMetrics.MIND.Infrastructure.Contracts.csproj" />
   </ItemGroup>
 
 </Project>

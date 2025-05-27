@@ -59,7 +59,7 @@ namespace HillMetrics.MIND.API.Controllers
         [HttpPost(InternalRoutes.Clients.Create)]
         public async Task<ActionResult<GetClientResponse>> CreateAsync([FromBody] SaveClientRequest request)
         {
-            var command = new CreateClientCommand(new SaveClientModel(request.Name, request.Email));
+            var command = new CreateClientCommand(new SaveClientModel(request.Name, request.Email, request.IsActive));
             var result = await Mediator.Send(command);
             if (result.IsFailed)
                 return new ErrorApiActionResult(result.Errors.ToApiResult());
@@ -72,7 +72,7 @@ namespace HillMetrics.MIND.API.Controllers
         [HttpPut(InternalRoutes.Clients.Update)]
         public async Task<ActionResult<GetClientResponse>> UpdateAsync([FromRoute] int id, [FromBody] SaveClientRequest request)
         {
-            var command = new UpdateClientCommand(id, new SaveClientModel(request.Name, request.Email));
+            var command = new UpdateClientCommand(id, new SaveClientModel(request.Name, request.Email, request.IsActive));
             var result = await Mediator.Send(command);
             if (result.IsFailed)
                 return new ErrorApiActionResult(result.Errors.ToApiResult());
@@ -98,7 +98,7 @@ namespace HillMetrics.MIND.API.Controllers
             [FromRoute] int clientId, 
             [FromBody] SaveClientFluxRuleRequest request)
         {
-            var command = new CreateFluxRuleCommand(new SaveClientFluxRuleModel(request.DataPointId, request.PeerGroupId, request.Ranking, request.FluxPriorityList, clientId));
+            var command = new CreateFluxRuleCommand(new SaveClientFluxRuleModel(request.DataPointId, request.PeerGroupId, request.Ranking, request.FluxPriorityList, clientId, request.UseHmDefaultRules));
             var result = await Mediator.Send(command);
             if (result.IsFailed)
                 return new ErrorApiActionResult(result.Errors.ToApiResult());
@@ -114,7 +114,7 @@ namespace HillMetrics.MIND.API.Controllers
             [FromRoute] int fluxRuleId, 
             [FromBody] SaveClientFluxRuleRequest request)
         {
-            var command = new UpdateFluxRuleCommand(fluxRuleId, new SaveClientFluxRuleModel(request.DataPointId, request.PeerGroupId, request.Ranking, request.FluxPriorityList, clientId));
+            var command = new UpdateFluxRuleCommand(fluxRuleId, new SaveClientFluxRuleModel(request.DataPointId, request.PeerGroupId, request.Ranking, request.FluxPriorityList, clientId, request.UseHmDefaultRules));
             var result = await Mediator.Send(command);
             if (result.IsFailed)
                 return new ErrorApiActionResult(result.Errors.ToApiResult());
@@ -135,6 +135,18 @@ namespace HillMetrics.MIND.API.Controllers
             var dtos = result.Value.Data.Select(s => s.FromDomain());
 
             return new ListClientFluxRulesResponse(dtos, result.Value.TotalRecords);
+        }
+
+        [Authorize(Roles = Roles.Mind.ManageClients)]
+        [HttpPost(InternalRoutes.Clients.ConstructRefinedDb)]
+        public async Task<ActionResult<ConstructRefinedDbResponse>> ConstructRefinedDbAsync([FromRoute]int clientId, CancellationToken cancellationToken)
+        {
+            var command = new ConstructRefinedDbCommand(clientId);
+            var result = await Mediator.Send(command, cancellationToken);
+            if (result.IsFailed)
+                return new ErrorApiActionResult(result.Errors.ToApiResult());
+
+            return new ConstructRefinedDbResponse("Database for client created");
         }
     }
 }

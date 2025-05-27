@@ -38,6 +38,8 @@ namespace HillMetrics.MIND.Infrastructure
             services.Configure<CookieConfig>(corsSection);
             services.TryAddSingleton<ICookieService, CookieService>();
 
+            services.TryAddSingleton<IClientCredentialsTokenService, ClientCredentialsTokenService>();
+
             return services;
         }
 
