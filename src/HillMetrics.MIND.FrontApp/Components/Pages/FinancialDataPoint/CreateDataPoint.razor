@@ -2,7 +2,9 @@
 @page "/financial-data/edit/{Id:int?}"
 @using HillMetrics.Core.Financial
 @using HillMetrics.Core.Financial.DataPoint
+@using HillMetrics.Core.Search
 @using HillMetrics.MIND.API.Contracts.Requests.AiDataset
+@using HillMetrics.MIND.API.Contracts.Responses.AiDataset
 @using HillMetrics.MIND.API.SDK.V1
 @using HillMetrics.Normalized.Domain.Contracts.AI.Dataset
 @inject IMindAPI MindApi
@@ -22,17 +24,17 @@ else
             <MudGrid>
                 <MudItem xs="12" md="6">
                     <MudTextField @bind-Value="dataPoint.Name"
-                    Label="Data Point Name"
-                    Required="true"
-                    RequiredError="Name is required" />
+                                  Label="Data Point Name"
+                                  Required="true"
+                                  RequiredError="Name is required" />
                 </MudItem>
                 <MudItem xs="12" md="6">
                     <MudSelect T="FinancialType"
-                    @bind-Value="dataPoint.FinancialType"
-                    Label="Financial Type"
-                    Required="true"
-                    RequiredError="Financial Type is required"
-                    AnchorOrigin="Origin.BottomCenter">
+                               @bind-Value="dataPoint.FinancialType"
+                               Label="Financial Type"
+                               Required="true"
+                               RequiredError="Financial Type is required"
+                               AnchorOrigin="Origin.BottomCenter">
                         @foreach (var type in Enum.GetValues<FinancialType>())
                         {
                             <MudSelectItem Value="@type">@type</MudSelectItem>
@@ -41,9 +43,9 @@ else
                 </MudItem>
                 <MudItem xs="12" md="6">
                     <MudTextField @bind-Value="dataPoint.Description"
-                    Label="Description"
-                    Lines="3"
-                    Variant="Variant.Outlined" />
+                                  Label="Description"
+                                  Lines="3"
+                                  Variant="Variant.Outlined" />
                 </MudItem>
             </MudGrid>
         </MudCardContent>
@@ -59,14 +61,14 @@ else
 
     <MudPaper Class="pa-4 mb-4">
         <MudDropContainer T="FinancialDataPointElementRequest"
-        @ref="containerRef"
-        ApplyDropClassesOnDragStarted="true"
-        Items="dataPoint.Elements"
-        ItemsSelector="@((item, dropzone) => dropzone == @DropZoneName)"
-        ItemDropped="ItemDropped"
-        DragClass="drag-item"
-        DropClass="drop-zone-active"
-        Class="d-flex flex-column gap-4">
+                          @ref="containerRef"
+                          ApplyDropClassesOnDragStarted="true"
+                          Items="dataPoint.Elements"
+                          ItemsSelector="@((item, dropzone) => dropzone == @DropZoneName)"
+                          ItemDropped="ItemDropped"
+                          DragClass="drag-item"
+                          DropClass="drop-zone-active"
+                          Class="d-flex flex-column gap-4">
             <ChildContent>
                 @if (dataPoint.Elements.Count == 0)
                 {
@@ -94,8 +96,8 @@ else
                         </CardHeaderContent>
                         <CardHeaderActions>
                             <MudIconButton Icon="@Icons.Material.Filled.DragIndicator"
-                            Size="Size.Small"
-                            Class="drag-indicator" />
+                                           Size="Size.Small"
+                                           Class="drag-indicator" />
                         </CardHeaderActions>
                     </MudCardHeader>
                     <MudCardContent>
@@ -117,11 +119,11 @@ else
                                     </MudItem>
                                     <MudItem xs="12" sm="4" md="3">
                                         <MudSelect T="MappingTypePrimitive"
-                                                  @bind-Value="context.MappingPrimitiveValue"
-                                                  Label="Data Type"
-                                                  Required="true"
-                                                  Margin="Margin.Dense"
-                                                  AnchorOrigin="Origin.BottomCenter">
+                                                   @bind-Value="context.MappingPrimitiveValue"
+                                                   Label="Data Type"
+                                                   Required="true"
+                                                   Margin="Margin.Dense"
+                                                   AnchorOrigin="Origin.BottomCenter">
                                             @foreach (var type in Enum.GetValues<MappingTypePrimitive>())
                                             {
                                                 <MudSelectItem Value="@type">@type</MudSelectItem>
@@ -130,18 +132,43 @@ else
                                     </MudItem>
                                     <MudItem xs="12" sm="4" md="3">
                                         <MudAutocomplete T="FinancialTechnicalDataPoint?"
-                                                        @bind-Value="context.FinancialTechnicalDataPoint"
-                                                        Label="Technical Type"
-                                                        Margin="Margin.Dense"
-                                                        SearchFunc="@SearchTechnicalDataPoints"
-                                                        ToStringFunc="@GetTechnicalDataPointDisplayName"
-                                                        Clearable="true"
-                                                        Placeholder="Search technical type..."
-                                                        ShowProgressIndicator="false"
-                                                        Dense="true"
-                                                        ResetValueOnEmptyText="false"
-                                                        CoerceText="false"
-                                                        CoerceValue="false" />
+                                                         @bind-Value="context.FinancialTechnicalDataPoint"
+                                                         Label="Technical Type"
+                                                         Margin="Margin.Dense"
+                                                         SearchFunc="@SearchTechnicalDataPoints"
+                                                         ToStringFunc="@GetTechnicalDataPointDisplayName"
+                                                         Clearable="true"
+                                                         Placeholder="Search technical type..."
+                                                         ShowProgressIndicator="false"
+                                                         Dense="true"
+                                                         ResetValueOnEmptyText="false"
+                                                         CoerceText="false"
+                                                         CoerceValue="false" />
+                                    </MudItem>
+                                    <MudItem xs="12" sm="4" md="3">
+                                        @if (dataPoint.FinancialType == FinancialType.Undefined)
+                                        {
+                                            <MudTextField T="string" Label="Parent Element"
+                                                          Margin="Margin.Dense"
+                                                          Placeholder="Please select Financial Type first"
+                                                          Disabled="true"/>
+                                        }
+                                        else
+                                        {
+                                            <MudAutocomplete T="int?"
+                                                             @bind-Value="context.ParentElementId"
+                                                             Label="Parent Element"
+                                                             Margin="Margin.Dense"
+                                                             SearchFunc="@((value, token) => SearchParentElements(value, context.Id, token))"
+                                                             ToStringFunc="@GetElementDisplayNameById"
+                                                             Clearable="true"
+                                                             Placeholder="Search parent element..."
+                                                             ShowProgressIndicator="false"
+                                                             Dense="true"
+                                                             ResetValueOnEmptyText="false"
+                                                             CoerceText="false"
+                                                             CoerceValue="false" />
+                                        }
                                     </MudItem>
                                 </MudGrid>
                             </MudTabPanel>
@@ -168,9 +195,9 @@ else
                     </MudCardContent>
                     <MudCardActions>
                         <MudButton OnClick="() => RemoveElement(context)"
-                        Color="Color.Error"
-                        StartIcon="@Icons.Material.Filled.Delete"
-                        Size="Size.Small">
+                                   Color="Color.Error"
+                                   StartIcon="@Icons.Material.Filled.Delete"
+                                   Size="Size.Small">
                             Remove Element
                         </MudButton>
                     </MudCardActions>
@@ -180,20 +207,20 @@ else
     </MudPaper>
 
     <MudButton OnClick="AddElement"
-    Color="Color.Primary"
-    Variant="Variant.Outlined"
-    StartIcon="@Icons.Material.Filled.Add"
-    Class="mb-4 mt-4">
+               Color="Color.Primary"
+               Variant="Variant.Outlined"
+               StartIcon="@Icons.Material.Filled.Add"
+               Class="mb-4 mt-4">
         Add Element
     </MudButton>
 
     <MudDivider Class="my-6" />
 
     <MudButton OnClick="SaveDataPoint"
-    Color="Color.Primary"
-    Variant="Variant.Filled"
-    Size="Size.Large"
-    Disabled="@(!CanSave())">
+               Color="Color.Primary"
+               Variant="Variant.Filled"
+               Size="Size.Large"
+               Disabled="@(!CanSave())">
         @(IsEditMode ? "Update" : "Save") Data Point
     </MudButton>
 }
@@ -205,9 +232,10 @@ else
     private MudDropContainer<FinancialDataPointElementRequest> containerRef;
     private const string DropZoneName = "DataPointZone";
     private bool IsEditMode => Id.HasValue;
-    private CreateFinancialDataPointRequest dataPoint = new();
+    private CreateFinancialDataPointRequest dataPoint = new() { FinancialType = FinancialType.Undefined };
     private bool isLoading = true;
     private readonly List<FinancialTechnicalDataPoint?> technicalDataPoints;
+    private List<FinancialDataPointElement> allAvailableElements = new();
 
     public CreateDataPoint()
     {
@@ -222,6 +250,7 @@ else
         if (IsEditMode)
         {
             await LoadDataPoint();
+            await LoadAllAvailableElements();
         }
         else
         {
@@ -249,7 +278,8 @@ else
                         PotentialValues = e.PotentialValues.ToList(),
                         Position = e.Position,
                         MappingPrimitiveValue = e.MappingPrimitiveValue,
-                        FinancialTechnicalDataPoint = e.FinancialTechnicalDataPoint
+                        FinancialTechnicalDataPoint = e.FinancialTechnicalDataPoint,
+                        ParentElementId = e.ParentElementId
                     }).ToList(),
                     FinancialType = result.Data.FinancialType,
                     Id = result.Data.Id,
@@ -264,6 +294,51 @@ else
         {
             isLoading = false;
         }
+    }
+
+    // private async Task OnFinancialTypeChanged(FinancialType newFinancialType)
+    // {
+    //     dataPoint.FinancialType = newFinancialType;
+        
+    //     // Reload available elements when financial type changes
+    //     try
+    //     {
+    //         await LoadAllAvailableElements();
+    //     }
+    //     catch (Exception ex)
+    //     {
+    //         Snackbar.Add($"Error loading available elements: {ex.Message}", Severity.Warning);
+    //     }
+        
+    //     StateHasChanged();
+    // }
+
+    private async Task LoadAllAvailableElements()
+    {
+        // Check if FinancialType is set, if not, don't load elements yet
+        if (dataPoint.FinancialType == FinancialType.Undefined)
+        {
+            allAvailableElements.Clear();
+            return;
+        }
+
+        // Create a search request to get financial data points for the specific type
+        var searchRequest = new SearchFinancialDataPointRequest
+        {
+            Pagination = new Pagination(1000, 1), // Get a large number to ensure we get all
+            Sorting = new Sorting("Name", Core.Search.SortDirection.Asc),
+            FinancialType = dataPoint.FinancialType
+        };
+
+        // Get data points for the specific financial type
+        var response = await MindApi.SearchFinancialDataPointsAsync(searchRequest);
+        var allDataPoints = response.Data ?? new List<FinancialDataPointSearchResponse>();
+
+        // Extract all elements from all data points using SelectMany
+        allAvailableElements = allDataPoints
+            .Where(dp => dp.Elements != null)
+            .SelectMany(dp => dp.Elements)
+            .ToList();
     }
 
     private void AddElement()
@@ -345,6 +420,36 @@ else
         return technicalDataPoint?.ToString() ?? "None";
     }
 
+    private async Task<IEnumerable<int?>> SearchParentElements(string value, int currentElementId, CancellationToken token)
+    {
+        // Get all available elements from the database, excluding the current one to avoid self-reference
+        var availableElements = allAvailableElements
+            .Where(e => e.Id != currentElementId)
+            .ToList();
+
+        // Add null option for "No Parent" and element IDs
+        var elementIds = new List<int?> { null };
+        elementIds.AddRange(availableElements.Select(e => (int?)e.Id));
+
+        // Filter based on search value
+        if (string.IsNullOrWhiteSpace(value))
+            return elementIds;
+
+        return elementIds.Where(id =>
+        {
+            if (id == null) return "None".Contains(value, StringComparison.InvariantCultureIgnoreCase);
+            var element = allAvailableElements.FirstOrDefault(e => e.Id == id);
+            return element?.PropertyName?.Contains(value, StringComparison.InvariantCultureIgnoreCase) ?? false;
+        });
+    }
+
+    private string GetElementDisplayNameById(int? elementId)
+    {
+        if (elementId == null) return "None";
+        var element = allAvailableElements.FirstOrDefault(e => e.Id == elementId);
+        return element?.PropertyName ?? "Unknown";
+    }
+
     private async Task SaveDataPoint()
     {
         try
@@ -392,10 +497,10 @@ else
         margin-bottom: 8px;
     }
 
-    .element-card:hover {
-        border-color: var(--mud-palette-primary);
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    }
+        .element-card:hover {
+            border-color: var(--mud-palette-primary);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
 
     .drag-item {
         opacity: 0.7;

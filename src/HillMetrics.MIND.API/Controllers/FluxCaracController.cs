@@ -406,7 +406,8 @@ public class FluxCaracController(IHMediator mediator, IMapper mapper, ILogger<Fl
                     MappingPrimitiveValue = x.MappingPrimitiveValue,
                     Commentary = x.Commentary,
                     FinancialTechnicalDataPoint = x.FinancialTechnicalDataPoint,
-                    ExternalName = x.ExternalName
+                    ExternalName = x.ExternalName,
+                    ParentElementId = x.ParentElementId
                 }).ToList()
             }
         };
@@ -454,7 +455,8 @@ public class FluxCaracController(IHMediator mediator, IMapper mapper, ILogger<Fl
                     MappingPrimitiveValue = x.MappingPrimitiveValue,
                     ExternalName = x.ExternalName,
                     Commentary = x.Commentary,
-                    FinancialTechnicalDataPoint = x.FinancialTechnicalDataPoint
+                    FinancialTechnicalDataPoint = x.FinancialTechnicalDataPoint,
+                    ParentElementId = x.ParentElementId
                 }).ToList()
             }
         };

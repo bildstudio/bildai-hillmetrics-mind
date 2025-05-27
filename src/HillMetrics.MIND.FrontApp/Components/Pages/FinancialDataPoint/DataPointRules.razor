@@ -63,7 +63,7 @@
 
                     <!-- Rules Cards -->
                     <MudStack Spacing="4">
-                        @foreach (var rule in rules.OrderBy(r => r.Priority))
+                        @foreach (var (rule, index) in rules.OrderBy(r => r.Priority).Select((r, i) => (r, i)))
                         {
                             <MudCard Elevation="3" Class="rule-card">
                                 <MudCardHeader Class="pb-2">
@@ -91,12 +91,12 @@
                                     <CardHeaderActions>
                                         <MudIconButton Icon="@Icons.Material.Filled.ExpandMore"
                                                       Size="Size.Small"
-                                                      id="@GetId(@rule.GetHashCode())"
-                                                      OnClick="() => ToggleExpansion(rule.GetHashCode())" />
+                                                      id="@GetId(index)"
+                                                      OnClick="() => ToggleExpansion(index)" />
                                     </CardHeaderActions>
                                 </MudCardHeader>
 
-                                <MudCollapse Expanded="@IsExpanded(rule.GetHashCode())">
+                                <MudCollapse Expanded="@IsExpanded(index)">
                                     <MudCardContent Class="pt-0">
                                         <MudStack Spacing="3">
                                             <!-- Description -->
@@ -294,15 +294,15 @@
 
     private void Close() => MudDialog.Close();
 
-    private bool IsExpanded(int ruleHash) => expandedRules.Contains(ruleHash);
+    private bool IsExpanded(int index) => expandedRules.Contains(index);
 
-    private string GetId(int ruleHash) => $"expand-{ruleHash}";
+    private string GetId(int index) => $"expand-{index}";
 
-    private void ToggleExpansion(int ruleHash)
+    private void ToggleExpansion(int index)
     {
-        if (expandedRules.Contains(ruleHash))
-            expandedRules.Remove(ruleHash);
+        if (expandedRules.Contains(index))
+            expandedRules.Remove(index);
         else
-            expandedRules.Add(ruleHash);
+            expandedRules.Add(index);
     }
 }

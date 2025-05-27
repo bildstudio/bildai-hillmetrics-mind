@@ -34,4 +34,9 @@ public class FinancialDataPointElementRequest
     public string Commentary { get; set; } = string.Empty;
 
     public FinancialTechnicalDataPoint? FinancialTechnicalDataPoint { get; set; }
+    
+    /// <summary>
+    /// Optional reference to a parent element for inheritance
+    /// </summary>
+    public int? ParentElementId { get; set; }
 }
