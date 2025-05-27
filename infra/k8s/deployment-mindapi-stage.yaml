@@ -91,6 +91,8 @@ spec:
       objectName: otel-exporter-otlp-endpoint
     - key: Services__PythonApi
       objectName: services-pythonapi
+    - key: ConnectionStrings__ProvisioningDb
+      objectName: connectionstrings-provisioningdb
     secretName: mindapi-env
     type: Opaque
   parameters:
@@ -146,5 +148,8 @@ spec:
           objectType: secret
         - |
           objectName: services-pythonapi
+          objectType: secret
+        - |
+          objectName: connectionstrings-provisioningdb
           objectType: secret
     tenantId: 47650b84-ae6e-4206-82af-ebe7b3243aa2
