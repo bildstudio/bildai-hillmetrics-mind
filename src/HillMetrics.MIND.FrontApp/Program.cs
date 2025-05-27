@@ -119,8 +119,7 @@ builder.Services.AddSingleton<IMcpClient>(sp =>
     var mcpClient = McpClientFactory.CreateAsync(
         sseClientTransport, mcpClientOptions).GetAwaiter().GetResult();
 
-    var tools = mcpClient.ListToolsAsync();
-    var ping = mcpClient.PingAsync();
+    var tools = mcpClient.ListToolsAsync().Result;
     return mcpClient;
 });
 

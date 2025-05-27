@@ -7,6 +7,7 @@ using HillMetrics.Core.Errors;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using OllamaSharp;
 
 namespace HillMetrics.MIND.Infrastructure.AI
 {
@@ -34,19 +35,13 @@ namespace HillMetrics.MIND.Infrastructure.AI
             // Utiliser la configuration Ollama par défaut ou la première configuration disponible
             var ollamaConfig = _aiLlmConfig.Models.FirstOrDefault(m => m.Provider == AiProvider.Ollama);
 
-            if (ollamaConfig != null)
-            {
-                return new OllamaChatClient(ollamaConfig.Endpoint, "llama3.2:1b")
-                    .AsBuilder()
-                    .UseFunctionInvocation()
-                    .Build();
-            }
+            if (ollamaConfig == null)
+                throw new InvalidOperationException("Ollama configuration is not defined");
 
-            // Fallback vers la configuration par défaut
-            return new OllamaChatClient("http://localhost:11434", "llama3.2:1b")
-                .AsBuilder()
-                    .UseFunctionInvocation()
-                    .Build(); ;
+            var ollama = new OllamaApiClient(ollamaConfig.Endpoint);
+            ollama.SelectedModel = model!;
+
+            return ollama;
         }
 
         public async Task<Result<int>> CreateNewChatAsync(string title, CancellationToken cancellationToken = default)
@@ -119,87 +114,87 @@ namespace HillMetrics.MIND.Infrastructure.AI
             }
         }
 
-        public async Task<Result<HMChatResponse>> SendMessageAsync(HMChatRequest request, CancellationToken cancellationToken = default)
-        {
-            try
-            {
-                await _semaphore.WaitAsync(cancellationToken);
+        //public async Task<Result<HMChatResponse>> SendMessageAsync(HMChatRequest request, CancellationToken cancellationToken = default)
+        //{
+        //    try
+        //    {
+        //        await _semaphore.WaitAsync(cancellationToken);
 
-                int chatId = request.ChatId ?? 0;
+        //        int chatId = request.ChatId ?? 0;
 
-                // Create a new chat if needed
-                if (chatId == 0)
-                {
-                    var createResult = await CreateNewChatAsync($"Chat {_nextChatId}", cancellationToken);
-                    if (createResult.IsFailed)
-                        return Result.Fail<HMChatResponse>(createResult.Errors);
+        //        // Create a new chat if needed
+        //        if (chatId == 0)
+        //        {
+        //            var createResult = await CreateNewChatAsync($"Chat {_nextChatId}", cancellationToken);
+        //            if (createResult.IsFailed)
+        //                return Result.Fail<HMChatResponse>(createResult.Errors);
 
-                    chatId = createResult.Value;
-                }
+        //            chatId = createResult.Value;
+        //        }
 
-                if (!_chatSessions.TryGetValue(chatId, out var chatSession))
-                    return Result.Fail(new NotFoundError($"Chat with ID {chatId} not found"));
+        //        if (!_chatSessions.TryGetValue(chatId, out var chatSession))
+        //            return Result.Fail(new NotFoundError($"Chat with ID {chatId} not found"));
 
-                // Add user message to history
-                var userMessage = new HMChatMessage
-                {
-                    Id = _nextMessageId++,
-                    ChatId = chatId,
-                    Content = request.Message,
-                    Role = ChatRole.User,
-                    Timestamp = DateTime.UtcNow
-                };
+        //        // Add user message to history
+        //        var userMessage = new HMChatMessage
+        //        {
+        //            Id = _nextMessageId++,
+        //            ChatId = chatId,
+        //            Content = request.Message,
+        //            Role = ChatRole.User,
+        //            Timestamp = DateTime.UtcNow
+        //        };
 
-                chatSession.Messages.Add(userMessage);
+        //        chatSession.Messages.Add(userMessage);
 
-                // Create chat history for LLM context
-                var chatMessages = chatSession.Messages.Select(m => new Microsoft.Extensions.AI.ChatMessage
-                {
-                    Text = m.Content,
-                    Role = m.Role
-                }).ToList();
+        //        // Create chat history for LLM context
+        //        var chatMessages = chatSession.Messages.Select(m => new Microsoft.Extensions.AI.ChatMessage
+        //        {
+        //            Contents = null,
+        //            Role = m.Role
+        //        }).ToList();
 
-                // Get response from LLM
-                var llmResponse = await _chatClient.GetResponseAsync(chatMessages, cancellationToken: cancellationToken);
+        //        // Get response from LLM
+        //        var llmResponse = await _chatClient.GetResponseAsync(chatMessages, cancellationToken: cancellationToken);
 
-                if (llmResponse == null)
-                    return Result.Fail<HMChatResponse>("No response from LLM");
+        //        if (llmResponse == null)
+        //            return Result.Fail<HMChatResponse>("No response from LLM");
 
-                var responseText = llmResponse.Choices?.FirstOrDefault()?.Text ?? "No response";
+        //        var responseText = llmResponse.Choices?.FirstOrDefault()?.Text ?? "No response";
 
-                // Add assistant response to history
-                var assistantMessage = new HMChatMessage
-                {
-                    Id = _nextMessageId++,
-                    ChatId = chatId,
-                    Content = responseText,
-                    Role = ChatRole.Assistant,
-                    Timestamp = DateTime.UtcNow
-                };
+        //        // Add assistant response to history
+        //        var assistantMessage = new HMChatMessage
+        //        {
+        //            Id = _nextMessageId++,
+        //            ChatId = chatId,
+        //            Content = responseText,
+        //            Role = ChatRole.Assistant,
+        //            Timestamp = DateTime.UtcNow
+        //        };
 
-                chatSession.Messages.Add(assistantMessage);
+        //        chatSession.Messages.Add(assistantMessage);
 
-                return Result.Ok(new HMChatResponse
-                {
-                    ChatId = chatId,
-                    Response = responseText,
-                    Success = true
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error sending message: {Message}", ex.Message);
-                return Result.Ok(new HMChatResponse
-                {
-                    ChatId = request.ChatId ?? 0,
-                    Success = false,
-                    Error = ex.Message
-                });
-            }
-            finally
-            {
-                _semaphore.Release();
-            }
-        }
+        //        return Result.Ok(new HMChatResponse
+        //        {
+        //            ChatId = chatId,
+        //            Response = responseText,
+        //            Success = true
+        //        });
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _logger.LogError(ex, "Error sending message: {Message}", ex.Message);
+        //        return Result.Ok(new HMChatResponse
+        //        {
+        //            ChatId = request.ChatId ?? 0,
+        //            Success = false,
+        //            Error = ex.Message
+        //        });
+        //    }
+        //    finally
+        //    {
+        //        _semaphore.Release();
+        //    }
+        //}
     }
 }
