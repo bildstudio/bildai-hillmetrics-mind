@@ -1,5 +1,4 @@
 ﻿using FluentResults;
-using HillMetrics.Business.API.SDK.V1;
 using HillMetrics.Core.Errors;
 using HillMetrics.Core.Mediator;
 using HillMetrics.MIND.Domain.Contracts.Clients.Commands;

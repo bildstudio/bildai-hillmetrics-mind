@@ -12,7 +12,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\HillMetrics.Business\src\HillMetrics.Business.API.SDK\HillMetrics.Business.API.SDK.csproj" />
     <ProjectReference Include="..\..\..\HillMetrics.Calculs\src\HillMetrics.Refined.Infrastructure.Database\HillMetrics.Refined.Infrastructure.Database.csproj" />
     <ProjectReference Include="..\..\..\HillMetrics.Core\src\HillMetrics.Core.Authentication\HillMetrics.Core.Authentication\HillMetrics.Core.Authentication.csproj" />
     <ProjectReference Include="..\..\..\HillMetrics.Core\src\HillMetrics.Core.Storage\HillMetrics.Core.Storage.csproj" />
