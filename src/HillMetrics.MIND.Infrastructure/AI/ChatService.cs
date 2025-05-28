@@ -8,6 +8,7 @@ using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using OllamaSharp;
+using Microsoft.Graph.DeviceManagement.ManagedDevices.Item.Retire;
 
 namespace HillMetrics.MIND.Infrastructure.AI
 {
@@ -38,10 +39,8 @@ namespace HillMetrics.MIND.Infrastructure.AI
             if (ollamaConfig == null)
                 throw new InvalidOperationException("Ollama configuration is not defined");
 
-            var ollama = new OllamaApiClient(ollamaConfig.Endpoint);
-            ollama.SelectedModel = model!;
-
-            return ollama;
+            //return new OllamaApiClient(ollamaConfig.Endpoint, model!);
+            return new OllamaChatClient(ollamaConfig.Endpoint, model!);
         }
 
         public async Task<Result<int>> CreateNewChatAsync(string title, CancellationToken cancellationToken = default)
