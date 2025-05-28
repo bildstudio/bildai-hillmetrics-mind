@@ -6,5 +6,7 @@
         public int PeerGroupId { get; set; }
         public int Ranking { get; set; }
         public List<int> FluxPriorityList { get; set; } = [];
+
+        public bool UseHmDefaultRules { get; set; } = false;
     }
 }

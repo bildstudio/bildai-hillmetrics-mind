@@ -3,6 +3,7 @@ using System;
 using HillMetrics.MIND.Infrastructure.Database.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace HillMetrics.MIND.Infrastructure.Database.Migrations
 {
     [DbContext(typeof(MindApplicationContext))]
-    partial class MindAppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250525103129_ClientFluxRuleEntity_UseHmRules")]
+    partial class ClientFluxRuleEntity_UseHmRules
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -43,12 +46,6 @@ namespace HillMetrics.MIND.Infrastructure.Database.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("email");
-
-                    b.Property<bool>("IsActive")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(true)
-                        .HasColumnName("is_active");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean")
@@ -122,9 +119,9 @@ namespace HillMetrics.MIND.Infrastructure.Database.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("ranking");
 
-                    b.Property<bool>("UseHmDefaultRules")
+                    b.Property<bool>("UseHmRules")
                         .HasColumnType("boolean")
-                        .HasColumnName("use_hm_default_rules");
+                        .HasColumnName("use_hm_rules");
 
                     b.HasKey("Id")
                         .HasName("pk_clients_flux_rules");

@@ -2,6 +2,7 @@
 using FluentValidation;
 using HillMetrics.Core.Authentication;
 using HillMetrics.Core.Errors;
+using HillMetrics.Core.Extensions;
 using HillMetrics.Core.Mediator;
 using HillMetrics.Core.Storage.Database.Contracts;
 using HillMetrics.MIND.Domain.Contracts.Clients;
@@ -69,14 +70,20 @@ namespace HillMetrics.MIND.Domain.UseCase.Clients
                 if (financialDataPoint == null)
                     return Result.Fail(new NotFoundError($"Data point with id: {request.Model.DataPointId} not found"));
 
-                List<FluxEntity> fluxEntities = await _fluxEntityRepo.ToListAsync(s => request.Model.FluxPriorityList.Contains(s.Id), cancellationToken: cancellationToken);
+                List<FluxEntity> fluxEntities = await _fluxEntityRepo.ToListAsync(s => request.Model.FluxPriorityList.Contains(s.Id), includeProperties: nameof(FluxEntity.FluxDataPointsPriorities), cancellationToken: cancellationToken);
                 StringBuilder fluxInErrorBuilder = new StringBuilder("");
                 foreach (var fluxId in request.Model.FluxPriorityList)
                 {
-                    if(fluxEntities.FirstOrDefault(s => s.Id == fluxId) == null)
+                    FluxEntity? fluxEntity = fluxEntities.FirstOrDefault(s => s.Id == fluxId);
+
+                    if (fluxEntity == null)
                     {
                         fluxInErrorBuilder.Append($"Flux with id: {fluxId} not found. {Environment.NewLine}");
+                        continue;
                     }
+
+                    if(fluxEntity.FluxDataPointsPriorities.IsNullOrEmpty() || !fluxEntity.FluxDataPointsPriorities.Any(s => s.FinancialDataPointId == financialDataPoint.Id))
+                        fluxInErrorBuilder.Append($"Flux with id: {fluxId} is not in relation with FinancialDataPoint with id: {financialDataPoint.Id}. {Environment.NewLine}");
                 }
 
                 if(fluxInErrorBuilder.Length > 0)

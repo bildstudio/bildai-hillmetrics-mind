@@ -4,6 +4,8 @@
     {
         public IdentityProviderSettings Azure { get; set; } = null!;
 
+        public ClientCredentialsSettings Private { get; set; } = null!;
+
         public override string GetClientId()
         {
             return Azure.ClientId;

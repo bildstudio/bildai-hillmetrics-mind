@@ -13,6 +13,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HillMetrics.MIND.Domain.Con
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HillMetrics.MIND.Infrastructure", "src\HillMetrics.MIND.Infrastructure\HillMetrics.MIND.Infrastructure.csproj", "{DF0D531F-48AB-48DF-BBF2-65604F2AC68D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HillMetrics.MIND.Infrastructure.Contracts", "src\HillMetrics.MIND.Infrastructure.Contracts\HillMetrics.MIND.Infrastructure.Contracts.csproj", "{F404227C-4C5B-1F45-CB76-EA5E22AB0062}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HillMetrics.MIND.Infrastructure.Database", "src\HillMetrics.MIND.Infrastructure.Database\HillMetrics.MIND.Infrastructure.Database.csproj", "{D1278EBF-8D5E-275D-9E52-05C76AB31B9E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -39,6 +43,14 @@ Global
 		{DF0D531F-48AB-48DF-BBF2-65604F2AC68D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DF0D531F-48AB-48DF-BBF2-65604F2AC68D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DF0D531F-48AB-48DF-BBF2-65604F2AC68D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F404227C-4C5B-1F45-CB76-EA5E22AB0062}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F404227C-4C5B-1F45-CB76-EA5E22AB0062}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F404227C-4C5B-1F45-CB76-EA5E22AB0062}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F404227C-4C5B-1F45-CB76-EA5E22AB0062}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D1278EBF-8D5E-275D-9E52-05C76AB31B9E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D1278EBF-8D5E-275D-9E52-05C76AB31B9E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D1278EBF-8D5E-275D-9E52-05C76AB31B9E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D1278EBF-8D5E-275D-9E52-05C76AB31B9E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

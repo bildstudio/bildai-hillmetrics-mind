@@ -69,6 +69,7 @@
             public const string CreateFluxRule = "clients/{clientId}/flux-rules";
             public const string UpdateFluxRule = "clients/{clientId}/flux-rules/{fluxRuleId}";
             public const string GetFluxRule = "clients/{clientId}/flux-rules";
+            public const string ConstructRefinedDb = "clients/{clientId}/construct-refined-db";
         }
     }
 }

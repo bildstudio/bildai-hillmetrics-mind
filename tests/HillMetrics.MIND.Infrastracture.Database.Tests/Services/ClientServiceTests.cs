@@ -27,7 +27,7 @@ namespace HillMetrics.MIND.Infrastructure.Database.Tests.Services
         public async Task Setup()
         {
             _timeProvider = Substitute.For<ITimeProvider>();
-            _containerContext = await DbContextTestContainerBuilder.BuildMindApplicationDbContextAsync("mind-test-db", _timeProvider);
+            _containerContext = await DbContextTestContainerBuilder.BuildAsync<MindApplicationContext>("mind-test-db", [_timeProvider, Substitute.For<ILogger<MindApplicationContext>>()]);
 
 
             _logger = Substitute.For<ILogger<ClientService>>();
@@ -48,7 +48,7 @@ namespace HillMetrics.MIND.Infrastructure.Database.Tests.Services
         [Test]
         public async Task CreateAsync()
         {
-            var model = new SaveClientModel("test name", "test@test.com");
+            var model = new SaveClientModel("test name", "test@test.com", true);
             var client = await CreateTestClientAsync(model);
 
             var clientEntityResult = await _clientService.GetAsync(client.Id, CancellationToken.None);
@@ -64,10 +64,10 @@ namespace HillMetrics.MIND.Infrastructure.Database.Tests.Services
         [Test]
         public async Task UpdateAsync()
         {
-            var model = new SaveClientModel("test name", "test@test.com");
+            var model = new SaveClientModel("test name", "test@test.com", true);
             var client = await CreateTestClientAsync(model);
 
-            model = new Domain.Contracts.Clients.Models.SaveClientModel("test name", "test123@1.com");
+            model = new Domain.Contracts.Clients.Models.SaveClientModel("test name", "test123@1.com", true);
 
             var result = await _clientService.UpdateAsync(client.Id, model, CancellationToken.None);
             Assert.That(result, Is.Not.Null);
@@ -85,7 +85,7 @@ namespace HillMetrics.MIND.Infrastructure.Database.Tests.Services
         [Test]
         public async Task DeleteAsync()
         {
-            var model = new SaveClientModel("test name", "test@test.com");
+            var model = new SaveClientModel("test name", "test@test.com", true);
             var client = await CreateTestClientAsync(model);
 
 
@@ -102,7 +102,7 @@ namespace HillMetrics.MIND.Infrastructure.Database.Tests.Services
         [Test]
         public async Task CreateAsync_ExistingEmail()
         {
-            var model = new SaveClientModel("test name", "test@test.com");
+            var model = new SaveClientModel("test name", "test@test.com", true);
             await CreateTestClientAsync(model);
 
             var newCreateResult = await _clientService.CreateAsync(model, CancellationToken.None);
@@ -113,14 +113,14 @@ namespace HillMetrics.MIND.Infrastructure.Database.Tests.Services
         [Test]
         public async Task CreateFluxRule_RuleCreated()
         {
-            var clientModel = new SaveClientModel("test name", "test@test.com");
+            var clientModel = new SaveClientModel("test name", "test@test.com", true);
             var client = await CreateTestClientAsync(clientModel);
             var peerGroupRepo = _unitOfWork.GetRepository<PeerGroupEntity>();
             var peerGroup = new PeerGroupEntity { Name = "test" };
             peerGroupRepo.Add(peerGroup);
             await _unitOfWork.SaveChangesAsync(CancellationToken.None);
 
-            var fluxModel = new SaveClientFluxRuleModel(1, peerGroup.Id, 1, [1, 2, 3], client.Id); 
+            var fluxModel = new SaveClientFluxRuleModel(1, peerGroup.Id, 1, [1, 2, 3], client.Id, false); 
             var result = await _clientService.CreateFluxRuleAsync(fluxModel, CancellationToken.None);
 
             Assert.That(result, Is.Not.Null);
@@ -131,14 +131,14 @@ namespace HillMetrics.MIND.Infrastructure.Database.Tests.Services
         [Test]
         public async Task CreateFluxRule_RuleExisting_RuleNotCreated()
         {
-            var clientModel = new SaveClientModel("test name", "test@test.com");
+            var clientModel = new SaveClientModel("test name", "test@test.com", true);
             var client = await CreateTestClientAsync(clientModel);
             var peerGroupRepo = _unitOfWork.GetRepository<PeerGroupEntity>();
             var peerGroup = new PeerGroupEntity { Name = "test" };
             peerGroupRepo.Add(peerGroup);
             await _unitOfWork.SaveChangesAsync(CancellationToken.None);
 
-            var fluxModel = new SaveClientFluxRuleModel(1, peerGroup.Id, 1, [1, 2, 3], client.Id);
+            var fluxModel = new SaveClientFluxRuleModel(1, peerGroup.Id, 1, [1, 2, 3], client.Id, false);
             var result = await _clientService.CreateFluxRuleAsync(fluxModel, CancellationToken.None);
             Assert.That(result, Is.Not.Null);
             Assert.That(result.IsSuccess, Is.True);
@@ -153,19 +153,19 @@ namespace HillMetrics.MIND.Infrastructure.Database.Tests.Services
         [Test]
         public async Task UpdateFluxRule_RuleUpdated()
         {
-            var clientModel = new SaveClientModel("test name", "test@test.com");
+            var clientModel = new SaveClientModel("test name", "test@test.com", true);
             var client = await CreateTestClientAsync(clientModel);
             var peerGroupRepo = _unitOfWork.GetRepository<PeerGroupEntity>();
             var peerGroup = new PeerGroupEntity { Name = "test" };
             peerGroupRepo.Add(peerGroup);
             await _unitOfWork.SaveChangesAsync(CancellationToken.None);
 
-            var fluxModel = new SaveClientFluxRuleModel(1, peerGroup.Id, 1, [1, 2, 3], client.Id);
+            var fluxModel = new SaveClientFluxRuleModel(1, peerGroup.Id, 1, [1, 2, 3], client.Id, false);
             var result = await _clientService.CreateFluxRuleAsync(fluxModel, CancellationToken.None);
             Assert.That(result, Is.Not.Null);
             Assert.That(result.IsSuccess, Is.True);
 
-            fluxModel = new SaveClientFluxRuleModel(1, peerGroup.Id, 10, [1, 6, 8, 9, 2], client.Id);
+            fluxModel = new SaveClientFluxRuleModel(1, peerGroup.Id, 10, [1, 6, 8, 9, 2], client.Id, false);
 
             var resultNew = await _clientService.UpdateFluxRuleAsync(result.Value.Id, fluxModel, CancellationToken.None);
 
