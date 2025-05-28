@@ -38,31 +38,39 @@ namespace HillMetrics.MIND.Infrastructure.Database.Services
 
         public async Task<Result<TContext>> CreateDbContextAsync<TContext>(int clientId, CancellationToken cancellationToken) where TContext : DbContext
         {
-            if (typeof(TContext) != typeof(FinancialRefinedContext))
-                return Result.Fail(new InternalServerError("TContext must be of type: 'FinancialRefinedContext'"));
-
-            //return default RefinedDbContext
-            if(clientId <= 0)
+            try
             {
-                string refinedConnString = _connectionStringsConfig.GetRefinedConnString();
-                return _dbContextFactory.Create<TContext>(refinedConnString, _timeProvider, _loggerFactory.CreateLogger<FinancialRefinedContext>());
+                if (typeof(TContext) != typeof(FinancialRefinedContext))
+                    return Result.Fail(new InternalServerError("TContext must be of type: 'FinancialRefinedContext'"));
+
+                //return default RefinedDbContext
+                if (clientId <= 0)
+                {
+                    string refinedConnString = _connectionStringsConfig.GetRefinedConnString();
+                    return _dbContextFactory.Create<TContext>(refinedConnString, _timeProvider, _loggerFactory.CreateLogger<FinancialRefinedContext>());
+                }
+
+                var clientResult = await _clientService.GetAsync(clientId, cancellationToken);
+                if (clientResult.IsFailed)
+                    return clientResult.ToResult();
+
+                ClientEntity clientInfo = clientResult.Value;
+
+                string? connectionString = _connectionStringsConfig.GetProvisioningConnString();
+                if (string.IsNullOrEmpty(connectionString))
+                    return Result.Fail("'ConnectionStrings:Provision' is empty");
+
+                string connString = PostgreConnStringBuilder.BuildConnectionString(connectionString, clientInfo.RefinedDbName);
+
+                var context = _dbContextFactory.Create<TContext>(connString, _timeProvider, _loggerFactory.CreateLogger<FinancialRefinedContext>());
+
+                return context;
             }
-
-            var clientResult = await _clientService.GetAsync(clientId, cancellationToken);
-            if (clientResult.IsFailed)
-                return clientResult.ToResult();
-
-            ClientEntity clientInfo = clientResult.Value;
-
-            string? connectionString = _connectionStringsConfig.GetProvisioningConnString();
-            if (string.IsNullOrEmpty(connectionString))
-                return Result.Fail("'ConnectionStrings:Provision' is empty");
-
-            string connString = PostgreConnStringBuilder.BuildConnectionString(connectionString, clientInfo.RefinedDbName);
-
-            var context = _dbContextFactory.Create<TContext>(connString, _timeProvider, _loggerFactory.CreateLogger<FinancialRefinedContext>());
-
-            return context;
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "CreateDbContextAsync error: {ExceptionMessage}", ex.Message);
+                return Result.Fail(new InternalServerError($"Error creating a db context for client: {clientId}, error: {ex.Message}"));
+            }
         }
     }
 }

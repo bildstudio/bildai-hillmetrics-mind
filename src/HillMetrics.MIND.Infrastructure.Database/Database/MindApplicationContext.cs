@@ -155,13 +155,10 @@ namespace HillMetrics.MIND.Infrastructure.Database.Database
                         }
                     }
                 }
-                else if (navigation.CurrentValue is ISoftDelete singleChild)
+                else if (navigation.CurrentValue is ISoftDelete singleChild && !singleChild.IsDeleted)
                 {
-                    if (!singleChild.IsDeleted)
-                    {
-                        singleChild.IsDeleted = true;
-                        CascadeSoftDelete(singleChild);
-                    }
+                    singleChild.IsDeleted = true;
+                    CascadeSoftDelete(singleChild);
                 }
             }
         }

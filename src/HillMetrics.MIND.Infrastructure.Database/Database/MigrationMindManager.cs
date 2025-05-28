@@ -1,4 +1,5 @@
-﻿using HillMetrics.Core.Search;
+﻿using HillMetrics.Core.Exceptions;
+using HillMetrics.Core.Search;
 using HillMetrics.Core.Storage.Database;
 using HillMetrics.MIND.Domain.Contracts.Services;
 using HillMetrics.MIND.Infrastructure.Contracts.Services;
@@ -48,7 +49,7 @@ namespace HillMetrics.MIND.Infrastructure.Database.Database
                     if (contextResult.IsFailed)
                     {
                         logger.LogError("Failed to create a dbContext for clientId: {clientId}", clientId);
-                        throw new Exception($"Failed to create a dbContext for clientId: {clientId}");
+                        throw new InternalServerException($"Failed to create a dbContext for clientId: {clientId}");
                     }
 
                     using var context = contextResult.Value;
@@ -56,7 +57,7 @@ namespace HillMetrics.MIND.Infrastructure.Database.Database
                 }
                 catch (Exception ex)
                 {
-                    logger.LogError(ex, "Failed to migrate refined db for a clientId: {clientId}", clientId);
+                    logger.LogError(ex, "Failed to migrate refined db for a clientId: {clientId}, error: {ExceptionMessage}", clientId, ex.Message);
                     throw;
                 }
             }

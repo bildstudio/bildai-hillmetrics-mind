@@ -255,7 +255,7 @@ namespace HillMetrics.MIND.Infrastructure.Database.Services
         
         public async Task<bool> UserHasClientAccessAsync(string userId, int clientId, CancellationToken cancellationToken)
         {
-            var user = await _userAccountsRepository.SingleOrDefaultAsync(s => s.SId == userId && s.IsActive && s.Client.Id == clientId, cancellationToken: cancellationToken);
+            UserAccountEntity? user = await _userAccountsRepository.SingleOrDefaultAsync(s => s.SId == userId && s.IsActive && s.ClientId == clientId, cancellationToken: cancellationToken);
 
             return user != null;
         }
