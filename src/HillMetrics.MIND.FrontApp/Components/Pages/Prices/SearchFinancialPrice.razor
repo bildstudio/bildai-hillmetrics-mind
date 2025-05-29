@@ -313,7 +313,7 @@
             };
 
             var response = await MindApi.UpdatePriceAsync(request);
-            if (response.Data)
+            if (response)
             {
                 Snackbar.Add("Price updated successfully", Severity.Success);
                 await Search();

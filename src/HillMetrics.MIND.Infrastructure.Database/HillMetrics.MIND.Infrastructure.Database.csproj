@@ -11,6 +11,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\..\HillMetrics.Calculs\src\HillMetrics.Refined.Infrastructure.Database\HillMetrics.Refined.Infrastructure.Database.csproj" />
     <ProjectReference Include="..\..\..\HillMetrics.Core\src\HillMetrics.Core.Storage\HillMetrics.Core.Storage.csproj" />
     <ProjectReference Include="..\..\..\HillMetrics.Core\src\HillMetrics.Core\HillMetrics.Core.csproj" />
     <ProjectReference Include="..\HillMetrics.MIND.Domain.Contracts\HillMetrics.MIND.Domain.Contracts.csproj" />

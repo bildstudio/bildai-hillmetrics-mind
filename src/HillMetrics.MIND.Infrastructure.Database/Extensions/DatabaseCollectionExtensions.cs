@@ -5,6 +5,7 @@ using HillMetrics.Core.Storage.Extensions;
 using HillMetrics.MIND.Infrastructure.Database.Database;
 using HillMetrics.MIND.Infrastructure.Database.Services;
 using HillMetrics.MIND.Domain.Contracts.Services;
+using HillMetrics.MIND.Infrastructure.Contracts.Services;
 
 namespace HillMetrics.MIND.Infrastructure.Database.Extensions
 {
@@ -25,13 +26,15 @@ namespace HillMetrics.MIND.Infrastructure.Database.Extensions
                 lifetime);
 
             builder.Services.AddHillMetricsUnitOfWorkServices();
+            builder.Services.AddClientsManagementServices();
 
             return builder;
         }
 
-        public static IServiceCollection AddClientsManagementServices(this IServiceCollection services)
+        private static IServiceCollection AddClientsManagementServices(this IServiceCollection services)
         {
             services.AddScoped<IClientService, ClientService>();
+            services.AddScoped<IRefinedDbBuilder, RefinedDbBuilder>();
 
             return services;
         }

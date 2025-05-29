@@ -26,6 +26,9 @@ using HillMetrics.Core.Contracts;
 using HillMetrics.Core.Mediator;
 using HillMetrics.Normalized.Domain.Contracts.Market.Executor;
 using HillMetrics.Core.Rules.Abstract;
+using HillMetrics.MIND.API.Contracts.Responses.FluxDataPoints;
+using HillMetrics.MIND.API.Contracts.Requests.FluxDataPoints;
+using HillMetrics.Normalized.Domain.Contracts.FluxDataPoints;
 
 namespace HillMetrics.MIND.API.Controllers
 {
@@ -1200,5 +1203,36 @@ namespace HillMetrics.MIND.API.Controllers
         //}
 
         //#endregion
+
+        #region FluxDataPointsRealtions
+
+        [HttpPost("financial-data-point/fluxes/link")]
+        public async Task<ActionResult<ListDataPointFluxesResponse>> LinkFluxesToDataPointAsync(LinkFluxesToDataPointRequest request)
+        {
+            var command = new LinkFluxesToDataPointCommand(new LinkFluxesToDataPointModel(request.FinancialDataPointId, request.FluxIds));
+            var result = await Mediator.Send(command);
+            if (result.IsFailed)
+                return new ErrorApiActionResult(result.Errors.ToApiResult());
+
+
+            List<Contracts.Responses.FluxDataPoints.FluxDataPointDto> dtos = result.Value.Data.Select(FluxDataPointDtoMapper.FromDomain).ToList();
+
+            return new ListDataPointFluxesResponse(dtos, result.Value.TotalRecords);
+        }
+
+        [HttpGet("financial-data-point/{financialDataPointId}/fluxes/search")]
+        public async Task<ActionResult<ListDataPointFluxesResponse>> SearchDataPointFluxesAsync([FromRoute] int financialDataPointId)
+        {
+            var query = new SearchDataPointFluxesQuery(financialDataPointId);
+            var result = await Mediator.Send(query);
+            if (result.IsFailed)
+                return new ErrorApiActionResult(result.Errors.ToApiResult());
+
+            List<Contracts.Responses.FluxDataPoints.FluxDataPointDto> dtos = result.Value.Data.Select(FluxDataPointDtoMapper.FromDomain).ToList();
+
+            return new ListDataPointFluxesResponse(dtos, result.Value.TotalRecords);
+        }
+
+        #endregion
     }
 }

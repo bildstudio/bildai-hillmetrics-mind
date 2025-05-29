@@ -557,7 +557,7 @@ namespace HillMetrics.MIND.API.SDK.V1
         /// Update a price entity
         /// </summary>
         [Post("/api/v1/prices/update")]
-        Task<ApiResponseBase<bool>> UpdatePriceAsync([Body] UpdatePriceRequest request);
+        Task<bool> UpdatePriceAsync([Body] UpdatePriceRequest request);
 
         /// <summary>
         /// Search for prices based on criteria

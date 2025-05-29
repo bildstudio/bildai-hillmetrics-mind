@@ -28,8 +28,13 @@ namespace HillMetrics.MIND.Infrastructure.Contracts.Database.Entity.Clients
 
         /// <summary>
         /// Ranking is in ascending order
-        /// </summary>
+        /// </summary>cd 
         public int Ranking { get; set; }
+
+        /// <summary>
+        /// If true, defined Fluxes by HillMetrics for PeerGroupId will also be used when processing Financial
+        /// </summary>
+        public bool UseHmDefaultRules { get; set; } = false;
 
         public ICollection<ClientFluxPriorityEntity> FluxPriorities { get; set; } = new List<ClientFluxPriorityEntity>(); //[2,8,4]
 

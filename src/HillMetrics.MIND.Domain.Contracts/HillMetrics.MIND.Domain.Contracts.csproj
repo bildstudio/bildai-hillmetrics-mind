@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\HillMetrics.Core\src\HillMetrics.Core.Mediator\HillMetrics.Core.Mediator.csproj" />
+    <ProjectReference Include="..\..\..\HillMetrics.Core\src\HillMetrics.Core.Storage\HillMetrics.Core.Storage.csproj" />
     <ProjectReference Include="..\..\..\HillMetrics.Core\src\HillMetrics.Core\HillMetrics.Core.csproj" />
   </ItemGroup>
 

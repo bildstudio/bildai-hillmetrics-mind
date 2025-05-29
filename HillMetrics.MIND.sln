@@ -13,6 +13,16 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HillMetrics.MIND.Domain.Con
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HillMetrics.MIND.Infrastructure", "src\HillMetrics.MIND.Infrastructure\HillMetrics.MIND.Infrastructure.csproj", "{DF0D531F-48AB-48DF-BBF2-65604F2AC68D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HillMetrics.MIND.Infrastructure.Contracts", "src\HillMetrics.MIND.Infrastructure.Contracts\HillMetrics.MIND.Infrastructure.Contracts.csproj", "{F404227C-4C5B-1F45-CB76-EA5E22AB0062}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HillMetrics.MIND.Infrastructure.Database", "src\HillMetrics.MIND.Infrastructure.Database\HillMetrics.MIND.Infrastructure.Database.csproj", "{D1278EBF-8D5E-275D-9E52-05C76AB31B9E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HillMetrics.Refined.Infrastructure.Database", "..\HillMetrics.Calculs\src\HillMetrics.Refined.Infrastructure.Database\HillMetrics.Refined.Infrastructure.Database.csproj", "{18637D50-3D8D-50BE-5BF2-D991DE56E5D1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HillMetrics.Refined.Infrastructure.Contracts", "..\HillMetrics.Calculs\src\HillMetrics.Refined.Infrastructure.Contracts\HillMetrics.Refined.Infrastructure.Contracts.csproj", "{DF4E6B78-D37B-5486-E7F2-E6272821EBED}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HillMetrics.Calculs.Domain.Contracts", "..\HillMetrics.Calculs\src\HillMetrics.Calculs.Domain.Contracts\HillMetrics.Calculs.Domain.Contracts.csproj", "{CCD2A9B6-7B0B-4832-0725-97EBECA7CF69}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -39,8 +49,31 @@ Global
 		{DF0D531F-48AB-48DF-BBF2-65604F2AC68D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DF0D531F-48AB-48DF-BBF2-65604F2AC68D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DF0D531F-48AB-48DF-BBF2-65604F2AC68D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F404227C-4C5B-1F45-CB76-EA5E22AB0062}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F404227C-4C5B-1F45-CB76-EA5E22AB0062}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F404227C-4C5B-1F45-CB76-EA5E22AB0062}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F404227C-4C5B-1F45-CB76-EA5E22AB0062}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D1278EBF-8D5E-275D-9E52-05C76AB31B9E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D1278EBF-8D5E-275D-9E52-05C76AB31B9E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D1278EBF-8D5E-275D-9E52-05C76AB31B9E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D1278EBF-8D5E-275D-9E52-05C76AB31B9E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{18637D50-3D8D-50BE-5BF2-D991DE56E5D1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{18637D50-3D8D-50BE-5BF2-D991DE56E5D1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{18637D50-3D8D-50BE-5BF2-D991DE56E5D1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{18637D50-3D8D-50BE-5BF2-D991DE56E5D1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DF4E6B78-D37B-5486-E7F2-E6272821EBED}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DF4E6B78-D37B-5486-E7F2-E6272821EBED}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DF4E6B78-D37B-5486-E7F2-E6272821EBED}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DF4E6B78-D37B-5486-E7F2-E6272821EBED}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CCD2A9B6-7B0B-4832-0725-97EBECA7CF69}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CCD2A9B6-7B0B-4832-0725-97EBECA7CF69}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CCD2A9B6-7B0B-4832-0725-97EBECA7CF69}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CCD2A9B6-7B0B-4832-0725-97EBECA7CF69}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {9D80CE19-E364-4729-BF05-C94678C27505}
 	EndGlobalSection
 EndGlobal

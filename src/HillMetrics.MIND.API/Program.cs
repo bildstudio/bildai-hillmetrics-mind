@@ -35,7 +35,6 @@ using HillMetrics.MIND.Infrastructure.Database.Database;
 using HillMetrics.MIND.Domain;
 using HillMetrics.Core.Rules;
 
-
 namespace HillMetrics.MIND.API;
 
 public partial class Program
@@ -165,6 +164,7 @@ public partial class Program
         app.MigrateAuditDatabase(logger);
         app.MigrateNormalizedDatabase(logger);
         app.MigrateMindAppDatabase(logger);
+        app.MigrateMindAppClientsDatabasesAsync(logger).GetAwaiter().GetResult();
 
         app.Run();
     }
