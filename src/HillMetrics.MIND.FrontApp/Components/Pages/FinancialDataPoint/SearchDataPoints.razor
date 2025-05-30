@@ -8,10 +8,12 @@
 @using HillMetrics.Normalized.Domain.Contracts.AI.Dataset
 @using HillMetrics.Normalized.Domain.Contracts.Market.Cqrs.Rule
 @using HillMetrics.Core.Rules
+@using HillMetrics.MIND.FrontApp.Services
 @inject IMindAPI MindApi
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
+@inject MappingExportService MappingExportService;
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
     <MudGrid>
@@ -81,6 +83,14 @@
             <ToolBarContent>
                 <MudText Typo="Typo.h6" Class="ml-2">Data Points List</MudText>
                 <MudSpacer />
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Download"
+                           OnClick="ShowExportDialog"
+                           Class="mr-2"
+                           Size="Size.Small">
+                    Export by Type
+                </MudButton>
                 <MudTextField @bind-Value="searchString" Placeholder="Search"
                               Adornment="Adornment.Start"
                               AdornmentIcon="@Icons.Material.Filled.Search"
@@ -198,6 +208,58 @@
     }
 </MudContainer>
 
+<MudDialog @bind-IsVisible="isExportDialogVisible" Options="exportDialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Export Data Points by Financial Type</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudCard Elevation="0">
+            <MudCardContent>
+                <MudText Typo="Typo.body1" Class="mb-4">
+                    Select a financial type to export all related data points and their elements:
+                </MudText>
+
+                <MudSelect T="FinancialType?" @bind-Value="selectedFinancialTypeForExport"
+                           Label="Financial Type"
+                           Variant="Variant.Outlined"
+                           Dense="true"
+                           Margin="Margin.Dense"
+                           Class="mb-4">
+                    @foreach (var type in Enum.GetValues<FinancialType>())
+                    {
+                        <MudSelectItem T="FinancialType?" Value="@type">@type</MudSelectItem>
+                    }
+                </MudSelect>
+
+                @if (selectedFinancialTypeForExport.HasValue)
+                {
+                    <MudAlert Severity="Severity.Info" Class="mt-2">
+                        This will export all data points of type <strong>@selectedFinancialTypeForExport</strong>
+                        including their elements, relationships, and metadata.
+                    </MudAlert>
+                }
+            </MudCardContent>
+        </MudCard>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CloseExportDialog">Cancel</MudButton>
+        <MudButton Color="Color.Primary"
+                   OnClick="ExportDataPointsByType"
+                   Disabled="@(!selectedFinancialTypeForExport.HasValue || isExporting)"
+                   StartIcon="@Icons.Material.Filled.Download">
+            @if (isExporting)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-1" />
+                @("Exporting...")
+            }
+            else
+            {
+                @("Export")
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
 @code {
     private SearchFinancialDataPointRequest searchRequest = new();
     private bool loading = false;
@@ -210,6 +272,12 @@
 
     // Dictionary to cache rules for each data point
     private Dictionary<FinancialTechnicalDataPoint, List<RuleInfo>> _rulesCache = new();
+
+    // Export dialog state
+    private bool isExportDialogVisible = false;
+    private bool isExporting = false;
+    private FinancialType? selectedFinancialTypeForExport = null;
+    private DialogOptions exportDialogOptions = new() { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Medium };
 
     [Parameter]
     [SupplyParameterFromQuery(Name = "dataPointId")]
@@ -406,6 +474,46 @@
 
             var dialog = await DialogService.ShowAsync<DataPointRules>("Financial Rules", parameters, options);
             await dialog.Result;
+        }
+    }
+
+    private void ShowExportDialog()
+    {
+        selectedFinancialTypeForExport = null;
+        isExportDialogVisible = true;
+    }
+
+    private void CloseExportDialog()
+    {
+        isExportDialogVisible = false;
+        selectedFinancialTypeForExport = null;
+    }
+
+    private async Task ExportDataPointsByType()
+    {
+        if (!selectedFinancialTypeForExport.HasValue)
+        {
+            Snackbar.Add("Please select a financial type", Severity.Warning);
+            return;
+        }
+
+        isExporting = true;
+        StateHasChanged();
+
+        try
+        {
+            await MappingExportService.ExportAndDownloadDataPointsByFinancialTypeAsync(selectedFinancialTypeForExport.Value);
+            Snackbar.Add($"Export for {selectedFinancialTypeForExport} started successfully. Check your downloads.", Severity.Success);
+            CloseExportDialog();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error exporting data points: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isExporting = false;
+            StateHasChanged();
         }
     }
 }

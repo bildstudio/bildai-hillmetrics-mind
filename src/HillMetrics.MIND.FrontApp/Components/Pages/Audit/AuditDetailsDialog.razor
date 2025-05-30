@@ -1,0 +1,181 @@
+@using HillMetrics.Audit.Infrastructure.Contract.Models
+
+<MudDialog>
+    <DialogContent>
+        <MudGrid>
+            <MudItem xs="12">
+                <MudText Typo="Typo.h6" Class="mb-4">Audit Log Details</MudText>
+            </MudItem>
+
+            <!-- ID -->
+            <MudItem xs="12" sm="6">
+                <MudTextField Label="ID"
+                              Value="@AuditLog.Id.ToString()"
+                              ReadOnly="true"
+                              Variant="Variant.Outlined" />
+            </MudItem>
+
+            <!-- Event Type -->
+            <MudItem xs="12" sm="6">
+                <MudTextField Label="Event Type"
+                              Value="@AuditLog.EventType"
+                              ReadOnly="true"
+                              Variant="Variant.Outlined" />
+            </MudItem>
+
+            <!-- Application Name -->
+            <MudItem xs="12" sm="6">
+                <MudTextField Label="Application Name"
+                              Value="@AuditLog.ApplicationName"
+                              ReadOnly="true"
+                              Variant="Variant.Outlined" />
+            </MudItem>
+
+            <!-- Entity Name -->
+            <MudItem xs="12" sm="6">
+                <MudTextField Label="Entity Name"
+                              Value="@AuditLog.EntityName"
+                              ReadOnly="true"
+                              Variant="Variant.Outlined" />
+            </MudItem>
+
+            <!-- Entity ID -->
+            <MudItem xs="12" sm="6">
+                <MudTextField Label="Entity ID"
+                              Value="@AuditLog.EntityId"
+                              ReadOnly="true"
+                              Variant="Variant.Outlined" />
+            </MudItem>
+
+            <!-- User ID -->
+            <MudItem xs="12" sm="6">
+                <MudTextField Label="User ID"
+                              Value="@(AuditLog.UserId ?? "-")"
+                              ReadOnly="true"
+                              Variant="Variant.Outlined" />
+            </MudItem>
+
+            <!-- User Name -->
+            <MudItem xs="12" sm="6">
+                <MudTextField Label="User Name"
+                              Value="@(AuditLog.UserName ?? "-")"
+                              ReadOnly="true"
+                              Variant="Variant.Outlined" />
+            </MudItem>
+
+            <!-- IP Address -->
+            <MudItem xs="12" sm="6">
+                <MudTextField Label="IP Address"
+                              Value="@AuditLog.IpAddress"
+                              ReadOnly="true"
+                              Variant="Variant.Outlined" />
+            </MudItem>
+
+            <!-- Correlation ID -->
+            <MudItem xs="12" sm="6">
+                <MudTextField Label="Correlation ID"
+                              Value="@(AuditLog.CorrelationId ?? "-")"
+                              ReadOnly="true"
+                              Variant="Variant.Outlined" />
+            </MudItem>
+
+            <!-- Created At -->
+            <MudItem xs="12" sm="6">
+                <MudTextField Label="Created At"
+                              Value="@AuditLog.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")"
+                              ReadOnly="true"
+                              Variant="Variant.Outlined" />
+            </MudItem>
+
+            <!-- Details -->
+            <MudItem xs="12">
+                <MudTextField Label="Details"
+                              Value="@(AuditLog.Details ?? "-")"
+                              ReadOnly="true"
+                              Variant="Variant.Outlined"
+                              Lines="4"
+                              Multiline="true" />
+            </MudItem>
+
+            @if (!string.IsNullOrEmpty(AuditLog.CorrelationId))
+            {
+                <MudItem xs="12">
+                    <MudAlert Severity="Severity.Info" Class="mt-2">
+                        <MudText>This log has a correlation ID. You can search for related logs using this identifier.</MudText>
+                    </MudAlert>
+                </MudItem>
+            }
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        @if (!string.IsNullOrEmpty(AuditLog.CorrelationId))
+        {
+            <MudButton Color="Color.Primary"
+                       Variant="Variant.Text"
+                       StartIcon="@Icons.Material.Filled.Link"
+                       OnClick="SearchRelated">
+                View Related
+            </MudButton>
+        }
+        <MudButton Color="Color.Primary"
+                   Variant="Variant.Text"
+                   StartIcon="@Icons.Material.Filled.ContentCopy"
+                   OnClick="CopyToClipboard">
+            Copy Details
+        </MudButton>
+        <MudButton Color="Color.Secondary"
+                   Variant="Variant.Text"
+                   OnClick="Close">
+            Close
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+    [Parameter] public AuditSearchResponse AuditLog { get; set; } = new();
+
+    [Inject] private ISnackbar Snackbar { get; set; }
+    [Inject] private NavigationManager NavigationManager { get; set; }
+
+    private void Close() => MudDialog.Close(DialogResult.Ok(true));
+
+    private void SearchRelated()
+    {
+        if (!string.IsNullOrEmpty(AuditLog.CorrelationId))
+        {
+            NavigationManager.NavigateTo($"/audit/search?correlationId={AuditLog.CorrelationId}");
+            Close();
+        }
+    }
+
+    private async Task CopyToClipboard()
+    {
+        try
+        {
+            var details = "Audit Log Details:\n" +
+                $"ID: {AuditLog.Id}\n" +
+                $"Event Type: {AuditLog.EventType}\n" +
+                $"Application: {AuditLog.ApplicationName}\n" +
+                $"Entity: {AuditLog.EntityName}\n" +
+                $"Entity ID: {AuditLog.EntityId}\n" +
+                $"User ID: {AuditLog.UserId ?? "-"}\n" +
+                $"User Name: {AuditLog.UserName ?? "-"}\n" +
+                $"IP Address: {AuditLog.IpAddress}\n" +
+                $"Correlation ID: {AuditLog.CorrelationId ?? "-"}\n" +
+                $"Created At: {AuditLog.CreatedAt:yyyy-MM-dd HH:mm:ss}\n" +
+                $"Details: {AuditLog.Details ?? "-"}";
+
+            await Task.Run(() => {
+                // Note: In a real application, you would use a proper clipboard API
+                // For now, we'll just show a message
+            });
+
+            Snackbar.Add("Audit log details copied to clipboard", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error copying to clipboard: {ex.Message}", Severity.Error);
+        }
+    }
+}

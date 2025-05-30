@@ -11,16 +11,6 @@
         <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard">
             Dashboard
         </MudNavLink>
-
-        @if (FeaturesConfig.Value.AiChat.Enabled)
-        {
-            <MudNavGroup Title="AI Tools" Icon="@Icons.Material.Filled.Psychology" Expanded="true">
-                <MudNavLink Href="/ai/chat" Icon="@Icons.Material.Filled.Chat">
-                    AI Chat
-                </MudNavLink>
-            </MudNavGroup>
-        }
-
         <MudNavGroup Title="Flux Management" Icon="@Icons.Material.Filled.DataObject" Expanded="true">
             <MudNavLink Href="/flux/search" Icon="@Icons.Material.Filled.Search">
                 Search Flux
@@ -82,6 +72,21 @@
         </MudNavGroup>
     </MudNav>
 
+    <MudNav>
+                @if (FeaturesConfig.Value.AiChat.Enabled)
+                {
+                    <MudNavGroup Title="AI Tools" Icon="@Icons.Material.Filled.Psychology" Expanded="true">
+                        <MudNavLink Href="/ai/chat" Icon="@Icons.Material.Filled.Chat">
+                            AI Chat
+                        </MudNavLink>
+                    </MudNavGroup>
+                }
+                <MudNavGroup Title="Audit" Icon="@Icons.Material.Filled.TrackChanges" Expanded="true">
+                    <MudNavLink Href="/audit/search" Icon="@Icons.Material.Filled.Translate">
+                        Audit
+                    </MudNavLink>
+                </MudNavGroup>
+    </MudNav>
     <MudDivider Class="my-2" />
 
     <MudNav>

@@ -1,0 +1,420 @@
+@page "/audit/search"
+@using HillMetrics.Audit.Infrastructure.Contract.Models
+@using HillMetrics.Core.Search
+@using HillMetrics.Audit.API.SDK.V1
+@using System.Collections.Concurrent
+@inject IAuditAPI AuditApi
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject ILogger<AuditSearch> Logger
+
+@attribute [Authorize]
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudGrid>
+        <MudItem xs="12">
+            <MudText Typo="Typo.h4" Class="mb-4">Audit Search</MudText>
+        </MudItem>
+    </MudGrid>
+
+    <MudCard Class="mb-4">
+        <MudCardContent>
+            <MudForm @ref="form" @bind-IsValid="@isValid">
+                <MudGrid Spacing="1">
+                    <!-- Event Type -->
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="searchRequest.EventType"
+                                      Label="Event Type"
+                                      Variant="Variant.Outlined"
+                                      Placeholder="Create, Update, Delete..."
+                                      Immediate="true"
+                                      DebounceInterval="500"
+                                      OnDebounceIntervalElapsed="Search"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Event" />
+                    </MudItem>
+
+                    <!-- Application Name -->
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="searchRequest.ApplicationName"
+                                      Label="Application Name"
+                                      Variant="Variant.Outlined"
+                                      Placeholder="HillMetrics-Api, HillMetrics-Web..."
+                                      Immediate="true"
+                                      DebounceInterval="500"
+                                      OnDebounceIntervalElapsed="Search"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Apps" />
+                    </MudItem>
+
+                    <!-- Entity Name -->
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="searchRequest.EntityName"
+                                      Label="Entity Name"
+                                      Variant="Variant.Outlined"
+                                      Placeholder="User, Flux, Calcul..."
+                                      Immediate="true"
+                                      DebounceInterval="500"
+                                      OnDebounceIntervalElapsed="Search"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Category" />
+                    </MudItem>
+
+                    <!-- Entity ID -->
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="searchRequest.EntityId"
+                                      Label="Entity ID"
+                                      Variant="Variant.Outlined"
+                                      Placeholder="Entity identifier..."
+                                      Immediate="true"
+                                      DebounceInterval="500"
+                                      OnDebounceIntervalElapsed="Search"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Fingerprint" />
+                    </MudItem>
+
+                    <!-- User ID -->
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="searchRequest.UserId"
+                                      Label="User ID"
+                                      Variant="Variant.Outlined"
+                                      Placeholder="User identifier..."
+                                      Immediate="true"
+                                      DebounceInterval="500"
+                                      OnDebounceIntervalElapsed="Search"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Person" />
+                    </MudItem>
+
+                    <!-- User Name -->
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="searchRequest.UserName"
+                                      Label="User Name"
+                                      Variant="Variant.Outlined"
+                                      Placeholder="Username..."
+                                      Immediate="true"
+                                      DebounceInterval="500"
+                                      OnDebounceIntervalElapsed="Search"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.PersonOutline" />
+                    </MudItem>
+
+                    <!-- IP Address -->
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="searchRequest.IpAddress"
+                                      Label="IP Address"
+                                      Variant="Variant.Outlined"
+                                      Placeholder="192.168.1.1..."
+                                      Immediate="true"
+                                      DebounceInterval="500"
+                                      OnDebounceIntervalElapsed="Search"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Computer" />
+                    </MudItem>
+
+                    <!-- Correlation ID -->
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="searchRequest.CorrelationId"
+                                      Label="Correlation ID"
+                                      Variant="Variant.Outlined"
+                                      Placeholder="Correlation identifier..."
+                                      Immediate="true"
+                                      DebounceInterval="500"
+                                      OnDebounceIntervalElapsed="Search"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Link" />
+                    </MudItem>
+
+                    <!-- Start Date -->
+                    <MudItem xs="12" md="6">
+                        <MudDatePicker @bind-Date="searchRequest.StartDate"
+                                       Label="Start Date"
+                                       Variant="Variant.Outlined"
+                                       DateFormat="yyyy-MM-dd"
+                                       Editable="true"
+                                       Placeholder="From date..." />
+                    </MudItem>
+
+                    <!-- End Date -->
+                    <MudItem xs="12" md="6">
+                        <MudDatePicker @bind-Date="searchRequest.EndDate"
+                                       Label="End Date"
+                                       Variant="Variant.Outlined"
+                                       DateFormat="yyyy-MM-dd"
+                                       Editable="true"
+                                       Placeholder="To date..." />
+                    </MudItem>
+
+                    <!-- Details Search -->
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="searchRequest.Details"
+                                      Label="Details Search"
+                                      Variant="Variant.Outlined"
+                                      Placeholder="Search in details..."
+                                      Immediate="true"
+                                      DebounceInterval="500"
+                                      OnDebounceIntervalElapsed="Search"
+                                      Lines="2"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Search" />
+                    </MudItem>
+                </MudGrid>
+            </MudForm>
+        </MudCardContent>
+        <MudCardActions>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Search" Size="Size.Small">Search</MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="Reset" Size="Size.Small">Reset</MudButton>
+        </MudCardActions>
+    </MudCard>
+
+    @if (loading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-2" />
+    }
+    else
+    {
+        <MudTable ServerData="@ServerReload"
+                  Hover="true" Bordered="true" Striped="true"
+                  Dense="true" @bind-SelectedItem="selectedItem" T="AuditSearchResponse"
+                  Breakpoint="Breakpoint.Sm" RowClassFunc="SelectedRowClassFunc">
+            <ToolBarContent>
+                <MudText Typo="Typo.h6" Class="ml-2">Audit Logs</MudText>
+                <MudSpacer />
+                <MudTextField @bind-Value="searchString" Placeholder="Search" Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium"
+                              Class="mt-0 mb-3" Margin="Margin.Dense" Dense="true"></MudTextField>
+            </ToolBarContent>
+            <HeaderContent>
+                <MudTh>ID</MudTh>
+                <MudTh>Event Type</MudTh>
+                <MudTh>Application</MudTh>
+                <MudTh>Entity</MudTh>
+                <MudTh>Entity ID</MudTh>
+                <MudTh>User</MudTh>
+                <MudTh>IP Address</MudTh>
+                <MudTh>Created At</MudTh>
+                <MudTh>Actions</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="ID">@context.Id</MudTd>
+                <MudTd DataLabel="Event Type">
+                    <MudChip T="string" Color="GetEventTypeColor(context.EventType)" Size="Size.Small">
+                        @context.EventType
+                    </MudChip>
+                </MudTd>
+                <MudTd DataLabel="Application">
+                    <MudChip T="string" Color="GetApplicationColor(context.ApplicationName)" Size="Size.Small">
+                        @context.ApplicationName
+                    </MudChip>
+                </MudTd>
+                <MudTd DataLabel="Entity">@context.EntityName</MudTd>
+                <MudTd DataLabel="Entity ID">
+                    <MudText Style="max-width: 100px; overflow: hidden; text-overflow: ellipsis;">
+                        @context.EntityId
+                    </MudText>
+                </MudTd>
+                <MudTd DataLabel="User">
+                    @if (!string.IsNullOrEmpty(context.UserName))
+                    {
+                        <MudTooltip Text="@($"User ID: {context.UserId}")">
+                            <span>@context.UserName</span>
+                        </MudTooltip>
+                    }
+                    else if (!string.IsNullOrEmpty(context.UserId))
+                    {
+                        <span>@context.UserId</span>
+                    }
+                    else
+                    {
+                        <span>-</span>
+                    }
+                </MudTd>
+                <MudTd DataLabel="IP Address">@context.IpAddress</MudTd>
+                <MudTd DataLabel="Created At">
+                    <MudTooltip Text="@context.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")">
+                        <div style="cursor: pointer;">
+                            @FormatDateTime(context.CreatedAt)
+                        </div>
+                    </MudTooltip>
+                </MudTd>
+                <MudTd DataLabel="Actions">
+                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true">
+                        <MudMenuItem OnClick="@(() => ViewDetails(context))">
+                            <MudIcon Icon="@Icons.Material.Filled.Visibility" Class="mr-2" Size="Size.Small" /> View Details
+                        </MudMenuItem>
+                        @if (!string.IsNullOrEmpty(context.CorrelationId))
+                        {
+                            <MudMenuItem OnClick="@(() => SearchByCorrelation(context.CorrelationId))">
+                                <MudIcon Icon="@Icons.Material.Filled.Link" Class="mr-2" Size="Size.Small" /> Related Logs
+                            </MudMenuItem>
+                        }
+                    </MudMenu>
+                </MudTd>
+            </RowTemplate>
+            <PagerContent>
+                <MudTablePager PageSizeOptions="new int[] { 10, 25, 50, 100 }" />
+            </PagerContent>
+            <NoRecordsContent>
+                <MudAlert Severity="Severity.Info" Class="my-2">No audit logs found matching your search criteria.</MudAlert>
+            </NoRecordsContent>
+        </MudTable>
+    }
+</MudContainer>
+
+@code {
+    private AuditSearchRequest searchRequest = new() { Pagination = Pagination.Default };
+    private List<AuditSearchResponse>? auditLogs;
+    private bool loading = false;
+    private bool isValid = false;
+    private MudForm form;
+    private string searchString = "";
+    private AuditSearchResponse selectedItem = null;
+    private TableState tableState;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Initialize with default pagination
+        searchRequest.Pagination = new Pagination(10, 1);
+    }
+
+    private async Task<TableData<AuditSearchResponse>> ServerReload(TableState state, CancellationToken token)
+    {
+        tableState = state;
+        loading = true;
+
+        try
+        {
+            // Configure pagination
+            searchRequest.Pagination = new Pagination(state.PageSize, state.Page + 1);
+
+            var response = await AuditApi.SearchAuditLogsAsync(searchRequest, token);
+            auditLogs = response.Items.ToList();
+
+            return new TableData<AuditSearchResponse>
+                {
+                    Items = auditLogs,
+                    TotalItems = response.TotalCount
+                };
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error searching audit logs: {ex.Message}", Severity.Error);
+            return new TableData<AuditSearchResponse>
+                {
+                    Items = new List<AuditSearchResponse>(),
+                    TotalItems = 0
+                };
+        }
+        finally
+        {
+            loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task Search()
+    {
+        // Use current state to reload data
+        await ServerReload(tableState ?? new TableState
+            {
+                Page = 0,
+                PageSize = 10
+            }, CancellationToken.None);
+    }
+
+    private async Task Reset()
+    {
+        searchRequest = new AuditSearchRequest { Pagination = new Pagination(10, 1) };
+        searchString = "";
+
+        if (tableState != null)
+        {
+            tableState.Page = 0;
+            await ServerReload(tableState, CancellationToken.None);
+        }
+    }
+
+    private async Task ViewDetails(AuditSearchResponse auditLog)
+    {
+        var parameters = new DialogParameters<AuditDetailsDialog>();
+        parameters.Add(x => x.AuditLog, auditLog);
+
+        var dialog = await DialogService.ShowAsync<AuditDetailsDialog>("Audit Log Details", parameters);
+    }
+
+    private async Task SearchByCorrelation(string correlationId)
+    {
+        searchRequest = new AuditSearchRequest
+        {
+            CorrelationId = correlationId,
+            Pagination = new Pagination(10, 1)
+        };
+        await Search();
+    }
+
+    // Helper methods for formatting and colors
+    private string FormatDateTime(DateTime dateTime)
+    {
+        var now = DateTime.Now;
+        var diff = now - dateTime;
+
+        if (diff.TotalMinutes < 1)
+            return "Just now";
+        if (diff.TotalHours < 1)
+            return $"{(int)diff.TotalMinutes}m ago";
+        if (diff.TotalDays < 1)
+            return $"{(int)diff.TotalHours}h ago";
+        if (diff.TotalDays < 7)
+            return $"{(int)diff.TotalDays}d ago";
+
+        return dateTime.ToString("MMM dd, HH:mm");
+    }
+
+    private Color GetEventTypeColor(string eventType)
+    {
+        return eventType.ToLower() switch
+        {
+            "create" => Color.Success,
+            "update" => Color.Info,
+            "delete" => Color.Warning,
+            "error" => Color.Error,
+            "login" => Color.Primary,
+            "logout" => Color.Secondary,
+            _ => Color.Default
+        };
+    }
+
+    private Color GetApplicationColor(string applicationName)
+    {
+        return applicationName.ToLower() switch
+        {
+            var name when name.Contains("api") => Color.Primary,
+            var name when name.Contains("web") => Color.Info,
+            var name when name.Contains("worker") => Color.Warning,
+            var name when name.Contains("mind") => Color.Success,
+            _ => Color.Default
+        };
+    }
+
+    // Filter function for MudTable
+    private bool FilterFunc(AuditSearchResponse auditLog)
+    {
+        if (string.IsNullOrWhiteSpace(searchString))
+            return true;
+
+        return
+            auditLog.EventType.Contains(searchString, StringComparison.OrdinalIgnoreCase) ||
+            auditLog.ApplicationName.Contains(searchString, StringComparison.OrdinalIgnoreCase) ||
+            auditLog.EntityName.Contains(searchString, StringComparison.OrdinalIgnoreCase) ||
+            auditLog.EntityId.Contains(searchString, StringComparison.OrdinalIgnoreCase) ||
+            (auditLog.UserName?.Contains(searchString, StringComparison.OrdinalIgnoreCase) ?? false) ||
+            (auditLog.UserId?.Contains(searchString, StringComparison.OrdinalIgnoreCase) ?? false) ||
+            auditLog.IpAddress.Contains(searchString, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private string SelectedRowClassFunc(AuditSearchResponse element, int rowNumber)
+    {
+        return selectedItem?.Id == element.Id ? "selected-row" : string.Empty;
+    }
+}

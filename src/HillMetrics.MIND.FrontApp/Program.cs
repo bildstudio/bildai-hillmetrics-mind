@@ -2,6 +2,7 @@ using HillMetrics.MIND.FrontApp.Components;
 using MudBlazor.Services;
 using MudBlazor;
 using HillMetrics.MIND.API.SDK;
+using HillMetrics.Audit.API.SDK;
 using HillMetrics.Core;
 using HillMetrics.Core.Monitoring.Logging;
 using HillMetrics.Core.Monitoring;
@@ -11,9 +12,8 @@ using HillMetrics.Core.Blazor.AuthModule.AuthHandler;
 using HillMetrics.Core.Blazor.AuthModule;
 using HillMetrics.MIND.FrontApp.Configs;
 using HillMetrics.MIND.Infrastructure.AI;
-using HillMetrics.MIND.Infrastructure;
 using HillMetrics.Core.AI.Configs;
-using ModelContextProtocol.Client;
+using HillMetrics.MCP.SDK;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -34,20 +34,18 @@ builder.Services.Configure<AiLlmConfig>(builder.Configuration.GetSection("AI"));
 
 builder.Services.AddSingleton<ISignalRNotificationService, SignalRNotificationService>();
 
+// Add MIND API SDK
 var mindApi = builder.Configuration.GetValue<string>("Services:MindApi", $"https+http://{HillMetrics.Orchestrator.ServicesNames.Services.MindAPI}");
-//var signalRApi = builder.Configuration.GetValue<string>("Services:SignalRApi", $"https+http://{HillMetrics.Orchestrator.ServicesNames.Services.SignalRService}");
-//mindApi = "https://mindapi.hillm.bildhosting.me";
-
 builder.Services.AddHillMetricsHttpClient("MindAPI", client =>
 {
     client.BaseAddress = new Uri(mindApi);
     client.Timeout = TimeSpan.FromMinutes(5);
 });
-//ServicesSettings settings = new ServicesSettings();
-//builder.Services.Configure<ServicesSettings>(builder.Configuration.GetSection("Services"));
+builder.Services.AddMindApiSDK<AuthenticationHttpHandler>(mindApi, HillMetrics.Orchestrator.ServicesNames.Services.MindFrontApp, TimeSpan.FromMinutes(5));
 
-//builder.Configuration.GetSection("Services").Bind(settings);
-
+// Add Audit API SDK
+var auditApi = builder.Configuration.GetValue<string>("Services:AuditApi", $"https+http://{HillMetrics.Orchestrator.ServicesNames.Services.AuditAPI}");
+builder.Services.AddAuditApiSDK<AuthenticationHttpHandler>(auditApi, HillMetrics.Orchestrator.ServicesNames.Services.MindFrontApp, TimeSpan.FromMinutes(5));
 
 builder.Services.Configure<ServicesSettings>(options =>
 {
@@ -63,8 +61,6 @@ builder.Services.AddTransient<MappingExportService>();
 builder.Services.AddAiChatServices(featuresConfig.AiChat.Enabled, builder.Configuration);
 
 builder.Services.AddHillMetricsBlazorMindCookieAuth(builder.Configuration, mindApi, "HillMetrics_MIND", "HillMetrics_MIND");
-
-builder.Services.AddMindApiSDK<AuthenticationHttpHandler>(mindApi, HillMetrics.Orchestrator.ServicesNames.Services.MindFrontApp, TimeSpan.FromMinutes(5));
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
@@ -91,37 +87,7 @@ builder.Services.AddAuthorization();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddCascadingAuthenticationState();
 
-builder.Services.AddSingleton<IMcpClient>(sp =>
-{
-    McpClientOptions mcpClientOptions = new()
-    { ClientInfo = new() { Name = "AspNetCoreSseClient", Version = "1.0.0" } };
-
-    var client = new HttpClient();
-    var mcpFinance = builder.Configuration.GetValue<string>("Services:Mcp:Finance", $"https+http://{HillMetrics.Orchestrator.ServicesNames.Services.McpFinance}");
-    //client.BaseAddress = new($"https+http://{HillMetrics.Orchestrator.ServicesNames.Services.McpFinance}");
-
-    // can't use the service discovery for ["https +http://aspnetsseserver"]
-    // fix: read the environment value for the key 'services__aspnetsseserver__https__0' to get the url for the aspnet core sse server
-    var serviceName = HillMetrics.Orchestrator.ServicesNames.Services.McpFinance;
-    var name = $"services__{serviceName}__https__0";
-    var url = Environment.GetEnvironmentVariable(name) + "/sse";
-
-    SseClientTransportOptions sseTransportOptions = new()
-    {
-        //Endpoint = new Uri("https+http://aspnetsseserver")
-        Endpoint = new Uri(url),
-        Name = "Finance Server"
-        
-    };
-
-    SseClientTransport sseClientTransport = new(transportOptions: sseTransportOptions);
-
-    var mcpClient = McpClientFactory.CreateAsync(
-        sseClientTransport, mcpClientOptions).GetAwaiter().GetResult();
-
-    var tools = mcpClient.ListToolsAsync().Result;
-    return mcpClient;
-});
+builder.Services.AddMcpFinanceClient(builder.Configuration);
 
 var app = builder.Build();
 

@@ -1,5 +1,3 @@
-
-//using Asp.Versioning;
 using Asp.Versioning;
 using HillMetrics.Audit.Infrastructure.Database;
 using HillMetrics.Core.API;
@@ -18,14 +16,8 @@ using Microsoft.Extensions.Options;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Text.Json.Serialization;
 using HillMetrics.Python.API.SDK;
-using HillMetrics.Core.Contracts;
-using HillMetrics.Core.API.Services;
-using MediatR.Pipeline;
-using HillMetrics.Core.Mediator.Processors;
-using MediatR;
 using HillMetrics.Core.Mediator.Extensions;
 using HillMetrics.Core.Monitoring.Audits;
-using HillMetrics.Core.Monitoring;
 using HillMetrics.MIND.API.Contracts.Converter;
 using HillMetrics.MIND.API.Consumers;
 using HillMetrics.Core.Messaging.Services;
@@ -42,15 +34,6 @@ public partial class Program
     public static void Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
-
-        //IWebHostEnvironment  environment = builder.Environment;
-        //builder.Configuration
-        //    .SetBasePath(environment.ContentRootPath)
-        //    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-        //    .AddJsonFile($"appsettings.{environment.EnvironmentName}.json", optional: true, reloadOnChange: true)
-        //    .AddEnvironmentVariables();
-
-        // Add services to the container.
 
         //Core services
         var logger = builder.ConfigureCommonFluxService(Services.MindAPI, typeof(Program), typeof(PriceBondHandler), s => {
@@ -120,7 +103,6 @@ public partial class Program
         builder.Services.AddHillMetricsSignalRServices();
         builder.AddHillMetricsMINDServices();
         builder.AddMindAppDatabaseProvider(builder.Configuration.GetConnectionString(Services.MindApplicationDb));
-        builder.Services.AddClientsManagementServices();
 
         var app = builder.Build();
 
