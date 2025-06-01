@@ -1,0 +1,480 @@
+@page "/flux/simulate-result/{fetchingHistoryId:int}"
+@using HillMetrics.MIND.API.Contracts.Responses.Flux
+@using HillMetrics.MIND.API.SDK.V1
+@using HillMetrics.Core.Financial.DataPoint
+@inject IMindAPI MindApi
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+@inject ILogger<SimulateFluxProcessResult> Logger
+
+@attribute [Authorize]
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudGrid>
+        <MudItem xs="12">
+            <MudText Typo="Typo.h4" Class="mb-4">Simulation Results</MudText>
+        </MudItem>
+    </MudGrid>
+
+    @if (loading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-2" />
+    }
+    else if (simulationResult != null)
+    {
+        <!-- Summary Information -->
+        <MudCard Class="mb-4">
+            <MudCardContent>
+                <MudGrid>
+                    <MudItem xs="12" md="3">
+                        <MudText Typo="Typo.h6">Status</MudText>
+                        <MudChip T="Color" Color="@GetStatusColor(simulationResult.Status)" Size="Size.Small">
+                            @simulationResult.Status
+                        </MudChip>
+                    </MudItem>
+                    <MudItem xs="12" md="3">
+                        <MudText Typo="Typo.h6">Flux ID</MudText>
+                        <MudText>@simulationResult.FluxId</MudText>
+                    </MudItem>
+                    <MudItem xs="12" md="3">
+                        <MudText Typo="Typo.h6">Processing Time</MudText>
+                        <MudText>@simulationResult.ProcessingTimeMs ms</MudText>
+                    </MudItem>
+                    <MudItem xs="12" md="3">
+                        <MudText Typo="Typo.h6">Fetching History ID</MudText>
+                        <MudText>@FetchingHistoryId</MudText>
+                    </MudItem>
+                </MudGrid>
+            </MudCardContent>
+        </MudCard>
+
+        @if (simulationResult.ExtractedData != null && simulationResult.ExtractedData.ExecutorResults.Any())
+        {
+            <!-- Simulation Results with MudDataGrid Virtualization -->
+            <MudCard>
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Processing Results</MudText>
+                        <MudText Typo="Typo.body2" Class="mt-2">
+                            Total: @GetTotalRowsCount() rows across @simulationResult.ExtractedData.ExecutorResults.Count() executor(s)
+                        </MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudGrid Class="mb-3">
+                        <MudItem xs="12" md="6">
+                            <MudTextField @bind-Value="searchFilter"
+                                          Placeholder="Filter results..."
+                                          Adornment="Adornment.Start"
+                                          AdornmentIcon="@Icons.Material.Filled.Search"
+                                          Immediate="true"
+                                          DebounceInterval="300"
+                                          OnDebounceIntervalElapsed="ApplyFilter"
+                                          Clearable="true"
+                                          Variant="Variant.Outlined"
+                                          Dense="true" />
+                        </MudItem>
+                    </MudGrid>
+
+                    @if (filteredRows.Any())
+                    {
+                        <MudDataGrid T="RowData"
+                                     Items="@filteredRows"
+                                     Dense="true"
+                                     Hover="true"
+                                     Striped="true"
+                                     Virtualize="true"
+                                     Height="600px"
+                                     FixedHeader="true"
+                                     Bordered="true"
+                                     Class="mud-elevation-1">
+
+                            <Columns>
+                                <PropertyColumn Property="x => x.RowIndex" Title="Row #" Sortable="true">
+                                    <CellTemplate>
+                                        <div class="d-flex align-center">
+                                            <MudText Typo="Typo.body2">@context.Item.RowIndex</MudText>
+                                            <MudChip Size="Size.Small" Color="Color.Primary" Class="ml-2">
+                                                E@(context.Item.ExecutorIndex + 1)
+                                            </MudChip>
+                                        </div>
+                                    </CellTemplate>
+                                </PropertyColumn>
+
+                                <PropertyColumn Property="x => x.FinancialDataPointName" Title="Financial Data Point" Sortable="true">
+                                    <CellTemplate>
+                                        @if (context.Item.HasValidationMessages)
+                                        {
+                                            <MudTooltip Text="@context.Item.ValidationTooltip">
+                                                <MudChip T="string" Size="Size.Small" Color="Color.Info">
+                                                    @context.Item.FinancialDataPointName
+                                                </MudChip>
+                                            </MudTooltip>
+                                        }
+                                        else
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Info">
+                                                @context.Item.FinancialDataPointName
+                                            </MudChip>
+                                        }
+                                    </CellTemplate>
+                                </PropertyColumn>
+
+                                <PropertyColumn Property="x => x.IsSuccess" Title="Status" Sortable="true">
+                                    <CellTemplate>
+                                        @if (context.Item.HasValidationMessages)
+                                        {
+                                            <MudTooltip Text="@context.Item.ValidationTooltip">
+                                                <MudIcon Icon="@GetRuleStatusIcon(context.Item.IsSuccess)"
+                                                         Color="@GetRuleStatusColor(context.Item.IsSuccess)" />
+                                            </MudTooltip>
+                                        }
+                                        else
+                                        {
+                                            <MudIcon Icon="@GetRuleStatusIcon(context.Item.IsSuccess)"
+                                                     Color="@GetRuleStatusColor(context.Item.IsSuccess)" />
+                                        }
+                                    </CellTemplate>
+                                </PropertyColumn>
+
+                                <PropertyColumn Property="x => x.OriginalDataFormatted" Title="Original Data" Sortable="true">
+                                    <CellTemplate>
+                                        @if (context.Item.HasValidationMessages)
+                                        {
+                                            <MudTooltip Text="@context.Item.ValidationTooltip">
+                                                <div class="text-truncate" style="max-width: 200px;" title="@context.Item.OriginalDataFormatted">
+                                                    @context.Item.OriginalDataFormatted
+                                                </div>
+                                            </MudTooltip>
+                                        }
+                                        else
+                                        {
+                                            <div class="text-truncate" style="max-width: 200px;" title="@context.Item.OriginalDataFormatted">
+                                                @context.Item.OriginalDataFormatted
+                                            </div>
+                                        }
+                                    </CellTemplate>
+                                </PropertyColumn>
+
+                                <PropertyColumn Property="x => x.ProcessedDataFormatted" Title="Processed Data" Sortable="true">
+                                    <CellTemplate>
+                                        @if (context.Item.HasValidationMessages)
+                                        {
+                                            <MudTooltip Text="@context.Item.ValidationTooltip">
+                                                <div class="text-truncate" style="max-width: 200px;" title="@context.Item.ProcessedDataFormatted">
+                                                    @context.Item.ProcessedDataFormatted
+                                                </div>
+                                            </MudTooltip>
+                                        }
+                                        else
+                                        {
+                                            <div class="text-truncate" style="max-width: 200px;" title="@context.Item.ProcessedDataFormatted">
+                                                @context.Item.ProcessedDataFormatted
+                                            </div>
+                                        }
+                                    </CellTemplate>
+                                </PropertyColumn>
+
+                                <PropertyColumn Property="x => x.ErrorMessage" Title="Error Message" Sortable="true">
+                                    <CellTemplate>
+                                        @if (!string.IsNullOrEmpty(context.Item.ErrorMessage))
+                                        {
+                                            @if (context.Item.HasValidationMessages)
+                                            {
+                                                <MudTooltip Text="@context.Item.ValidationTooltip">
+                                                    <MudAlert Severity="Severity.Error" Dense="true" Class="my-1">
+                                                        @context.Item.ErrorMessage
+                                                    </MudAlert>
+                                                </MudTooltip>
+                                            }
+                                            else
+                                            {
+                                                <MudAlert Severity="Severity.Error" Dense="true" Class="my-1">
+                                                    @context.Item.ErrorMessage
+                                                </MudAlert>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            @if (context.Item.HasValidationMessages)
+                                            {
+                                                <MudTooltip Text="@context.Item.ValidationTooltip">
+                                                    <span>-</span>
+                                                </MudTooltip>
+                                            }
+                                            else
+                                            {
+                                                <span>-</span>
+                                            }
+                                        }
+                                    </CellTemplate>
+                                </PropertyColumn>
+                            </Columns>
+                        </MudDataGrid>
+
+                        <div class="mt-2">
+                            <MudText Typo="Typo.caption">
+                                Showing @filteredRows.Count of @GetTotalRowsCount() rows
+                            </MudText>
+                        </div>
+                    }
+                    else
+                    {
+                        <MudAlert Severity="Severity.Info" Class="my-4">
+                            No rows match the current filter criteria.
+                        </MudAlert>
+                    }
+                </MudCardContent>
+            </MudCard>
+        }
+        else
+        {
+            <MudAlert Severity="Severity.Warning" Class="my-4">
+                No extraction data available for this simulation.
+            </MudAlert>
+        }
+
+        @if (simulationResult.CommandExecution != null)
+        {
+            <!-- Command Execution Results -->
+            <MudCard Class="mt-4">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Command Execution Results</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    @if (simulationResult.CommandExecution.ExecutableCommandsByFinancialId.Any())
+                    {
+                        <MudText Typo="Typo.subtitle1" Class="mb-2">Executable Commands by Financial ID:</MudText>
+                        @foreach (var kvp in simulationResult.CommandExecution.ExecutableCommandsByFinancialId)
+                        {
+                            <MudExpansionPanels>
+                                <MudExpansionPanel>
+                                    <TitleContent>
+                                        <div style="display: flex; align-items: center;">
+                                            <MudIcon Icon="@Icons.Material.Filled.AccountBalanceWallet" class="mr-3"></MudIcon>
+                                            <MudText>Financial ID: @kvp.Key (@kvp.Value.Count commands)</MudText>
+                                        </div>
+                                    </TitleContent>
+                                    <ChildContent>
+                                        <MudList T="string">
+                                            @foreach (var command in kvp.Value)
+                                            {
+                                                <MudListItem>
+                                                    <MudText Typo="Typo.body2">@command</MudText>
+                                                </MudListItem>
+                                            }
+                                        </MudList>
+                                    </ChildContent>
+                                </MudExpansionPanel>
+                            </MudExpansionPanels>
+                        }
+                    }
+
+                    @if (simulationResult.CommandExecution.PartiallyMatchedCommands.Any())
+                    {
+                        <MudText Typo="Typo.subtitle1" Class="mb-2 mt-4">Partially Matched Commands:</MudText>
+                        <MudList T="string">
+                            @foreach (var command in simulationResult.CommandExecution.PartiallyMatchedCommands)
+                            {
+                                <MudListItem>
+                                    <MudText Typo="Typo.body2" Color="Color.Warning">@command</MudText>
+                                </MudListItem>
+                            }
+                        </MudList>
+                    }
+                </MudCardContent>
+            </MudCard>
+        }
+
+        <!-- Back Button -->
+        <MudGrid Class="mt-4">
+            <MudItem xs="12" Class="d-flex justify-center">
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           OnClick="GoBack"
+                           StartIcon="@Icons.Material.Filled.ArrowBack">
+                    Back to Fetching History
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+    }
+    else if (!loading)
+    {
+        <MudAlert Severity="Severity.Error" Class="my-2">
+            Failed to load simulation results or no data available.
+        </MudAlert>
+    }
+</MudContainer>
+
+@code {
+    [Parameter] public int FetchingHistoryId { get; set; }
+
+    private SimulateProcessElementResponse? simulationResult;
+    private bool loading = true;
+    private string searchFilter = string.Empty;
+    private List<RowData> filteredRows = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSimulationResult();
+    }
+
+    private async Task LoadSimulationResult()
+    {
+        try
+        {
+            loading = true;
+            var response = await MindApi.SimulateProcessElementAsync(FetchingHistoryId);
+
+            if (response?.Data != null)
+            {
+                simulationResult = response.Data;
+
+                // Initialize filtered rows after loading data
+                ApplyFilter();
+
+                if (simulationResult.Status != SimulateProcessElementResponse.SimulationStatus.Success)
+                {
+                    Snackbar.Add($"Simulation completed with status: {simulationResult.Status}", Severity.Warning);
+                }
+                else
+                {
+                    Snackbar.Add("Simulation completed successfully!", Severity.Success);
+                }
+            }
+            else
+            {
+                Snackbar.Add("Failed to load simulation results.", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading simulation results for FetchingHistoryId: {FetchingHistoryId}", FetchingHistoryId);
+            Snackbar.Add($"Error loading simulation results: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private void GoBack()
+    {
+        NavigationManager.NavigateTo("/flux/fetching-history");
+    }
+
+    private Color GetStatusColor(SimulateProcessElementResponse.SimulationStatus status)
+    {
+        return status switch
+        {
+            SimulateProcessElementResponse.SimulationStatus.Success => Color.Success,
+            SimulateProcessElementResponse.SimulationStatus.Fail => Color.Error,
+            SimulateProcessElementResponse.SimulationStatus.NoRawId => Color.Warning,
+            SimulateProcessElementResponse.SimulationStatus.ContentNull => Color.Warning,
+            SimulateProcessElementResponse.SimulationStatus.NoCustomProcessingImplementation => Color.Info,
+            SimulateProcessElementResponse.SimulationStatus.JsonConversionFailed => Color.Error,
+            SimulateProcessElementResponse.SimulationStatus.DataExtractionFailed => Color.Error,
+            SimulateProcessElementResponse.SimulationStatus.NoExecutableCommands => Color.Warning,
+            _ => Color.Default
+        };
+    }
+
+    private Color GetRuleStatusColor(bool isSuccess)
+    {
+        return isSuccess ? Color.Success : Color.Error;
+    }
+
+    private string GetRuleStatusIcon(bool isSuccess)
+    {
+        return isSuccess ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Error;
+    }
+
+    private string FormatData(object? data)
+    {
+        if (data == null) return "-";
+
+        if (data is string str && str.Length > 50)
+        {
+            return str.Substring(0, 50) + "...";
+        }
+
+        return data.ToString() ?? "-";
+    }
+
+    private int GetTotalRowsCount()
+    {
+        return simulationResult?.ExtractedData?.ExecutorResults.Sum(er => er.Rows.Count) ?? 0;
+    }
+
+    private void ApplyFilter()
+    {
+        filteredRows.Clear();
+
+        if (simulationResult?.ExtractedData?.ExecutorResults == null)
+            return;
+
+        var allRows = new List<RowData>();
+        int globalRowIndex = 1;
+
+        foreach (var (executorResult, executorIndex) in simulationResult.ExtractedData.ExecutorResults.Select((er, i) => (er, i)))
+        {
+            foreach (var row in executorResult.Rows)
+            {
+                var hasValidationMessages = row.RuleResult.ValidationMessages?.Any() == true;
+                var validationTooltip = hasValidationMessages ?
+                    string.Join("\n", row.RuleResult.ValidationMessages.Select(vm => $"[{vm.Level}] {vm.Message}")) :
+                    string.Empty;
+
+                allRows.Add(new RowData
+                    {
+                        Row = row,
+                        ExecutorIndex = executorIndex,
+                        RowIndex = globalRowIndex,
+                        HasValidationMessages = hasValidationMessages,
+                        ValidationTooltip = validationTooltip,
+                        FinancialDataPointName = row.FinancialTechnicalDataPoint.ToString(),
+                        IsSuccess = row.RuleResult.IsSuccess,
+                        OriginalDataFormatted = FormatData(row.RuleResult.OriginalData),
+                        ProcessedDataFormatted = FormatData(row.RuleResult.ProcessedData),
+                        ErrorMessage = row.RuleResult.ErrorMessage ?? string.Empty
+                    });
+                globalRowIndex++;
+            }
+        }
+
+        // Apply search filter
+        if (!string.IsNullOrEmpty(searchFilter))
+        {
+            var searchTerms = searchFilter.Split(new[] { ' ', ',' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(t => t.Trim().ToLower()).ToList();
+
+            allRows = allRows.Where(rowData =>
+                searchTerms.All(term =>
+                    rowData.FinancialDataPointName.ToLower().Contains(term) ||
+                    rowData.OriginalDataFormatted.ToLower().Contains(term) ||
+                    rowData.ProcessedDataFormatted.ToLower().Contains(term) ||
+                    rowData.ErrorMessage.ToLower().Contains(term)
+                )).ToList();
+        }
+
+        filteredRows.AddRange(allRows);
+        StateHasChanged();
+    }
+
+    public class RowData
+    {
+        public dynamic Row { get; set; }
+        public int ExecutorIndex { get; set; }
+        public int RowIndex { get; set; }
+        public bool HasValidationMessages { get; set; }
+        public string ValidationTooltip { get; set; } = string.Empty;
+        public string FinancialDataPointName { get; set; } = string.Empty;
+        public bool IsSuccess { get; set; }
+        public string OriginalDataFormatted { get; set; } = string.Empty;
+        public string ProcessedDataFormatted { get; set; } = string.Empty;
+        public string ErrorMessage { get; set; } = string.Empty;
+    }
+}
+

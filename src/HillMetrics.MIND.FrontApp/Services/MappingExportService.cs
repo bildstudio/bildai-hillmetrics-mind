@@ -9,6 +9,7 @@ using HillMetrics.MIND.API.Contracts.Requests.AiDataset;
 using HillMetrics.MIND.API.Contracts.Responses.AiDataset;
 using HillMetrics.Core.Search;
 using System.Text.RegularExpressions;
+using HillMetrics.Core.Financial.DataPoint;
 using HillMetrics.Core.Financial;
 
 namespace HillMetrics.MIND.FrontApp.Services
@@ -246,7 +247,7 @@ namespace HillMetrics.MIND.FrontApp.Services
                 _logger.LogInformation("Found {Count} files to export. Creating temporary directory: {TempPath}", fileUploadsToExport.Count(), tempDirectoryPath);
                 Directory.CreateDirectory(tempDirectoryPath);
                 directoryCreated = true;
-                
+
                 // Get all financial data points to include unmapped ones
                 _logger.LogInformation("Fetching all financial data points to include unmapped ones in the export");
                 var allDataPointsResponse = await _mindApi.GetAllFinancialDataPointsAsync();
@@ -391,7 +392,7 @@ namespace HillMetrics.MIND.FrontApp.Services
                 // Get mappings for the file
                 var mappingsResponse = await _mindApi.GetMappingsByFileUploadAsync(fileUploadId);
                 var mappings = mappingsResponse.Data ?? new List<FileDataMapping>();
-                
+
                 _logger.LogDebug("Found {Count} mappings for file ID {FileId}", mappings.Count, fileUploadId);
 
                 // Create the root JSON object
@@ -406,7 +407,7 @@ namespace HillMetrics.MIND.FrontApp.Services
                 foreach (var dataPoint in allDataPoints)
                 {
                     string dataPointName = dataPoint.Name.Trim();
-                    
+
                     if (mappedDataPoints.TryGetValue(dataPointName, out var dataPointMappings))
                     {
                         // This data point is mapped - use existing logic
@@ -423,13 +424,13 @@ namespace HillMetrics.MIND.FrontApp.Services
                         // This data point is not mapped - create empty entry
                         var emptyMapping = new List<Dictionary<string, object>>();
                         var emptyObject = new Dictionary<string, object>();
-                        
+
                         // Add empty entries for each element in the data point
                         foreach (var element in dataPoint.Elements)
                         {
                             emptyObject[element.PropertyName.Trim()] = "";
                         }
-                        
+
                         // Only add if the data point has elements
                         if (emptyObject.Count > 0)
                         {
@@ -463,6 +464,109 @@ namespace HillMetrics.MIND.FrontApp.Services
             string invalidRegStr = string.Format(@"([{0}]*\.\.+|[{0}]+)", invalidChars);
             string sanitized = Regex.Replace(name, invalidRegStr, "_");
             return string.IsNullOrWhiteSpace(sanitized) ? "_fallback_name_" : sanitized;
+        }
+
+        /// <summary>
+        /// Exports all financial data points of a specific type to JSON format.
+        /// </summary>
+        /// <param name="financialType">The financial type to filter data points by.</param>
+        /// <returns>A JSON string representing all data points of the specified type with their elements.</returns>
+        public async Task<string> ExportDataPointsByFinancialTypeAsync(FinancialType financialType)
+        {
+            try
+            {
+                _logger.LogInformation("Starting export of data points for financial type: {FinancialType}", financialType);
+
+                // Search for all data points of the specified financial type
+                var searchRequest = new SearchFinancialDataPointRequest
+                {
+                    FinancialType = financialType,
+                    Pagination = new Pagination(1000, 1) // Get a large number to include all
+                };
+
+                var response = await _mindApi.SearchFinancialDataPointsAsync(searchRequest);
+                var dataPoints = (response.Data ?? new List<FinancialDataPointSearchResponse>()).ToList();
+
+                _logger.LogInformation("Found {Count} data points for financial type {FinancialType}", dataPoints.Count, financialType);
+
+                // Create the export structure
+                var exportData = new
+                {
+                    ExportInfo = new
+                    {
+                        FinancialType = financialType.ToString(),
+                        ExportedAt = DateTime.UtcNow,
+                        TotalDataPoints = dataPoints.Count,
+                        TotalElements = dataPoints.Sum(dp => dp.ElementsCount)
+                    },
+                    DataPoints = dataPoints.Select(dp => new
+                    {
+                        DataPoint = new
+                        {
+                            Id = dp.Id,
+                            Name = dp.Name,
+                            Description = dp.Description,
+                            FinancialType = dp.FinancialType.ToString(),
+                            ElementsCount = dp.ElementsCount,
+                            CreatedAt = dp.CreatedAt,
+                            UpdatedAt = dp.UpdatedAt
+                        },
+                        Elements = dp.Elements.Select(element => new
+                        {
+                            Id = element.Id,
+                            PropertyName = element.PropertyName,
+                            ExternalName = element.ExternalName,
+                            FinancialTechnicalDataPoint = element.FinancialTechnicalDataPoint?.ToString(),
+                            PotentialValues = element.PotentialValues,
+                            Description = element.Description,
+                            Commentary = element.Commentary,
+                            Position = element.Position,
+                            FinancialDataPointId = element.FinancialDataPointId,
+                            MappingPrimitiveValue = element.MappingPrimitiveValue.ToString(),
+                            ParentElementId = element.ParentElementId,
+                            ChildElementIds = element.ChildElements?.Select(child => child.Id).ToList() ?? new List<int>()
+                        }).OrderBy(e => e.Position ?? int.MaxValue).ToList()
+                    }).ToList()
+                };
+
+                var options = new JsonSerializerOptions
+                {
+                    WriteIndented = true,
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                };
+
+                string jsonContent = JsonSerializer.Serialize(exportData, options);
+                _logger.LogInformation("Successfully generated JSON export for financial type {FinancialType}", financialType);
+
+                return jsonContent;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error exporting data points for financial type {FinancialType}", financialType);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Downloads a JSON export of data points for a specific financial type.
+        /// </summary>
+        /// <param name="financialType">The financial type to export.</param>
+        /// <returns>A task that completes when the download is triggered.</returns>
+        public async Task ExportAndDownloadDataPointsByFinancialTypeAsync(FinancialType financialType)
+        {
+            try
+            {
+                string jsonContent = await ExportDataPointsByFinancialTypeAsync(financialType);
+                string fileName = $"DataPoints_{financialType}_{DateTime.UtcNow:yyyyMMddHHmmss}.json";
+
+                await DownloadJsonFileAsync(jsonContent, fileName);
+                _logger.LogInformation("Successfully triggered download for financial type {FinancialType} export", financialType);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during export and download for financial type {FinancialType}", financialType);
+                throw;
+            }
         }
     }
 }

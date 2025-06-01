@@ -1,0 +1,79 @@
+@using HillMetrics.Core.Common
+@using HillMetrics.MIND.API.Contracts.Requests.Flux
+@using HillMetrics.MIND.API.Contracts.Responses.Flux
+@using HillMetrics.Normalized.Domain.Contracts.Providing.Flux
+
+<MudCard Elevation="0" Outlined="true" Class="mt-3">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">Manual Flux Configuration</MudText>
+        </CardHeaderContent>
+        <CardHeaderActions>
+            <MudTooltip Text="Metadata for manually triggered flux">
+                <MudIcon Icon="@Icons.Material.Filled.TouchApp" Color="Color.Info" />
+            </MudTooltip>
+        </CardHeaderActions>
+    </MudCardHeader>
+    <MudCardContent>
+        <MudGrid>
+            <MudItem xs="12">
+                <MudSelect @bind-Value="Metadata.ContentType" Label="Content Type" Variant="Variant.Outlined" Required="true">
+                    <MudSelectItem Value="ContentType.Xlsx">Xlsx</MudSelectItem>
+                    <MudSelectItem Value="ContentType.Xls">Xls</MudSelectItem>
+                    <MudSelectItem Value="ContentType.Csv">CSV</MudSelectItem>
+                    <MudSelectItem Value="ContentType.Json">Json</MudSelectItem>
+                    <MudSelectItem Value="ContentType.Pdf">Pdf</MudSelectItem>
+                    <MudSelectItem Value="ContentType.Html">Html</MudSelectItem>
+                    <MudSelectItem Value="ContentType.Text">Text</MudSelectItem>
+                    <MudSelectItem Value="ContentType.Xml">Xml</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+
+            <MudItem xs="12">
+                <MudDivider Class="my-3" />
+                <FluxMetadataDictionaryComponent @bind-MetadataDictionary="Metadata.Metadata" />
+            </MudItem>
+        </MudGrid>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter]
+    public FluxMetadataManualDto Metadata { get; set; } = new FluxMetadataManualDto();
+
+    [Parameter]
+    public EventCallback<FluxMetadataManualDto> MetadataChanged { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        // Set default values if null
+        Metadata ??= new FluxMetadataManualDto
+        {
+            Metadata = new Dictionary<string, object>()
+        };
+
+        if (Metadata.Metadata == null)
+            Metadata.Metadata = new Dictionary<string, object>();
+    }
+
+    private string GetMetadataValue(string key, string defaultValue)
+    {
+        if (Metadata.Metadata != null && Metadata.Metadata.TryGetValue(key, out var value))
+            return value?.ToString() ?? defaultValue;
+
+        return defaultValue;
+    }
+
+    private void SetMetadataValue(string key, string value)
+    {
+        if (Metadata.Metadata == null)
+            Metadata.Metadata = new Dictionary<string, object>();
+
+        if (Metadata.Metadata.ContainsKey(key))
+            Metadata.Metadata[key] = value;
+        else
+            Metadata.Metadata.Add(key, value);
+
+        MetadataChanged.InvokeAsync(Metadata);
+    }
+}

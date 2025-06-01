@@ -1,9 +1,12 @@
 ﻿@page "/financial-data/create"
 @page "/financial-data/edit/{Id:int?}"
-@using HillMetrics.MIND.API.Contracts.Requests.AiDataset
-@using HillMetrics.Normalized.Domain.Contracts.AI.Dataset
-@using HillMetrics.MIND.API.SDK.V1
 @using HillMetrics.Core.Financial
+@using HillMetrics.Core.Financial.DataPoint
+@using HillMetrics.Core.Search
+@using HillMetrics.MIND.API.Contracts.Requests.AiDataset
+@using HillMetrics.MIND.API.Contracts.Responses.AiDataset
+@using HillMetrics.MIND.API.SDK.V1
+@using HillMetrics.Normalized.Domain.Contracts.AI.Dataset
 @inject IMindAPI MindApi
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
@@ -103,24 +106,24 @@ else
                                 <MudGrid Spacing="1">
                                     <MudItem xs="12" sm="4" md="3">
                                         <MudTextField @bind-Value="context.PropertyName"
-                                                      Label="Property Name"
-                                                      Required="true"
-                                                      Immediate="true"
-                                                      Margin="Margin.Dense" />
+                                        Label="Property Name"
+                                        Required="true"
+                                        Immediate="true"
+                                        Margin="Margin.Dense" />
                                     </MudItem>
                                     <MudItem xs="12" sm="4" md="3">
                                         <MudTextField @bind-Value="context.ExternalName"
-                                                      Label="External Name"
-                                                      Immediate="true"
-                                                      Margin="Margin.Dense" />
+                                        Label="External Name"
+                                        Immediate="true"
+                                        Margin="Margin.Dense" />
                                     </MudItem>
                                     <MudItem xs="12" sm="4" md="3">
                                         <MudSelect T="MappingTypePrimitive"
-                                                  @bind-Value="context.MappingPrimitiveValue"
-                                                  Label="Data Type"
-                                                  Required="true"
-                                                  Margin="Margin.Dense"
-                                                  AnchorOrigin="Origin.BottomCenter">
+                                        @bind-Value="context.MappingPrimitiveValue"
+                                        Label="Data Type"
+                                        Required="true"
+                                        Margin="Margin.Dense"
+                                        AnchorOrigin="Origin.BottomCenter">
                                             @foreach (var type in Enum.GetValues<MappingTypePrimitive>())
                                             {
                                                 <MudSelectItem Value="@type">@type</MudSelectItem>
@@ -128,17 +131,44 @@ else
                                         </MudSelect>
                                     </MudItem>
                                     <MudItem xs="12" sm="4" md="3">
-                                        <MudSelect T="FinancialTechnicalDataPoint?"
-                                                  @bind-Value="context.FinancialTechnicalDataPoint"
-                                                  Label="Technical Type"
-                                                  Margin="Margin.Dense"
-                                                  AnchorOrigin="Origin.BottomCenter">
-                                            <MudSelectItem Value="@((FinancialTechnicalDataPoint?)null)">None</MudSelectItem>
-                                            @foreach (var type in Enum.GetValues<FinancialTechnicalDataPoint>())
-                                            {
-                                                <MudSelectItem T="FinancialTechnicalDataPoint?" Value="@type">@type</MudSelectItem>
-                                            }
-                                        </MudSelect>
+                                        <MudAutocomplete T="FinancialTechnicalDataPoint?"
+                                        @bind-Value="context.FinancialTechnicalDataPoint"
+                                        Label="Technical Type"
+                                        Margin="Margin.Dense"
+                                        SearchFunc="@SearchTechnicalDataPoints"
+                                        ToStringFunc="@GetTechnicalDataPointDisplayName"
+                                        Clearable="true"
+                                        Placeholder="Search technical type..."
+                                        ShowProgressIndicator="false"
+                                        Dense="true"
+                                        ResetValueOnEmptyText="false"
+                                        CoerceText="false"
+                                        CoerceValue="false" />
+                                    </MudItem>
+                                    <MudItem xs="12" sm="4" md="3">
+                                        @if (dataPoint.FinancialType == FinancialType.Undefined)
+                                        {
+                                            <MudTextField T="string" Label="Parent Element"
+                                            Margin="Margin.Dense"
+                                            Placeholder="Please select Financial Type first"
+                                            Disabled="true"/>
+                                        }
+                                        else
+                                        {
+                                            <MudAutocomplete T="int?"
+                                            @bind-Value="context.ParentElementId"
+                                            Label="Parent Element"
+                                            Margin="Margin.Dense"
+                                            SearchFunc="@((value, token) => SearchParentElements(value, context.Id, token))"
+                                            ToStringFunc="@GetElementDisplayNameById"
+                                            Clearable="true"
+                                            Placeholder="Search parent element..."
+                                            ShowProgressIndicator="false"
+                                            Dense="true"
+                                            ResetValueOnEmptyText="false"
+                                            CoerceText="false"
+                                            CoerceValue="false" />
+                                        }
                                     </MudItem>
                                 </MudGrid>
                             </MudTabPanel>
@@ -146,18 +176,18 @@ else
                                 <MudGrid Spacing="1">
                                     <MudItem xs="12" md="6">
                                         <MudTextField @bind-Value="context.Description"
-                                                      Label="Description"
-                                                      Lines="3"
-                                                      Variant="Variant.Outlined"
-                                                      Immediate="true" />
+                                        Label="Description"
+                                        Lines="3"
+                                        Variant="Variant.Outlined"
+                                        Immediate="true" />
                                     </MudItem>
                                     <MudItem xs="12" md="6">
                                         <MudTextField @bind-Value="context.Commentary"
-                                                      Label="Commentary"
-                                                      Lines="3"
-                                                      Variant="Variant.Outlined"
-                                                      Immediate="true"
-                                                      HelperText="Additional notes" />
+                                        Label="Commentary"
+                                        Lines="3"
+                                        Variant="Variant.Outlined"
+                                        Immediate="true"
+                                        HelperText="Additional notes" />
                                     </MudItem>
                                 </MudGrid>
                             </MudTabPanel>
@@ -202,14 +232,25 @@ else
     private MudDropContainer<FinancialDataPointElementRequest> containerRef;
     private const string DropZoneName = "DataPointZone";
     private bool IsEditMode => Id.HasValue;
-    private CreateFinancialDataPointRequest dataPoint = new();
+    private CreateFinancialDataPointRequest dataPoint = new() { FinancialType = FinancialType.Undefined };
     private bool isLoading = true;
+    private readonly List<FinancialTechnicalDataPoint?> technicalDataPoints;
+    private List<FinancialDataPointElement> allAvailableElements = new();
+
+    public CreateDataPoint()
+    {
+        // Initialize the list with null (None) option and all enum values
+        technicalDataPoints = new List<FinancialTechnicalDataPoint?> { null }
+            .Concat(Enum.GetValues<FinancialTechnicalDataPoint>().Cast<FinancialTechnicalDataPoint?>())
+            .ToList();
+    }
 
     protected override async Task OnInitializedAsync()
     {
         if (IsEditMode)
         {
             await LoadDataPoint();
+            await LoadAllAvailableElements();
         }
         else
         {
@@ -231,10 +272,14 @@ else
                         Id = e.Id,
                         FinancialDataPointId = e.FinancialDataPointId,
                         PropertyName = e.PropertyName,
+                        ExternalName = e.ExternalName,
                         Description = e.Description,
+                        Commentary = e.Commentary,
                         PotentialValues = e.PotentialValues.ToList(),
                         Position = e.Position,
-                        MappingPrimitiveValue = e.MappingPrimitiveValue
+                        MappingPrimitiveValue = e.MappingPrimitiveValue,
+                        FinancialTechnicalDataPoint = e.FinancialTechnicalDataPoint,
+                        ParentElementId = e.ParentElementId
                     }).ToList(),
                     FinancialType = result.Data.FinancialType,
                     Id = result.Data.Id,
@@ -249,6 +294,51 @@ else
         {
             isLoading = false;
         }
+    }
+
+    // private async Task OnFinancialTypeChanged(FinancialType newFinancialType)
+    // {
+    //     dataPoint.FinancialType = newFinancialType;
+
+    //     // Reload available elements when financial type changes
+    //     try
+    //     {
+    //         await LoadAllAvailableElements();
+    //     }
+    //     catch (Exception ex)
+    //     {
+    //         Snackbar.Add($"Error loading available elements: {ex.Message}", Severity.Warning);
+    //     }
+
+    //     StateHasChanged();
+    // }
+
+    private async Task LoadAllAvailableElements()
+    {
+        // Check if FinancialType is set, if not, don't load elements yet
+        if (dataPoint.FinancialType == FinancialType.Undefined)
+        {
+            allAvailableElements.Clear();
+            return;
+        }
+
+        // Create a search request to get financial data points for the specific type
+        var searchRequest = new SearchFinancialDataPointRequest
+        {
+            Pagination = new Pagination(1000, 1), // Get a large number to ensure we get all
+            Sorting = new Sorting("Name", Core.Search.SortDirection.Asc),
+            FinancialType = dataPoint.FinancialType
+        };
+
+        // Get data points for the specific financial type
+        var response = await MindApi.SearchFinancialDataPointsAsync(searchRequest);
+        var allDataPoints = response.Data ?? new List<FinancialDataPointSearchResponse>();
+
+        // Extract all elements from all data points using SelectMany
+        allAvailableElements = allDataPoints
+            .Where(dp => dp.Elements != null)
+            .SelectMany(dp => dp.Elements)
+            .ToList();
     }
 
     private void AddElement()
@@ -311,6 +401,58 @@ else
         return dataPoint.Elements.All(e => !string.IsNullOrWhiteSpace(e.PropertyName));
     }
 
+    private async Task<IEnumerable<FinancialTechnicalDataPoint?>> SearchTechnicalDataPoints(string value, CancellationToken token)
+    {
+        // Always return all items if search is empty or null
+        if (string.IsNullOrWhiteSpace(value))
+            return technicalDataPoints;
+
+        // Filter based on the display name
+        return technicalDataPoints.Where(x =>
+        {
+            var displayName = GetTechnicalDataPointDisplayName(x);
+            return displayName.Contains(value, StringComparison.InvariantCultureIgnoreCase);
+        });
+    }
+
+    private string GetTechnicalDataPointDisplayName(FinancialTechnicalDataPoint? technicalDataPoint)
+    {
+        return technicalDataPoint?.ToString() ?? "None";
+    }
+
+    private async Task<IEnumerable<int?>> SearchParentElements(string value, int currentElementId, CancellationToken token)
+    {
+        // Get all available elements from the database, excluding the current one to avoid self-reference
+        var availableElements = allAvailableElements
+            .Where(e => e.Id != currentElementId)
+            .ToList();
+
+        // Add null option for "No Parent" and element IDs
+        var elementIds = new List<int?> { null };
+        elementIds.AddRange(availableElements.Select(e => (int?)e.Id));
+
+        // Filter based on search value
+        if (string.IsNullOrWhiteSpace(value))
+            return elementIds;
+
+        return elementIds.Where(id =>
+        {
+            if (id == null) return "None".Contains(value, StringComparison.InvariantCultureIgnoreCase);
+            var element = allAvailableElements.FirstOrDefault(e => e.Id == id);
+            return element?.PropertyName?.Contains(value, StringComparison.InvariantCultureIgnoreCase) ?? false;
+        });
+    }
+
+    private string GetElementDisplayNameById(int? elementId)
+    {
+        if (elementId == null) return "None";
+        var element = allAvailableElements.FirstOrDefault(e => e.Id == elementId);
+
+        if(element is null) return "Unknown";
+
+        return $"[{element.FinancialDataPoint!.FinancialType} - {element.FinancialDataPoint!.Name}] {element.PropertyName}";
+    }
+
     private async Task SaveDataPoint()
     {
         try
@@ -347,36 +489,36 @@ else
     .mud-drop-item-draghandle {
         cursor: move;
     }
-    
+
     .drag-indicator {
         cursor: move;
     }
-    
+
     .element-card {
         border: 1px solid #e0e0e0;
         transition: all 0.3s ease;
         margin-bottom: 8px;
     }
-    
-    .element-card:hover {
-        border-color: var(--mud-palette-primary);
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    }
-    
+
+        .element-card:hover {
+            border-color: var(--mud-palette-primary);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
     .drag-item {
         opacity: 0.7;
         transform: scale(1.02);
         box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2) !important;
         border: 2px dashed var(--mud-palette-primary) !important;
     }
-    
+
     .drop-zone {
         min-height: 80px;
         border: 2px dashed transparent;
         transition: all 0.3s ease;
         padding: 4px;
     }
-    
+
     .drop-zone-active {
         border: 2px dashed var(--mud-palette-primary);
         background-color: rgba(var(--mud-palette-primary-rgb), 0.05);

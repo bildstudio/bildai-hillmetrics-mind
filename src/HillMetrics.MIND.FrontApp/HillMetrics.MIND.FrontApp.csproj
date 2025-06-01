@@ -8,8 +8,11 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="8.0.4" />
+    <PackageReference Include="Microsoft.Extensions.AI.Ollama" Version="9.5.0-preview.1.25265.7" />
+    <PackageReference Include="ModelContextProtocol" Version="0.2.0-preview.1" />
     <PackageReference Include="MudBlazor" Version="7.8.0" />
     <PackageReference Include="MudBlazor.Markdown" Version="7.8.0" />
+    <PackageReference Include="OllamaSharp" Version="5.1.19" />
   </ItemGroup>
 
   <ItemGroup>
@@ -19,9 +22,12 @@
     <ProjectReference Include="..\..\..\HillMetrics.Core\src\HillMetrics.Core.Monitoring\HillMetrics.Core.Monitoring.csproj" />
     <ProjectReference Include="..\..\..\HillMetrics.Core\src\HillMetrics.Core\HillMetrics.Core.csproj" />
     <ProjectReference Include="..\..\..\HillMetrics.FinancialData\src\HillMetrics.Normalized.Infrastructure.Database\HillMetrics.Normalized.Infrastructure.Database.csproj" />
+    <ProjectReference Include="..\..\..\HillMetrics.MCP\src\HillMetrics.MCP.SDK\HillMetrics.MCP.SDK.csproj" />
     <ProjectReference Include="..\..\..\HillMetrics.Orchestrator\HillMetrics.Orchestrator.ServiceDefaults\HillMetrics.Orchestrator.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\..\..\HillMetrics.Audit\src\HillMetrics.Audit.API.SDK\HillMetrics.Audit.API.SDK.csproj" />
     <ProjectReference Include="..\HillMetrics.MIND.API.Contracts\HillMetrics.MIND.API.Contracts.csproj" />
     <ProjectReference Include="..\HillMetrics.MIND.API.SDK\HillMetrics.MIND.API.SDK.csproj" />
+    <ProjectReference Include="..\HillMetrics.MIND.Infrastructure\HillMetrics.MIND.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -33,5 +39,7 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
+
+  <ProjectExtensions><VisualStudio><UserProperties appsettings_1json__JsonSchema="https://www.liquibase.org/json/schema/liquibase-flow-file-latest.json" /></VisualStudio></ProjectExtensions>
 
 </Project>

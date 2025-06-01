@@ -14,6 +14,9 @@ using Microsoft.AspNetCore.Authorization;
 using HillMetrics.MIND.API.Contracts.Responses.AiDataset;
 using HillMetrics.Normalized.Domain.Contracts.AI.Dataset.Cqrs.PropertyDataType;
 using HillMetrics.Core.Mediator;
+using HillMetrics.Core.Financial.DataPoint;
+using HillMetrics.Normalized.Domain.Contracts.Market.Cqrs.Rule;
+using HillMetrics.Core.Rules;
 
 namespace HillMetrics.MIND.API.Controllers;
 
@@ -403,7 +406,8 @@ public class FluxCaracController(IHMediator mediator, IMapper mapper, ILogger<Fl
                     MappingPrimitiveValue = x.MappingPrimitiveValue,
                     Commentary = x.Commentary,
                     FinancialTechnicalDataPoint = x.FinancialTechnicalDataPoint,
-                    ExternalName = x.ExternalName
+                    ExternalName = x.ExternalName,
+                    ParentElementId = x.ParentElementId
                 }).ToList()
             }
         };
@@ -451,7 +455,8 @@ public class FluxCaracController(IHMediator mediator, IMapper mapper, ILogger<Fl
                     MappingPrimitiveValue = x.MappingPrimitiveValue,
                     ExternalName = x.ExternalName,
                     Commentary = x.Commentary,
-                    FinancialTechnicalDataPoint = x.FinancialTechnicalDataPoint
+                    FinancialTechnicalDataPoint = x.FinancialTechnicalDataPoint,
+                    ParentElementId = x.ParentElementId
                 }).ToList()
             }
         };
@@ -639,5 +644,32 @@ public class FluxCaracController(IHMediator mediator, IMapper mapper, ILogger<Fl
         return res;
     }
 
+    #endregion
+
+    #region FinancialRules
+    
+    /// <summary>
+    /// Search for financial rules based on a specific data point or get all rules
+    /// </summary>
+    /// <param name="dataPoint">Optional financial technical data point to filter rules</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Financial rules with markdown documentation</returns>
+    [HttpGet("financial-rules")]
+    public async Task<ActionResult<ApiResponseBase<SearchFinancialRuleQueryResult>>> SearchFinancialRules(
+        [FromQuery] FinancialTechnicalDataPoint? dataPoint = null,
+        CancellationToken cancellationToken = default)
+    {
+        logger.LogInformation("Searching financial rules for data point: {DataPoint}", 
+            dataPoint.HasValue ? dataPoint.Value.ToString() : "All");
+            
+        var query = new SearchFinancialRuleQuery { DataPoint = dataPoint };
+        var result = await mediator.Send(query, cancellationToken);
+        
+        if (result.IsFailed)
+            return new ErrorApiActionResult(result.Errors.ToApiResult());
+            
+        return new ApiResponseBase<SearchFinancialRuleQueryResult>(result.Value);
+    }
+    
     #endregion
 }

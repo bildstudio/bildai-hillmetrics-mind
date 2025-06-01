@@ -1,4 +1,5 @@
 ﻿using HillMetrics.Core.Financial;
+using HillMetrics.Core.Financial.DataPoint;
 using HillMetrics.MIND.API.Contracts.Responses.Llm;
 using Microsoft.AspNetCore.Http;
 using System.Text.Json.Serialization;

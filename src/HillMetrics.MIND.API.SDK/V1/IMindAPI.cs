@@ -1,4 +1,5 @@
 ﻿using HillMetrics.Core.Financial;
+using HillMetrics.Core.Financial.DataPoint;
 using HillMetrics.MIND.API.Contracts.Requests.AiDataset;
 using HillMetrics.MIND.API.Contracts.Requests.Flux;
 using HillMetrics.MIND.API.Contracts.Requests.Prices;
@@ -13,6 +14,8 @@ using HillMetrics.MIND.API.Contracts.Responses.TradingVenue;
 using HillMetrics.Normalized.Domain.Contracts.AI.Dataset;
 using HillMetrics.Normalized.Domain.Contracts.AI.Dataset.Cqrs.ElementValue;
 using HillMetrics.Normalized.Domain.Contracts.AI.Dataset.Cqrs.FinancialDataPoint;
+using HillMetrics.Normalized.Domain.Contracts.Market.Cqrs.Rule;
+using HillMetrics.Core.Rules;
 using Refit;
 
 namespace HillMetrics.MIND.API.SDK.V1
@@ -97,6 +100,22 @@ namespace HillMetrics.MIND.API.SDK.V1
         [Get("/api/v1/flux/fetching-history/{fluxFetchingHistoryId}/force-process-async")]
         Task<ApiResponseBase<ProcessStartedResponse>> ForceProcessElementFetchBackgroundAsync(int fluxId, int fluxFetchingHistoryId);
 
+        /// <summary>
+        /// Upload and process a file for a manual flux
+        /// </summary>
+        /// <param name="fluxId">The flux identifier</param>
+        /// <param name="fileName">The name of the uploaded file</param>
+        /// <param name="file">The file content stream</param>
+        /// <param name="cancellationToken"></param>
+        /// <returns>Status message indicating that the operation has started</returns>
+        [Multipart]
+        [Post("/api/v1/flux/{fluxId}/upload-manual")]
+        Task<ApiResponseBase<ProcessStartedResponse>> FetchManualFluxAsync(
+            int fluxId,
+            string fileName,
+            [AliasAs("file")] StreamPart file,
+            CancellationToken cancellationToken = default);
+
         #endregion
 
         #region Financial Data Point
@@ -142,6 +161,14 @@ namespace HillMetrics.MIND.API.SDK.V1
         /// <returns>API response indicating success or failure</returns>
         [Delete("/api/v1/flux/fetching-history/{fetchingHistoryId}")]
         Task<ApiResponseBase<bool>> DeleteFetchingHistoryAsync(int fetchingHistoryId);
+
+        /// <summary>
+        /// Simulate the processing of a specific flux fetching history
+        /// </summary>
+        /// <param name="fetchingHistoryId">The ID of the fetching history to simulate processing</param>
+        /// <returns>Simulation result with detailed processing information</returns>
+        [Get("/api/v1/flux/fetching-history/{fetchingHistoryId}/simulate-process")]
+        Task<ApiResponseBase<SimulateProcessElementResponse>> SimulateProcessElementAsync(int fetchingHistoryId);
 
         /// <summary>
         /// Get the details of a specific fetching content
@@ -583,6 +610,21 @@ namespace HillMetrics.MIND.API.SDK.V1
         Task<ApiResponseBase<TradingVenueResponse>> EditTradingVenueAsync(
             int id,
             [Body] EditTradingVenueRequest request,
+            CancellationToken cancellationToken = default);
+
+        #endregion
+
+        #region FinancialRules
+
+        /// <summary>
+        /// Search for financial rules based on a specific data point or get all rules
+        /// </summary>
+        /// <param name="dataPoint">Optional financial technical data point to filter rules</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Financial rules with markdown documentation</returns>
+        [Get("/api/v1/fluxcarac/financial-rules")]
+        Task<ApiResponseBase<SearchFinancialRuleQueryResult>> SearchFinancialRulesAsync(
+            [Query] FinancialTechnicalDataPoint? dataPoint = null,
             CancellationToken cancellationToken = default);
 
         #endregion

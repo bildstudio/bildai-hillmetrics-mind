@@ -1,5 +1,8 @@
 ﻿@using MudBlazor
+@using Microsoft.Extensions.Options
+@using HillMetrics.MIND.FrontApp.Configs
 @inject NavigationManager NavigationManager
+@inject IOptions<FeaturesConfig> FeaturesConfig
 
 <MudNavMenu>
      <AuthorizeView>
@@ -8,7 +11,6 @@
         <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard">
             Dashboard
         </MudNavLink>
-
         <MudNavGroup Title="Flux Management" Icon="@Icons.Material.Filled.DataObject" Expanded="true">
             <MudNavLink Href="/flux/search" Icon="@Icons.Material.Filled.Search">
                 Search Flux
@@ -16,7 +18,7 @@
             <MudNavLink Href="/flux/create" Icon="@Icons.Material.Filled.Add">
                 Create Flux
             </MudNavLink>
-            
+
             <MudNavGroup Title="Flux Caracs" Icon="@Icons.Material.Filled.Category" Expanded="false">
                 <MudNavLink Href="/financial-data/search" Icon="@Icons.Material.Filled.Search">
                     Search Data Points
@@ -31,7 +33,7 @@
                     Create Property Mapping
                 </MudNavLink>
             </MudNavGroup>
-            
+
             <MudNavGroup Title="Flux / Sandbox mapping" Icon="@Icons.Material.Filled.Storage" Expanded="false">
                 <MudNavLink Href="/flux-mappings/search" Icon="@Icons.Material.Filled.List">
                     Mapping Search
@@ -43,7 +45,7 @@
                     Sandbox
                 </MudNavLink>
             </MudNavGroup>
-            
+
             <MudNavGroup Title="History" Icon="@Icons.Material.Filled.History" Expanded="false">
                 <MudNavLink Href="/flux/fetching-history" Icon="@Icons.Material.Filled.CloudDownload">
                     Fetching History
@@ -70,6 +72,21 @@
         </MudNavGroup>
     </MudNav>
 
+    <MudNav>
+                @if (FeaturesConfig.Value.AiChat.Enabled)
+                {
+                    <MudNavGroup Title="AI Tools" Icon="@Icons.Material.Filled.Psychology" Expanded="true">
+                        <MudNavLink Href="/ai/chat" Icon="@Icons.Material.Filled.Chat">
+                            AI Chat
+                        </MudNavLink>
+                    </MudNavGroup>
+                }
+                <MudNavGroup Title="Audit" Icon="@Icons.Material.Filled.TrackChanges" Expanded="true">
+                    <MudNavLink Href="/audit/search" Icon="@Icons.Material.Filled.Translate">
+                        Audit
+                    </MudNavLink>
+                </MudNavGroup>
+    </MudNav>
     <MudDivider Class="my-2" />
 
     <MudNav>

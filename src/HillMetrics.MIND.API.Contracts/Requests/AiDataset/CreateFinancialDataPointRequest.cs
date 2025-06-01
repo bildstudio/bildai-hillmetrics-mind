@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using HillMetrics.Core.Financial;
+using HillMetrics.Core.Financial.DataPoint;
 using HillMetrics.Normalized.Domain.Contracts.AI.Dataset;
 
 namespace HillMetrics.MIND.API.Contracts.Requests.AiDataset;
@@ -33,4 +34,9 @@ public class FinancialDataPointElementRequest
     public string Commentary { get; set; } = string.Empty;
 
     public FinancialTechnicalDataPoint? FinancialTechnicalDataPoint { get; set; }
+    
+    /// <summary>
+    /// Optional reference to a parent element for inheritance
+    /// </summary>
+    public int? ParentElementId { get; set; }
 }
