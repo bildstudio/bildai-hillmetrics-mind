@@ -1,0 +1,113 @@
+@using HillMetrics.Core.Financial
+@using HillMetrics.MIND.FrontApp.Services
+@inject MappingExportService MappingExportService
+@inject ISnackbar Snackbar
+@inject IJSRuntime JSRuntime
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">Export Data Points by Financial Type</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudCard Elevation="0">
+            <MudCardContent>
+                <MudText Typo="Typo.body1" Class="mb-4">
+                    Select a financial type to export all related data points and their elements:
+                </MudText>
+
+                <MudSelect T="FinancialType?" @bind-Value="selectedFinancialTypeForExport"
+                Label="Financial Type"
+                Variant="Variant.Outlined"
+                Dense="true"
+                Margin="Margin.Dense"
+                Class="mb-4">
+                    @foreach (var type in Enum.GetValues<FinancialType>())
+                    {
+                        <MudSelectItem T="FinancialType?" Value="@type">@type</MudSelectItem>
+                    }
+                </MudSelect>
+
+                @if (selectedFinancialTypeForExport.HasValue)
+                {
+                    <MudAlert Severity="Severity.Info" Class="mt-2">
+                        This will export all data points of type <strong>@selectedFinancialTypeForExport</strong>
+                        including their elements, relationships, and metadata.
+                    </MudAlert>
+                }
+            </MudCardContent>
+        </MudCard>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary"
+        OnClick="ExportDataPointsByType"
+        Disabled="@(!selectedFinancialTypeForExport.HasValue || isExporting)"
+        StartIcon="@Icons.Material.Filled.Download">
+            @if (isExporting)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-1" />
+                @("Exporting...")
+            }
+            else
+            {
+                @("Export")
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+
+    private bool isExporting = false;
+    private FinancialType? selectedFinancialTypeForExport = null;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JSRuntime.InvokeVoidAsync("eval", @"
+                window.downloadFileFromBase64 = function (fileName, base64, contentType) {
+                    const linkSource = `data:${contentType};base64,${base64}`;
+                    const downloadLink = document.createElement('a');
+                    document.body.appendChild(downloadLink);
+
+                    downloadLink.href = linkSource;
+                    downloadLink.download = fileName;
+                    downloadLink.click();
+                    document.body.removeChild(downloadLink);
+                }
+            ");
+        }
+    }
+
+    private async Task ExportDataPointsByType()
+    {
+        if (!selectedFinancialTypeForExport.HasValue)
+        {
+            Snackbar.Add("Please select a financial type", Severity.Warning);
+            return;
+        }
+
+        isExporting = true;
+        StateHasChanged();
+
+        try
+        {
+            await MappingExportService.ExportAndDownloadDataPointsByFinancialTypeAsync(selectedFinancialTypeForExport.Value);
+            Snackbar.Add($"Export for {selectedFinancialTypeForExport} started successfully. Check your downloads.", Severity.Success);
+            MudDialog.Close();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error exporting data points: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isExporting = false;
+            StateHasChanged();
+        }
+    }
+
+    private void Cancel() => MudDialog.Close();
+}

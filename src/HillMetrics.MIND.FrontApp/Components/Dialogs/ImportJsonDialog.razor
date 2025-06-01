@@ -1,0 +1,175 @@
+@using MudBlazor
+@using System.Text.Json
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="Icons.Material.Filled.Upload" Class="mr-3 mb-n1" />
+            Import Flux from JSON
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudContainer Style="max-height: 600px; overflow-y: scroll">
+            <MudText Typo="Typo.body1" Class="mb-3">
+                Paste your Flux JSON configuration below:
+            </MudText>
+
+            <MudTextField @bind-Value="jsonContent"
+                          @bind-Value:after="ValidateJson"
+                          Label="JSON Content"
+                          Lines="15"
+                          Required="true"
+                          RequiredError="JSON content is required"
+                          Variant="Variant.Outlined"
+                          Placeholder="Paste your FluxRequest JSON here..."
+                          Class="mb-3"
+                          HelperText="The JSON should match the FluxRequest structure" />
+
+            @if (!string.IsNullOrWhiteSpace(validationError))
+            {
+                <MudAlert Severity="Severity.Error" Class="mb-3">
+                    <MudText Typo="Typo.body2">@validationError</MudText>
+                </MudAlert>
+            }
+
+            @if (isValidJson && !string.IsNullOrWhiteSpace(jsonContent))
+            {
+                <MudAlert Severity="Severity.Success" Class="mb-3">
+                    <MudText Typo="Typo.body2">JSON format is valid!</MudText>
+                </MudAlert>
+            }
+
+            <MudExpansionPanels Elevation="0">
+                <MudExpansionPanel Text="JSON Structure Help">
+                    <div class="pa-3">
+                        <MudText Typo="Typo.body2" Class="mb-2">
+                            The JSON should contain the following structure:
+                        </MudText>
+                        <MudText Typo="Typo.body2" Class="mb-1"><strong>Required fields:</strong></MudText>
+                        <MudList Dense="true" T="string">
+                            <MudListItem>• fluxName (string)</MudListItem>
+                            <MudListItem>• sourceId (number)</MudListItem>
+                            <MudListItem>• fluxType (string: Email, Api, HttpDownload, Sftp, Webhook, Scraping, Manual)</MudListItem>
+                            <MudListItem>• fluxFinancialType (string)</MudListItem>
+                            <MudListItem>• fluxState (string)</MudListItem>
+                        </MudList>
+                        <MudText Typo="Typo.body2" Class="mt-2 mb-1"><strong>Optional fields:</strong></MudText>
+                        <MudList Dense="true" T="string">
+                            <MudListItem>• fluxDescription (string)</MudListItem>
+                            <MudListItem>• fluxComment (string)</MudListItem>
+                            <MudListItem>• canHaveConcurrencyMultiFetching (boolean)</MudListItem>
+                            <MudListItem>• fetchTriggerPeriod (object)</MudListItem>
+                            <MudListItem>• processTriggerPeriod (object)</MudListItem>
+                            <MudListItem>• fluxMetadata (object - depends on flux type)</MudListItem>
+                        </MudList>
+                    </div>
+                </MudExpansionPanel>
+            </MudExpansionPanels>
+        </MudContainer>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   OnClick="Submit"
+                   Disabled="@(string.IsNullOrWhiteSpace(jsonContent) || !isValidJson || processing)">
+            @if (processing)
+            {
+                <MudProgressCircular Class="mr-2" Size="Size.Small" Indeterminate="true" />
+            }
+            Import
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    public MudDialogInstance MudDialog { get; set; } = null!;
+
+    private string jsonContent = string.Empty;
+    private string validationError = string.Empty;
+    private bool isValidJson = false;
+    private bool processing = false;
+
+    protected override void OnParametersSet()
+    {
+        ValidateJson();
+    }
+
+    private void ValidateJson()
+    {
+        validationError = string.Empty;
+        isValidJson = false;
+
+        if (string.IsNullOrWhiteSpace(jsonContent))
+            return;
+
+        try
+        {
+            var jsonOptions = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true,
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            };
+
+            // Try to parse as JSON first
+            var jsonDocument = JsonDocument.Parse(jsonContent);
+
+            // Basic validation - check if it has some expected properties
+            var root = jsonDocument.RootElement;
+            if (root.ValueKind != JsonValueKind.Object)
+            {
+                validationError = "JSON must be an object";
+                return;
+            }
+
+            // Check for at least one expected property
+            var hasExpectedProperty = root.TryGetProperty("fluxName", out _) ||
+                                    root.TryGetProperty("FluxName", out _) ||
+                                    root.TryGetProperty("flux_name", out _);
+
+            if (!hasExpectedProperty)
+            {
+                validationError = "JSON does not appear to be a valid FluxRequest (missing fluxName property)";
+                return;
+            }
+
+            isValidJson = true;
+        }
+        catch (JsonException ex)
+        {
+            validationError = $"Invalid JSON format: {ex.Message}";
+        }
+        catch (Exception ex)
+        {
+            validationError = $"Validation error: {ex.Message}";
+        }
+
+        StateHasChanged();
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private async Task Submit()
+    {
+        if (string.IsNullOrWhiteSpace(jsonContent) || !isValidJson)
+            return;
+
+        processing = true;
+        StateHasChanged();
+
+        try
+        {
+            // Small delay to show processing state
+            await Task.Delay(100);
+            MudDialog.Close(DialogResult.Ok(jsonContent.Trim()));
+        }
+        finally
+        {
+            processing = false;
+        }
+    }
+}

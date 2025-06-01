@@ -10,7 +10,7 @@ window.updateWorkflowAnimations = function () {
     inProgressPaths.forEach(path => {
         path.classList.add('animate');
     });
-    
+
     // Add transitions for hovering over workflow steps
     const workflowSteps = document.querySelectorAll('.workflow-step');
     workflowSteps.forEach(step => {
@@ -21,7 +21,7 @@ window.updateWorkflowAnimations = function () {
             step.style.zIndex = '1';
         });
     });
-    
+
     // Add tooltips to metric badges
     const badges = document.querySelectorAll('.badge');
     badges.forEach(badge => {
@@ -29,7 +29,7 @@ window.updateWorkflowAnimations = function () {
         const value = badge.textContent;
         const className = Array.from(badge.classList)
             .find(cls => ['success', 'info', 'warning', 'error'].includes(cls));
-        
+
         // Set title based on badge type
         if (className === 'success') {
             badge.title = `${value.replace('+', '')} records added`;
@@ -41,4 +41,27 @@ window.updateWorkflowAnimations = function () {
             badge.title = `${value.replace('!', '')} records with errors`;
         }
     });
-}; 
+};
+
+// File download functionality
+window.downloadFile = function (filename, content, contentType) {
+    // Create a blob with the content
+    const blob = new Blob([content], { type: contentType || 'text/plain' });
+
+    // Create a temporary URL for the blob
+    const url = window.URL.createObjectURL(blob);
+
+    // Create a temporary anchor element for download
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = filename;
+    anchor.style.display = 'none';
+
+    // Add to DOM, click, and remove
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+
+    // Clean up the URL
+    window.URL.revokeObjectURL(url);
+};

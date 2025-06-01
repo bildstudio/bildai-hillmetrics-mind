@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="HillMetrics.MIND.FrontApp.styles.css" />
     <link rel="icon" type="image/png" href="favicon.png" />
     <link href="_content/MudBlazor/MudBlazor.min.css" rel="stylesheet" />
-    
+
     <!-- MathJax Configuration -->
     <script>
         window.MathJax = {
@@ -22,7 +22,7 @@
                 fontCache: 'global'
             }
         };
-        
+
         // Function required by MudBlazor MathJax component
         window.appendMathJaxScript = function() {
             if (!document.getElementById('mathjax-script')) {
@@ -38,7 +38,7 @@
             }
         };
     </script>
-    
+
     <HeadOutlet />
 </head>
 
@@ -46,6 +46,7 @@
     <Routes @rendermode="@InteractiveServer" />
     <script src="_content/MudBlazor/MudBlazor.min.js"></script>
     <script src="_framework/blazor.web.js"></script>
+    <script src="js/app.js"></script>
 </body>
 
 </html>

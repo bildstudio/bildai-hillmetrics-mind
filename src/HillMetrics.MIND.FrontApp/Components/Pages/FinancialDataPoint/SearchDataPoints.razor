@@ -22,10 +22,10 @@
         </MudItem>
         <MudItem xs="6" Class="d-flex justify-end">
             <MudButton Variant="Variant.Filled"
-                       Color="Color.Primary"
-                       StartIcon="@Icons.Material.Filled.Add"
-                       Href="/financial-data/create"
-                       Class="align-self-start">
+            Color="Color.Primary"
+            StartIcon="@Icons.Material.Filled.Add"
+            Href="/financial-data/create"
+            Class="align-self-start">
                 Create New Data Point
             </MudButton>
         </MudItem>
@@ -38,20 +38,20 @@
                     <!-- Name -->
                     <MudItem xs="12" md="4">
                         <MudTextField @bind-Value="searchRequest.Name"
-                                      Label="Data Point Name"
-                                      Variant="Variant.Outlined"
-                                      Placeholder="Search by name..."
-                                      Immediate="true"
-                                      DebounceInterval="500"
-                                      OnDebounceIntervalElapsed="Search"
-                                      Adornment="Adornment.Start"
-                                      AdornmentIcon="@Icons.Material.Filled.Search" />
+                        Label="Data Point Name"
+                        Variant="Variant.Outlined"
+                        Placeholder="Search by name..."
+                        Immediate="true"
+                        DebounceInterval="500"
+                        OnDebounceIntervalElapsed="Search"
+                        Adornment="Adornment.Start"
+                        AdornmentIcon="@Icons.Material.Filled.Search" />
                     </MudItem>
 
                     <!-- Financial Type -->
                     <MudItem xs="12" md="4">
                         <MudSelect T="FinancialType?" @bind-Value="searchRequest.FinancialType"
-                                   Label="Financial Type" Variant="Variant.Outlined" Dense="true" Margin="Margin.Dense">
+                        Label="Financial Type" Variant="Variant.Outlined" Dense="true" Margin="Margin.Dense">
                             <MudSelectItem Value="@((FinancialType?)null)">All</MudSelectItem>
                             @foreach (var type in Enum.GetValues<FinancialType>())
                             {
@@ -75,27 +75,27 @@
     else
     {
         <MudTable ServerData="@ServerReload"
-                  Hover="true" Bordered="true" Striped="true"
-                  Dense="true" @bind-SelectedItem="selectedItem"
-                  T="FinancialDataPointSearchResponse"
-                  RowStyleFunc="@RowStyleFunc"
-                  Breakpoint="Breakpoint.Sm">
+        Hover="true" Bordered="true" Striped="true"
+        Dense="true" @bind-SelectedItem="selectedItem"
+        T="FinancialDataPointSearchResponse"
+        RowStyleFunc="@RowStyleFunc"
+        Breakpoint="Breakpoint.Sm">
             <ToolBarContent>
                 <MudText Typo="Typo.h6" Class="ml-2">Data Points List</MudText>
                 <MudSpacer />
                 <MudButton Variant="Variant.Outlined"
-                           Color="Color.Primary"
-                           StartIcon="@Icons.Material.Filled.Download"
-                           OnClick="ShowExportDialog"
-                           Class="mr-2"
-                           Size="Size.Small">
+                Color="Color.Primary"
+                StartIcon="@Icons.Material.Filled.Download"
+                OnClick="ShowExportDialog"
+                Class="mr-2"
+                Size="Size.Small">
                     Export by Type
                 </MudButton>
                 <MudTextField @bind-Value="searchString" Placeholder="Search"
-                              Adornment="Adornment.Start"
-                              AdornmentIcon="@Icons.Material.Filled.Search"
-                              IconSize="Size.Medium"
-                              Class="mt-0 mb-3" Margin="Margin.Dense" Dense="true" />
+                Adornment="Adornment.Start"
+                AdornmentIcon="@Icons.Material.Filled.Search"
+                IconSize="Size.Medium"
+                Class="mt-0 mb-3" Margin="Margin.Dense" Dense="true" />
             </ToolBarContent>
             <HeaderContent>
                 <MudTh><MudTableSortLabel SortLabel="Id" T="FinancialDataPointSearchResponse">ID</MudTableSortLabel></MudTh>
@@ -118,8 +118,8 @@
                     @if (context.Elements?.Any() == true)
                     {
                         <MudButton Size="Size.Small"
-                                   OnClick="@(() => ToggleElementsExpanded(context))"
-                                   StartIcon="@(IsExpanded(context) ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)">
+                        OnClick="@(() => ToggleElementsExpanded(context))"
+                        StartIcon="@(IsExpanded(context) ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)">
                             @context.ElementsCount
                         </MudButton>
                     }
@@ -145,9 +145,9 @@
                     <MudTr>
                         <MudTd colspan="6">
                             <MudTable Items="@GetSortedElements(context.Elements)"
-                                      Hover="true" Dense="true" Class="ml-6"
-                                      T="FinancialDataPointElement"
-                                      Context="elementContext">
+                            Hover="true" Dense="true" Class="ml-6"
+                            T="FinancialDataPointElement"
+                            Context="elementContext">
                                 <HeaderContent>
                                     <MudTh>Position</MudTh>
                                     <MudTh>Name</MudTh>
@@ -176,9 +176,9 @@
                                             @if (rulesCount > 0)
                                             {
                                                 <MudButton Variant="Variant.Text"
-                                                           Color="Color.Primary"
-                                                           Size="Size.Small"
-                                                           OnClick="@(() => ShowRulesDetails(technicalDataPoint))">
+                                                Color="Color.Primary"
+                                                Size="Size.Small"
+                                                OnClick="@(() => ShowRulesDetails(technicalDataPoint))">
                                                     @rulesCount @typo
                                                 </MudButton>
                                             }
@@ -208,58 +208,6 @@
     }
 </MudContainer>
 
-<MudDialog @bind-IsVisible="isExportDialogVisible" Options="exportDialogOptions">
-    <TitleContent>
-        <MudText Typo="Typo.h6">Export Data Points by Financial Type</MudText>
-    </TitleContent>
-    <DialogContent>
-        <MudCard Elevation="0">
-            <MudCardContent>
-                <MudText Typo="Typo.body1" Class="mb-4">
-                    Select a financial type to export all related data points and their elements:
-                </MudText>
-
-                <MudSelect T="FinancialType?" @bind-Value="selectedFinancialTypeForExport"
-                           Label="Financial Type"
-                           Variant="Variant.Outlined"
-                           Dense="true"
-                           Margin="Margin.Dense"
-                           Class="mb-4">
-                    @foreach (var type in Enum.GetValues<FinancialType>())
-                    {
-                        <MudSelectItem T="FinancialType?" Value="@type">@type</MudSelectItem>
-                    }
-                </MudSelect>
-
-                @if (selectedFinancialTypeForExport.HasValue)
-                {
-                    <MudAlert Severity="Severity.Info" Class="mt-2">
-                        This will export all data points of type <strong>@selectedFinancialTypeForExport</strong>
-                        including their elements, relationships, and metadata.
-                    </MudAlert>
-                }
-            </MudCardContent>
-        </MudCard>
-    </DialogContent>
-    <DialogActions>
-        <MudButton OnClick="CloseExportDialog">Cancel</MudButton>
-        <MudButton Color="Color.Primary"
-                   OnClick="ExportDataPointsByType"
-                   Disabled="@(!selectedFinancialTypeForExport.HasValue || isExporting)"
-                   StartIcon="@Icons.Material.Filled.Download">
-            @if (isExporting)
-            {
-                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-1" />
-                @("Exporting...")
-            }
-            else
-            {
-                @("Export")
-            }
-        </MudButton>
-    </DialogActions>
-</MudDialog>
-
 @code {
     private SearchFinancialDataPointRequest searchRequest = new();
     private bool loading = false;
@@ -273,19 +221,13 @@
     // Dictionary to cache rules for each data point
     private Dictionary<FinancialTechnicalDataPoint, List<RuleInfo>> _rulesCache = new();
 
-    // Export dialog state
-    private bool isExportDialogVisible = false;
-    private bool isExporting = false;
-    private FinancialType? selectedFinancialTypeForExport = null;
-    private DialogOptions exportDialogOptions = new() { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Medium };
-
     [Parameter]
     [SupplyParameterFromQuery(Name = "dataPointId")]
     public int? DataPointIdParameter { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
-        await Search();
+        // await Search();
     }
 
     private IEnumerable<FinancialDataPointElement> GetSortedElements(IEnumerable<FinancialDataPointElement> elements)
@@ -477,43 +419,17 @@
         }
     }
 
-    private void ShowExportDialog()
+    private async Task ShowExportDialog()
     {
-        selectedFinancialTypeForExport = null;
-        isExportDialogVisible = true;
-    }
-
-    private void CloseExportDialog()
-    {
-        isExportDialogVisible = false;
-        selectedFinancialTypeForExport = null;
-    }
-
-    private async Task ExportDataPointsByType()
-    {
-        if (!selectedFinancialTypeForExport.HasValue)
+        var options = new DialogOptions
         {
-            Snackbar.Add("Please select a financial type", Severity.Warning);
-            return;
-        }
+            CloseButton = true,
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true,
+            Position = DialogPosition.Center
+        };
 
-        isExporting = true;
-        StateHasChanged();
-
-        try
-        {
-            await MappingExportService.ExportAndDownloadDataPointsByFinancialTypeAsync(selectedFinancialTypeForExport.Value);
-            Snackbar.Add($"Export for {selectedFinancialTypeForExport} started successfully. Check your downloads.", Severity.Success);
-            CloseExportDialog();
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Error exporting data points: {ex.Message}", Severity.Error);
-        }
-        finally
-        {
-            isExporting = false;
-            StateHasChanged();
-        }
+        var dialog = await DialogService.ShowAsync<ExportDataPointsDialog>("Export Data Points", options);
+        await dialog.Result;
     }
 }

@@ -450,7 +450,7 @@ else
 
         if(element is null) return "Unknown";
 
-        return $"[{element.FinancialDataPoint.FinancialType}] {element.PropertyName}";
+        return $"[{element.FinancialDataPoint!.FinancialType} - {element.FinancialDataPoint!.Name}] {element.PropertyName}";
     }
 
     private async Task SaveDataPoint()
