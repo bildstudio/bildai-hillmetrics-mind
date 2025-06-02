@@ -234,7 +234,8 @@ else
                                                 <MudButton OnClick="@((e) => ShowElementMetadataDialog(new FinancialDataPointElementMetadata() { ElementId = context.Id }, UserActions.Create, context))"
                                                            Color="Color.Primary"
                                                            StartIcon="@Icons.Material.Filled.Create"
-                                                           Size="Size.Small">
+                                                           Size="Size.Small"
+                                                           Disabled="@metadataCreateDisabled">
                                                     Create metadata
                                                 </MudButton>
                                             </FooterContent>
@@ -288,6 +289,7 @@ else
     private readonly List<FinancialTechnicalDataPoint?> technicalDataPoints;
     private List<FinancialDataPointElement> allAvailableElements = new();
     private bool metadataEditDisabled = true;
+    private bool metadataCreateDisabled = true;
     private FinancialType? targetFinancialType;
     private List<LanguageDto> languages;
     public Dictionary<int, string> languagesDictionary { get; set; } = new Dictionary<int, string>();
@@ -444,6 +446,9 @@ else
             {
                 documentTypesDictionary.TryAdd(documentType.Id, documentType.Name);
             }
+
+            if (documentTypes != null && documentTypes.Count > 0)
+                metadataCreateDisabled = false;
 
             metadataEditDisabled = false;
         }
