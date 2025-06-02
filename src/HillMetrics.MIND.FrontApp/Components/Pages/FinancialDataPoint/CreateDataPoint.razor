@@ -206,6 +206,7 @@ else
                                                 <MudTh>Document Type</MudTh>
                                                 <MudTh>Context</MudTh>
                                                 <MudTh>Question</MudTh>
+                                                <MudTh>Description</MudTh>
                                                 <MudTh>Actions</MudTh>
                                             </HeaderContent>
                                             <RowTemplate>
@@ -213,6 +214,7 @@ else
                                                 <MudTd>@GetDocumentTypeName(@elementMetadata.DocumentTypeId)</MudTd>
                                                 <MudTd>@elementMetadata.Values[FinancialDataPointElementMetadataKey.Context]</MudTd>
                                                 <MudTd>@elementMetadata.Values[FinancialDataPointElementMetadataKey.Question]</MudTd>
+                                                <MudTd>@elementMetadata.Values[FinancialDataPointElementMetadataKey.Description]</MudTd>
                                                 <MudTd DataLabel="Actions">
                                                     <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true">
                                                         <MudMenuItem OnClick="@((e) => ShowElementMetadataDialog(elementMetadata, UserActions.View, context))">
@@ -670,12 +672,12 @@ else
             {
                 DocumentTypeId = elementMetadata.DocumentTypeId,
                 FinancialDataPointElementId = elementMetadata.ElementId,
-                KeysToDelete = [FinancialDataPointElementMetadataKey.Question, FinancialDataPointElementMetadataKey.Context],
+                KeysToDelete = [FinancialDataPointElementMetadataKey.Question, FinancialDataPointElementMetadataKey.Context, FinancialDataPointElementMetadataKey.Description],
                 LanguageId = elementMetadata.LanguageId
             });
 
             context.Metadatas.Remove(elementMetadata);
-            
+
             if(metadataTableRef != null)
                 await metadataTableRef.ReloadServerData();
 

@@ -91,6 +91,14 @@
                 Size="Size.Small">
                     Export by Type
                 </MudButton>
+                <MudButton Variant="Variant.Outlined"
+                Color="Color.Secondary"
+                StartIcon="@Icons.Material.Filled.FileDownload"
+                OnClick="ShowExportByDocumentTypeDialog"
+                Class="mr-2"
+                Size="Size.Small">
+                    Export by Document Type
+                </MudButton>
                 <MudTextField @bind-Value="searchString" Placeholder="Search"
                 Adornment="Adornment.Start"
                 AdornmentIcon="@Icons.Material.Filled.Search"
@@ -430,6 +438,20 @@
         };
 
         var dialog = await DialogService.ShowAsync<ExportDataPointsDialog>("Export Data Points", options);
+        await dialog.Result;
+    }
+
+    private async Task ShowExportByDocumentTypeDialog()
+    {
+        var options = new DialogOptions
+        {
+            CloseButton = true,
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true,
+            Position = DialogPosition.Center
+        };
+
+        var dialog = await DialogService.ShowAsync<ExportDataPointsByDocumentTypeDialog>("Export Data Points by Document Type", options);
         await dialog.Result;
     }
 }
