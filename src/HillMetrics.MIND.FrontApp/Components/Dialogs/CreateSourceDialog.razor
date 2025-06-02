@@ -1,0 +1,81 @@
+@using MudBlazor
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="Icons.Material.Filled.Add" Class="mr-3 mb-n1" />
+            Create New Source
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudContainer Style="max-height: 500px; overflow-y: scroll">
+            <MudTextField @bind-Value="sourceName"
+                          Label="Source Name"
+                          Required="true"
+                          RequiredError="Source name is required"
+                          MaxLength="250"
+                          Counter="250"
+                          Variant="Variant.Outlined"
+                          @onkeyup="@(async (e) => { if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(sourceName)) await Submit(); })"
+                          Class="mb-3" />
+
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                The source will be created with:
+            </MudText>
+            <MudList Dense="true" T="string">
+                <MudListItem Icon="Icons.Material.Filled.CheckCircle" IconColor="Color.Success">
+                    <MudText Typo="Typo.body2">Reliability: 1.0 (100%)</MudText>
+                </MudListItem>
+                <MudListItem Icon="Icons.Material.Filled.CheckCircle" IconColor="Color.Success">
+                    <MudText Typo="Typo.body2">Status: Active</MudText>
+                </MudListItem>
+            </MudList>
+        </MudContainer>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   OnClick="Submit"
+                   Disabled="@(string.IsNullOrWhiteSpace(sourceName) || processing)">
+            @if (processing)
+            {
+                <MudProgressCircular Class="mr-2" Size="Size.Small" Indeterminate="true" />
+            }
+            Create
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    public MudDialogInstance MudDialog { get; set; } = null!;
+
+    private string sourceName = string.Empty;
+    private bool processing = false;
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private async Task Submit()
+    {
+        if (string.IsNullOrWhiteSpace(sourceName))
+            return;
+
+        processing = true;
+        StateHasChanged();
+
+        try
+        {
+            // Small delay to show processing state
+            await Task.Delay(100);
+            MudDialog.Close(DialogResult.Ok(sourceName.Trim()));
+        }
+        finally
+        {
+            processing = false;
+        }
+    }
+}

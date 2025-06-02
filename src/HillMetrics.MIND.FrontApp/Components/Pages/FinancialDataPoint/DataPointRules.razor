@@ -1,0 +1,308 @@
+@using HillMetrics.Core.Financial.DataPoint
+@using HillMetrics.Core.Rules
+@using HillMetrics.MIND.API.SDK.V1
+@using HillMetrics.Normalized.Domain.Contracts.Market.Cqrs.Rule
+@inject IMindAPI MindApi
+@inject ISnackbar Snackbar
+@inject MudBlazor.IDialogService DialogService
+
+<MudDialog>
+    <DialogContent>
+        <MudContainer Style="max-height: 600px; overflow-y: auto; padding: 0;">
+            @if (loading)
+            {
+                <MudStack Spacing="4" Justify="Justify.Center" Style="min-height: 200px;">
+                    <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" />
+                    <MudText Typo="Typo.h6" Color="Color.Primary">Loading rules...</MudText>
+                </MudStack>
+            }
+            else if (error != null)
+            {
+                <MudAlert Severity="Severity.Error" Class="ma-4" Variant="Variant.Filled">
+                    <MudText Typo="Typo.body1">@error</MudText>
+                </MudAlert>
+            }
+            else
+            {
+                <!-- Header Section -->
+                <MudPaper Class="pa-6 mb-4" Elevation="0" Style="background: linear-gradient(135deg, var(--mud-palette-primary) 0%, var(--mud-palette-primary-darken) 100%); color: white;">
+                    <MudStack Row="true" Spacing="3">
+                        <MudAvatar Color="Color.Inherit" Style="background-color: rgba(255,255,255,0.2);">
+                            <MudIcon Icon="@Icons.Material.Filled.Rule" />
+                        </MudAvatar>
+                        <MudStack Spacing="1">
+                            <MudText Typo="Typo.h4" Style="color: white; font-weight: 600;">Rules Overview</MudText>
+                            <MudText Typo="Typo.body1" Style="color: rgba(255,255,255,0.8);">@DataPoint.ToString()</MudText>
+                        </MudStack>
+                    </MudStack>
+                </MudPaper>
+
+                @if (rules?.Any() == true)
+                {
+                    <!-- Rules Statistics -->
+                    <MudGrid Class="mb-4">
+                        <MudItem xs="4">
+                            <MudPaper Class="pa-4 text-center" Elevation="2">
+                                <MudText Typo="Typo.h4" Color="Color.Primary">@rules.Count</MudText>
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">Total Rules</MudText>
+                            </MudPaper>
+                        </MudItem>
+                        <MudItem xs="4">
+                            <MudPaper Class="pa-4 text-center" Elevation="2">
+                                <MudText Typo="Typo.h4" Color="Color.Success">@rules.Count(r => !r.IsOptional)</MudText>
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">Required</MudText>
+                            </MudPaper>
+                        </MudItem>
+                        <MudItem xs="4">
+                            <MudPaper Class="pa-4 text-center" Elevation="2">
+                                <MudText Typo="Typo.h4" Color="Color.Warning">@rules.Count(r => r.IsOptional)</MudText>
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">Optional</MudText>
+                            </MudPaper>
+                        </MudItem>
+                    </MudGrid>
+
+                    <!-- Rules Cards -->
+                    <MudStack Spacing="4">
+                        @foreach (var (rule, index) in rules.OrderBy(r => r.Priority).Select((r, i) => (r, i)))
+                        {
+                            <MudCard Elevation="3" Class="rule-card">
+                                <MudCardHeader Class="pb-2">
+                                    <CardHeaderAvatar>
+                                        <MudAvatar Color="@(rule.IsOptional ? Color.Warning : Color.Success)" Size="Size.Medium">
+                                            <MudIcon Icon="@(rule.IsOptional ? Icons.Material.Filled.Info : Icons.Material.Filled.CheckCircle)" />
+                                        </MudAvatar>
+                                    </CardHeaderAvatar>
+                                    <CardHeaderContent>
+                                        <MudStack Spacing="1">
+                                            <MudText Typo="Typo.h6" Style="font-weight: 600;">@rule.Name</MudText>
+                                            <MudStack Row="true" Spacing="2">
+                                                <MudChip T="int" Size="Size.Small" Color="Color.Primary" Variant="Variant.Text">
+                                                    Priority @rule.Priority
+                                                </MudChip>
+                                                @if (rule.IsOptional)
+                                                {
+                                                    <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Text">
+                                                        Optional
+                                                    </MudChip>
+                                                }
+                                            </MudStack>
+                                        </MudStack>
+                                    </CardHeaderContent>
+                                    <CardHeaderActions>
+                                        <MudIconButton Icon="@Icons.Material.Filled.ExpandMore"
+                                                      Size="Size.Small"
+                                                      id="@GetId(index)"
+                                                      OnClick="() => ToggleExpansion(index)" />
+                                    </CardHeaderActions>
+                                </MudCardHeader>
+
+                                <MudCollapse Expanded="@IsExpanded(index)">
+                                    <MudCardContent Class="pt-0">
+                                        <MudStack Spacing="3">
+                                            <!-- Description -->
+                                            <MudPaper Class="pa-3" Elevation="0" Style="background-color: var(--mud-palette-background-grey);">
+                                                <MudMarkdown Value="@rule.Description" />
+                                            </MudPaper>
+
+                                            @if (rule.TestInfo != null)
+                                            {
+                                                <!-- Test Information -->
+                                                <MudStack Spacing="2">
+                                                    <MudText Typo="Typo.subtitle1" Style="font-weight: 600;">
+                                                        <MudIcon Icon="@Icons.Material.Filled.Science" Class="mr-2" />
+                                                        Test Information
+                                                    </MudText>
+
+                                                    <MudGrid Spacing="2">
+                                                        <MudItem xs="12" md="6">
+                                                            <MudPaper Class="pa-3" Elevation="1">
+                                                                <MudText Typo="Typo.body2" Color="Color.Secondary">Test Class</MudText>
+                                                                <MudText Typo="Typo.body1" Style="font-family: monospace;">@rule.TestInfo.TestClassName</MudText>
+                                                            </MudPaper>
+                                                        </MudItem>
+                                                        <MudItem xs="12" md="6">
+                                                            <MudPaper Class="pa-3" Elevation="1">
+                                                                <MudText Typo="Typo.body2" Color="Color.Secondary">Assembly</MudText>
+                                                                <MudText Typo="Typo.body1" Style="font-family: monospace;">@rule.TestInfo.TestAssemblyName</MudText>
+                                                            </MudPaper>
+                                                        </MudItem>
+                                                    </MudGrid>
+
+                                                    <!-- Test Examples -->
+                                                    @if (rule.SuccessExamples.Any() || rule.FailureExamples.Any() || rule.EdgeCaseExamples.Any())
+                                                    {
+                                                        <MudStack Spacing="3">
+                                                            <MudText Typo="Typo.subtitle1" Style="font-weight: 600;">
+                                                                <MudIcon Icon="@Icons.Material.Filled.TableChart" Class="mr-2" />
+                                                                Test Examples
+                                                            </MudText>
+
+                                                            @if (rule.SuccessExamples.Any())
+                                                            {
+                                                                <MudPaper Class="pa-4" Elevation="1" Style="border-left: 4px solid var(--mud-palette-success);">
+                                                                    <MudStack Spacing="2">
+                                                                        <MudText Typo="Typo.subtitle2" Color="Color.Success" Style="font-weight: 600;">
+                                                                            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small" Class="mr-1" />
+                                                                            Success Examples (@rule.SuccessExamples.Count())
+                                                                        </MudText>
+                                                                        @foreach (var example in rule.SuccessExamples)
+                                                                        {
+                                                                            <MudPaper Class="pa-3" Elevation="0" Style="background-color: rgba(var(--mud-palette-success-rgb), 0.05);">
+                                                                                <MudMarkdown Value="@example" />
+                                                                            </MudPaper>
+                                                                        }
+                                                                    </MudStack>
+                                                                </MudPaper>
+                                                            }
+
+                                                            @if (rule.FailureExamples.Any())
+                                                            {
+                                                                <MudPaper Class="pa-4" Elevation="1" Style="border-left: 4px solid var(--mud-palette-error);">
+                                                                    <MudStack Spacing="2">
+                                                                        <MudText Typo="Typo.subtitle2" Color="Color.Error" Style="font-weight: 600;">
+                                                                            <MudIcon Icon="@Icons.Material.Filled.Cancel" Size="Size.Small" Class="mr-1" />
+                                                                            Failure Examples (@rule.FailureExamples.Count())
+                                                                        </MudText>
+                                                                        @foreach (var example in rule.FailureExamples)
+                                                                        {
+                                                                            <MudPaper Class="pa-3" Elevation="0" Style="background-color: rgba(var(--mud-palette-error-rgb), 0.05);">
+                                                                                <MudMarkdown Value="@example" />
+                                                                            </MudPaper>
+                                                                        }
+                                                                    </MudStack>
+                                                                </MudPaper>
+                                                            }
+
+                                                            @if (rule.EdgeCaseExamples.Any())
+                                                            {
+                                                                <MudPaper Class="pa-4" Elevation="1" Style="border-left: 4px solid var(--mud-palette-warning);">
+                                                                    <MudStack Spacing="2">
+                                                                        <MudText Typo="Typo.subtitle2" Color="Color.Warning" Style="font-weight: 600;">
+                                                                            <MudIcon Icon="@Icons.Material.Filled.BugReport" Size="Size.Small" Class="mr-1" />
+                                                                            Edge Case Examples (@rule.EdgeCaseExamples.Count())
+                                                                        </MudText>
+                                                                        @foreach (var example in rule.EdgeCaseExamples)
+                                                                        {
+                                                                            <MudPaper Class="pa-3" Elevation="0" Style="background-color: rgba(var(--mud-palette-warning-rgb), 0.05);">
+                                                                                <MudMarkdown Value="@example" />
+                                                                            </MudPaper>
+                                                                        }
+                                                                    </MudStack>
+                                                                </MudPaper>
+                                                            }
+                                                        </MudStack>
+                                                    }
+                                                </MudStack>
+                                            }
+                                        </MudStack>
+                                    </MudCardContent>
+                                </MudCollapse>
+                            </MudCard>
+                        }
+                    </MudStack>
+                }
+                else
+                {
+                    <MudPaper Class="pa-8 text-center" Elevation="0" Style="background-color: var(--mud-palette-background-grey);">
+                        <MudIcon Icon="@Icons.Material.Filled.RuleFolder" Size="Size.Large" Color="Color.Secondary" Class="mb-4" />
+                        <MudText Typo="Typo.h6" Color="Color.Secondary" Class="mb-2">No Rules Found</MudText>
+                        <MudText Typo="Typo.body1" Color="Color.Secondary">
+                            No validation rules are currently defined for this data point.
+                        </MudText>
+                    </MudPaper>
+                }
+            }
+        </MudContainer>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Color="Color.Primary"
+                  Variant="Variant.Filled"
+                  OnClick="Close"
+                  StartIcon="@Icons.Material.Filled.Close"
+                  Size="Size.Large">
+            Close
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+<style>
+    .rule-card {
+        transition: all 0.3s ease;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .rule-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+
+    .mud-card-header {
+        background-color: rgba(var(--mud-palette-primary-rgb), 0.03);
+    }
+</style>
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+
+    [Parameter] public FinancialTechnicalDataPoint DataPoint { get; set; }
+
+    private List<RuleInfo> rules;
+    private string documentation;
+    private bool loading = true;
+    private string error;
+    private HashSet<int> expandedRules = new HashSet<int>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRules();
+    }
+
+    private async Task LoadRules()
+    {
+        loading = true;
+        error = null;
+
+        try
+        {
+            var result = await MindApi.SearchFinancialRulesAsync(DataPoint);
+
+            if (result.Data != null)
+            {
+                documentation = result.Data.MarkdownDocumentation;
+
+                if (result.Data.RulesByDataPoint.TryGetValue(DataPoint, out var dataPointRules))
+                {
+                    rules = dataPointRules;
+                }
+                else
+                {
+                    rules = new List<RuleInfo>();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            error = $"Error loading rules: {ex.Message}";
+            Snackbar.Add(error, Severity.Error);
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private void Close() => MudDialog.Close();
+
+    private bool IsExpanded(int index) => expandedRules.Contains(index);
+
+    private string GetId(int index) => $"expand-{index}";
+
+    private void ToggleExpansion(int index)
+    {
+        if (expandedRules.Contains(index))
+            expandedRules.Remove(index);
+        else
+            expandedRules.Add(index);
+    }
+}

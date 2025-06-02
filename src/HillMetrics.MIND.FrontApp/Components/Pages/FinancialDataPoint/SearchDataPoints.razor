@@ -1,14 +1,19 @@
 @page "/financial-data/search"
-@using HillMetrics.MIND.API.Contracts.Requests.AiDataset
-@using HillMetrics.Core.Search
 @using HillMetrics.Core.Financial
+@using HillMetrics.Core.Financial.DataPoint
+@using HillMetrics.Core.Search
+@using HillMetrics.MIND.API.Contracts.Requests.AiDataset
 @using HillMetrics.MIND.API.Contracts.Responses.AiDataset
 @using HillMetrics.MIND.API.SDK.V1
 @using HillMetrics.Normalized.Domain.Contracts.AI.Dataset
+@using HillMetrics.Normalized.Domain.Contracts.Market.Cqrs.Rule
+@using HillMetrics.Core.Rules
+@using HillMetrics.MIND.FrontApp.Services
 @inject IMindAPI MindApi
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
+@inject MappingExportService MappingExportService;
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
     <MudGrid>
@@ -33,14 +38,14 @@
                     <!-- Name -->
                     <MudItem xs="12" md="4">
                         <MudTextField @bind-Value="searchRequest.Name"
-                                     Label="Data Point Name"
-                                     Variant="Variant.Outlined"
-                                     Placeholder="Search by name..."
-                                     Immediate="true"
-                                     DebounceInterval="500"
-                                     OnDebounceIntervalElapsed="Search"
-                                     Adornment="Adornment.Start"
-                                     AdornmentIcon="@Icons.Material.Filled.Search"/>
+                        Label="Data Point Name"
+                        Variant="Variant.Outlined"
+                        Placeholder="Search by name..."
+                        Immediate="true"
+                        DebounceInterval="500"
+                        OnDebounceIntervalElapsed="Search"
+                        Adornment="Adornment.Start"
+                        AdornmentIcon="@Icons.Material.Filled.Search" />
                     </MudItem>
 
                     <!-- Financial Type -->
@@ -78,6 +83,14 @@
             <ToolBarContent>
                 <MudText Typo="Typo.h6" Class="ml-2">Data Points List</MudText>
                 <MudSpacer />
+                <MudButton Variant="Variant.Outlined"
+                Color="Color.Primary"
+                StartIcon="@Icons.Material.Filled.Download"
+                OnClick="ShowExportDialog"
+                Class="mr-2"
+                Size="Size.Small">
+                    Export by Type
+                </MudButton>
                 <MudTextField @bind-Value="searchString" Placeholder="Search"
                 Adornment="Adornment.Start"
                 AdornmentIcon="@Icons.Material.Filled.Search"
@@ -104,9 +117,9 @@
                 <MudTd DataLabel="Elements Count">
                     @if (context.Elements?.Any() == true)
                     {
-                        <MudButton Size="Size.Small" 
-                                  OnClick="@(() => ToggleElementsExpanded(context))"
-                                  StartIcon="@(IsExpanded(context) ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)">
+                        <MudButton Size="Size.Small"
+                        OnClick="@(() => ToggleElementsExpanded(context))"
+                        StartIcon="@(IsExpanded(context) ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)">
                             @context.ElementsCount
                         </MudButton>
                     }
@@ -132,9 +145,9 @@
                     <MudTr>
                         <MudTd colspan="6">
                             <MudTable Items="@GetSortedElements(context.Elements)"
-                                     Hover="true" Dense="true" Class="ml-6"
-                                     T="FinancialDataPointElement"
-                                     Context="elementContext">
+                            Hover="true" Dense="true" Class="ml-6"
+                            T="FinancialDataPointElement"
+                            Context="elementContext">
                                 <HeaderContent>
                                     <MudTh>Position</MudTh>
                                     <MudTh>Name</MudTh>
@@ -143,6 +156,7 @@
                                     <MudTh>Type</MudTh>
                                     <MudTh>Description</MudTh>
                                     <MudTh>Commentary</MudTh>
+                                    <MudTh>Rules</MudTh>
                                 </HeaderContent>
                                 <RowTemplate>
                                     <MudTd DataLabel="Position">@(elementContext.Position?.ToString() ?? "N/A")</MudTd>
@@ -152,6 +166,32 @@
                                     <MudTd DataLabel="Type">@elementContext.MappingPrimitiveValue</MudTd>
                                     <MudTd DataLabel="Description">@elementContext.Description</MudTd>
                                     <MudTd DataLabel="Description">@elementContext.Commentary</MudTd>
+                                    <MudTd DataLabel="Rules">
+                                        @if (elementContext.FinancialTechnicalDataPoint != null)
+                                        {
+                                            var technicalDataPoint = elementContext.FinancialTechnicalDataPoint;
+                                            var rulesCount = GetRulesCountForDataPoint(technicalDataPoint);
+                                            string typo = rulesCount == 1 ? "rule" : "rules";
+
+                                            @if (rulesCount > 0)
+                                            {
+                                                <MudButton Variant="Variant.Text"
+                                                Color="Color.Primary"
+                                                Size="Size.Small"
+                                                OnClick="@(() => ShowRulesDetails(technicalDataPoint))">
+                                                    @rulesCount @typo
+                                                </MudButton>
+                                            }
+                                            else
+                                            {
+                                                <MudText>No rules</MudText>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <MudText>N/A</MudText>
+                                        }
+                                    </MudTd>
                                 </RowTemplate>
                             </MudTable>
                         </MudTd>
@@ -178,13 +218,16 @@
     private TableState tableState;
     private HashSet<FinancialDataPointSearchResponse> _expandedItems = new();
 
+    // Dictionary to cache rules for each data point
+    private Dictionary<FinancialTechnicalDataPoint, List<RuleInfo>> _rulesCache = new();
+
     [Parameter]
     [SupplyParameterFromQuery(Name = "dataPointId")]
     public int? DataPointIdParameter { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
-        await Search();
+        // await Search();
     }
 
     private IEnumerable<FinancialDataPointElement> GetSortedElements(IEnumerable<FinancialDataPointElement> elements)
@@ -208,38 +251,38 @@
         {
             ApplySearchCriteria();
             searchRequest.Pagination = new Pagination(state.PageSize, state.Page + 1);
-            
+
             // Gestion du tri
             if (!string.IsNullOrEmpty(state.SortLabel))
             {
-                var sortDirection = state.SortDirection == MudBlazor.SortDirection.Ascending 
-                    ? Core.Search.SortDirection.Asc 
+                var sortDirection = state.SortDirection == MudBlazor.SortDirection.Ascending
+                    ? Core.Search.SortDirection.Asc
                     : Core.Search.SortDirection.Desc;
-                    
+
                 searchRequest.Sorting = new Sorting(state.SortLabel, sortDirection);
             }
             else
             {
-                // Tri par défaut
+                // Tri par dÃ©faut
                 searchRequest.Sorting = new Sorting("Name", Core.Search.SortDirection.Desc);
             }
 
             var response = await MindApi.SearchFinancialDataPointsAsync(searchRequest);
 
             return new TableData<FinancialDataPointSearchResponse>
-            {
-                Items = response.Data,
-                TotalItems = (int)response.TotalRecords
-            };
+                {
+                    Items = response.Data,
+                    TotalItems = (int)response.TotalRecords
+                };
         }
         catch (Exception ex)
         {
             Snackbar.Add($"Error searching data points: {ex.Message}", Severity.Error);
             return new TableData<FinancialDataPointSearchResponse>
-            {
-                Items = new List<FinancialDataPointSearchResponse>(),
-                TotalItems = 0
-            };
+                {
+                    Items = new List<FinancialDataPointSearchResponse>(),
+                    TotalItems = 0
+                };
         }
         finally
         {
@@ -256,10 +299,10 @@
     private async Task Search()
     {
         await ServerReload(tableState ?? new TableState
-        {
-            Page = 0,
-            PageSize = 10
-        }, CancellationToken.None);
+            {
+                Page = 0,
+                PageSize = 10
+            }, CancellationToken.None);
     }
 
     private async Task Reset()
@@ -321,5 +364,72 @@
             _expandedItems.Remove(item);
         else
             _expandedItems.Add(item);
+    }
+
+    private int GetRulesCountForDataPoint(FinancialTechnicalDataPoint? dataPoint)
+    {
+        if (dataPoint == null)
+            return 0;
+
+        if (_rulesCache.TryGetValue(dataPoint.Value, out var rules))
+            return rules.Count;
+
+        // If not in cache, we'll load it asynchronously
+        _ = LoadRulesForDataPoint(dataPoint.Value);
+        return 0;
+    }
+
+    private async Task LoadRulesForDataPoint(FinancialTechnicalDataPoint dataPoint)
+    {
+        try
+        {
+            var result = await MindApi.SearchFinancialRulesAsync(dataPoint);
+
+            if (result.Data != null && result.Data.RulesByDataPoint.TryGetValue(dataPoint, out var rules))
+            {
+                _rulesCache[dataPoint] = rules;
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading rules: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task ShowRulesDetails(FinancialTechnicalDataPoint? dataPoint)
+    {
+        if (dataPoint.HasValue)
+        {
+            var parameters = new DialogParameters
+                {
+                    ["DataPoint"] = dataPoint.Value
+                };
+
+            var options = new DialogOptions
+                {
+                    CloseButton = true,
+                    MaxWidth = MaxWidth.Large,
+                    FullWidth = true,
+                    Position = DialogPosition.Center
+                };
+
+            var dialog = await DialogService.ShowAsync<DataPointRules>("Financial Rules", parameters, options);
+            await dialog.Result;
+        }
+    }
+
+    private async Task ShowExportDialog()
+    {
+        var options = new DialogOptions
+        {
+            CloseButton = true,
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true,
+            Position = DialogPosition.Center
+        };
+
+        var dialog = await DialogService.ShowAsync<ExportDataPointsDialog>("Export Data Points", options);
+        await dialog.Result;
     }
 }

@@ -21,6 +21,9 @@ resources:
   - repository: Audit
     type: git
     name: HM/HillMetrics.Audit
+  - repository: Mcp
+    type: git
+    name: HM/HillMetrics.MCP
 
 variables:
   dockerRegistryServiceConnection: 'hillm-stage-acr'
@@ -48,9 +51,9 @@ stages:
   #    - checkout: FinancialData
   #      fetchDepth: 0
   #    - checkout: Orchestrator
-  #      fetchDepth: 0 
+  #      fetchDepth: 0
   #    - checkout: Audit
-  #      fetchDepth: 0 
+  #      fetchDepth: 0
   #
   #    - task: SonarCloudPrepare@3
   #      inputs:
@@ -65,7 +68,7 @@ stages:
   #        command: 'build'
   #        projects: '$(Build.SourcesDirectory)/$(Build.Repository.Name)/HillMetrics.MIND.sln'
   #        arguments: '--configuration=release'
-  #        
+  #
   #    - task: SonarCloudAnalyze@3
   #
   #    - task: SonarCloudPublish@3
@@ -84,6 +87,7 @@ stages:
     - checkout: FinancialData
     - checkout: Orchestrator
     - checkout: Audit
+    - checkout: Mcp
 
     - task: Docker@2
       displayName: Build and push an image to container registry

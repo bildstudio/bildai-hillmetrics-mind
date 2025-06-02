@@ -26,6 +26,7 @@ public class FluxMetadataDtoJsonConverter : JsonConverter<FluxMetadataDto>
                 nameof(FluxMetadataDownloadDto) => JsonSerializer.Deserialize<FluxMetadataDownloadDto>(root.GetRawText(), options),
                 nameof(FluxMetadataApiDto) => JsonSerializer.Deserialize<FluxMetadataApiDto>(root.GetRawText(), options),
                 nameof(FluxMetadataFileLocationDto) => JsonSerializer.Deserialize<FluxMetadataFileLocationDto>(root.GetRawText(), options),
+                nameof(FluxMetadataManualDto) => JsonSerializer.Deserialize<FluxMetadataManualDto>(root.GetRawText(), options),
                 _ => throw new JsonException($"Unknown flux metadata type: {typeValue}")
             };
         }

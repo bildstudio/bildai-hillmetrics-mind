@@ -24,6 +24,8 @@ using HillMetrics.Normalized.Domain.Contracts.Providing.Flux.Cqrs;
 using HillMetrics.Core.Workflow.Models;
 using HillMetrics.Core.Contracts;
 using HillMetrics.Core.Mediator;
+using HillMetrics.Normalized.Domain.Contracts.Market.Executor;
+using HillMetrics.Core.Rules.Abstract;
 using HillMetrics.MIND.API.Contracts.Responses.FluxDataPoints;
 using HillMetrics.MIND.API.Contracts.Requests.FluxDataPoints;
 using HillMetrics.Normalized.Domain.Contracts.FluxDataPoints;
@@ -33,11 +35,11 @@ namespace HillMetrics.MIND.API.Controllers
     [Route("api/v{v:apiVersion}/[controller]")]
     //[EnableRateLimiting("allow5000requestsPerSecond_fixed")]
     public class FluxController(
-        IHMediator mediator, 
-        IMapper mapper, 
-        IWorkflowService workflowService, 
-        ILogger<FluxController> logger, 
-        IServiceScopeFactory serviceScopeFactory, 
+        IHMediator mediator,
+        IMapper mapper,
+        IWorkflowService workflowService,
+        ILogger<FluxController> logger,
+        IServiceScopeFactory serviceScopeFactory,
         IApiRequestContext apiRequestContext) : BaseHillMetricsController(mediator)
     {
         #region Flux
@@ -408,12 +410,12 @@ namespace HillMetrics.MIND.API.Controllers
                         var scopedMediator = scope.ServiceProvider.GetRequiredService<IMediator>();
                         var scopedLogger = scope.ServiceProvider.GetRequiredService<ILogger<FluxController>>();
 
-                        var command = new ProcessElementFetchCommand()
+                        var command = new ProcessElementCommand()
                         {
                             FluxFetchingHistoryId = fluxFetchingHistoryId,
                             CalledManually = true,
                             FluxId = fluxId,
-                            WorkflowStepId = fetchStep.Value
+                            //WorkflowStepId = fetchStep.Value
                         };
                         command.Audit = requestAudit;
 
@@ -453,6 +455,102 @@ namespace HillMetrics.MIND.API.Controllers
                 return new ErrorApiActionResult(
                     new ErrorApiResponse(
                         new Core.API.Exceptions.ApiException($"Error starting asynchronous flux fetching content process: {ex.Message}"),
+                        System.Net.HttpStatusCode.InternalServerError));
+            }
+        }
+
+        /// <summary>
+        /// Upload and process a file for a manual flux
+        /// </summary>
+        /// <param name="fluxId">The flux identifier</param>
+        /// <param name="fileName">The name of the uploaded file</param>
+        /// <param name="file">The uploaded file</param>
+        /// <returns>Status indication that the operation has started</returns>
+        [HttpPost("{fluxId}/upload-manual")]
+        public async Task<ActionResult<ApiResponseBase<ProcessStartedResponse>>> FetchManualFluxAsync(
+            int fluxId, 
+            [FromForm] string fileName, 
+            IFormFile file)
+        {
+            try
+            {
+                var requestAudit = apiRequestContext.GetAudit();
+
+                // Validate inputs
+                if (file == null || file.Length == 0)
+                {
+                    return BadRequest("No file provided or file is empty");
+                }
+
+                if (string.IsNullOrWhiteSpace(fileName))
+                {
+                    fileName = file.FileName;
+                }
+
+                // Get flux details to verify it's manual
+                var fluxResult = await Mediator.Send(new FluxQuery() { FluxId = fluxId });
+                if (fluxResult.IsFailed)
+                {
+                    return new ErrorApiActionResult(fluxResult.Errors.ToApiResult());
+                }
+
+                var flux = fluxResult.Value.Flux;
+                if (flux.FluxType != FluxType.Manual)
+                {
+                    return BadRequest("This flux is not a manual flux");
+                }
+
+                // Convert IFormFile to Stream
+                using var fileStream = file.OpenReadStream();
+                using var memoryStream = new MemoryStream();
+                await fileStream.CopyToAsync(memoryStream);
+                memoryStream.Position = 0;
+
+                // Create workflow tracking
+                var workflowResult = await workflowService.StartWorkflowTrackingAsync(fluxId, WorkflowStage.Created, "Manual file upload started", FluxActionType.Initializing, fluxId);
+                var existingWorkflowId = workflowResult.Value.Item1;
+                int stepId = workflowResult.Value.Item2;
+
+                // Store in context for subsequent background operations
+                WorkflowContext.SetCurrentWorkflowId(fluxId, existingWorkflowId);
+
+                logger.LogInformation("Starting manual flux processing for flux {FluxId} with workflow {WorkflowId}",
+                    fluxId, existingWorkflowId);
+
+                // Create command with manual content
+                var command = FetchFluxCommand.CreateManual(fluxId, stepId, memoryStream, fileName);
+                command.Audit = requestAudit;
+
+                var fetchResult = await Mediator.Send(command);
+
+                if (fetchResult.IsSuccess)
+                {
+                    logger.LogInformation("Manual flux processing completed successfully for flux {FluxId}", fluxId);
+                    
+                    // Create a response with the workflow ID for tracking
+                    var response = new ProcessStartedResponse
+                    {
+                        Message = $"Manual flux upload operation completed successfully for flux {fluxId}.",
+                        FluxId = fluxId,
+                        WorkflowId = existingWorkflowId
+                    };
+
+                    return new ApiResponseBase<ProcessStartedResponse>(response);
+                }
+                else
+                {
+                    logger.LogWarning("Manual flux processing failed for flux {FluxId}: {Errors}",
+                        fluxId, string.Join(", ", fetchResult.Errors.Select(e => e.Message)));
+                    
+                    return new ErrorApiActionResult(fetchResult.Errors.ToApiResult());
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error processing manual flux upload for flux {FluxId}", fluxId);
+                return new ErrorApiActionResult(
+                    new ErrorApiResponse(
+                        new Core.API.Exceptions.ApiException($"Error processing manual flux upload: {ex.Message}"),
                         System.Net.HttpStatusCode.InternalServerError));
             }
         }
@@ -650,6 +748,102 @@ namespace HillMetrics.MIND.API.Controllers
                     new Core.API.Exceptions.ApiException($"Error deleting fetching history: {ex.Message}"),
                     System.Net.HttpStatusCode.InternalServerError));
             }
+        }
+
+        /// <summary>
+        /// Simulate the processing of a specific flux fetching history
+        /// </summary>
+        /// <param name="fetchingHistoryId">The ID of the fetching history to simulate processing</param>
+        /// <returns>Simulation result with detailed processing information</returns>
+        [HttpGet("fetching-history/{fetchingHistoryId}/simulate-process")]
+        public async Task<ActionResult<ApiResponseBase<SimulateProcessElementResponse>>> SimulateProcessElementAsync(int fetchingHistoryId)
+        {
+            try
+            {
+                var command = new SimulateProcessElementCommand
+                {
+                    FluxFetchingHistoryId = fetchingHistoryId
+                };
+
+                var result = await Mediator.Send(command);
+
+                if (result.IsFailed)
+                    return new ErrorApiActionResult(result.Errors.ToApiResult());
+
+                var response = new SimulateProcessElementResponse
+                {
+                    Status = (SimulateProcessElementResponse.SimulationStatus)result.Value.Status,
+                    FluxId = result.Value.FluxId,
+                    ProcessingTimeMs = result.Value.ProcessingTimeMs,
+                    ExtractedData = result.Value.ExtractedData != null ? MapToGlobalExecutorResponseDto(result.Value.ExtractedData) : null,
+                    CommandExecution = null //result.Value.CommandExecution != null ? MapToCommandExecutionResponseDto(result.Value.CommandExecution) : null
+                };
+
+                return new ApiResponseBase<SimulateProcessElementResponse>(response);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error simulating process for fetching history: {FetchingHistoryId}", fetchingHistoryId);
+                return new ErrorApiActionResult(new ErrorApiResponse(
+                    new Core.API.Exceptions.ApiException($"Error simulating process: {ex.Message}"),
+                    System.Net.HttpStatusCode.InternalServerError));
+            }
+        }
+
+        private static GlobalExecutorResponseDto MapToGlobalExecutorResponseDto(GlobalExecutorResult source)
+        {
+            return new GlobalExecutorResponseDto
+            {
+                Json = source.Json,
+                ExecutorResults = source.ExecutorResults.Select(MapToExecutorResponseDto).ToList()
+            };
+        }
+
+        private static ExecutorResponseDto MapToExecutorResponseDto(ExecutorResult source)
+        {
+            return new ExecutorResponseDto
+            {
+                Rows = source.Rows.Select(MapToExecutorRowResponseDto).ToList()
+            };
+        }
+
+        private static ExecutorRowResponseDto MapToExecutorRowResponseDto(ExecutorRowResult source)
+        {
+            return new ExecutorRowResponseDto
+            {
+                FinancialTechnicalDataPoint = source.FinancialTechnicalDataPoint,
+                RuleResult = MapToRuleResultDto(source.RuleResult)
+            };
+        }
+
+        private static RuleResultDto MapToRuleResultDto(IRuleResult source)
+        {
+            return new RuleResultDto
+            {
+                IsSuccess = source.IsSuccess,
+                ErrorMessage = source.ErrorMessage,
+                ValidationMessages = source.ValidationMessages.Select(vm => new ValidationMessageDto
+                {
+                    Message = vm.Message,
+                    Level = vm.Severity.ToString(),
+                    Property = vm.Code
+                }).ToList(),
+                OutputValues = source.OutputValues,
+                OriginalData = source.GetOriginalData(),
+                ProcessedData = source.GetData()
+            };
+        }
+
+        private static CommandExecutionResponseDto MapToCommandExecutionResponseDto(CommandExecutionResult source)
+        {
+            return new CommandExecutionResponseDto
+            {
+                ExecutableCommandsByFinancialId = source.ExecutableCommandsByFinancialId.ToDictionary(
+                    kvp => kvp.Key,
+                    kvp => kvp.Value.Select(cmd => cmd.ToString() ?? string.Empty).ToList()
+                ),
+                PartiallyMatchedCommands = source.PartiallyMatchedCommands.Select(cmd => cmd.ToString() ?? string.Empty).ToList()
+            };
         }
         #endregion
 

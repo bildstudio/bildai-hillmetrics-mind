@@ -4,6 +4,7 @@
 @using System.IO
 @using ExcelDataReader
 @using HillMetrics.Core.Financial
+@using HillMetrics.Core.Financial.DataPoint
 @using HillMetrics.MIND.API.Contracts.Requests.AiDataset
 @using HillMetrics.MIND.FrontApp.Components.Dataset
 @using HillMetrics.Normalized.Domain.Contracts.AI.Dataset
@@ -151,7 +152,7 @@ else
     private string customFileName = string.Empty;
     private string editedFileName = string.Empty;
 
-    private List<HillMetrics.Core.Financial.FinancialDataPoint> availableDataPoints = new();
+    private List<FinancialDataPoint> availableDataPoints = new();
     private List<FileDataMapping> dataMappings = new();
     private int nextMappingId = 1;
 

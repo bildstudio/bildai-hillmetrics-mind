@@ -59,19 +59,21 @@ namespace HillMetrics.MIND.API.Mappers
                 .Include<FluxMetadataMailDto, FluxMetadataMail>()
                 .Include<FluxMetadataDownloadDto, FluxMetadataDownload>()
                 .Include<FluxMetadataApiDto, FluxMetadataApi>()
-                .Include<FluxMetadataFileLocationDto, FluxMetadataFileLocation>();
+                .Include<FluxMetadataFileLocationDto, FluxMetadataFileLocation>()
+                .Include<FluxMetadataManualDto, FluxMetadataManual>();
 
-            //CreateMap<FluxMetadata, FluxMetadataDto>().IncludeAllDerived();
             CreateMap<FluxMetadata, FluxMetadataDto>()
                 .Include<FluxMetadataMail, FluxMetadataMailDto>()
                 .Include<FluxMetadataDownload, FluxMetadataDownloadDto>()
                 .Include<FluxMetadataApi, FluxMetadataApiDto>()
-                .Include<FluxMetadataFileLocation, FluxMetadataFileLocationDto>();
+                .Include<FluxMetadataFileLocation, FluxMetadataFileLocationDto>()
+                .Include<FluxMetadataManual, FluxMetadataManualDto>();
 
             CreateMap<FluxMetadataMail, FluxMetadataMailDto>().ReverseMap();
             CreateMap<FluxMetadataDownload, FluxMetadataDownloadDto>().ReverseMap();
             CreateMap<FluxMetadataApi, FluxMetadataApiDto>().ReverseMap();
             CreateMap<FluxMetadataFileLocation, FluxMetadataFileLocationDto>().ReverseMap();
+            CreateMap<FluxMetadataManual, FluxMetadataManualDto>().ReverseMap();
 
             CreateMap<FluxRuleSettings, FluxRuleSettingsDto>().ReverseMap();
             CreateMap<FluxMetadataCriterion, FluxMetadataCriterionDto>().ReverseMap();

@@ -143,6 +143,9 @@
                 <MudMenuItem OnClick="@(() => ForceProcess(context.Id))">
                     <MudIcon Icon="@Icons.Material.Filled.PlayArrow" Class="mr-2" Size="Size.Small" /> Force Process
                 </MudMenuItem>
+                <MudMenuItem OnClick="@(() => SimulateProcess(context.Id))">
+                    <MudIcon Icon="@Icons.Material.Filled.Science" Class="mr-2" Size="Size.Small" /> Simulate Process
+                </MudMenuItem>
             </MudMenu>
         </MudTd>
     </RowTemplate>
@@ -166,6 +169,9 @@
 
     [Parameter]
     public EventCallback<int> OnForceProcess { get; set; }
+
+    [Parameter]
+    public EventCallback<int> OnSimulateProcess { get; set; }
 
     private string searchString = "";
     private FluxFetchingSearchResponse selectedItem = null;
@@ -204,6 +210,11 @@
     private async Task ForceProcess(int fetchingHistoryId)
     {
         await OnForceProcess.InvokeAsync(fetchingHistoryId);
+    }
+
+    private async Task SimulateProcess(int fetchingHistoryId)
+    {
+        await OnSimulateProcess.InvokeAsync(fetchingHistoryId);
     }
 
     private void NavigateToProcessingHistory(int fetchingId)

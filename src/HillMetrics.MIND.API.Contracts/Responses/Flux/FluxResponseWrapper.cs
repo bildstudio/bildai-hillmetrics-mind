@@ -26,6 +26,7 @@ public class FluxResponseWrapper
     public FluxMetadataApiDto ApiMetadata { get; set; }
     public FluxMetadataDownloadDto DownloadMetadata { get; set; }
     public FluxMetadataFileLocationDto FileLocationMetadata { get; set; }
+    public FluxMetadataManualDto ManualMetadata { get; set; }
     
     // Other properties from FluxResponse
     public List<FluxIdentificationHistoryDto> FluxIdentificationHistory { get; set; } = new();

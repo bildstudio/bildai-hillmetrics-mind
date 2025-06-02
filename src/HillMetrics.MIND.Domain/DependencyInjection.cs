@@ -1,5 +1,6 @@
 ﻿using HillMetrics.Core.Mediator.Extensions;
 using HillMetrics.MIND.Domain.UseCase.Clients;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 
 namespace HillMetrics.MIND.Domain;
@@ -11,9 +12,8 @@ public static class DependencyInjection
     {
 
         builder.Services.AddMediatRAndPipelineBehaviors([typeof(CreateClientCommandHandler).Assembly]);
+
         
-
-
         return builder;
     }
 }

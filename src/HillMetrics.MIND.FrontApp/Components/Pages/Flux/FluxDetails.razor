@@ -376,6 +376,33 @@
                         </MudCardContent>
                     </MudCard>
                 }
+                @if (flux.ManualMetadata != null && flux.FluxType == FluxType.Manual)
+                {
+                    <MudCard Elevation="3" Class="mb-4">
+                        <MudCardHeader>
+                            <CardHeaderContent>
+                                <MudText Typo="Typo.h6">Manual Flux Configuration</MudText>
+                            </CardHeaderContent>
+                            <CardHeaderActions>
+                                <MudIcon Icon="@Icons.Material.Filled.TouchApp" Color="Color.Primary" />
+                            </CardHeaderActions>
+                        </MudCardHeader>
+                        <MudCardContent>
+                            <MudGrid>
+                                <MudItem xs="6">
+                                    <MudField Label="Content Type" Variant="Variant.Outlined">@flux.ManualMetadata.ContentType</MudField>
+                                </MudItem>
+
+                                @if (flux.ManualMetadata.Metadata != null && flux.ManualMetadata.Metadata.Count > 0)
+                                {
+                                    <MudItem xs="12">
+                                        <FluxMetadataDictionaryComponent MetadataDictionary="@flux.ManualMetadata.Metadata" ReadOnly="true" />
+                                    </MudItem>
+                                }
+                            </MudGrid>
+                        </MudCardContent>
+                    </MudCard>
+                }
             </MudItem>
 
             <!-- Fetching History -->
@@ -397,7 +424,8 @@
                             ServerReload="@LoadFetchingHistory"
                             ShowFluxId="false"
                             Loading="@loadingFetchingHistory"
-                            OnForceProcess="@ForceProcess" />
+                            OnForceProcess="@ForceProcessFetching"
+                            OnSimulateProcess="@SimulateProcessFetching" />
                     </MudCardContent>
                 </MudCard>
             </MudItem>
@@ -701,6 +729,38 @@
         }
     }
 
+    private async Task ForceProcessFetching(int fetchingHistoryId)
+    {
+        try
+        {
+            loading = true;
+            var result = await MindApi.ForceProcessElementFetchBackgroundAsync(FluxId, fetchingHistoryId);
+            Snackbar.Add("Force process started in the background", Severity.Success);
+            await LoadFluxData();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error starting force process: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task SimulateProcessFetching(int fetchingHistoryId)
+    {
+        try
+        {
+            // Redirect to simulation result page
+            NavigationManager.NavigateTo($"/flux/simulate-result/{fetchingHistoryId}");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error opening simulation: {ex.Message}", Severity.Error);
+        }
+    }
+
     private async Task ShowDeleteConfirmDialog()
     {
         var parameters = new DialogParameters();
@@ -783,6 +843,12 @@
             parameters.Add("Metadata", flux.FileLocationMetadata.Metadata);
             parameters.Add("Title", "SFTP Flux Metadata");
             await DialogService.ShowAsync<FluxMetadataViewDialog>("SFTP Flux Metadata", parameters, options);
+        }
+        else if (flux.FluxType == FluxType.Manual && flux.ManualMetadata?.Metadata != null)
+        {
+            parameters.Add("Metadata", flux.ManualMetadata.Metadata);
+            parameters.Add("Title", "Manual Flux Metadata");
+            await DialogService.ShowAsync<FluxMetadataViewDialog>("Manual Flux Metadata", parameters, options);
         }
         else
         {

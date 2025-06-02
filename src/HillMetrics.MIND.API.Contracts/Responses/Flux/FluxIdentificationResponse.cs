@@ -1,4 +1,4 @@
-﻿using HillMetrics.Core.Financial;
+﻿using HillMetrics.Core.Financial.DataPoint;
 using HillMetrics.Normalized.Domain.Contracts.Providing.Flux;
 using System;
 using System.Collections.Generic;

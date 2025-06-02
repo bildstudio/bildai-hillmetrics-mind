@@ -1,5 +1,6 @@
 ﻿using HillMetrics.Core.AI;
 using HillMetrics.Core.Financial;
+using HillMetrics.Core.Financial.DataPoint;
 using System;
 using System.Collections.Generic;
 using System.Linq;

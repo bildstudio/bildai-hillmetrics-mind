@@ -2,18 +2,18 @@ using HillMetrics.MIND.FrontApp.Components;
 using MudBlazor.Services;
 using MudBlazor;
 using HillMetrics.MIND.API.SDK;
+using HillMetrics.Audit.API.SDK;
 using HillMetrics.Core;
 using HillMetrics.Core.Monitoring.Logging;
 using HillMetrics.Core.Monitoring;
 using HillMetrics.Core.Http.Extensions;
 using HillMetrics.MIND.FrontApp.Services;
-using HillMetrics.Normalized.Domain.Contracts.Repository;
-using HillMetrics.Orchestrator.ServicesNames;
-using HillMetrics.Normalized.Infrastructure.Database.Repository;
 using HillMetrics.Core.Blazor.AuthModule.AuthHandler;
 using HillMetrics.Core.Blazor.AuthModule;
 using HillMetrics.MIND.FrontApp.Configs;
-
+using HillMetrics.MIND.Infrastructure.AI;
+using HillMetrics.Core.AI.Configs;
+using HillMetrics.MCP.SDK;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,24 +25,29 @@ var logger = builder.InitAndAddHillMetricsLogger(HillMetrics.Orchestrator.Servic
 builder.AddHillMetricsServiceDefaults();
 builder.Services.ConfigureHillMetricsDefaultHttpClient();
 
+// Configuration des fonctionnalités
+builder.Services.Configure<FeaturesConfig>(builder.Configuration.GetSection("Features"));
+var featuresConfig = builder.Configuration.GetSection("Features").Get<FeaturesConfig>() ?? new FeaturesConfig();
+
+// Configuration AI
+builder.Services.Configure<AiLlmConfig>(builder.Configuration.GetSection("AI"));
+
 builder.Services.AddSingleton<ISignalRNotificationService, SignalRNotificationService>();
 
+// Add MIND API SDK
 var mindApi = builder.Configuration.GetValue<string>("Services:MindApi", $"https+http://{HillMetrics.Orchestrator.ServicesNames.Services.MindAPI}");
-//var signalRApi = builder.Configuration.GetValue<string>("Services:SignalRApi", $"https+http://{HillMetrics.Orchestrator.ServicesNames.Services.SignalRService}");
-//mindApi = "https://mindapi.hillm.bildhosting.me";
-
 builder.Services.AddHillMetricsHttpClient("MindAPI", client =>
 {
     client.BaseAddress = new Uri(mindApi);
     client.Timeout = TimeSpan.FromMinutes(5);
 });
-//ServicesSettings settings = new ServicesSettings();
-//builder.Services.Configure<ServicesSettings>(builder.Configuration.GetSection("Services"));
+builder.Services.AddMindApiSDK<AuthenticationHttpHandler>(mindApi, HillMetrics.Orchestrator.ServicesNames.Services.MindFrontApp, TimeSpan.FromMinutes(5));
 
-//builder.Configuration.GetSection("Services").Bind(settings);
+// Add Audit API SDK
+var auditApi = builder.Configuration.GetValue<string>("Services:AuditApi", $"https+http://{HillMetrics.Orchestrator.ServicesNames.Services.AuditAPI}");
+builder.Services.AddAuditApiSDK<AuthenticationHttpHandler>(auditApi, HillMetrics.Orchestrator.ServicesNames.Services.MindFrontApp, TimeSpan.FromMinutes(5));
 
-
-builder.Services.Configure<ServicesSettings>(options => 
+builder.Services.Configure<ServicesSettings>(options =>
 {
     builder.Configuration.GetSection("Services").Bind(options);
     if (string.IsNullOrEmpty(options.SignalRApi))
@@ -52,9 +57,10 @@ builder.Services.Configure<ServicesSettings>(options =>
 builder.Services.AddTransient<FileUploadService>();
 builder.Services.AddTransient<MappingExportService>();
 
-builder.Services.AddHillMetricsBlazorMindCookieAuth(builder.Configuration, mindApi, "HillMetrics_MIND", "HillMetrics_MIND");
+// Add AI chat services based on configuration
+builder.Services.AddAiChatServices(featuresConfig.AiChat.Enabled, builder.Configuration);
 
-builder.Services.AddMindApiSDK<AuthenticationHttpHandler>(mindApi, HillMetrics.Orchestrator.ServicesNames.Services.MindFrontApp, TimeSpan.FromMinutes(5));
+builder.Services.AddHillMetricsBlazorMindCookieAuth(builder.Configuration, mindApi, "HillMetrics_MIND", "HillMetrics_MIND");
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
@@ -80,6 +86,8 @@ builder.Services.AddMudMarkdownServices();
 builder.Services.AddAuthorization();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddCascadingAuthenticationState();
+
+builder.Services.AddMcpFinanceClient(builder.Configuration);
 
 var app = builder.Build();
 

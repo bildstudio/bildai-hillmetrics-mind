@@ -23,19 +23,11 @@ namespace HillMetrics.MIND.Infrastructure.AI
             try
             {
                 List<ChatMessage> chatMessages = [
-                    new ChatMessage()
-                    {
-                        Text = model.PromptText,
-                        Role = ChatRole.User
-                    },
-                    new ChatMessage()
-                    {
-                        Text = $"\n #### **Input JSON to be analyzed:**: \n" +
+                    new ChatMessage(ChatRole.User, model.PromptText),
+                    new ChatMessage(ChatRole.User, $"\n #### **Input JSON to be analyzed:**: \n" +
                                     $"```json" +
                                     $"\n{model.FileContentJson}\n" +
-                                    $"```",
-                        Role = ChatRole.User
-                    }
+                                    $"```")
                 ];
 
                 var chatOptions = new ChatOptions
@@ -48,7 +40,7 @@ namespace HillMetrics.MIND.Infrastructure.AI
                 if (llmResult == null)
                     return Result.Fail("no response");
 
-                LlmProcessResponse response = new LlmProcessResponse(llmResult.Choices?.FirstOrDefault()?.Text);
+                LlmProcessResponse response = new LlmProcessResponse(llmResult.Messages?.FirstOrDefault()?.Text);
 
                 return Result.Ok(response);
             }
@@ -64,19 +56,11 @@ namespace HillMetrics.MIND.Infrastructure.AI
             try
             {
                 List<ChatMessage> chatMessages = [
-                    new ChatMessage()
-                    {
-                        Text = model.PromptText,
-                        Role = ChatRole.User
-                    },
-                    new ChatMessage()
-                    {
-                        Text = $"\n #### **Input JSON to be analyzed:**: \n" +
+                    new ChatMessage(ChatRole.User, model.PromptText),
+                    new ChatMessage(ChatRole.User, $"\n #### **Input JSON to be analyzed:**: \n" +
                                     $"```json" +
                                     $"\n{model.FileContentJson}\n" +
-                                    $"```",
-                        Role = ChatRole.User
-                    }
+                                    $"```")
                 ];
 
                 var chatOptions = new ChatOptions

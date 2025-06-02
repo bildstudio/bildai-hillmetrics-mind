@@ -1,0 +1,354 @@
+@page "/ai/chat"
+@using HillMetrics.Core.AI.Contracts
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.JSInterop
+@using Microsoft.Extensions.Options
+@using HillMetrics.MIND.FrontApp.Configs
+@using ModelContextProtocol.Client
+@using Microsoft.Extensions.AI
+@using System.Text.RegularExpressions
+@using MudBlazor
+@inject IChatService ChatService
+@inject IMcpClient McpClient;
+@inject IJSRuntime JSRuntime
+@inject IOptions<FeaturesConfig> FeaturesConfig
+@attribute [StreamRendering(true)]
+
+<PageTitle>AI Chat</PageTitle>
+
+@if (!FeaturesConfig.Value.AiChat.Enabled)
+{
+    <MudAlert Severity="Severity.Warning" Class="mb-4">
+        <MudText Typo="Typo.h6">Feature Disabled</MudText>
+        <MudText>AI chat is disabled in this environment. This feature is only available in local environment.</MudText>
+    </MudAlert>
+    return;
+}
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <!-- Header with model info and MCP tools -->
+    <MudCard Class="mb-4">
+        <MudCardContent>
+            <MudText Typo="Typo.h5" Class="mb-3">
+                <MudIcon Icon="@Icons.Material.Filled.SmartToy" Class="me-2" />
+                AI Chat - Ollama Local
+            </MudText>
+
+            <MudText Typo="Typo.body1" Class="mb-3">
+                <strong>Current Model:</strong> Ollama Local (Mistral)
+            </MudText>
+
+            @if (McpTools?.Count > 0)
+            {
+                <MudText Typo="Typo.h6" Class="mb-2">
+                    <MudIcon Icon="@Icons.Material.Filled.Build" Class="me-1" />
+                    Available MCP Tools (@McpTools.Count):
+                </MudText>
+                <MudGrid>
+                    @foreach (var tool in McpTools)
+                    {
+                        <MudItem xs="12" md="6">
+                            <MudCheckBox T="bool"
+                                         Value="@GetToolEnabled(tool.Name)"
+                                         ValueChanged="@((bool value) => ToggleTool(tool.Name, value))"
+                                         Label="@($"{tool.Name} - {tool.Description}")"
+                                         Color="Color.Primary" />
+                        </MudItem>
+                    }
+                </MudGrid>
+            }
+            else
+            {
+                <MudAlert Severity="Severity.Info" Class="mt-3">
+                    <MudText>No MCP tools available</MudText>
+                </MudAlert>
+            }
+        </MudCardContent>
+    </MudCard>
+
+    <!-- Chat messages -->
+    <MudPaper Elevation="2" Class="pa-4 mb-4" Style="max-height: 500px; overflow-y: auto;">
+        @foreach (var message in ChatMessages.Where(m => m.Role != ChatRole.System))
+        {
+            string messageContent = message?.Text ?? string.Empty;
+            string messageThink = string.Empty;
+            string messageTitle = string.Empty;
+            string functionResponse = string.Empty;
+            var functionCallId = string.Empty;
+            Color cardColor = Color.Default;
+            string iconName = string.Empty;
+
+            if (message.Role == ChatRole.User)
+            {
+                messageTitle = "You";
+                cardColor = Color.Primary;
+                iconName = Icons.Material.Filled.Person;
+            }
+            else if (message.Role == ChatRole.Assistant)
+            {
+                messageTitle = "Assistant";
+                cardColor = Color.Success;
+                iconName = Icons.Material.Filled.SmartToy;
+
+                // Handle reasoning models
+                var match = Regex.Match(messageContent, @"<think>(.*?)<\/think>(.*)", RegexOptions.Singleline);
+                if (match.Success)
+                {
+                    messageThink = match.Groups[1].Value.Trim();
+                    messageContent = match.Groups[2].Value.Trim();
+                }
+            }
+            else if (message.Role == ChatRole.Tool)
+            {
+                messageTitle = "MCP Tool";
+                messageContent = string.Empty;
+                cardColor = Color.Warning;
+                iconName = Icons.Material.Filled.Build;
+                if (message.Contents.FirstOrDefault() is FunctionResultContent functionResult)
+                {
+                    functionResponse = functionResult.Result.ToString();
+                    functionCallId = $"Call Id: {functionResult.CallId}";
+                }
+            }
+
+            if (!string.IsNullOrEmpty(messageContent) || messageTitle == "MCP Tool")
+            {
+                <MudCard Class="mb-3" Style="@(message.Role == ChatRole.User ? "margin-left: 2rem;" : "margin-right: 2rem;")">
+                    <MudCardContent>
+                        <div class="d-flex align-center mb-2">
+                            <MudIcon Icon="@iconName" Color="@cardColor" Class="me-2" />
+                            <MudText Typo="Typo.subtitle1" Color="@cardColor">
+                                <strong>@messageTitle</strong>
+                            </MudText>
+                            <MudSpacer />
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                @DateTime.Now.ToString("HH:mm")
+                            </MudText>
+                        </div>
+
+                        @if (string.IsNullOrEmpty(functionResponse))
+                        {
+                            <MudText Typo="Typo.body1">@messageContent</MudText>
+                            @if (!string.IsNullOrEmpty(messageThink))
+                            {
+                                <MudExpansionPanels Class="mt-2">
+                                    <MudExpansionPanel Text="Thinking Process">
+                                        <div class="pa-2">
+                                            <MudText Typo="Typo.body2" Style="font-family: monospace; white-space: pre-wrap;">
+                                                @messageThink
+                                            </MudText>
+                                        </div>
+                                    </MudExpansionPanel>
+                                </MudExpansionPanels>
+                            }
+                        }
+                        else
+                        {
+                            <MudExpansionPanels>
+                                <MudExpansionPanel Text="MCP Tool Result">
+                                    <div class="pa-2">
+                                        <MudText Typo="Typo.body2" Style="font-family: monospace; white-space: pre-wrap;">
+                                            @functionResponse
+                                        </MudText>
+                                        <MudText Typo="Typo.caption" Class="mt-2">
+                                            @functionCallId
+                                        </MudText>
+                                    </div>
+                                </MudExpansionPanel>
+                            </MudExpansionPanels>
+                        }
+                    </MudCardContent>
+                </MudCard>
+            }
+        }
+
+        @if (ChatMessages.Count <= 1)
+        {
+            <MudCard>
+                <MudCardContent>
+                    <div class="d-flex align-center mb-2">
+                        <MudIcon Icon="@Icons.Material.Filled.SmartToy" Color="Color.Success" Class="me-2" />
+                        <MudText Typo="Typo.subtitle1" Color="Color.Success">
+                            <strong>Welcome</strong>
+                        </MudText>
+                    </div>
+                    <MudText Typo="Typo.body1" Class="mb-2">
+                        Hello! I'm your AI assistant. Ask me a question to start the conversation.
+                    </MudText>
+                    @if (EnabledTools.Count > 0)
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            <em>Enabled tools: @string.Join(", ", EnabledTools)</em>
+                        </MudText>
+                    }
+                </MudCardContent>
+            </MudCard>
+        }
+    </MudPaper>
+
+    @if (IsLoading)
+    {
+        <div class="d-flex justify-center mb-4">
+            <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+        </div>
+    }
+
+    <!-- Chat input -->
+    <MudPaper Elevation="1" Class="pa-3">
+        <div class="d-flex gap-2">
+            <MudTextField @bind-Value="UserMessage"
+                          @onkeypress="HandleKeyPress"
+                          Placeholder="Type your message..."
+                          Variant="Variant.Outlined"
+                          Class="flex-grow-1"
+                          Disabled="@IsLoading"
+                          Lines="2"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Message" />
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Send"
+                       OnClick="SendMessage"
+                       Disabled="@(IsLoading || string.IsNullOrWhiteSpace(UserMessage))"
+                       Class="align-self-end">
+                @if (IsLoading)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                }
+                else
+                {
+                    @:Send
+                }
+            </MudButton>
+        </div>
+    </MudPaper>
+
+    @if (!string.IsNullOrEmpty(ErrorMessage))
+    {
+        <MudAlert Severity="Severity.Error" Class="mt-3" ShowCloseIcon="true" CloseIconClicked="ClearError">
+            <MudText Typo="Typo.subtitle2">Error:</MudText>
+            <MudText Typo="Typo.body2" Style="font-family: monospace;">@ErrorMessage</MudText>
+        </MudAlert>
+    }
+</MudContainer>
+
+@code {
+    private IList<McpClientTool> McpTools { get; set; } = [];
+    private HashSet<string> EnabledTools { get; set; } = new();
+    private List<ChatMessage> ChatMessages { get; set; } = new();
+    private bool IsLoading { get; set; }
+    private string UserMessage { get; set; } = string.Empty;
+    private string ErrorMessage { get; set; } = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadMcpToolsAsync();
+        InitializeChat();
+    }
+
+    private async Task LoadMcpToolsAsync()
+    {
+        try
+        {
+            McpTools = await McpClient.ListToolsAsync();
+            // By default, all tools are enabled
+            EnabledTools = new HashSet<string>(McpTools.Select(t => t.Name));
+        }
+        catch (Exception)
+        {
+            // Silent error if MCP is not accessible
+            McpTools = new List<McpClientTool>();
+            EnabledTools = new HashSet<string>();
+        }
+    }
+
+    private void InitializeChat()
+    {
+        ChatMessages = new List<ChatMessage>
+        {
+            new ChatMessage(ChatRole.System,
+                "You are a helpful assistant. You always reply using text and emojis. You never generate HTML or Markdown. You only do what the user asks you to do. If you don't have a function to answer a question, you just answer the question.")
+        };
+    }
+
+    private bool GetToolEnabled(string toolName)
+    {
+        return EnabledTools.Contains(toolName);
+    }
+
+    private void ToggleTool(string toolName, bool enabled)
+    {
+        if (enabled)
+        {
+            EnabledTools.Add(toolName);
+        }
+        else
+        {
+            EnabledTools.Remove(toolName);
+        }
+        StateHasChanged();
+    }
+
+    private void ClearError()
+    {
+        ErrorMessage = string.Empty;
+    }
+
+    private async Task HandleKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.ShiftKey && !IsLoading && !string.IsNullOrWhiteSpace(UserMessage))
+        {
+            await SendMessage();
+        }
+    }
+
+    private async Task SendMessage()
+    {
+        if (string.IsNullOrWhiteSpace(UserMessage))
+            return;
+
+        IsLoading = true;
+        ErrorMessage = string.Empty;
+
+        try
+        {
+            // Use ChatClient directly with MCP tools
+            var chatClient = ChatService.GetChatClient("mistral");
+
+            // Build client with function invocation support
+            var clientWithTools = chatClient.AsBuilder()
+                .UseFunctionInvocation()
+                .Build();
+
+            // Add new user message
+            ChatMessages.Add(new ChatMessage(ChatRole.User, UserMessage));
+            UserMessage = string.Empty;
+            StateHasChanged();
+
+            // Get only enabled tools
+            var activeMcpTools = McpTools.Where(t => EnabledTools.Contains(t.Name)).ToList();
+
+            // Get response with enabled MCP tools
+            var response = await clientWithTools.GetResponseAsync(ChatMessages, new() { Tools = [.. activeMcpTools] });
+
+            // Add all response messages
+            if (response != null)
+            {
+                ChatMessages.AddMessages(response);
+            }
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Error sending message: {ex.Message}");
+            ErrorMessage = ex.Message;
+            StateHasChanged();
+        }
+        finally
+        {
+            IsLoading = false;
+            StateHasChanged();
+        }
+    }
+}

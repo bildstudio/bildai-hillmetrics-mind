@@ -15,13 +15,33 @@
 @inject IMindAPI MindApi
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
-@inject IHttpClientFactory HttpClientFactory;
+@inject IHttpClientFactory HttpClientFactory
+@inject IDialogService DialogService
+@inject IJSRuntime JSRuntime
 
 @attribute [Authorize]
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="py-4">
     <MudPaper Elevation="3" Class="pa-4">
-        <MudText Typo="Typo.h4" Class="mb-4">@(FluxId.HasValue ? "Edit Flux" : "Create New Flux")</MudText>
+        <div class="d-flex justify-space-between align-center mb-4">
+            <MudText Typo="Typo.h4">@(FluxId.HasValue ? "Edit Flux" : "Create New Flux")</MudText>
+            <div class="d-flex gap-2">
+                <MudButton StartIcon="Icons.Material.Filled.Upload"
+                           Color="Color.Info"
+                           Variant="Variant.Outlined"
+                           OnClick="OpenImportJsonDialog"
+                           Size="Size.Small">
+                    Create from JSON
+                </MudButton>
+                <MudButton StartIcon="Icons.Material.Filled.Download"
+                           Color="Color.Secondary"
+                           Variant="Variant.Outlined"
+                           OnClick="ExportToJson"
+                           Size="Size.Small">
+                    Export JSON
+                </MudButton>
+            </div>
+        </div>
 
         @if (loading)
         {
@@ -59,6 +79,14 @@
                                                 <MudSelectItem T="int?" Value="@source.SourceId">@source.SourceName</MudSelectItem>
                                             }
                                         </MudSelect>
+                                        <MudButton StartIcon="Icons.Material.Filled.Add"
+                                                   Size="Size.Small"
+                                                   Color="Color.Secondary"
+                                                   Variant="Variant.Text"
+                                                   OnClick="OpenCreateSourceDialog"
+                                                   Class="mt-2">
+                                            Create new source
+                                        </MudButton>
                                     </MudItem>
                                     <MudItem xs="12">
                                         <MudTextField @bind-Value="fluxRequest.FluxDescription"
@@ -100,6 +128,7 @@
                                             <MudSelectItem T="FluxType?" Value="@FluxType.Sftp">SFTP</MudSelectItem>
                                             <MudSelectItem T="FluxType?" Value="@FluxType.Webhook">Webhook</MudSelectItem>
                                             <MudSelectItem T="FluxType?" Value="@FluxType.Scraping">Scraping</MudSelectItem>
+                                            <MudSelectItem T="FluxType?" Value="@FluxType.Manual">Manual</MudSelectItem>
                                         </MudSelect>
                                     </MudItem>
                                     <MudItem xs="12" md="4">
@@ -149,11 +178,15 @@
                                 <MudGrid>
                                     <MudItem xs="12" md="6">
                                         <MudText Typo="Typo.subtitle1" Class="mb-2">Fetch Schedule</MudText>
-                                        <TriggerPeriodEditor TriggerPeriod="@fetchTriggerPeriod" TriggerPeriodChanged="@(tp => { fetchTriggerPeriod = tp; StateHasChanged(); })" />
+                                        <TriggerPeriodEditor TriggerPeriod="@fetchTriggerPeriod"
+                                                           TriggerPeriodChanged="@(tp => { fetchTriggerPeriod = tp; StateHasChanged(); })"
+                                                           Disabled="@IsManualFluxType()" />
                                     </MudItem>
                                     <MudItem xs="12" md="6">
                                         <MudText Typo="Typo.subtitle1" Class="mb-2">Process Schedule</MudText>
-                                        <TriggerPeriodEditor TriggerPeriod="@processTriggerPeriod" TriggerPeriodChanged="@(tp => { processTriggerPeriod = tp; StateHasChanged(); })" />
+                                        <TriggerPeriodEditor TriggerPeriod="@processTriggerPeriod"
+                                                           TriggerPeriodChanged="@(tp => { processTriggerPeriod = tp; StateHasChanged(); })"
+                                                           Disabled="@IsManualFluxType()" />
                                     </MudItem>
                                 </MudGrid>
                             </MudCardContent>
@@ -179,6 +212,9 @@
                                     break;
                                 case FluxType.Sftp:
                                     <FluxMetadataFileLocationComponent Metadata="@fileLocationMetadata" MetadataChanged="@(md => { fileLocationMetadata = md; StateHasChanged(); })" />
+                                    break;
+                                case FluxType.Manual:
+                                    <FluxMetadataManualComponent Metadata="@manualMetadata" MetadataChanged="@(md => { manualMetadata = md; StateHasChanged(); })" />
                                     break;
                             }
                         </MudItem>
@@ -215,6 +251,7 @@
     private FluxMetadataApiDto apiMetadata = new();
     private FluxMetadataDownloadDto downloadMetadata = new();
     private FluxMetadataFileLocationDto fileLocationMetadata = new();
+    private FluxMetadataManualDto manualMetadata = new();
 
     private TriggerPeriod fetchTriggerPeriod = TriggerPeriod.CreateDailyTrigger(new TimeSpan(0, 0, 0));
     private TriggerPeriod processTriggerPeriod = TriggerPeriod.CreateDailyTrigger(new TimeSpan(1, 0, 0));
@@ -355,6 +392,16 @@
                             };
                         }
                         break;
+                    case FluxType.Manual:
+                        if (response.DownloadMetadata != null)
+                        {
+                            manualMetadata = response.ManualMetadata;
+                        }
+                        else
+                        {
+                            manualMetadata = new FluxMetadataManualDto();
+                        }
+                        break;
                 }
             }
             else
@@ -396,9 +443,25 @@
                     Metadata = new Dictionary<string, object>()
                 };
                 break;
+            case FluxType.Manual:
+                manualMetadata = new FluxMetadataManualDto
+                {
+                    ContentType = Core.Common.ContentType.Csv,
+                    Metadata = new Dictionary<string, object>()
+                };
+                // For Manual flux type, set trigger periods to Never
+                fetchTriggerPeriod = TriggerPeriod.CreateNeverTrigger();
+                processTriggerPeriod = TriggerPeriod.CreateNeverTrigger();
+                break;
         }
 
         StateHasChanged();
+    }
+
+    // Helper method to check if the current flux type is Manual
+    private bool IsManualFluxType()
+    {
+        return fluxRequest.FluxType == FluxType.Manual;
     }
 
     private TriggerPeriodDto MapToTriggerPeriodDto(TriggerPeriod triggerPeriod)
@@ -449,6 +512,9 @@
                         break;
                     case FluxType.Sftp:
                         fluxRequest.FluxMetadata = fileLocationMetadata;
+                        break;
+                    case FluxType.Manual:
+                        fluxRequest.FluxMetadata = manualMetadata;
                         break;
                 }
             }
@@ -616,6 +682,192 @@
         catch
         {
             return dateTime.Value.ToString() ?? "-";
+        }
+    }
+
+    private async Task OpenCreateSourceDialog()
+    {
+        var parameters = new DialogParameters();
+        var options = new DialogOptions()
+        {
+            CloseButton = true,
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true
+        };
+
+        var dialog = await DialogService.ShowAsync<CreateSourceDialog>("Create New Source", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled && result.Data is string sourceName)
+        {
+            await CreateNewSource(sourceName);
+        }
+    }
+
+    private async Task CreateNewSource(string sourceName)
+    {
+        try
+        {
+            var createRequest = new SourceCreateRequest
+            {
+                Name = sourceName,
+                Reliability = 1.0,
+                IsActive = true
+            };
+
+            var response = await MindApi.CreateSourceAsync(createRequest);
+
+            if (response != null && response.Data)
+            {
+                // Reload sources to get the newly created source
+                var sourcesResponse = await MindApi.SearchSourcesAsync(new SourceSearchRequest());
+                sources = sourcesResponse.Data;
+
+                // Find and select the newly created source
+                var newSource = sources.FirstOrDefault(s => s.SourceName == sourceName);
+                if (newSource != null)
+                {
+                    fluxRequest.SourceId = newSource.SourceId;
+                    StateHasChanged();
+                }
+
+                Snackbar.Add($"Source '{sourceName}' created successfully!", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add("Failed to create source.", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error creating source: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task OpenImportJsonDialog()
+    {
+        var parameters = new DialogParameters();
+        var options = new DialogOptions()
+        {
+            CloseButton = true,
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true
+        };
+
+        var dialog = await DialogService.ShowAsync<ImportJsonDialog>("Import Flux from JSON", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled && result.Data is string jsonContent)
+        {
+            await ImportFromJson(jsonContent);
+        }
+    }
+
+    private async Task ImportFromJson(string jsonContent)
+    {
+        try
+        {
+            var jsonOptions = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true,
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            };
+            jsonOptions.Converters.Add(new FluxMetadataDtoJsonConverter());
+
+            var importedFluxRequest = JsonSerializer.Deserialize<FluxRequest>(jsonContent, jsonOptions);
+
+            if (importedFluxRequest != null)
+            {
+                // Create the flux using the imported data
+                var result = await MindApi.CreateFluxAsync(importedFluxRequest);
+
+                if (result)
+                {
+                    Snackbar.Add("Flux created successfully from JSON!", Severity.Success);
+                    NavigationManager.NavigateTo("/flux/search");
+                }
+                else
+                {
+                    Snackbar.Add("Failed to create flux from JSON.", Severity.Error);
+                }
+            }
+            else
+            {
+                Snackbar.Add("Invalid JSON format.", Severity.Error);
+            }
+        }
+        catch (JsonException ex)
+        {
+            Snackbar.Add($"JSON parsing error: {ex.Message}", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error importing from JSON: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task ExportToJson()
+    {
+        try
+        {
+            // Prepare the current flux request for export
+            var exportFluxRequest = new FluxRequest
+            {
+                FluxName = fluxRequest.FluxName,
+                FluxDescription = fluxRequest.FluxDescription,
+                FluxComment = fluxRequest.FluxComment,
+                SourceId = fluxRequest.SourceId,
+                FluxType = fluxRequest.FluxType,
+                FluxFinancialType = fluxRequest.FluxFinancialType,
+                FluxState = fluxRequest.FluxState,
+                CanHaveConcurrencyMultiFetching = canHaveConcurrencyMultiFetching,
+                FetchTriggerPeriod = MapToTriggerPeriodDto(fetchTriggerPeriod),
+                ProcessTriggerPeriod = MapToTriggerPeriodDto(processTriggerPeriod)
+            };
+
+            // Set the appropriate metadata based on flux type
+            if (fluxRequest.FluxType.HasValue)
+            {
+                switch (fluxRequest.FluxType.Value)
+                {
+                    case FluxType.Email:
+                        exportFluxRequest.FluxMetadata = emailMetadata;
+                        break;
+                    case FluxType.Api:
+                    case FluxType.Webhook:
+                        exportFluxRequest.FluxMetadata = apiMetadata;
+                        break;
+                    case FluxType.HttpDownload:
+                    case FluxType.Scraping:
+                        exportFluxRequest.FluxMetadata = downloadMetadata;
+                        break;
+                    case FluxType.Sftp:
+                        exportFluxRequest.FluxMetadata = fileLocationMetadata;
+                        break;
+                    case FluxType.Manual:
+                        exportFluxRequest.FluxMetadata = manualMetadata;
+                        break;
+                }
+            }
+
+            var jsonOptions = new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                WriteIndented = true
+            };
+            jsonOptions.Converters.Add(new FluxMetadataDtoJsonConverter());
+
+            var jsonContent = JsonSerializer.Serialize(exportFluxRequest, jsonOptions);
+
+            // Download the JSON file
+            var fileName = $"flux-{fluxRequest.FluxName ?? "export"}-{DateTime.Now:yyyyMMdd-HHmmss}.json";
+            await JSRuntime.InvokeVoidAsync("downloadFile", fileName, jsonContent, "application/json");
+
+            Snackbar.Add("Flux exported to JSON successfully!", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error exporting to JSON: {ex.Message}", Severity.Error);
         }
     }
 }
