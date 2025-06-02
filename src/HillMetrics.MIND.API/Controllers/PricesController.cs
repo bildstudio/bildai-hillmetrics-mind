@@ -39,7 +39,7 @@ namespace HillMetrics.MIND.API.Controllers
         }
 
         [HttpGet("search")]
-        public async Task<ActionResult<PagedApiResponseBase<SearchPricesResponse>>> SearchPricesAsync([FromQuery] SearchPricesRequest request)
+        public async Task<ActionResult<CustomMindPagedApiResponseBase<SearchPricesResponse>>> SearchPricesAsync([FromQuery] SearchPricesRequest request)
         {
             var model = new SearchPriceEntityModel()
             {
@@ -59,7 +59,7 @@ namespace HillMetrics.MIND.API.Controllers
                 return new ErrorApiActionResult(result.Errors.ToApiResult());
 
             //return new PagedApiResponseBase<FluxSearchResponse>(mapper.Map<List<FluxSearchResponse>>(result.Value.Results), result.Value.NbTotalRows);
-            return new PagedApiResponseBase<SearchPricesResponse>(mapper.Map<List<SearchPricesResponse>>(result.Value.Data), result.Value.TotalRecords);
+            return new CustomMindPagedApiResponseBase<SearchPricesResponse>(mapper.Map<List<SearchPricesResponse>>(result.Value.Data), result.Value.TotalRecords);
         }
     }
 }

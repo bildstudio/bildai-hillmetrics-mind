@@ -1,0 +1,155 @@
+﻿@page "/document-type/create"
+@page "/document-type/edit/{Id:int?}"
+@using HillMetrics.MIND.API.Contracts.Requests.AiDataset
+@using HillMetrics.MIND.API.Contracts.Requests.AiDataset.DocumentTypes
+@using HillMetrics.MIND.API.SDK
+@using HillMetrics.Normalized.Domain.Contracts.AI.Dataset
+@using HillMetrics.MIND.API.SDK.V1
+@using HillMetrics.Core.Financial
+@inject IMindAPI MindApi
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+
+<MudText Typo="Typo.h4" Class="mb-4">@(IsEditMode ? "Edit" : "Create") Document Type</MudText>
+
+@if (isLoading)
+{
+    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+}
+else
+{
+    <MudCard Class="mb-6">
+        <MudCardContent>
+            <MudGrid>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="_documentTypeRequest.Name"
+                    Label="Document type Name"
+                    Required="true"
+                    RequiredError="Name is required" />
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudSelect T="FinancialType"
+                               @bind-Value="_documentTypeRequest.FinancialType"
+                    Label="Financial Type"
+                    Required="true"
+                    RequiredError="Financial Type is required"
+                    AnchorOrigin="Origin.BottomCenter">
+                        @foreach (var type in Enum.GetValues<FinancialType>())
+                        {
+                            <MudSelectItem Value="@type">@type</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+            </MudGrid>
+        </MudCardContent>
+    </MudCard>
+
+    <MudDivider Class="my-6" />
+
+    <MudButton OnClick="SaveDocumentType"
+    Color="Color.Primary"
+    Variant="Variant.Filled"
+    Size="Size.Large"
+    Disabled="@(!CanSave())">
+        @(IsEditMode ? "Update" : "Save") Document Type
+    </MudButton>
+}
+
+@code {
+    [Parameter]
+    public int? Id { get; set; }
+
+    private bool IsEditMode => Id.HasValue;
+
+    private SaveDocumentTypeRequest _documentTypeRequest = new()
+    {
+        Name = ""   
+    };
+
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (IsEditMode)
+        {
+            await LoadDataPoint();
+        }
+        else
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task LoadDataPoint()
+    {
+        try
+        {
+            var result = await MindApi.GetDocumentTypeAsync(Id!.Value);
+
+            _documentTypeRequest = new SaveDocumentTypeRequest
+            {
+                Name = result.Data.Name,
+                FinancialType = result.Data.FinancialType
+            };
+        }
+        catch (Refit.ApiException apiEx)
+        {
+            var hillEx = apiEx.ToHillMetricsApiException();
+
+            Snackbar.Add($"Error loading data: {hillEx.Errors[0].Message}", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading data: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private bool CanSave()
+    {
+        if (string.IsNullOrWhiteSpace(_documentTypeRequest.Name))
+            return false;
+
+        return true;
+    }
+
+    private async Task SaveDocumentType()
+    {
+        try
+        {
+            if (IsEditMode)
+            {
+                var result = await MindApi.UpdateDocumentTypeAsync(Id!.Value, _documentTypeRequest);
+                Snackbar.Add("Document Type updated successfully", Severity.Success);
+                NavigationManager.NavigateTo("/document-type/search");
+            }
+            else
+            {
+                var result = await MindApi.CreateDocumentTypeAsync(_documentTypeRequest);
+
+                if (result.Data != null)
+                {
+                    Snackbar.Add("Document Type created successfully", Severity.Success);
+                    NavigationManager.NavigateTo("/document-type/search");
+                }
+                else
+                {
+                    Snackbar.Add("Failed to create Document Type", Severity.Error);
+                }
+            }
+        }
+        catch (Refit.ApiException apiEx)
+        {
+            var hillEx = apiEx.ToHillMetricsApiException();
+
+            Snackbar.Add($"Error loading data: {hillEx.Errors[0].Message}", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error saving Document Type: {ex.Message}", Severity.Error);
+        }
+    }
+}

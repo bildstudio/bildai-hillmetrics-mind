@@ -1,8 +1,8 @@
 ﻿namespace HillMetrics.MIND.API.Contracts.Responses;
 
-public class PagedApiResponseBase<T>
+public class CustomMindPagedApiResponseBase<T>
 {
-    public PagedApiResponseBase(IEnumerable<T> data, long totalRecords)
+    public CustomMindPagedApiResponseBase(IEnumerable<T> data, long totalRecords)
     {
         Data = data;
         TotalRecords = totalRecords;

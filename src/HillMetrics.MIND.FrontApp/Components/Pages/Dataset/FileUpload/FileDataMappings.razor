@@ -133,7 +133,7 @@ else
     [Parameter]
     public string SelectedFieldName { get; set; } = string.Empty;
 
-    private HillMetrics.Normalized.Domain.Contracts.AI.Dataset.FileUpload? uploadedFile;
+    private FileUpload? uploadedFile;
     private IBrowserFile? selectedFile;
 
     private MemoryStream? streamFile;

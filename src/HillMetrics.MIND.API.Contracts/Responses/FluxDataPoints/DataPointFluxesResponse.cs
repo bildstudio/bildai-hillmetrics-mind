@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace HillMetrics.MIND.API.Contracts.Responses.FluxDataPoints
 {
-    public class ListDataPointFluxesResponse : PagedApiResponseBase<FluxDataPointDto>
+    public class ListDataPointFluxesResponse : CustomMindPagedApiResponseBase<FluxDataPointDto>
     {
         public ListDataPointFluxesResponse(IEnumerable<FluxDataPointDto> data, long totalRecords) : base(data, totalRecords)
         {

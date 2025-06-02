@@ -1,0 +1,157 @@
+﻿@page "/language/create"
+@page "/language/edit/{Id:int?}"
+@using HillMetrics.MIND.API.Contracts.Requests.AiDataset
+@using HillMetrics.MIND.API.Contracts.Requests.AiDataset.DocumentTypes
+@using HillMetrics.MIND.API.Contracts.Requests.Languages
+@using HillMetrics.MIND.API.SDK
+@using HillMetrics.Normalized.Domain.Contracts.AI.Dataset
+@using HillMetrics.MIND.API.SDK.V1
+@using HillMetrics.Core.Financial
+@using Refit
+@inject IMindAPI MindApi
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+
+<MudText Typo="Typo.h4" Class="mb-4">@(IsEditMode ? "Edit" : "Create") Language</MudText>
+
+@if (isLoading)
+{
+    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+}
+else
+{
+    <MudCard Class="mb-6">
+        <MudCardContent>
+            <MudGrid>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="_saveLanguageRequest.Name"
+                    Label="Name"
+                    Required="true"
+                    RequiredError="Name is required" />
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="_saveLanguageRequest.TwoLetterCode"
+                                  Label="TwoLetterCode "
+                                  Required="true"
+                                  RequiredError="TwoLetterCode is required" />
+                </MudItem>
+                <MudItem xs="3" md="2">
+                    <MudCheckBox @bind-Value="_saveLanguageRequest.IsActive"
+                                  Label="IsActive "
+                                  Required="false"/>
+                </MudItem>
+            </MudGrid>
+        </MudCardContent>
+    </MudCard>
+
+    <MudDivider Class="my-6" />
+
+    <MudButton OnClick="SaveLanguage"
+    Color="Color.Primary"
+    Variant="Variant.Filled"
+    Size="Size.Large"
+    Disabled="@(!CanSave())">
+        @(IsEditMode ? "Update" : "Save") Language
+    </MudButton>
+}
+
+@code {
+    [Parameter]
+    public int? Id { get; set; }
+
+    private bool IsEditMode => Id.HasValue;
+
+    private SaveLanguageRequest _saveLanguageRequest = new()
+    {
+        Name = "",
+        TwoLetterCode = ""
+    };
+
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (IsEditMode)
+        {
+            await LoadLanguage();
+        }
+        else
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task LoadLanguage()
+    {
+        try
+        {
+            var result = await MindApi.GetLanguageAsync(Id!.Value);
+
+            _saveLanguageRequest = new SaveLanguageRequest
+            {
+                Name = result.Data.Name,
+                TwoLetterCode = result.Data.TwoLetterCode,
+                IsActive = result.Data.IsActive
+            };
+        }
+        catch (ApiException apiEx)
+        {
+            var hillEx = apiEx.ToHillMetricsApiException();
+
+            Snackbar.Add($"Error loading data: {hillEx.Errors[0].Message}", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading data: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private bool CanSave()
+    {
+        if (string.IsNullOrWhiteSpace(_saveLanguageRequest.Name) || string.IsNullOrWhiteSpace(_saveLanguageRequest.TwoLetterCode))
+            return false;
+
+        return true;
+    }
+
+    private async Task SaveLanguage()
+    {
+        try
+        {
+            if (IsEditMode)
+            {
+                var result = await MindApi.UpdateLanguageAsync(Id!.Value, _saveLanguageRequest);
+                Snackbar.Add("Language updated successfully", Severity.Success);
+                NavigationManager.NavigateTo("/language/search");
+            }
+            else
+            {
+                var result = await MindApi.CreateLanguageAsync(_saveLanguageRequest);
+
+                if (result.Data != null)
+                {
+                    Snackbar.Add("Language created successfully", Severity.Success);
+                    NavigationManager.NavigateTo("/language/search");
+                }
+                else
+                {
+                    Snackbar.Add("Failed to create language", Severity.Error);
+                }
+            }
+        }
+        catch(ApiException apiEx)
+        {
+            var hillEx = apiEx.ToHillMetricsApiException();
+
+            Snackbar.Add($"Error saving Language: {hillEx.Errors[0].Message}", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error saving Language: {ex.Message}", Severity.Error);
+        }
+    }
+}

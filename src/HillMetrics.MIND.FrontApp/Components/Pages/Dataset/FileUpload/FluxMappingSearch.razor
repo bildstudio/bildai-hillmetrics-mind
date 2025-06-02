@@ -1,16 +1,16 @@
 ﻿@page "/flux-mappings/search"
-@using HillMetrics.MIND.API.Contracts.Requests.AiDataset
-@using HillMetrics.Core.Search
-@using HillMetrics.Core.Financial
-@using HillMetrics.MIND.API.Contracts.Requests.Flux
-@using HillMetrics.MIND.API.SDK.V1
-@using HillMetrics.Normalized.Domain.Contracts.AI.Dataset;
-@using HillMetrics.MIND.API.Contracts.Responses.AiDataset;
-@using HillMetrics.MIND.API.Contracts.Responses.Flux;
-@using HillMetrics.MIND.FrontApp.Services
-@using System.Text.Json
 @using System.IO
 @using System.IO.Compression
+@using System.Text.Json
+@using HillMetrics.Core.Financial
+@using HillMetrics.Core.Search
+@using HillMetrics.MIND.API.Contracts.Requests.AiDataset
+@using HillMetrics.MIND.API.Contracts.Requests.Flux
+@using HillMetrics.MIND.API.Contracts.Responses.AiDataset;
+@using HillMetrics.MIND.API.Contracts.Responses.Flux;
+@using HillMetrics.MIND.API.SDK.V1
+@using HillMetrics.MIND.FrontApp.Services
+@using HillMetrics.Normalized.Domain.Contracts.AI.Dataset;
 @inject IMindAPI MindApi
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
