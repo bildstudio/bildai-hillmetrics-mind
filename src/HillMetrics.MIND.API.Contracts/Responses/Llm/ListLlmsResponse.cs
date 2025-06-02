@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace HillMetrics.MIND.API.Contracts.Responses.Llm
 {
-    public class ListLlmsResponse : PagedApiResponseBase<AiLlmEntityDto>
+    public class ListLlmsResponse : CustomMindPagedApiResponseBase<AiLlmEntityDto>
     {
         public ListLlmsResponse(List<AiLlmEntityDto> data, int totalRecords) : base(data, totalRecords)
         {

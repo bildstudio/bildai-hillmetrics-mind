@@ -1,12 +1,19 @@
 ﻿using HillMetrics.Core.Financial;
 using HillMetrics.MIND.API.Contracts.Requests.AiDataset;
+using HillMetrics.MIND.API.Contracts.Requests.AiDataset.DocumentTypes;
+using HillMetrics.MIND.API.Contracts.Requests.AiDataset.Metadatas;
 using HillMetrics.MIND.API.Contracts.Requests.Flux;
+using HillMetrics.MIND.API.Contracts.Requests.Languages;
 using HillMetrics.MIND.API.Contracts.Requests.Prices;
 using HillMetrics.MIND.API.Contracts.Requests.Source;
 using HillMetrics.MIND.API.Contracts.Requests.TradingVenue;
 using HillMetrics.MIND.API.Contracts.Responses;
 using HillMetrics.MIND.API.Contracts.Responses.AiDataset;
+using HillMetrics.MIND.API.Contracts.Responses.AiDataset.DocumentTypes;
+using HillMetrics.MIND.API.Contracts.Responses.AiDataset.Metadatas;
+using HillMetrics.MIND.API.Contracts.Responses.Common;
 using HillMetrics.MIND.API.Contracts.Responses.Flux;
+using HillMetrics.MIND.API.Contracts.Responses.Languages;
 using HillMetrics.MIND.API.Contracts.Responses.Prices;
 using HillMetrics.MIND.API.Contracts.Responses.Source;
 using HillMetrics.MIND.API.Contracts.Responses.TradingVenue;
@@ -28,7 +35,7 @@ namespace HillMetrics.MIND.API.SDK.V1
         /// Search for fluxes following the given criteria
         /// </summary>
         [Get("/api/v1/flux/search")]
-        Task<PagedApiResponseBase<FluxSearchResponse>> SearchFluxAsync([Query] FluxSearchRequest request);
+        Task<CustomMindPagedApiResponseBase<FluxSearchResponse>> SearchFluxAsync([Query] FluxSearchRequest request);
 
         /// <summary>
         /// Get the details of a flux
@@ -127,7 +134,7 @@ namespace HillMetrics.MIND.API.SDK.V1
         /// Search for flux fetching history following the given criteria
         /// </summary>
         [Get("/api/v1/flux/fetching-history/search")]
-        Task<PagedApiResponseBase<FluxFetchingSearchResponse>> SearchFetchingHistoryAsync([Query] FluxFetchingSearchRequest request);
+        Task<CustomMindPagedApiResponseBase<FluxFetchingSearchResponse>> SearchFetchingHistoryAsync([Query] FluxFetchingSearchRequest request);
 
         /// <summary>
         /// Get the details of a specific fetching history
@@ -159,7 +166,7 @@ namespace HillMetrics.MIND.API.SDK.V1
         /// Search for flux processing history following the given criteria
         /// </summary>
         [Get("/api/v1/flux/processing-history/search")]
-        Task<PagedApiResponseBase<FluxProcessingSearchReponse>> SearchProcessingHistoryAsync([Query] FluxProcessingSearchRequest request);
+        Task<CustomMindPagedApiResponseBase<FluxProcessingSearchReponse>> SearchProcessingHistoryAsync([Query] FluxProcessingSearchRequest request);
 
         /// <summary>
         /// Get the details of a specific processing history
@@ -175,7 +182,7 @@ namespace HillMetrics.MIND.API.SDK.V1
         /// Search for flux errors history following the given criteria
         /// </summary>
         [Get("/api/v1/flux/errors/search")]
-        Task<PagedApiResponseBase<FluxErrorSearchResponse>> SearchFluxErrorsAsync([Query] FluxErrorSearchRequest request);
+        Task<CustomMindPagedApiResponseBase<FluxErrorSearchResponse>> SearchFluxErrorsAsync([Query] FluxErrorSearchRequest request);
 
         /// <summary>
         /// Get the details of a specific error
@@ -281,7 +288,7 @@ namespace HillMetrics.MIND.API.SDK.V1
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Paged list of file uploads</returns>
         [Get("/api/v1/fluxcarac/file-uploads/search")]
-        Task<PagedApiResponseBase<FileUploadSearchResponse>> SearchFileUploadsAsync(
+        Task<CustomMindPagedApiResponseBase<FileUploadSearchResponse>> SearchFileUploadsAsync(
             [Query] FileUploadSearchRequest request,
             CancellationToken cancellationToken = default);
 
@@ -352,7 +359,7 @@ namespace HillMetrics.MIND.API.SDK.V1
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Created mapping details</returns>
         [Post("/api/v1/fluxcarac/file-mapping")]
-        Task<ApiResponseBase<HillMetrics.Normalized.Domain.Contracts.AI.Dataset.FileDataMapping>> CreateFileMappingAsync(
+        Task<ApiResponseBase<FileDataMapping>> CreateFileMappingAsync(
             [Body] CreateFileMappingRequest request,
             CancellationToken cancellationToken = default);
 
@@ -363,7 +370,7 @@ namespace HillMetrics.MIND.API.SDK.V1
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Mapping details</returns>
         [Get("/api/v1/fluxcarac/file-mapping/{mappingId}")]
-        Task<ApiResponseBase<HillMetrics.Normalized.Domain.Contracts.AI.Dataset.FileDataMapping>> GetFileMappingAsync(
+        Task<ApiResponseBase<FileDataMapping>> GetFileMappingAsync(
             int mappingId,
             CancellationToken cancellationToken = default);
 
@@ -374,7 +381,7 @@ namespace HillMetrics.MIND.API.SDK.V1
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>List of mappings</returns>
         [Get("/api/v1/fluxcarac/file-mappings/by-file-upload/{fileUploadId}")]
-        Task<ApiResponseBase<List<HillMetrics.Normalized.Domain.Contracts.AI.Dataset.FileDataMapping>>> GetMappingsByFileUploadAsync(
+        Task<ApiResponseBase<List<FileDataMapping>>> GetMappingsByFileUploadAsync(
             int fileUploadId,
             CancellationToken cancellationToken = default);
 
@@ -518,7 +525,7 @@ namespace HillMetrics.MIND.API.SDK.V1
         /// Search property data types
         /// </summary>
         [Get("/api/v1/fluxcarac/property-mapping/search")]
-        Task<PagedApiResponseBase<PropertyMappingResponse>> SearchPropertyDataTypesAsync(
+        Task<CustomMindPagedApiResponseBase<PropertyMappingResponse>> SearchPropertyDataTypesAsync(
             [Query] SearchPropertyDataTypeRequest request,
             CancellationToken cancellationToken = default);
 
@@ -536,7 +543,7 @@ namespace HillMetrics.MIND.API.SDK.V1
         /// Search for prices based on criteria
         /// </summary>
         [Get("/api/v1/prices/search")]
-        Task<PagedApiResponseBase<SearchPricesResponse>> SearchPricesAsync([Query] SearchPricesRequest request);
+        Task<CustomMindPagedApiResponseBase<SearchPricesResponse>> SearchPricesAsync([Query] SearchPricesRequest request);
 
         #endregion
 
@@ -546,7 +553,7 @@ namespace HillMetrics.MIND.API.SDK.V1
         /// <param name="request">Search criteria</param>
         /// <returns>Paged list of financial data points</returns>
         [Get("/api/v1/fluxcarac/financial-data-points/search")]
-        Task<PagedApiResponseBase<FinancialDataPointSearchResponse>> SearchFinancialDataPointsAsync([Query] SearchFinancialDataPointRequest request);
+        Task<CustomMindPagedApiResponseBase<FinancialDataPointSearchResponse>> SearchFinancialDataPointsAsync([Query] SearchFinancialDataPointRequest request);
 
         #region TradingVenue
 
@@ -568,7 +575,7 @@ namespace HillMetrics.MIND.API.SDK.V1
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Paged list of trading venues</returns>
         [Get("/api/v1/tradingvenue/search")]
-        Task<PagedApiResponseBase<TradingVenueSearchResponse>> SearchTradingVenuesAsync(
+        Task<CustomMindPagedApiResponseBase<TradingVenueSearchResponse>> SearchTradingVenuesAsync(
             [Query] SearchTradingVenueRequest request,
             CancellationToken cancellationToken = default);
 
@@ -584,6 +591,138 @@ namespace HillMetrics.MIND.API.SDK.V1
             int id,
             [Body] EditTradingVenueRequest request,
             CancellationToken cancellationToken = default);
+
+        #endregion
+
+        #region Languages
+        /// <summary>
+        /// Get language by id
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        [Get("/api/v1/language/{id}")]
+        Task<GetLanguageResponse> GetLanguageAsync(int id);
+
+        /// <summary>
+        /// List all active languages
+        /// </summary>
+        /// <returns></returns>
+        [Get("/api/v1/language/list")]
+        Task<ListLanguageResponse> ListLanguagesAsync();
+
+        /// <summary>
+        /// Create a language
+        /// </summary>
+        /// <param name="request"></param>
+        /// <returns></returns>
+        [Post("/api/v1/language")]
+        Task<GetLanguageResponse> CreateLanguageAsync([Body] SaveLanguageRequest request);
+
+
+        /// <summary>
+        /// Update a language
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="request"></param>
+        /// <returns></returns>
+        [Put("/api/v1/language/{id}")]
+        Task<GetLanguageResponse> UpdateLanguageAsync(int id, [Body] SaveLanguageRequest request);
+
+        /// <summary>
+        /// Delete a language by id
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        [Delete("/api/v1/language/{id}")]
+        Task<DeletedResponse> DeleteLanguageAsync(int id);
+
+        #endregion
+
+        #region DocumentTypes
+        /// <summary>
+        /// Get language by id
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        [Get("/api/v1/document-type/{id}")]
+        Task<GetDocumentTypeResponse> GetDocumentTypeAsync(int id);
+
+        /// <summary>
+        /// List all active languages
+        /// </summary>
+        /// <returns></returns>
+        [Get("/api/v1/document-type/search")]
+        Task<ListDocumentTypesResponse> SearchDocumentTypesAsync(
+            [Query] SearchDocumentTypeRequest request);
+
+        /// <summary>
+        /// Create a language
+        /// </summary>
+        /// <param name="request"></param>
+        /// <returns></returns>
+        [Post("/api/v1/document-type")]
+        Task<GetDocumentTypeResponse> CreateDocumentTypeAsync([Body] SaveDocumentTypeRequest request);
+
+
+        /// <summary>
+        /// Update a language
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="request"></param>
+        /// <returns></returns>
+        [Put("/api/v1/document-type/{id}")]
+        Task<GetDocumentTypeResponse> UpdateDocumentTypeAsync(int id, [Body] SaveDocumentTypeRequest request);
+
+        /// <summary>
+        /// Delete a language by id
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        [Delete("/api/v1/document-type/{id}")]
+        Task<DeletedResponse> DeleteDocumentTypeAsync(int id);
+
+        #endregion
+
+        #region AI Dataset - Element Metadatas
+
+        /// <summary>
+        /// Search financial data point element metadatas 
+        /// </summary>
+        /// <param name="elementId"></param>
+        /// <param name="documentTypeId"></param>
+        /// <param name="languageCode"></param>
+        /// <param name="key"></param>
+        /// <returns></returns>
+        [Get("/api/v1/fluxcarac/financial-data-point-element/metadata/search")]
+        Task<ListMetadatasResponse> SearchElementMetadataAsync(
+            [Query] int elementId,
+            [Query] int? documentTypeId,
+            [Query] string? languageCode,
+            [Query] FinancialDataPointElementMetadataKey? key);
+
+        /// <summary>
+        /// Create financial data point element metadata
+        /// </summary>
+        /// <param name="request"></param>
+        /// <returns></returns>
+        [Post("/api/v1/fluxcarac/financial-data-point-element/metadata")]
+        Task<GetMetadataResponse> CreateElementMetadataAsync([Body] SaveMetadataRequest request);
+
+        /// <summary>
+        /// Update financial data point element metadata
+        /// </summary>
+        /// <param name="request"></param>
+        /// <returns></returns>
+        [Put("/api/v1/fluxcarac/financial-data-point-element/metadata")]
+        Task<GetMetadataResponse> UpdateElementMetadataAsync([Body] SaveMetadataRequest request);
+
+        /// <summary>
+        /// Delete financial data point element metadata
+        /// </summary>
+        /// <param name="request"></param>
+        /// <returns></returns>
+        [Delete("/api/v1/fluxcarac/financial-data-point-element/metadata")]
+        Task<DeletedResponse> DeleteElementMetadataAsync([Body] DeleteMetadataRequest request);
 
         #endregion
     }

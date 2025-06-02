@@ -1,10 +1,10 @@
-﻿using HillMetrics.Normalized.Domain.Contracts.AI.Dataset;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using HillMetrics.Core.Financial;
+using HillMetrics.Normalized.Domain.Contracts.AI.Dataset;
 
 namespace HillMetrics.MIND.API.Contracts.Requests.AiDataset
 {

@@ -1,6 +1,7 @@
 ﻿
 using HillMetrics.Core.Contracts;
 using HillMetrics.Core.Time;
+using HillMetrics.MIND.Infrastructure.Contracts.Database.Entity;
 using HillMetrics.MIND.Infrastructure.Contracts.Database.Entity.Clients;
 using HillMetrics.MIND.Infrastructure.Contracts.Database.Entity.Common;
 using HillMetrics.MIND.Infrastructure.Contracts.Database.Entity.PeerGroups;

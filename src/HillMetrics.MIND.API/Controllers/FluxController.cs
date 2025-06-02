@@ -47,14 +47,14 @@ namespace HillMetrics.MIND.API.Controllers
         /// <param name="request">Criteria search</param>
         /// <returns></returns>
         [HttpGet("search")]
-        public async Task<ActionResult<PagedApiResponseBase<FluxSearchResponse>>> SearchAsync([FromQuery] FluxSearchRequest request)
+        public async Task<ActionResult<CustomMindPagedApiResponseBase<FluxSearchResponse>>> SearchAsync([FromQuery] FluxSearchRequest request)
         {
             var result = await Mediator.Send(mapper.Map<SearchFluxQuery>(request));
 
             if (result.IsFailed)
                 return new ErrorApiActionResult(result.Errors.ToApiResult());
 
-            return new PagedApiResponseBase<FluxSearchResponse>(mapper.Map<List<FluxSearchResponse>>(result.Value.Results), result.Value.NbTotalRows);
+            return new CustomMindPagedApiResponseBase<FluxSearchResponse>(mapper.Map<List<FluxSearchResponse>>(result.Value.Results), result.Value.NbTotalRows);
         }
 
         /// <summary>
@@ -583,14 +583,14 @@ namespace HillMetrics.MIND.API.Controllers
         /// <param name="request">The search criterias</param>
         /// <returns>The flux fetching history that matched the requests filters</returns>
         [HttpGet("fetching-history/search")]
-        public async Task<ActionResult<PagedApiResponseBase<FluxFetchingSearchResponse>>> SearchFetchingHistoryAsync([FromQuery] FluxFetchingSearchRequest request)
+        public async Task<ActionResult<CustomMindPagedApiResponseBase<FluxFetchingSearchResponse>>> SearchFetchingHistoryAsync([FromQuery] FluxFetchingSearchRequest request)
         {
             var result = await Mediator.Send(mapper.Map<SearchFluxFetchingQuery>(request));
 
             if (result.IsFailed)
                 return new ErrorApiActionResult(result.Errors.ToApiResult());
 
-            return new PagedApiResponseBase<FluxFetchingSearchResponse>(mapper.Map<List<FluxFetchingSearchResponse>>(result.Value.Results), result.Value.NbTotalRows);
+            return new CustomMindPagedApiResponseBase<FluxFetchingSearchResponse>(mapper.Map<List<FluxFetchingSearchResponse>>(result.Value.Results), result.Value.NbTotalRows);
         }
 
         /// <summary>
@@ -660,14 +660,14 @@ namespace HillMetrics.MIND.API.Controllers
         /// <param name="request">The search criterias</param>
         /// <returns>The flux processing history that matched the requests filters</returns>
         [HttpGet("processing-history/search")]
-        public async Task<ActionResult<PagedApiResponseBase<FluxProcessingSearchReponse>>> SearchProcessingHistoryAsync([FromQuery] FluxProcessingSearchRequest request)
+        public async Task<ActionResult<CustomMindPagedApiResponseBase<FluxProcessingSearchReponse>>> SearchProcessingHistoryAsync([FromQuery] FluxProcessingSearchRequest request)
         {
             var result = await Mediator.Send(mapper.Map<SearchFluxProcessingFluxQuery>(request));
 
             if (result.IsFailed)
                 return new ErrorApiActionResult(result.Errors.ToApiResult());
 
-            return new PagedApiResponseBase<FluxProcessingSearchReponse>(mapper.Map<List<FluxProcessingSearchReponse>>(result.Value.Results), result.Value.NbTotalRows);
+            return new CustomMindPagedApiResponseBase<FluxProcessingSearchReponse>(mapper.Map<List<FluxProcessingSearchReponse>>(result.Value.Results), result.Value.NbTotalRows);
         }
 
         ///// <summary>
@@ -718,14 +718,14 @@ namespace HillMetrics.MIND.API.Controllers
         /// <param name="request">The search criterias</param>
         /// <returns>The flux errors history that matched the requests filters</returns>
         [HttpGet("errors/search")]
-        public async Task<ActionResult<PagedApiResponseBase<FluxErrorSearchResponse>>> SearchFluxErrorsAsync([FromQuery] FluxErrorSearchRequest request)
+        public async Task<ActionResult<CustomMindPagedApiResponseBase<FluxErrorSearchResponse>>> SearchFluxErrorsAsync([FromQuery] FluxErrorSearchRequest request)
         {
             var result = await Mediator.Send(mapper.Map<SearchFluxErrorQuery>(request));
 
             if (result.IsFailed)
                 return new ErrorApiActionResult(result.Errors.ToApiResult());
 
-            return new PagedApiResponseBase<FluxErrorSearchResponse>(mapper.Map<List<FluxErrorSearchResponse>>(result.Value.Results), result.Value.NbTotalRows);
+            return new CustomMindPagedApiResponseBase<FluxErrorSearchResponse>(mapper.Map<List<FluxErrorSearchResponse>>(result.Value.Results), result.Value.NbTotalRows);
         }
 
         /// <summary>

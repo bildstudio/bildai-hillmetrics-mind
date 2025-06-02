@@ -2,7 +2,6 @@ using HillMetrics.MIND.API.SDK.V1;
 using System.Text.Json;
 using System.Text;
 using Microsoft.JSInterop;
-using HillMetrics.Normalized.Domain.Contracts.AI.Dataset;
 using System.IO;
 using System.IO.Compression;
 using HillMetrics.MIND.API.Contracts.Requests.AiDataset;
@@ -10,6 +9,7 @@ using HillMetrics.MIND.API.Contracts.Responses.AiDataset;
 using HillMetrics.Core.Search;
 using System.Text.RegularExpressions;
 using HillMetrics.Core.Financial;
+using HillMetrics.Normalized.Domain.Contracts.AI.Dataset;
 
 namespace HillMetrics.MIND.FrontApp.Services
 {

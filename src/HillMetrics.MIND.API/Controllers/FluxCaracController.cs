@@ -4,16 +4,21 @@ using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using HillMetrics.Normalized.Domain.Contracts.AI.Dataset.Cqrs.ElementValue;
 using HillMetrics.Normalized.Domain.Contracts.AI.Dataset.Cqrs.FileDataMapping;
-using HillMetrics.Normalized.Domain.Contracts.AI.Dataset.Cqrs.FileUpload;
-using HillMetrics.Normalized.Domain.Contracts.AI.Dataset.Cqrs.FinancialDataPoint;
 using HillMetrics.Normalized.Domain.Contracts.AI.Dataset;
 using HillMetrics.MIND.API.Contracts.Responses;
 using HillMetrics.MIND.API.Contracts.Requests.AiDataset;
 using HillMetrics.Core.Financial;
 using Microsoft.AspNetCore.Authorization;
 using HillMetrics.MIND.API.Contracts.Responses.AiDataset;
-using HillMetrics.Normalized.Domain.Contracts.AI.Dataset.Cqrs.PropertyDataType;
 using HillMetrics.Core.Mediator;
+using HillMetrics.Normalized.Domain.Contracts.AI.Dataset.Cqrs.FileUpload;
+using HillMetrics.Normalized.Domain.Contracts.AI.Dataset.Cqrs.FinancialDataPoint;
+using HillMetrics.Normalized.Domain.Contracts.AI.Dataset.Cqrs.PropertyDataType;
+using HillMetrics.MIND.API.Contracts.Responses.AiDataset.Metadatas;
+using HillMetrics.Normalized.Domain.Contracts.AI.Dataset.FinancialDataPointMetadatas;
+using HillMetrics.MIND.API.Mappers;
+using HillMetrics.MIND.API.Contracts.Requests.AiDataset.Metadatas;
+using HillMetrics.MIND.API.Contracts.Responses.Common;
 
 namespace HillMetrics.MIND.API.Controllers;
 
@@ -22,7 +27,7 @@ public class FluxCaracController(IHMediator mediator, IMapper mapper, ILogger<Fl
 {
     #region FileUpload
     [HttpGet("file-uploads/search")]
-    public async Task<ActionResult<PagedApiResponseBase<FileUploadSearchResponse>>> SearchFileUpload(
+    public async Task<ActionResult<CustomMindPagedApiResponseBase<FileUploadSearchResponse>>> SearchFileUpload(
     [FromQuery] FileUploadSearchRequest request,
     CancellationToken cancellationToken)
     {
@@ -35,7 +40,7 @@ public class FluxCaracController(IHMediator mediator, IMapper mapper, ILogger<Fl
         if (result.IsFailed)
             return new ErrorApiActionResult(result.Errors.ToApiResult());
 
-        return new PagedApiResponseBase<FileUploadSearchResponse>(
+        return new CustomMindPagedApiResponseBase<FileUploadSearchResponse>(
             mapper.Map<List<FileUploadSearchResponse>>(result.Value.Results),
             result.Value.TotalRecords);
     }
@@ -230,7 +235,7 @@ public class FluxCaracController(IHMediator mediator, IMapper mapper, ILogger<Fl
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Mapping details</returns>
     [HttpGet("file-mapping/{mappingId}")]
-    public async Task<ActionResult<ApiResponseBase<HillMetrics.Normalized.Domain.Contracts.AI.Dataset.FileDataMapping>>> GetFileMapping(
+    public async Task<ActionResult<ApiResponseBase<FileDataMapping>>> GetFileMapping(
         int mappingId,
         CancellationToken cancellationToken)
     {
@@ -241,7 +246,7 @@ public class FluxCaracController(IHMediator mediator, IMapper mapper, ILogger<Fl
         if (result.IsFailed)
             return new ErrorApiActionResult(result.Errors.ToApiResult());
 
-        return new ApiResponseBase<HillMetrics.Normalized.Domain.Contracts.AI.Dataset.FileDataMapping>(result.Value);
+        return new ApiResponseBase<FileDataMapping>(result.Value);
     }
 
     /// <summary>
@@ -251,7 +256,7 @@ public class FluxCaracController(IHMediator mediator, IMapper mapper, ILogger<Fl
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>List of mappings</returns>
     [HttpGet("file-mappings/by-file-upload/{fileUploadId}")]
-    public async Task<ActionResult<ApiResponseBase<List<HillMetrics.Normalized.Domain.Contracts.AI.Dataset.FileDataMapping>>>> GetMappingsByFileUpload(
+    public async Task<ActionResult<ApiResponseBase<List<FileDataMapping>>>> GetMappingsByFileUpload(
         int fileUploadId,
         CancellationToken cancellationToken)
     {
@@ -262,7 +267,7 @@ public class FluxCaracController(IHMediator mediator, IMapper mapper, ILogger<Fl
         if (result.IsFailed)
             return new ErrorApiActionResult(result.Errors.ToApiResult());
 
-        return new ApiResponseBase<List<HillMetrics.Normalized.Domain.Contracts.AI.Dataset.FileDataMapping>>(result.Value);
+        return new ApiResponseBase<List<FileDataMapping>>(result.Value);
     }
 
     /// <summary>
@@ -492,7 +497,7 @@ public class FluxCaracController(IHMediator mediator, IMapper mapper, ILogger<Fl
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Paged list of financial data points</returns>
     [HttpGet("financial-data-points/search")]
-    public async Task<ActionResult<PagedApiResponseBase<FinancialDataPointSearchResponse>>> SearchFinancialDataPoints(
+    public async Task<ActionResult<CustomMindPagedApiResponseBase<FinancialDataPointSearchResponse>>> SearchFinancialDataPoints(
         [FromQuery] SearchFinancialDataPointRequest request,
         CancellationToken cancellationToken)
     {
@@ -505,7 +510,7 @@ public class FluxCaracController(IHMediator mediator, IMapper mapper, ILogger<Fl
         if (result.IsFailed)
             return new ErrorApiActionResult(result.Errors.ToApiResult());
 
-        return new PagedApiResponseBase<FinancialDataPointSearchResponse>(
+        return new CustomMindPagedApiResponseBase<FinancialDataPointSearchResponse>(
             mapper.Map<List<FinancialDataPointSearchResponse>>(result.Value.Results),
             result.Value.TotalRecords);
     }
@@ -513,6 +518,67 @@ public class FluxCaracController(IHMediator mediator, IMapper mapper, ILogger<Fl
     #endregion
 
     #region FinancialDataPointElement
+
+    //search
+    [HttpGet("financial-data-point-element/metadata/search")]
+    public async Task<ActionResult<ListMetadatasResponse>> ListAsync(
+        [FromQuery] int elementId, 
+        [FromQuery] int? documentTypeId,
+        [FromQuery] int? languaged,
+        [FromQuery] FinancialDataPointElementMetadataKey? key)
+    {
+        var query = new SearchMetadataQuery(elementId, documentTypeId, languaged, key);
+
+        var result = await mediator.Send(query);
+        if (result.IsFailed)
+            return new ErrorApiActionResult(result.Errors.ToApiResult());
+
+        List<FinancialDataPointElementMetadataDto> dtos = result.Value.FromDomainsList();
+        return new ListMetadatasResponse(dtos, dtos.Count);
+    }
+    //post
+    [HttpPost("financial-data-point-element/metadata")]
+    public async Task<ActionResult<GetMetadataResponse>> CreateAsync([FromBody] SaveMetadataRequest request)
+    {
+        var command = new CreateMetadataCommand(
+            new MetadataModel(request.FinancialDataPointElementId, request.DocumentTypeId, request.LanguageId, request.Values));
+
+        var result = await mediator.Send(command);
+        if (result.IsFailed)
+            return new ErrorApiActionResult(result.Errors.ToApiResult());
+
+        FinancialDataPointElementMetadataDto dto = result.Value.FromDomain();
+        return new GetMetadataResponse(dto);
+    }
+
+    [HttpPut("financial-data-point-element/metadata")]
+    public async Task<ActionResult<GetMetadataResponse>> UpdateAsync([FromBody] SaveMetadataRequest request)
+    {
+        var command = new UpdateMetadataCommand(
+            new MetadataModel(request.FinancialDataPointElementId, request.DocumentTypeId, request.LanguageId, request.Values));
+
+        var result = await mediator.Send(command);
+        if (result.IsFailed)
+            return new ErrorApiActionResult(result.Errors.ToApiResult());
+
+        FinancialDataPointElementMetadataDto dto = result.Value.FromDomain();
+        return new GetMetadataResponse(dto);
+    }
+
+    //delete
+    [HttpDelete("financial-data-point-element/metadata")]
+    public async Task<ActionResult<DeletedResponse>> DeleteAsync([FromBody] DeleteMetadataRequest request)
+    {
+        var command = new DeleteMetadataCommand(request.FinancialDataPointElementId, request.DocumentTypeId, request.LanguageId, request.KeysToDelete);
+
+        var result = await mediator.Send(command);
+        if (result.IsFailed)
+            return new ErrorApiActionResult(result.Errors.ToApiResult());
+
+        return new DeletedResponse("Metadata deleted.");
+    }
+
+
     #endregion
 
     #region PropertyDataType
@@ -619,7 +685,7 @@ public class FluxCaracController(IHMediator mediator, IMapper mapper, ILogger<Fl
     /// 
     [Authorize]
     [HttpGet("property-mapping/search")]
-    public async Task<ActionResult<PagedApiResponseBase<PropertyMappingResponse>>> SearchPropertyDataTypes(
+    public async Task<ActionResult<CustomMindPagedApiResponseBase<PropertyMappingResponse>>> SearchPropertyDataTypes(
         [FromQuery] SearchPropertyDataTypeRequest request,
         CancellationToken cancellationToken)
     {
@@ -631,7 +697,7 @@ public class FluxCaracController(IHMediator mediator, IMapper mapper, ILogger<Fl
         if (result.IsFailed)
             return new ErrorApiActionResult(result.Errors.ToApiResult());
 
-        var res = new PagedApiResponseBase<PropertyMappingResponse>(
+        var res = new CustomMindPagedApiResponseBase<PropertyMappingResponse>(
             mapper.Map<List<PropertyMappingResponse>>(result.Value.Results),
             result.Value.TotalRecords);
 

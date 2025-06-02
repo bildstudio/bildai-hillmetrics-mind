@@ -1,13 +1,13 @@
 ﻿@page "/file-data-mapping"
 @page "/file-data-mapping/file/{FileUploadId:int}/{AlreadyMapped:bool?}"
 @page "/file-data-mapping/flux/{FluxFetchingHistoryContentId:int}/{AlreadyMapped:bool?}"
+@using System.IO
 @using ExcelDataReader
 @using HillMetrics.Core.Financial
 @using HillMetrics.MIND.API.Contracts.Requests.AiDataset
 @using HillMetrics.MIND.FrontApp.Components.Dataset
 @using HillMetrics.Normalized.Domain.Contracts.AI.Dataset
 @using Microsoft.EntityFrameworkCore
-@using System.IO
 @using Refit
 @inject FileUploadService FileUploadService
 @inject ISnackbar Snackbar
@@ -132,7 +132,7 @@ else
     [Parameter]
     public string SelectedFieldName { get; set; } = string.Empty;
 
-    private HillMetrics.Normalized.Domain.Contracts.AI.Dataset.FileUpload? uploadedFile;
+    private FileUpload? uploadedFile;
     private IBrowserFile? selectedFile;
 
     private MemoryStream? streamFile;

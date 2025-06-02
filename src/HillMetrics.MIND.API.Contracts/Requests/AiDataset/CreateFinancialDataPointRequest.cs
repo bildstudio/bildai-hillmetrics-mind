@@ -33,4 +33,6 @@ public class FinancialDataPointElementRequest
     public string Commentary { get; set; } = string.Empty;
 
     public FinancialTechnicalDataPoint? FinancialTechnicalDataPoint { get; set; }
+
+    public List<HillMetrics.Core.Financial.FinancialDataPointElementMetadata> Metadatas { get; set; } = [];
 }

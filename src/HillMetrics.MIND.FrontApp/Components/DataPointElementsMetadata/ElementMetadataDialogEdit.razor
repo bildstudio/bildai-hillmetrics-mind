@@ -1,0 +1,170 @@
+﻿@using HillMetrics.Core.Financial
+@using HillMetrics.MIND.API.SDK
+@inject ISnackbar Snackbar
+@inject IMindAPI MindApi
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Class="mr-3 mb-n1" />
+            @Action
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudGrid>
+            <MudItem xs="12">
+                <MudCard Elevation="0" Outlined="true">
+                    <MudCardContent>
+                        <MudGrid>
+                            @if (isInitialized)
+                            {
+                                <MudItem xs="12" md="6">
+                                    <MudSelect T="int" @bind-Value="Context.Metadata.DocumentTypeId"
+                                               Label="Document type"
+                                               Required="true"
+                                               RequiredError="Document type is required"
+                                               Variant="Variant.Outlined">
+                                        <MudSelectItem T="int" Value="0">Select</MudSelectItem>
+                                        @foreach (var docType in Context.DocumentTypesDictionary)
+                                        {
+                                            <MudSelectItem T="int" Value="@docType.Key">@docType.Value</MudSelectItem>
+                                        }
+                                    </MudSelect>
+                                </MudItem>
+                                <MudItem xs="12" md="6">
+                                    <MudSelect T="int" @bind-Value="Context.Metadata.LanguageId"
+                                               Label="Language"
+                                               Required="true"
+                                               RequiredError="Language is required"
+                                               Variant="Variant.Outlined">
+                                        <MudSelectItem T="int" Value="0">Select</MudSelectItem>
+                                        @foreach (var language in Context.LanguagesDictionary)
+                                        {
+                                            <MudSelectItem T="int" Value="@language.Key">@language.Value</MudSelectItem>
+                                        }
+                                    </MudSelect>
+                                </MudItem>
+                                <MudItem xs="12">
+                                    <MudTextField @bind-Value="Context.Metadata.Values[FinancialDataPointElementMetadataKey.Question]"
+                                                  Label="Question"
+                                                  Lines="5"
+                                                  Variant="Variant.Outlined" 
+                                                  />
+                                </MudItem>
+                                <MudItem xs="12">
+                                    <MudTextField @bind-Value="Context.Metadata.Values[FinancialDataPointElementMetadataKey.Context]"
+                                                  Label="Context"
+                                                  Lines="5"
+                                                  Variant="Variant.Outlined" />
+                                </MudItem>
+                            }
+
+                        </MudGrid>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+        </MudGrid>
+
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        @if(Action != UserActions.View)
+        {
+            <MudButton Color="Color.Primary" Disabled="@SaveDisabled" OnClick="Save">Save</MudButton>            
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+
+        [CascadingParameter]
+        public MudDialogInstance DialogInstance { get; set; }
+
+        [Parameter]
+
+        public ElementMetadataDialogEditContext Context { get; set; }
+
+        [Parameter]
+    public UserActions Action { get; set; }
+
+    private bool isInitialized = false;
+
+    protected override void OnParametersSet()
+    {
+        if (Context != null && Context.LanguagesDictionary != null && Context.LanguagesDictionary.Count > 0
+        && Context.DocumentTypesDictionary != null && Context.DocumentTypesDictionary.Count > 0)
+            isInitialized = true;
+    }
+
+    private void Cancel() => DialogInstance.Cancel();
+
+    private bool SaveDisabled => !(Context != null && Context.Metadata != null && Context.Metadata.LanguageId > 0 && Context.Metadata.DocumentTypeId > 0);
+
+    private async Task Save()
+    {
+        try
+        {
+            if (Action == UserActions.View)
+                DialogInstance.Close(DialogResult.Ok(true));
+
+            if (Action == UserActions.Create)
+            {
+                var result = await MindApi.CreateElementMetadataAsync(new API.Contracts.Requests.AiDataset.Metadatas.SaveMetadataRequest()
+                {
+                    DocumentTypeId = Context.Metadata.DocumentTypeId,
+                    FinancialDataPointElementId = Context.Metadata.ElementId,
+                    LanguageId = Context.Metadata.LanguageId,
+                    Values = Context.Metadata.Values
+                });
+
+                Snackbar.Add("Metadata created.", Severity.Info);
+                DialogInstance.Close(DialogResult.Ok(new FinancialDataPointElementMetadata()
+                {
+                    DocumentTypeId = result.Data.DocumentTypeId,
+                    ElementId = result.Data.ElementId,
+                    LanguageId = result.Data.LanguageId,
+                    Values = result.Data.Values
+                }));
+            }
+            else if (Action == UserActions.Update)
+            {
+                var result = await MindApi.UpdateElementMetadataAsync(new API.Contracts.Requests.AiDataset.Metadatas.SaveMetadataRequest()
+                {
+                    DocumentTypeId = Context.Metadata.DocumentTypeId,
+                    FinancialDataPointElementId = Context.Metadata.ElementId,
+                    LanguageId = Context.Metadata.LanguageId,
+                    Values = Context.Metadata.Values
+                });
+
+                Snackbar.Add("Metadata updated.", Severity.Info);
+
+                DialogInstance.Close(DialogResult.Ok(new FinancialDataPointElementMetadata()
+                {
+                    DocumentTypeId = result.Data.DocumentTypeId,
+                    ElementId = result.Data.ElementId,
+                    LanguageId = result.Data.LanguageId,
+                    Values = result.Data.Values
+                }));
+            }
+
+            DialogInstance.Close(DialogResult.Ok(true));
+        }
+        catch (Refit.ApiException apiEx)
+        {
+            var hillEx = apiEx.ToHillMetricsApiException();
+
+            Snackbar.Add($"Error saving metadata: {hillEx.Errors[0].Message}", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error saving metadata: {ex.Message}", Severity.Error);
+        }
+    }
+
+    public class ElementMetadataDialogEditContext
+    {
+        public FinancialDataPointElementMetadata Metadata { get; set; }
+        public Dictionary<int, string> LanguagesDictionary { get; set; } = new Dictionary<int, string>();
+        public Dictionary<int, string> DocumentTypesDictionary { get; set; } = new Dictionary<int, string>();
+    }
+}

@@ -1,12 +1,17 @@
 ﻿@page "/financial-data/create"
 @page "/financial-data/edit/{Id:int?}"
 @using HillMetrics.MIND.API.Contracts.Requests.AiDataset
+@using HillMetrics.MIND.API.Contracts.Responses.AiDataset.DocumentTypes
+@using HillMetrics.MIND.API.Contracts.Responses.Languages
+@using HillMetrics.MIND.API.SDK
+@using HillMetrics.MIND.FrontApp.Components.DataPointElementsMetadata
 @using HillMetrics.Normalized.Domain.Contracts.AI.Dataset
 @using HillMetrics.MIND.API.SDK.V1
 @using HillMetrics.Core.Financial
 @inject IMindAPI MindApi
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
+@inject IDialogService DialogService
 
 <MudText Typo="Typo.h4" Class="mb-4">@(IsEditMode ? "Edit" : "Create") Financial Data Point</MudText>
 
@@ -21,17 +26,17 @@ else
             <MudGrid>
                 <MudItem xs="12" md="6">
                     <MudTextField @bind-Value="dataPoint.Name"
-                    Label="Data Point Name"
-                    Required="true"
-                    RequiredError="Name is required" />
+                                  Label="Data Point Name"
+                                  Required="true"
+                                  RequiredError="Name is required" />
                 </MudItem>
                 <MudItem xs="12" md="6">
                     <MudSelect T="FinancialType"
-                    @bind-Value="dataPoint.FinancialType"
-                    Label="Financial Type"
-                    Required="true"
-                    RequiredError="Financial Type is required"
-                    AnchorOrigin="Origin.BottomCenter">
+                               @bind-Value="dataPoint.FinancialType"
+                               Label="Financial Type"
+                               Required="true"
+                               RequiredError="Financial Type is required"
+                               AnchorOrigin="Origin.BottomCenter">
                         @foreach (var type in Enum.GetValues<FinancialType>())
                         {
                             <MudSelectItem Value="@type">@type</MudSelectItem>
@@ -40,9 +45,9 @@ else
                 </MudItem>
                 <MudItem xs="12" md="6">
                     <MudTextField @bind-Value="dataPoint.Description"
-                    Label="Description"
-                    Lines="3"
-                    Variant="Variant.Outlined" />
+                                  Label="Description"
+                                  Lines="3"
+                                  Variant="Variant.Outlined" />
                 </MudItem>
             </MudGrid>
         </MudCardContent>
@@ -58,14 +63,14 @@ else
 
     <MudPaper Class="pa-4 mb-4">
         <MudDropContainer T="FinancialDataPointElementRequest"
-        @ref="containerRef"
-        ApplyDropClassesOnDragStarted="true"
-        Items="dataPoint.Elements"
-        ItemsSelector="@((item, dropzone) => dropzone == @DropZoneName)"
-        ItemDropped="ItemDropped"
-        DragClass="drag-item"
-        DropClass="drop-zone-active"
-        Class="d-flex flex-column gap-4">
+                          @ref="containerRef"
+                          ApplyDropClassesOnDragStarted="true"
+                          Items="dataPoint.Elements"
+                          ItemsSelector="@((item, dropzone) => dropzone == @DropZoneName)"
+                          ItemDropped="ItemDropped"
+                          DragClass="drag-item"
+                          DropClass="drop-zone-active"
+                          Class="d-flex flex-column gap-4">
             <ChildContent>
                 @if (dataPoint.Elements.Count == 0)
                 {
@@ -93,8 +98,8 @@ else
                         </CardHeaderContent>
                         <CardHeaderActions>
                             <MudIconButton Icon="@Icons.Material.Filled.DragIndicator"
-                            Size="Size.Small"
-                            Class="drag-indicator" />
+                                           Size="Size.Small"
+                                           Class="drag-indicator" />
                         </CardHeaderActions>
                     </MudCardHeader>
                     <MudCardContent>
@@ -116,11 +121,11 @@ else
                                     </MudItem>
                                     <MudItem xs="12" sm="4" md="3">
                                         <MudSelect T="MappingTypePrimitive"
-                                                  @bind-Value="context.MappingPrimitiveValue"
-                                                  Label="Data Type"
-                                                  Required="true"
-                                                  Margin="Margin.Dense"
-                                                  AnchorOrigin="Origin.BottomCenter">
+                                                   @bind-Value="context.MappingPrimitiveValue"
+                                                   Label="Data Type"
+                                                   Required="true"
+                                                   Margin="Margin.Dense"
+                                                   AnchorOrigin="Origin.BottomCenter">
                                             @foreach (var type in Enum.GetValues<MappingTypePrimitive>())
                                             {
                                                 <MudSelectItem Value="@type">@type</MudSelectItem>
@@ -129,10 +134,10 @@ else
                                     </MudItem>
                                     <MudItem xs="12" sm="4" md="3">
                                         <MudSelect T="FinancialTechnicalDataPoint?"
-                                                  @bind-Value="context.FinancialTechnicalDataPoint"
-                                                  Label="Technical Type"
-                                                  Margin="Margin.Dense"
-                                                  AnchorOrigin="Origin.BottomCenter">
+                                                   @bind-Value="context.FinancialTechnicalDataPoint"
+                                                   Label="Technical Type"
+                                                   Margin="Margin.Dense"
+                                                   AnchorOrigin="Origin.BottomCenter">
                                             <MudSelectItem Value="@((FinancialTechnicalDataPoint?)null)">None</MudSelectItem>
                                             @foreach (var type in Enum.GetValues<FinancialTechnicalDataPoint>())
                                             {
@@ -161,13 +166,59 @@ else
                                     </MudItem>
                                 </MudGrid>
                             </MudTabPanel>
+                            <MudTabPanel Text="Metadata" Icon="@Icons.Material.Filled.Translate" Disabled="metadataEditDisabled">
+                                <MudGrid Spacing="1">
+                                    <MudItem xs="12">
+                                        <MudTable @ref="metadataTableRef" Items="@context.Metadatas" T="Core.Financial.FinancialDataPointElementMetadata"
+                                                  Hover="true" Breakpoint="Breakpoint.Sm" Context="elementMetadata" LoadingProgressColor="Color.Info">
+                                            <HeaderContent>
+                                                <MudTh>Language</MudTh>
+                                                <MudTh>Document Type</MudTh>
+                                                <MudTh>Context</MudTh>
+                                                <MudTh>Question</MudTh>
+                                                <MudTh>Actions</MudTh>
+                                            </HeaderContent>
+                                            <RowTemplate>
+                                                <MudTd>@GetLanguageName(@elementMetadata.LanguageId)</MudTd>
+                                                <MudTd>@GetDocumentTypeName(@elementMetadata.DocumentTypeId)</MudTd>
+                                                <MudTd>@elementMetadata.Values[FinancialDataPointElementMetadataKey.Context]</MudTd>
+                                                <MudTd>@elementMetadata.Values[FinancialDataPointElementMetadataKey.Question]</MudTd>
+                                                <MudTd DataLabel="Actions">
+                                                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true">
+                                                        <MudMenuItem OnClick="@((e) => ShowElementMetadataDialog(elementMetadata, UserActions.View, context))">
+                                                            <MudIcon Icon="@Icons.Material.Filled.Details" Class="mr-2" Size="Size.Small" /> View
+                                                        </MudMenuItem>
+                                                        <MudMenuItem OnClick="@((e) => ShowElementMetadataDialog(elementMetadata, UserActions.Update, context))">
+                                                            <MudIcon Icon="@Icons.Material.Filled.Edit" Class="mr-2" Size="Size.Small" /> Edit
+                                                        </MudMenuItem>
+                                                        <MudMenuItem OnClick="@((e) => DeleteElementMetadataAsync(elementMetadata, context))">
+                                                            <MudIcon Icon="@Icons.Material.Filled.Delete" Class="mr-2" Size="Size.Small" Color="Color.Error" /> Delete
+                                                        </MudMenuItem>
+                                                    </MudMenu>
+                                                </MudTd>
+                                            </RowTemplate>
+                                            <NoRecordsContent>
+                                                <MudAlert Severity="Severity.Info" Class="my-2">No metadatas created yet.</MudAlert>
+                                            </NoRecordsContent>
+                                            <FooterContent>
+                                                <MudButton OnClick="@((e) => ShowElementMetadataDialog(new FinancialDataPointElementMetadata() { ElementId = context.Id }, UserActions.Create, context))"
+                                                           Color="Color.Primary"
+                                                           StartIcon="@Icons.Material.Filled.Create"
+                                                           Size="Size.Small">
+                                                    Create metadata
+                                                </MudButton>
+                                            </FooterContent>
+                                        </MudTable>
+                                    </MudItem>
+                                </MudGrid>
+                            </MudTabPanel>
                         </MudTabs>
                     </MudCardContent>
                     <MudCardActions>
                         <MudButton OnClick="() => RemoveElement(context)"
-                        Color="Color.Error"
-                        StartIcon="@Icons.Material.Filled.Delete"
-                        Size="Size.Small">
+                                   Color="Color.Error"
+                                   StartIcon="@Icons.Material.Filled.Delete"
+                                   Size="Size.Small">
                             Remove Element
                         </MudButton>
                     </MudCardActions>
@@ -177,20 +228,20 @@ else
     </MudPaper>
 
     <MudButton OnClick="AddElement"
-    Color="Color.Primary"
-    Variant="Variant.Outlined"
-    StartIcon="@Icons.Material.Filled.Add"
-    Class="mb-4 mt-4">
+               Color="Color.Primary"
+               Variant="Variant.Outlined"
+               StartIcon="@Icons.Material.Filled.Add"
+               Class="mb-4 mt-4">
         Add Element
     </MudButton>
 
     <MudDivider Class="my-6" />
 
     <MudButton OnClick="SaveDataPoint"
-    Color="Color.Primary"
-    Variant="Variant.Filled"
-    Size="Size.Large"
-    Disabled="@(!CanSave())">
+               Color="Color.Primary"
+               Variant="Variant.Filled"
+               Size="Size.Large"
+               Disabled="@(!CanSave())">
         @(IsEditMode ? "Update" : "Save") Data Point
     </MudButton>
 }
@@ -204,6 +255,17 @@ else
     private bool IsEditMode => Id.HasValue;
     private CreateFinancialDataPointRequest dataPoint = new();
     private bool isLoading = true;
+    private bool metadataEditDisabled = true;
+    private FinancialType? targetFinancialType;
+    private List<LanguageDto> languages;
+    public Dictionary<int, string> languagesDictionary { get; set; } = new Dictionary<int, string>();
+    public List<DocumentTypeDto> documentTypes { get; set; }
+    public Dictionary<int, string> documentTypesDictionary { get; set; } = new Dictionary<int, string>();
+
+    private MudTable<FinancialDataPointElementMetadata> metadataTableRef;
+
+
+    private Core.Financial.FinancialDataPointElementMetadata elementMetadata = new Core.Financial.FinancialDataPointElementMetadata();
 
     protected override async Task OnInitializedAsync()
     {
@@ -224,22 +286,27 @@ else
             var result = await MindApi.GetFinancialDataPointAsync(Id!.Value);
 
             dataPoint = new CreateFinancialDataPointRequest()
+            {
+                Description = result.Data.Description,
+                Elements = result.Data.Elements.Select(e => new FinancialDataPointElementRequest
                 {
-                    Description = result.Data.Description,
-                    Elements = result.Data.Elements.Select(e => new FinancialDataPointElementRequest
-                    {
-                        Id = e.Id,
-                        FinancialDataPointId = e.FinancialDataPointId,
-                        PropertyName = e.PropertyName,
-                        Description = e.Description,
-                        PotentialValues = e.PotentialValues.ToList(),
-                        Position = e.Position,
-                        MappingPrimitiveValue = e.MappingPrimitiveValue
-                    }).ToList(),
-                    FinancialType = result.Data.FinancialType,
-                    Id = result.Data.Id,
-                    Name = result.Data.Name
-                };
+                    Id = e.Id,
+                    FinancialDataPointId = e.FinancialDataPointId,
+                    PropertyName = e.PropertyName,
+                    Description = e.Description,
+                    PotentialValues = e.PotentialValues.ToList(),
+                    Position = e.Position,
+                    MappingPrimitiveValue = e.MappingPrimitiveValue,
+                    Metadatas = e.Metadatas
+                }).ToList(),
+                FinancialType = result.Data.FinancialType,
+                Id = result.Data.Id,
+                Name = result.Data.Name
+            };
+
+
+            targetFinancialType = result.Data.FinancialType;
+            _ = LoadDataAsync();
         }
         catch (Exception ex)
         {
@@ -251,14 +318,66 @@ else
         }
     }
 
+    private string GetLanguageName(int id)
+    {
+        languagesDictionary.TryGetValue(id, out string value);
+        return value;
+    }
+
+    private string GetDocumentTypeName(int id)
+    {
+        documentTypesDictionary.TryGetValue(id, out string value);
+        return value;
+    }
+
+    private async Task LoadDataAsync()
+    {
+        try
+        {
+            var languagesResponse = await MindApi.ListLanguagesAsync();
+
+            languages = languagesResponse.Data.ToList();
+
+            foreach (var language in languages.Where(s => s.IsActive))
+            {
+                languagesDictionary.TryAdd(language.Id, language.Name);
+            }
+
+            var documentTypesResponse = await MindApi.SearchDocumentTypesAsync(new API.Contracts.Requests.AiDataset.DocumentTypes.SearchDocumentTypeRequest
+            {
+                FinancialType = targetFinancialType,
+                Pagination = Pagination.New(1, 50)
+            });
+
+            documentTypes = documentTypesResponse.Data.ToList();
+            foreach (var documentType in documentTypes)
+            {
+                documentTypesDictionary.TryAdd(documentType.Id, documentType.Name);
+            }
+
+            metadataEditDisabled = false;
+        }
+        catch (Refit.ApiException apiEx)
+        {
+            var hillEx = apiEx.ToHillMetricsApiException();
+
+            Snackbar.Add($"Error saving Language: {hillEx.Errors[0].Message}", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+
+            Snackbar.Add($"Error loading data: {ex.Message}", Severity.Error);
+        }
+    }
+
     private void AddElement()
     {
         int nextPosition = dataPoint.Elements.Count > 0 ? dataPoint.Elements.Max(e => e.Position ?? 0) + 1 : 1;
         dataPoint.Elements.Add(new FinancialDataPointElementRequest
-            {
-                Position = nextPosition,
-                MappingPrimitiveValue = MappingTypePrimitive.String // Valeur par défaut
-            });
+        {
+            Position = nextPosition,
+            MappingPrimitiveValue = MappingTypePrimitive.String // Valeur par défaut
+        });
 
         containerRef.Refresh();
         StateHasChanged();
@@ -341,42 +460,130 @@ else
             Snackbar.Add($"Error saving data point: {ex.Message}", Severity.Error);
         }
     }
+
+    private async Task ShowElementMetadataDialog(Core.Financial.FinancialDataPointElementMetadata elementMetadata, UserActions action, FinancialDataPointElementRequest context)
+    {
+        try
+        {
+            var dialogParams = new DialogParameters<ElementMetadataDialogEdit>();
+            dialogParams.Add(s => s.Context, new ElementMetadataDialogEdit.ElementMetadataDialogEditContext
+            {
+                Metadata = elementMetadata,
+                LanguagesDictionary = languagesDictionary,
+                DocumentTypesDictionary = documentTypesDictionary
+            });
+
+            dialogParams.Add(s => s.Action, action);
+
+            var dialogOptions = new DialogOptions
+            {
+                BackdropClick = false,
+                MaxWidth = MaxWidth.ExtraLarge,
+                Position = DialogPosition.Center
+            };
+
+
+            IDialogReference dialog = await DialogService.ShowAsync<ElementMetadataDialogEdit>($"{action} metadata", dialogParams, dialogOptions);
+            DialogResult? result = await dialog.Result;
+
+            if (result != null && !result.Canceled)
+            {
+                var metadata = result.Data as FinancialDataPointElementMetadata;
+                if(metadata != null && action == UserActions.Create)
+                {
+                    //append new item
+                    context.Metadatas.Add(metadata);
+                }
+
+            }
+
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error while processing: {action}: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task DeleteElementMetadataAsync(Core.Financial.FinancialDataPointElementMetadata elementMetadata, FinancialDataPointElementRequest context)
+    {
+        try
+        {
+            bool? dialog = await DialogService.ShowMessageBox(
+            "Confirm Deletion",
+                    "Are you sure you want to delete this metadata? This action cannot be undone.",
+                    yesText: "Delete",
+                    cancelText: "Cancel"
+                );
+
+            if (dialog != true)
+                return;
+
+
+            await MindApi.DeleteElementMetadataAsync(new API.Contracts.Requests.AiDataset.Metadatas.DeleteMetadataRequest()
+            {
+                DocumentTypeId = elementMetadata.DocumentTypeId,
+                FinancialDataPointElementId = elementMetadata.ElementId,
+                KeysToDelete = [FinancialDataPointElementMetadataKey.Question, FinancialDataPointElementMetadataKey.Context],
+                LanguageId = elementMetadata.LanguageId
+            });
+
+            context.Metadatas.Remove(elementMetadata);
+            
+            if(metadataTableRef != null)
+                await metadataTableRef.ReloadServerData();
+
+            Snackbar.Add("Metadata removed.", Severity.Info);
+
+            containerRef.Refresh();
+            StateHasChanged();
+        }
+        catch (Refit.ApiException apiEx)
+        {
+            var hillEx = apiEx.ToHillMetricsApiException();
+
+            Snackbar.Add($"Error deleting metadata: {hillEx.Errors[0].Message}", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error deleting metadata: {ex.Message}", Severity.Error);
+        }
+    }
 }
 
 <style>
     .mud-drop-item-draghandle {
         cursor: move;
     }
-    
+
     .drag-indicator {
         cursor: move;
     }
-    
+
     .element-card {
         border: 1px solid #e0e0e0;
         transition: all 0.3s ease;
         margin-bottom: 8px;
     }
-    
-    .element-card:hover {
-        border-color: var(--mud-palette-primary);
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    }
-    
+
+        .element-card:hover {
+            border-color: var(--mud-palette-primary);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
     .drag-item {
         opacity: 0.7;
         transform: scale(1.02);
         box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2) !important;
         border: 2px dashed var(--mud-palette-primary) !important;
     }
-    
+
     .drop-zone {
         min-height: 80px;
         border: 2px dashed transparent;
         transition: all 0.3s ease;
         padding: 4px;
     }
-    
+
     .drop-zone-active {
         border: 2px dashed var(--mud-palette-primary);
         background-color: rgba(var(--mud-palette-primary-rgb), 0.05);

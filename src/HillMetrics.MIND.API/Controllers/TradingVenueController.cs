@@ -58,7 +58,7 @@ namespace HillMetrics.MIND.API.Controllers
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Paged list of trading venues</returns>
         [HttpGet("search")]
-        public async Task<ActionResult<PagedApiResponseBase<TradingVenueSearchResponse>>> SearchTradingVenues(
+        public async Task<ActionResult<CustomMindPagedApiResponseBase<TradingVenueSearchResponse>>> SearchTradingVenues(
             [FromQuery] SearchTradingVenueRequest request,
             CancellationToken cancellationToken)
         {
@@ -72,7 +72,7 @@ namespace HillMetrics.MIND.API.Controllers
                 return new ErrorApiActionResult(result.Errors.ToApiResult());
 
             var responses = result.Value.TradingVenues.Select(MapTradingVenueToSearchResponse).ToList();
-            var response = new PagedApiResponseBase<TradingVenueSearchResponse>(responses, result.Value.TotalCount);
+            var response = new CustomMindPagedApiResponseBase<TradingVenueSearchResponse>(responses, result.Value.TotalCount);
 
             // Add country alerts to the response
             response.CountriesWithMultipleMainVenues = result.Value.CountriesWithMultipleMainVenues;
