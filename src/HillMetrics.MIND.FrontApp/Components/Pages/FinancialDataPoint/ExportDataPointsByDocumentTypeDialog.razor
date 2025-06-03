@@ -117,14 +117,12 @@
                                                 <HeaderContent>
                                                     <MudTh>Property Name</MudTh>
                                                     <MudTh>External Name</MudTh>
-                                                    <MudTh>Position</MudTh>
                                                     <MudTh>Type</MudTh>
                                                     <MudTh>Metadata</MudTh>
                                                 </HeaderContent>
                                                 <RowTemplate>
                                                     <MudTd>@context.PropertyName</MudTd>
                                                     <MudTd>@context.ExternalName</MudTd>
-                                                    <MudTd>@context.Position</MudTd>
                                                     <MudTd>@context.MappingPrimitiveValue</MudTd>
                                                     <MudTd>
                                                         @if (context.MetadataByLanguage?.Any() == true)
