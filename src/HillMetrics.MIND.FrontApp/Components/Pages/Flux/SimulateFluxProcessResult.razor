@@ -12,7 +12,10 @@
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
     <MudGrid>
         <MudItem xs="12">
-            <MudText Typo="Typo.h4" Class="mb-4">Simulation Results</MudText>
+            <MudText Typo="Typo.h4" Class="mb-4">
+                <MudIcon Icon="@Icons.Material.Filled.Science" Class="mr-2" />
+                Flux Simulation Results
+            </MudText>
         </MudItem>
     </MudGrid>
 
@@ -22,39 +25,228 @@
     }
     else if (simulationResult != null)
     {
-        <!-- Summary Information -->
+        <!-- Status and Basic Information -->
         <MudCard Class="mb-4">
             <MudCardContent>
                 <MudGrid>
-                    <MudItem xs="12" md="3">
+                    <MudItem xs="12" md="2">
                         <MudText Typo="Typo.h6">Status</MudText>
-                        <MudChip T="Color" Color="@GetStatusColor(simulationResult.Status)" Size="Size.Small">
+                        <MudChip T="Color" Color="@GetStatusColor(simulationResult.Status)" Size="Size.Medium">
                             @simulationResult.Status
                         </MudChip>
                     </MudItem>
-                    <MudItem xs="12" md="3">
+                    <MudItem xs="12" md="2">
                         <MudText Typo="Typo.h6">Flux ID</MudText>
                         <MudText>@simulationResult.FluxId</MudText>
                     </MudItem>
-                    <MudItem xs="12" md="3">
+                    <MudItem xs="12" md="2">
                         <MudText Typo="Typo.h6">Processing Time</MudText>
                         <MudText>@simulationResult.ProcessingTimeMs ms</MudText>
                     </MudItem>
-                    <MudItem xs="12" md="3">
+                    <MudItem xs="12" md="2">
                         <MudText Typo="Typo.h6">Fetching History ID</MudText>
                         <MudText>@FetchingHistoryId</MudText>
+                    </MudItem>
+                    <MudItem xs="12" md="4">
+                        <MudText Typo="Typo.h6">Ready for Processing</MudText>
+                        @if (simulationResult.IsReadyForProcessing)
+                        {
+                            <MudChip T="Color" Color="Color.Success" Size="Size.Small" Icon="@Icons.Material.Filled.CheckCircle">
+                                YES - Ready to Process
+                            </MudChip>
+                        }
+                        else
+                        {
+                            <MudChip T="Color" Color="Color.Warning" Size="Size.Small" Icon="@Icons.Material.Filled.Warning">
+                                NOT READY - Issues Found
+                            </MudChip>
+                        }
                     </MudItem>
                 </MudGrid>
             </MudCardContent>
         </MudCard>
 
-        @if (simulationResult.ExtractedData != null && simulationResult.ExtractedData.ExecutorResults.Any())
+        @if (simulationResult.SimulationSummary != null)
         {
-            <!-- Simulation Results with MudDataGrid Virtualization -->
-            <MudCard>
+            <!-- Comprehensive Summary -->
+            <MudCard Class="mb-4">
                 <MudCardHeader>
                     <CardHeaderContent>
-                        <MudText Typo="Typo.h6">Processing Results</MudText>
+                        <MudText Typo="Typo.h6">
+                            <MudIcon Icon="@Icons.Material.Filled.Analytics" Class="mr-2" />
+                            Simulation Summary
+                        </MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudGrid>
+                        <MudItem xs="12" md="3">
+                            <MudPaper Class="pa-4 text-center" Style="background-color: var(--mud-palette-info-lighten);">
+                                <MudText Typo="Typo.h4" Color="Color.Info">@simulationResult.SimulationSummary.FinancialsToCreate</MudText>
+                                <MudText Typo="Typo.subtitle1">Financials to Create</MudText>
+                            </MudPaper>
+                        </MudItem>
+                        <MudItem xs="12" md="3">
+                            <MudPaper Class="pa-4 text-center" Style="background-color: var(--mud-palette-success-lighten);">
+                                <MudText Typo="Typo.h4" Color="Color.Success">@simulationResult.SimulationSummary.CommandsToExecute</MudText>
+                                <MudText Typo="Typo.subtitle1">Commands to Execute</MudText>
+                            </MudPaper>
+                        </MudItem>
+                        <MudItem xs="12" md="3">
+                            <MudPaper Class="pa-4 text-center" Style="background-color: var(--mud-palette-primary-lighten);">
+                                <MudText Typo="Typo.h4" Color="Color.Primary">@simulationResult.SimulationSummary.FinancialIdsAffected</MudText>
+                                <MudText Typo="Typo.subtitle1">Financial IDs Affected</MudText>
+                            </MudPaper>
+                        </MudItem>
+                        <MudItem xs="12" md="3">
+                            <MudPaper Class="pa-4 text-center" Style="@rowValidation(simulationResult)">
+                                <MudText Typo="Typo.h4" Color="@(simulationResult.SimulationSummary.HasValidationErrors ? Color.Error : Color.Success)">
+                                    @simulationResult.SimulationSummary.ValidationSummary.FailedValidations
+                                </MudText>
+                                <MudText Typo="Typo.subtitle1">Validation Errors</MudText>
+                            </MudPaper>
+                        </MudItem>
+                    </MudGrid>
+
+                    @if (simulationResult.SimulationSummary.ValidationSummary.TotalRulesExecuted > 0)
+                    {
+                        <MudGrid Class="mt-4">
+                            <MudItem xs="12" md="6">
+                                <MudText Typo="Typo.subtitle1" Class="mb-2">Validation Statistics</MudText>
+                                <MudProgressLinear Color="Color.Success" 
+                                                   Value="@(simulationResult.SimulationSummary.ValidationSummary.SuccessRate * 100)" 
+                                                   Size="Size.Large" 
+                                                   Class="mb-2" />
+                                <MudText Typo="Typo.body2">
+                                    Success Rate: @(simulationResult.SimulationSummary.ValidationSummary.SuccessRate.ToString("P2"))
+                                    (@simulationResult.SimulationSummary.ValidationSummary.SuccessfulValidations / @simulationResult.SimulationSummary.ValidationSummary.TotalRulesExecuted)
+                                </MudText>
+                            </MudItem>
+                            <MudItem xs="12" md="6">
+                                <MudText Typo="Typo.subtitle1" Class="mb-2">Processing Readiness</MudText>
+                                @if (simulationResult.SimulationSummary.CanProceedWithProcessing)
+                                {
+                                    <MudAlert Severity="Severity.Success" Dense="true">
+                                        ✅ Ready to proceed with processing
+                                    </MudAlert>
+                                }
+                                else
+                                {
+                                    <MudAlert Severity="Severity.Warning" Dense="true">
+                                        ⚠️ Issues found - review before processing
+                                    </MudAlert>
+                                }
+                            </MudItem>
+                        </MudGrid>
+                    }
+                </MudCardContent>
+            </MudCard>
+        }
+
+        @if (simulationResult.ProcessingIssues.Any())
+        {
+            <!-- Processing Issues -->
+            <MudCard Class="mb-4">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6" Color="Color.Warning">
+                            <MudIcon Icon="@Icons.Material.Filled.Warning" Class="mr-2" />
+                            Processing Issues (@simulationResult.ProcessingIssues.Count)
+                        </MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    @foreach (var issue in simulationResult.ProcessingIssues)
+                    {
+                        <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-2">
+                            @issue
+                        </MudAlert>
+                    }
+                </MudCardContent>
+            </MudCard>
+        }
+
+        @if (simulationResult.FinancialsToCreate?.Any() == true)
+        {
+            <!-- Financial Instruments to Create -->
+            <MudCard Class="mb-4">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">
+                            <MudIcon Icon="@Icons.Material.Filled.AccountBalanceWallet" Class="mr-2" />
+                            Financial Instruments to Create (@simulationResult.FinancialsToCreate.Count)
+                        </MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    @foreach (var (financial, index) in simulationResult.FinancialsToCreate.Select((f, i) => (f, i + 1)))
+                    {
+                        <MudExpansionPanels>
+                            <MudExpansionPanel>
+                                <TitleContent>
+                                    <div style="display: flex; align-items: center;">
+                                        <MudIcon Icon="@Icons.Material.Filled.Add" class="mr-3" Color="Color.Success"></MudIcon>
+                                        <MudText>Financial Instrument #@index</MudText>
+                                    </div>
+                                </TitleContent>
+                                <ChildContent>
+                                    <MudGrid>
+                                        @foreach (var kvp in financial.DataPoints)
+                                        {
+                                            <MudItem xs="12" md="6">
+                                                <MudText Typo="Typo.subtitle2">@kvp.Key:</MudText>
+                                                <MudText Typo="Typo.body2" Class="ml-2">@kvp.Value</MudText>
+                                            </MudItem>
+                                        }
+                                    </MudGrid>
+                                </ChildContent>
+                            </MudExpansionPanel>
+                        </MudExpansionPanels>
+                    }
+                </MudCardContent>
+            </MudCard>
+        }
+
+        @if (simulationResult.SimulationSummary?.ValidationSummary.ValidationErrors.Any() == true)
+        {
+            <!-- Validation Errors Detail -->
+            <MudCard Class="mb-4">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6" Color="Color.Error">
+                            <MudIcon Icon="@Icons.Material.Filled.Error" Class="mr-2" />
+                            Validation Errors (@simulationResult.SimulationSummary.ValidationSummary.ValidationErrors.Count)
+                        </MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudDataGrid T="ValidationErrorDto" 
+                                 Items="@simulationResult.SimulationSummary.ValidationSummary.ValidationErrors"
+                                 Dense="true"
+                                 Hover="true"
+                                 Striped="true"
+                                 Height="300px"
+                                 FixedHeader="true">
+                        <Columns>
+                            <PropertyColumn Property="x => x.DataPoint" Title="Data Point" />
+                            <PropertyColumn Property="x => x.OriginalValue" Title="Original Value" />
+                            <PropertyColumn Property="x => x.ErrorMessage" Title="Error Message" />
+                        </Columns>
+                    </MudDataGrid>
+                </MudCardContent>
+            </MudCard>
+        }
+
+        @if (simulationResult.ExtractedData != null && simulationResult.ExtractedData.ExecutorResults.Any())
+        {
+            <!-- Detailed Processing Results -->
+            <MudCard Class="mb-4">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">
+                            <MudIcon Icon="@Icons.Material.Filled.DataArray" Class="mr-2" />
+                            Detailed Processing Results
+                        </MudText>
                         <MudText Typo="Typo.body2" Class="mt-2">
                             Total: @GetTotalRowsCount() rows across @simulationResult.ExtractedData.ExecutorResults.Count() executor(s)
                         </MudText>
@@ -227,12 +419,6 @@
                 </MudCardContent>
             </MudCard>
         }
-        else
-        {
-            <MudAlert Severity="Severity.Warning" Class="my-4">
-                No extraction data available for this simulation.
-            </MudAlert>
-        }
 
         @if (simulationResult.CommandExecution != null)
         {
@@ -240,7 +426,10 @@
             <MudCard Class="mt-4">
                 <MudCardHeader>
                     <CardHeaderContent>
-                        <MudText Typo="Typo.h6">Command Execution Results</MudText>
+                        <MudText Typo="Typo.h6">
+                            <MudIcon Icon="@Icons.Material.Filled.PlayArrow" Class="mr-2" />
+                            Command Execution Results
+                        </MudText>
                     </CardHeaderContent>
                 </MudCardHeader>
                 <MudCardContent>
@@ -284,6 +473,26 @@
                             }
                         </MudList>
                     }
+                </MudCardContent>
+            </MudCard>
+        }
+
+        @if (!string.IsNullOrEmpty(simulationResult.CompleteReport))
+        {
+            <!-- Complete Report -->
+            <MudCard Class="mt-4">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">
+                            <MudIcon Icon="@Icons.Material.Filled.Description" Class="mr-2" />
+                            Complete Simulation Report
+                        </MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudPaper Class="pa-4" Style="background-color: var(--mud-palette-background-grey);">
+                        <pre style="white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 0.875rem;">@simulationResult.CompleteReport</pre>
+                    </MudPaper>
                 </MudCardContent>
             </MudCard>
         }
@@ -335,7 +544,8 @@
                 // Initialize filtered rows after loading data
                 ApplyFilter();
 
-                if (simulationResult.Status != SimulateProcessElementResponse.SimulationStatus.Success)
+                if (simulationResult.Status != SimulateProcessElementResponse.SimulationStatus.Success &&
+                    simulationResult.Status != SimulateProcessElementResponse.SimulationStatus.PartialSuccess)
                 {
                     Snackbar.Add($"Simulation completed with status: {simulationResult.Status}", Severity.Warning);
                 }
@@ -370,12 +580,14 @@
         return status switch
         {
             SimulateProcessElementResponse.SimulationStatus.Success => Color.Success,
+            SimulateProcessElementResponse.SimulationStatus.PartialSuccess => Color.Info,
             SimulateProcessElementResponse.SimulationStatus.Fail => Color.Error,
             SimulateProcessElementResponse.SimulationStatus.NoRawId => Color.Warning,
             SimulateProcessElementResponse.SimulationStatus.ContentNull => Color.Warning,
             SimulateProcessElementResponse.SimulationStatus.NoCustomProcessingImplementation => Color.Info,
             SimulateProcessElementResponse.SimulationStatus.JsonConversionFailed => Color.Error,
             SimulateProcessElementResponse.SimulationStatus.DataExtractionFailed => Color.Error,
+            SimulateProcessElementResponse.SimulationStatus.ValidationErrors => Color.Error,
             SimulateProcessElementResponse.SimulationStatus.NoExecutableCommands => Color.Warning,
             _ => Color.Default
         };
@@ -461,6 +673,11 @@
 
         filteredRows.AddRange(allRows);
         StateHasChanged();
+    }
+
+    private string rowValidation(SimulateProcessElementResponse simulationResult)
+    {
+        return $"background-color: {(simulationResult.SimulationSummary.HasValidationErrors ? "var(--mud-palette-error-lighten)" : "var(--mud-palette-success-lighten)")}";
     }
 
     public class RowData

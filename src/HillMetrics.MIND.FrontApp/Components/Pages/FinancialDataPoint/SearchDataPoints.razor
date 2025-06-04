@@ -84,12 +84,12 @@
                 <MudText Typo="Typo.h6" Class="ml-2">Data Points List</MudText>
                 <MudSpacer />
                 <MudButton Variant="Variant.Outlined"
-                Color="Color.Primary"
-                StartIcon="@Icons.Material.Filled.Download"
-                OnClick="ShowExportDialog"
+                Color="Color.Secondary"
+                StartIcon="@Icons.Material.Filled.FileDownload"
+                OnClick="ShowExportByDocumentTypeDialog"
                 Class="mr-2"
                 Size="Size.Small">
-                    Export by Type
+                    Export by Document Type
                 </MudButton>
                 <MudTextField @bind-Value="searchString" Placeholder="Search"
                 Adornment="Adornment.Start"
@@ -301,7 +301,7 @@
         await ServerReload(tableState ?? new TableState
             {
                 Page = 0,
-                PageSize = 10
+                PageSize = 100
             }, CancellationToken.None);
     }
 
@@ -430,6 +430,20 @@
         };
 
         var dialog = await DialogService.ShowAsync<ExportDataPointsDialog>("Export Data Points", options);
+        await dialog.Result;
+    }
+
+    private async Task ShowExportByDocumentTypeDialog()
+    {
+        var options = new DialogOptions
+        {
+            CloseButton = true,
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true,
+            Position = DialogPosition.Center
+        };
+
+        var dialog = await DialogService.ShowAsync<ExportDataPointsByDocumentTypeDialog>("Export Data Points by Document Type", options);
         await dialog.Result;
     }
 }

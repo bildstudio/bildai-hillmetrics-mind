@@ -16,6 +16,8 @@
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
 
+<MudBreadcrumbs Items="_breadcrumbItems" Class="mb-4" />
+
 <MudText Typo="Typo.h4" Class="mb-4">@(IsEditMode ? "Edit" : "Create") Financial Data Point</MudText>
 
 @if (isLoading)
@@ -206,6 +208,7 @@ else
                                                 <MudTh>Document Type</MudTh>
                                                 <MudTh>Context</MudTh>
                                                 <MudTh>Question</MudTh>
+                                                <MudTh>Description</MudTh>
                                                 <MudTh>Actions</MudTh>
                                             </HeaderContent>
                                             <RowTemplate>
@@ -213,6 +216,7 @@ else
                                                 <MudTd>@GetDocumentTypeName(@elementMetadata.DocumentTypeId)</MudTd>
                                                 <MudTd>@elementMetadata.Values[FinancialDataPointElementMetadataKey.Context]</MudTd>
                                                 <MudTd>@elementMetadata.Values[FinancialDataPointElementMetadataKey.Question]</MudTd>
+                                                <MudTd>@elementMetadata.Values[FinancialDataPointElementMetadataKey.Description]</MudTd>
                                                 <MudTd DataLabel="Actions">
                                                     <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true">
                                                         <MudMenuItem OnClick="@((e) => ShowElementMetadataDialog(elementMetadata, UserActions.View, context))">
@@ -296,12 +300,26 @@ else
     public List<DocumentTypeDto> documentTypes { get; set; }
     public Dictionary<int, string> documentTypesDictionary { get; set; } = new Dictionary<int, string>();
 
+    private List<BreadcrumbItem> _breadcrumbItems = new();
+
     public CreateDataPoint()
     {
         // Initialize the list with null (None) option and all enum values
         technicalDataPoints = new List<FinancialTechnicalDataPoint?> { null }
             .Concat(Enum.GetValues<FinancialTechnicalDataPoint>().Cast<FinancialTechnicalDataPoint?>())
             .ToList();
+
+        InitializeBreadcrumbs();
+    }
+
+    private void InitializeBreadcrumbs()
+    {
+        _breadcrumbItems = new List<BreadcrumbItem>
+        {
+            new BreadcrumbItem("Home", href: "/", icon: Icons.Material.Filled.Home),
+            new BreadcrumbItem("Search data point", href: "/financial-data/search", icon: Icons.Material.Filled.Search),
+            new BreadcrumbItem(IsEditMode ? "Edit" : "Create", href: null, disabled: true, icon: IsEditMode ? Icons.Material.Filled.Edit : Icons.Material.Filled.Add)
+        };
     }
 
     private MudTable<FinancialDataPointElementMetadata> metadataTableRef;
@@ -354,6 +372,9 @@ else
 
             targetFinancialType = result.Data.FinancialType;
             _ = LoadDataAsync();
+            
+            // Update breadcrumbs now that we know we're in edit mode
+            InitializeBreadcrumbs();
         }
         catch (Exception ex)
         {
@@ -670,12 +691,12 @@ else
             {
                 DocumentTypeId = elementMetadata.DocumentTypeId,
                 FinancialDataPointElementId = elementMetadata.ElementId,
-                KeysToDelete = [FinancialDataPointElementMetadataKey.Question, FinancialDataPointElementMetadataKey.Context],
+                KeysToDelete = [FinancialDataPointElementMetadataKey.Question, FinancialDataPointElementMetadataKey.Context, FinancialDataPointElementMetadataKey.Description],
                 LanguageId = elementMetadata.LanguageId
             });
 
             context.Metadatas.Remove(elementMetadata);
-            
+
             if(metadataTableRef != null)
                 await metadataTableRef.ReloadServerData();
 

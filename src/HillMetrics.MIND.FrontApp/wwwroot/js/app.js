@@ -65,3 +65,31 @@ window.downloadFile = function (filename, content, contentType) {
     // Clean up the URL
     window.URL.revokeObjectURL(url);
 };
+
+// MathJax functions required by MudMarkdown
+window.refreshMathJaxScript = function() {
+    if (window.MathJax && window.MathJax.typesetPromise) {
+        return window.MathJax.typesetPromise();
+    }
+    return Promise.resolve();
+};
+
+window.appendMathJaxScript = function() {
+    if (!document.getElementById('mathjax-script')) {
+        const script = document.createElement('script');
+        script.id = 'mathjax-script';
+        script.src = 'https://polyfill.io/v3/polyfill.min.js?features=es6';
+        script.onload = function() {
+            const mathJaxScript = document.createElement('script');
+            mathJaxScript.src = 'https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js';
+            mathJaxScript.onload = function() {
+                // Ensure MathJax is configured after loading
+                if (window.MathJax) {
+                    window.MathJax.startup.defaultReady();
+                }
+            };
+            document.head.appendChild(mathJaxScript);
+        };
+        document.head.appendChild(script);
+    }
+};

@@ -474,34 +474,159 @@
                         }
                         else
                         {
-                            <MudTable Items="@flux.FinancialDataPoints" Dense="true" Hover="true" Bordered="true" Striped="true">
+                            <MudTable Items="@flux.FinancialDataPoints.OrderBy(x => x.DataPoint?.Name).ThenBy(x => x.From)"
+                                     Dense="true" Hover="true" Bordered="true" Striped="true">
                                 <HeaderContent>
-                                    <MudTh>ID</MudTh>
-                                    <MudTh>Data Point ID</MudTh>
+                                    <MudTh>Status</MudTh>
                                     <MudTh>Data Point Name</MudTh>
-                                    @* <MudTh>Approved</MudTh> *@
                                     <MudTh>Provider</MudTh>
-                                    <MudTh>From</MudTh>
-                                    <MudTh>To</MudTh>
-                                    <MudTh>Mapping Metadata</MudTh>
+                                    <MudTh>Active Period</MudTh>
+                                    <MudTh>From Date</MudTh>
+                                    <MudTh>To Date</MudTh>
+                                    <MudTh>Approved</MudTh>
+                                    <MudTh>Actions</MudTh>
                                 </HeaderContent>
                                 <RowTemplate>
-                                    <MudTd DataLabel="ID">@context.Id</MudTd>
-                                    <MudTd DataLabel="Data Point ID">@context.DataPoint?.Id</MudTd>
-                                    <MudTd DataLabel="Data Point Name">@context.DataPoint?.Name</MudTd>
-                                    @* <MudTd DataLabel="Approved">
-                                        <MudIcon Icon="@(context.FluxMapping.FileUpload.MappingStatus == Normalized.Domain.Contracts.AI.Dataset.MappingStatus.Approved ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Cancel)"
-                                                 Color="@(context.FluxMapping.FileUpload.MappingStatus == Normalized.Domain.Contracts.AI.Dataset.MappingStatus.Approved ? Color.Success : Color.Error)" />
-                                    </MudTd> *@
-                                    <MudTd DataLabel="Provider">@context.Provider</MudTd>
-                                    <MudTd DataLabel="From">@context.From.ToString("yyyy-MM-dd")</MudTd>
-                                    <MudTd DataLabel="To">@context.To?.ToString("yyyy-MM-dd")</MudTd>
-                                    <MudTd DataLabel="Mapping Metadata">
-                                        <MudIconButton Icon="@Icons.Material.Filled.OpenInNew" Color="Color.Primary"
-                                                       OnClick="@(() => NavigationManager.NavigateTo($"/file-data-mapping/file/{context.FluxMapping.FileUploadId}"))" />
+                                    <MudTd DataLabel="Status">
+                                        @if (context.To == null)
+                                        {
+                                            <MudChip T="string" Color="Color.Success" Size="Size.Small" Icon="@Icons.Material.Filled.CheckCircle">
+                                                Active
+                                            </MudChip>
+                                        }
+                                        else
+                                        {
+                                            <MudChip T="string" Color="Color.Default" Size="Size.Small" Icon="@Icons.Material.Filled.History">
+                                                Closed
+                                            </MudChip>
+                                        }
+                                    </MudTd>
+                                    <MudTd DataLabel="Data Point Name">
+                                        <div style="@(context.To == null ? "font-weight: bold; color: var(--mud-palette-success);" : "")">
+                                            @context.DataPoint?.Name
+                                        </div>
+                                        <MudText Typo="Typo.caption" Style="color: var(--mud-palette-text-secondary);">
+                                            ID: @context.DataPoint?.Id
+                                        </MudText>
+                                    </MudTd>
+                                    <MudTd DataLabel="Provider">
+                                        <MudChip T="string" Color="Color.Primary" Size="Size.Small">
+                                            @context.Provider
+                                        </MudChip>
+                                    </MudTd>
+                                    <MudTd DataLabel="Active Period">
+                                        @if (context.To == null)
+                                        {
+                                            <MudText Style="color: var(--mud-palette-success); font-weight: bold;">
+                                                <MudIcon Icon="@Icons.Material.Filled.PlayArrow" Size="Size.Small" Style="margin-right: 4px;" />
+                                                Since @GetRelativeTime(context.From)
+                                            </MudText>
+                                        }
+                                        else
+                                        {
+                                            <MudText Style="color: var(--mud-palette-text-secondary);">
+                                                <MudIcon Icon="@Icons.Material.Filled.AccessTime" Size="Size.Small" Style="margin-right: 4px;" />
+                                                @GetDurationText(context.From, context.To.Value)
+                                            </MudText>
+                                        }
+                                    </MudTd>
+                                    <MudTd DataLabel="From Date">
+                                        <MudTooltip Text="@context.From.ToString("yyyy-MM-dd HH:mm:ss")">
+                                            <div>
+                                                <MudText Typo="Typo.body2" Style="@(context.To == null ? "font-weight: bold;" : "")">
+                                                    @context.From.ToString("yyyy-MM-dd")
+                                                </MudText>
+                                                <MudText Typo="Typo.caption" Style="color: var(--mud-palette-text-secondary);">
+                                                    @context.From.ToString("HH:mm:ss")
+                                                </MudText>
+                                            </div>
+                                        </MudTooltip>
+                                    </MudTd>
+                                    <MudTd DataLabel="To Date">
+                                        @if (context.To == null)
+                                        {
+                                            <MudText Style="color: var(--mud-palette-success); font-weight: bold;">
+                                                <MudIcon Icon="@Icons.Material.Filled.Schedule" Size="Size.Small" Style="margin-right: 4px;" />
+                                                Currently Active
+                                            </MudText>
+                                        }
+                                        else
+                                        {
+                                            <MudTooltip Text="@context.To.Value.ToString("yyyy-MM-dd HH:mm:ss")">
+                                                <div>
+                                                    <MudText Typo="Typo.body2">
+                                                        @context.To.Value.ToString("yyyy-MM-dd")
+                                                    </MudText>
+                                                    <MudText Typo="Typo.caption" Style="color: var(--mud-palette-text-secondary);">
+                                                        @context.To.Value.ToString("HH:mm:ss")
+                                                    </MudText>
+                                                </div>
+                                            </MudTooltip>
+                                        }
+                                    </MudTd>
+                                    <MudTd DataLabel="Approved">
+                                        <MudIcon Icon="@(context.HasBeenApproved ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Cancel)"
+                                                 Color="@(context.HasBeenApproved ? Color.Success : Color.Error)"
+                                                 Size="Size.Small" />
+                                        <MudText Typo="Typo.caption" Style="color: var(--mud-palette-text-secondary); margin-left: 4px;">
+                                            @(context.HasBeenApproved ? "Yes" : "No")
+                                        </MudText>
+                                    </MudTd>
+                                    <MudTd DataLabel="Actions">
+                                        <MudTooltip Text="View mapping details">
+                                            <MudIconButton Icon="@Icons.Material.Filled.OpenInNew"
+                                                         Color="Color.Primary"
+                                                         Size="Size.Small"
+                                                         OnClick="@(() => NavigationManager.NavigateTo($"/file-data-mapping/file/{context.FluxMapping.FileUploadId}"))" />
+                                        </MudTooltip>
+                                        @if (context.To == null && !context.HasBeenApproved)
+                                        {
+                                            <MudTooltip Text="This mapping needs approval">
+                                                <MudIconButton Icon="@Icons.Material.Filled.Warning"
+                                                             Color="Color.Warning"
+                                                             Size="Size.Small" />
+                                            </MudTooltip>
+                                        }
                                     </MudTd>
                                 </RowTemplate>
                             </MudTable>
+
+                            @* Summary information *@
+                            <MudGrid Class="mt-4">
+                                <MudItem xs="12" md="4">
+                                    <MudPaper Class="pa-4" Style="background-color: var(--mud-palette-success-lighten);">
+                                        <MudText Typo="Typo.h6" Style="color: var(--mud-palette-success-darken);">
+                                            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Class="mr-2" />
+                                            Active Mappings
+                                        </MudText>
+                                        <MudText Typo="Typo.h4" Style="color: var(--mud-palette-success-darken); font-weight: bold;">
+                                            @flux.FinancialDataPoints.Count(x => x.To == null)
+                                        </MudText>
+                                    </MudPaper>
+                                </MudItem>
+                                <MudItem xs="12" md="4">
+                                    <MudPaper Class="pa-4" Style="background-color: var(--mud-palette-warning-lighten);">
+                                        <MudText Typo="Typo.h6" Style="color: var(--mud-palette-warning-darken);">
+                                            <MudIcon Icon="@Icons.Material.Filled.Pending" Class="mr-2" />
+                                            Pending Approval
+                                        </MudText>
+                                        <MudText Typo="Typo.h4" Style="color: var(--mud-palette-warning-darken); font-weight: bold;">
+                                            @flux.FinancialDataPoints.Count(x => x.To == null && !x.HasBeenApproved)
+                                        </MudText>
+                                    </MudPaper>
+                                </MudItem>
+                                <MudItem xs="12" md="4">
+                                    <MudPaper Class="pa-4" Style="background-color: var(--mud-palette-info-lighten);">
+                                        <MudText Typo="Typo.h6" Style="color: var(--mud-palette-info-darken);">
+                                            <MudIcon Icon="@Icons.Material.Filled.History" Class="mr-2" />
+                                            Historical Mappings
+                                        </MudText>
+                                        <MudText Typo="Typo.h4" Style="color: var(--mud-palette-info-darken); font-weight: bold;">
+                                            @flux.FinancialDataPoints.Count(x => x.To != null)
+                                        </MudText>
+                                    </MudPaper>
+                                </MudItem>
+                            </MudGrid>
                         }
                     </MudCardContent>
                 </MudCard>
@@ -895,21 +1020,23 @@
         };
     }
 
-    private string FormatDateTime(DateTime dateTime)
+    private string GetRelativeTime(DateTime dateTime)
     {
         var now = DateTime.Now;
         var diff = now - dateTime;
 
         if (diff.TotalMinutes < 1)
-            return "Just now";
+            return "just now";
         if (diff.TotalHours < 1)
             return $"{(int)diff.TotalMinutes}m ago";
         if (diff.TotalDays < 1)
             return $"{(int)diff.TotalHours}h ago";
         if (diff.TotalDays < 7)
             return $"{(int)diff.TotalDays}d ago";
+        if (diff.TotalDays < 30)
+            return $"{(int)diff.TotalDays / 7}w ago";
 
-        return dateTime.ToString("MMM dd, HH:mm");
+        return dateTime.ToString("MMM dd, yyyy");
     }
 
     private Color GetWorkflowStageColor(string stage)
@@ -939,5 +1066,21 @@
                 _ => Color.Default
             };
         }
+    }
+
+    private string GetDurationText(DateTime start, DateTime end)
+    {
+        var duration = end - start;
+
+        if (duration.TotalMinutes < 60)
+            return $"{(int)duration.TotalMinutes} minutes";
+        if (duration.TotalHours < 24)
+            return $"{(int)duration.TotalHours} hours";
+        if (duration.TotalDays < 7)
+            return $"{(int)duration.TotalDays} days";
+        if (duration.TotalDays < 30)
+            return $"{(int)duration.TotalDays / 7} weeks";
+
+        return $"{(int)duration.TotalDays / 30} months";
     }
 }

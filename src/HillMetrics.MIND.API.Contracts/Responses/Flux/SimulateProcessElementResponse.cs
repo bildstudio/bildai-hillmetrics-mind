@@ -8,18 +8,25 @@ namespace HillMetrics.MIND.API.Contracts.Responses.Flux
         public enum SimulationStatus
         {
             Success,
+            PartialSuccess,
             Fail,
             NoRawId,
             ContentNull,
             NoCustomProcessingImplementation,
             JsonConversionFailed,
             DataExtractionFailed,
+            ValidationErrors,
             NoExecutableCommands
         }
 
         public SimulationStatus Status { get; set; } = SimulationStatus.Fail;
         public int FluxId { get; set; }
         public long ProcessingTimeMs { get; set; }
+
+        /// <summary>
+        /// The comprehensive simulation summary
+        /// </summary>
+        public SimulationSummaryDto? SimulationSummary { get; set; }
 
         /// <summary>
         /// The extracted data from the JSON content
@@ -30,6 +37,85 @@ namespace HillMetrics.MIND.API.Contracts.Responses.Flux
         /// The determined executable commands
         /// </summary>
         public CommandExecutionResponseDto? CommandExecution { get; set; }
+
+        /// <summary>
+        /// Financial instruments that will be created
+        /// </summary>
+        public List<FinancialInstrumentToCreateDto>? FinancialsToCreate { get; set; }
+
+        /// <summary>
+        /// Complete formatted report for easy viewing
+        /// </summary>
+        public string? CompleteReport { get; set; }
+
+        /// <summary>
+        /// List of issues that prevent processing
+        /// </summary>
+        public List<string> ProcessingIssues { get; set; } = new();
+
+        /// <summary>
+        /// Indicates if the flux is ready for production processing
+        /// </summary>
+        public bool IsReadyForProcessing { get; set; }
+    }
+
+    /// <summary>
+    /// Summary of the entire simulation
+    /// </summary>
+    public class SimulationSummaryDto
+    {
+        public ValidationSummaryDto ValidationSummary { get; set; } = new();
+        public int FinancialsToCreate { get; set; }
+        public int CommandsToExecute { get; set; }
+        public int PartiallyMatchedCommands { get; set; }
+        public int FinancialIdsAffected { get; set; }
+        public bool HasValidationErrors { get; set; }
+        public bool CanProceedWithProcessing { get; set; }
+    }
+
+    /// <summary>
+    /// Summary of validation results
+    /// </summary>
+    public class ValidationSummaryDto
+    {
+        public int TotalRulesExecuted { get; set; }
+        public int SuccessfulValidations { get; set; }
+        public int FailedValidations { get; set; }
+        public double SuccessRate { get; set; }
+        public List<ValidationErrorDto> ValidationErrors { get; set; } = new();
+    }
+
+    /// <summary>
+    /// Validation error information
+    /// </summary>
+    public class ValidationErrorDto
+    {
+        public string DataPoint { get; set; } = string.Empty;
+        public string ErrorMessage { get; set; } = string.Empty;
+        public string OriginalValue { get; set; } = string.Empty;
+    }
+
+    /// <summary>
+    /// Financial instrument that will be created
+    /// </summary>
+    public class FinancialInstrumentToCreateDto
+    {
+        public Dictionary<string, object> DataPoints { get; set; } = new();
+        
+        /// <summary>
+        /// Gets a human-readable description of the financial instrument
+        /// </summary>
+        public string GetDescription()
+        {
+            var items = new List<string>();
+            
+            foreach (var kvp in DataPoints)
+            {
+                items.Add($"{kvp.Key}: {kvp.Value}");
+            }
+            
+            return string.Join(", ", items);
+        }
     }
 
     public class GlobalExecutorResponseDto

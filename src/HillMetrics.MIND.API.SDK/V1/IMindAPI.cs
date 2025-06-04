@@ -582,6 +582,17 @@ namespace HillMetrics.MIND.API.SDK.V1
         [Get("/api/v1/fluxcarac/financial-data-points/search")]
         Task<CustomMindPagedApiResponseBase<FinancialDataPointSearchResponse>> SearchFinancialDataPointsAsync([Query] SearchFinancialDataPointRequest request);
 
+        /// <summary>
+        /// Get financial data points by document type with metadata information
+        /// </summary>
+        /// <param name="documentTypeId">ID of the document type</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Financial data points with metadata for the specified document type</returns>
+        [Get("/api/v1/fluxcarac/financial-data-points/by-document-type/{documentTypeId}")]
+        Task<ApiResponseBase<GetFinancialDataPointsByDocumentTypeQueryResult>> GetFinancialDataPointsByDocumentTypeAsync(
+            int documentTypeId,
+            CancellationToken cancellationToken = default);
+
         #region TradingVenue
 
         /// <summary>
@@ -728,7 +739,7 @@ namespace HillMetrics.MIND.API.SDK.V1
         #region AI Dataset - Element Metadatas
 
         /// <summary>
-        /// Search financial data point element metadatas 
+        /// Search financial data point element metadatas
         /// </summary>
         /// <param name="elementId"></param>
         /// <param name="documentTypeId"></param>
