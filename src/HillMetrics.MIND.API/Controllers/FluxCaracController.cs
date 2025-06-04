@@ -22,6 +22,13 @@ using HillMetrics.MIND.API.Contracts.Responses.Common;
 using HillMetrics.Core.Financial.DataPoint;
 using HillMetrics.Normalized.Domain.Contracts.Market.Cqrs.Rule;
 using HillMetrics.Core.Rules;
+using FluentResults;
+using HillMetrics.Core.Contracts;
+using HillMetrics.Core.Errors;
+using HillMetrics.Normalized.Infrastructure.Contracts.Database.Entity;
+using HillMetrics.Normalized.Infrastructure.Database.Database;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace HillMetrics.MIND.API.Controllers;
 
@@ -438,7 +445,7 @@ public class FluxCaracController(IHMediator mediator, IMapper mapper, ILogger<Fl
         [FromBody] CreateFinancialDataPointRequest request,
         CancellationToken cancellationToken)
     {
-        logger.LogInformation("Updating financial data point with ID: {DataPointId}, name: {Name}", 
+        logger.LogInformation("Updating financial data point with ID: {DataPointId}, name: {Name}",
             dataPointId, request.Name);
 
         var command = new CreateFinancialDataPointCommand()
@@ -520,6 +527,28 @@ public class FluxCaracController(IHMediator mediator, IMapper mapper, ILogger<Fl
             result.Value.TotalRecords);
     }
 
+    /// <summary>
+    /// Get financial data points by document type with metadata information
+    /// </summary>
+    /// <param name="documentTypeId">ID of the document type</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Financial data points with metadata for the specified document type</returns>
+    [HttpGet("financial-data-points/by-document-type/{documentTypeId}")]
+    public async Task<ActionResult<ApiResponseBase<GetFinancialDataPointsByDocumentTypeQueryResult>>> GetFinancialDataPointsByDocumentType(
+        int documentTypeId,
+        CancellationToken cancellationToken)
+    {
+        logger.LogInformation("Getting financial data points for document type: {DocumentTypeId}", documentTypeId);
+
+        var query = new GetFinancialDataPointsByDocumentTypeQuery { DocumentTypeId = documentTypeId };
+        var result = await mediator.Send(query, cancellationToken);
+
+        if (result.IsFailed)
+            return new ErrorApiActionResult(result.Errors.ToApiResult());
+
+        return new ApiResponseBase<GetFinancialDataPointsByDocumentTypeQueryResult>(result.Value);
+    }
+
     #endregion
 
     #region FinancialDataPointElement
@@ -527,7 +556,7 @@ public class FluxCaracController(IHMediator mediator, IMapper mapper, ILogger<Fl
     //search
     [HttpGet("financial-data-point-element/metadata/search")]
     public async Task<ActionResult<ListMetadatasResponse>> ListAsync(
-        [FromQuery] int elementId, 
+        [FromQuery] int elementId,
         [FromQuery] int? documentTypeId,
         [FromQuery] int? languaged,
         [FromQuery] FinancialDataPointElementMetadataKey? key)
@@ -687,7 +716,7 @@ public class FluxCaracController(IHMediator mediator, IMapper mapper, ILogger<Fl
     /// <summary>
     /// Search property data types
     /// </summary>
-    /// 
+    ///
     [Authorize]
     [HttpGet("property-mapping/search")]
     public async Task<ActionResult<CustomMindPagedApiResponseBase<PropertyMappingResponse>>> SearchPropertyDataTypes(
@@ -713,7 +742,7 @@ public class FluxCaracController(IHMediator mediator, IMapper mapper, ILogger<Fl
     #endregion
 
     #region FinancialRules
-    
+
     /// <summary>
     /// Search for financial rules based on a specific data point or get all rules
     /// </summary>
@@ -725,17 +754,17 @@ public class FluxCaracController(IHMediator mediator, IMapper mapper, ILogger<Fl
         [FromQuery] FinancialTechnicalDataPoint? dataPoint = null,
         CancellationToken cancellationToken = default)
     {
-        logger.LogInformation("Searching financial rules for data point: {DataPoint}", 
+        logger.LogInformation("Searching financial rules for data point: {DataPoint}",
             dataPoint.HasValue ? dataPoint.Value.ToString() : "All");
-            
+
         var query = new SearchFinancialRuleQuery { DataPoint = dataPoint };
         var result = await mediator.Send(query, cancellationToken);
-        
+
         if (result.IsFailed)
             return new ErrorApiActionResult(result.Errors.ToApiResult());
-            
+
         return new ApiResponseBase<SearchFinancialRuleQueryResult>(result.Value);
     }
-    
+
     #endregion
 }

@@ -58,6 +58,12 @@
                                                   Lines="5"
                                                   Variant="Variant.Outlined" />
                                 </MudItem>
+                                <MudItem xs="12">
+                                    <MudTextField @bind-Value="Context.Metadata.Values[FinancialDataPointElementMetadataKey.Description]"
+                                                  Label="Description"
+                                                  Lines="5"
+                                                  Variant="Variant.Outlined" />
+                                </MudItem>
                             }
 
                         </MudGrid>

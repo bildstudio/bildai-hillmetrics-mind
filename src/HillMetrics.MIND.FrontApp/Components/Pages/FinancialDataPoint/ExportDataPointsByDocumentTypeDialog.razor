@@ -1,0 +1,239 @@
+@using HillMetrics.Core.Financial
+@using HillMetrics.Core.Financial.DataPoint
+@using HillMetrics.MIND.API.Contracts.Requests.AiDataset.DocumentTypes
+@using HillMetrics.MIND.API.Contracts.Responses.AiDataset.DocumentTypes
+@using HillMetrics.MIND.API.SDK.V1
+@using HillMetrics.Normalized.Domain.Contracts.AI.Dataset.Cqrs.FinancialDataPoint
+@using System.Text.Json
+@inject IMindAPI MindApi
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudContainer MaxWidth="MaxWidth.Large">
+            <MudText Typo="Typo.h6" Class="mb-4">Export Financial Data Points by Document Type</MudText>
+
+            @if (isLoading)
+            {
+                <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+                <MudText Typo="Typo.body2" Class="mt-2">Loading document types...</MudText>
+            }
+            else if (documentTypes?.Any() == true)
+            {
+                <MudGrid>
+                    <MudItem xs="12" md="6">
+                        <MudSelect T="DocumentTypeDto"
+                                   @bind-Value="selectedDocumentType"
+                                   Label="Select Document Type"
+                                   Variant="Variant.Outlined"
+                                   Required="true">
+                            @foreach (var docType in documentTypes)
+                            {
+                                <MudSelectItem Value="@docType">
+                                    @docType.Name (@docType.FinancialType)
+                                </MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" md="6" Class="d-flex align-center">
+                        <MudButton Color="Color.Primary"
+                                   Variant="Variant.Filled"
+                                   OnClick="ExportData"
+                                   Disabled="@(selectedDocumentType == null || isExporting)"
+                                   StartIcon="@Icons.Material.Filled.Download">
+                            @if (isExporting)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                                <span class="ml-2">Exporting...</span>
+                            }
+                            else
+                            {
+                                <span>Export</span>
+                            }
+                        </MudButton>
+                    </MudItem>
+                </MudGrid>
+
+                @if (exportResult != null)
+                {
+                    <MudDivider Class="my-4" />
+
+                    <div class="d-flex justify-space-between align-center mb-4">
+                        <MudText Typo="Typo.h6">Export Results</MudText>
+                        <MudToggleIconButton @bind-Toggled="@showAsJson"
+                                             Icon="@Icons.Material.Filled.DataObject"
+                                             ToggledIcon="@Icons.Material.Filled.TableChart"
+                                             Title="@(showAsJson ? "Switch to Table View" : "Switch to JSON View")"
+                                             ToggledTitle="@(showAsJson ? "Switch to Table View" : "Switch to JSON View")" />
+                    </div>
+
+                    @if (showAsJson)
+                    {
+                        <MudPaper Class="pa-4" Style="background-color: #f5f5f5; max-height: 600px; overflow-y: auto;">
+                            <pre style="white-space: pre-wrap; word-wrap: break-word; font-family: 'Courier New', monospace; font-size: 12px;">@formattedJson</pre>
+                        </MudPaper>
+                    }
+                    else
+                    {
+                        <MudExpansionPanels Elevation="2">
+                            <MudExpansionPanel>
+                                <TitleContent>
+                                    <div class="d-flex align-center">
+                                        <MudIcon Icon="@Icons.Material.Filled.Info" Class="mr-3" />
+                                        <MudText Typo="Typo.h6">Document Type Information</MudText>
+                                    </div>
+                                </TitleContent>
+                                <ChildContent>
+                                    <MudGrid>
+                                        <MudItem xs="12" md="4">
+                                            <MudTextField Value="@exportResult.DocumentTypeName" Label="Document Type Name" ReadOnly="true" />
+                                        </MudItem>
+                                        <MudItem xs="12" md="4">
+                                            <MudTextField Value="@exportResult.DocumentTypeFinancialType.ToString()" Label="Financial Type" ReadOnly="true" />
+                                        </MudItem>
+                                        <MudItem xs="12" md="4">
+                                            <MudTextField Value="@exportResult.DataPoints.Count.ToString()" Label="Data Points Count" ReadOnly="true" />
+                                        </MudItem>
+                                    </MudGrid>
+                                </ChildContent>
+                            </MudExpansionPanel>
+
+                            @foreach (var dataPoint in exportResult.DataPoints)
+                            {
+                                <MudExpansionPanel>
+                                    <TitleContent>
+                                        <div class="d-flex align-center">
+                                            <MudIcon Icon="@Icons.Material.Filled.DataUsage" Class="mr-3" />
+                                            <MudText Typo="Typo.h6">@dataPoint.Name</MudText>
+                                            <MudChip T="FinancialType" Size="Size.Small" Color="Color.Primary" Class="ml-2">@dataPoint.FinancialType</MudChip>
+                                        </div>
+                                    </TitleContent>
+                                    <ChildContent>
+                                        <MudText Typo="Typo.body2" Class="mb-3">@dataPoint.Description</MudText>
+
+                                        @if (dataPoint.Fields?.Any() == true)
+                                        {
+                                            <MudTable Items="@dataPoint.Fields" Hover="true" Dense="true" Breakpoint="Breakpoint.Sm">
+                                                <HeaderContent>
+                                                    <MudTh>Property Name</MudTh>
+                                                    <MudTh>External Name</MudTh>
+                                                    <MudTh>Type</MudTh>
+                                                    <MudTh>Metadata</MudTh>
+                                                </HeaderContent>
+                                                <RowTemplate>
+                                                    <MudTd>@context.PropertyName</MudTd>
+                                                    <MudTd>@context.ExternalName</MudTd>
+                                                    <MudTd>@context.ValueType</MudTd>
+                                                    <MudTd>
+                                                        @if (context.MetadataByLanguage?.Any() == true)
+                                                        {
+                                                            @foreach (var lang in context.MetadataByLanguage)
+                                                            {
+                                                                var languageName = exportResult.LanguageNames.GetValueOrDefault(lang.Key, $"Language {lang.Key}");
+                                                                <MudChip T="string" Size="Size.Small" Class="mr-1 mb-1">@languageName</MudChip>
+                                                            }
+                                                        }
+                                                        else
+                                                        {
+                                                            <MudText Typo="Typo.caption">No metadata</MudText>
+                                                        }
+                                                    </MudTd>
+                                                </RowTemplate>
+                                            </MudTable>
+                                        }
+                                    </ChildContent>
+                                </MudExpansionPanel>
+                            }
+                        </MudExpansionPanels>
+                    }
+                }
+            }
+            else
+            {
+                <MudAlert Severity="Severity.Warning">No document types found.</MudAlert>
+            }
+        </MudContainer>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; } = default!;
+
+    private List<DocumentTypeDto>? documentTypes;
+    private DocumentTypeDto? selectedDocumentType;
+    private bool isLoading = true;
+    private bool isExporting = false;
+    private bool showAsJson = false;
+    private GetFinancialDataPointsByDocumentTypeQueryResult? exportResult;
+    private string formattedJson = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDocumentTypes();
+    }
+
+    private async Task LoadDocumentTypes()
+    {
+        try
+        {
+            isLoading = true;
+            var response = await MindApi.SearchDocumentTypesAsync(new SearchDocumentTypeRequest
+            {
+                Pagination = new Core.Search.Pagination(100, 1)
+            });
+
+            documentTypes = response.Data?.ToList() ?? new List<DocumentTypeDto>();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading document types: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task ExportData()
+    {
+        if (selectedDocumentType == null) return;
+
+        try
+        {
+            isExporting = true;
+            var response = await MindApi.GetFinancialDataPointsByDocumentTypeAsync(selectedDocumentType.Id);
+
+            if (response.Data != null)
+            {
+                exportResult = response.Data;
+
+                // Format JSON for display
+                var options = new JsonSerializerOptions
+                {
+                    WriteIndented = true,
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                };
+                formattedJson = JsonSerializer.Serialize(exportResult, options);
+
+                Snackbar.Add($"Export completed! Found {exportResult.DataPoints.Count} data points.", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add("No data found for the selected document type.", Severity.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error exporting data: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isExporting = false;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

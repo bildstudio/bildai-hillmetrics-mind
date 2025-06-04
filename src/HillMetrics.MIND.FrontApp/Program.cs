@@ -88,6 +88,7 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddCascadingAuthenticationState();
 
 builder.Services.AddMcpFinanceClient(builder.Configuration);
+//builder.Services.AddMcpMindClient(builder.Configuration);
 
 var app = builder.Build();
 

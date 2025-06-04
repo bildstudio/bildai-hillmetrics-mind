@@ -775,7 +775,7 @@ namespace HillMetrics.MIND.API.Controllers
                     FluxId = result.Value.FluxId,
                     ProcessingTimeMs = result.Value.ProcessingTimeMs,
                     ExtractedData = result.Value.ExtractedData != null ? MapToGlobalExecutorResponseDto(result.Value.ExtractedData) : null,
-                    CommandExecution = null //result.Value.CommandExecution != null ? MapToCommandExecutionResponseDto(result.Value.CommandExecution) : null
+                    CommandExecution = result.Value.CommandExecution != null ? MapToCommandExecutionResponseDto(result.Value.CommandExecution) : null
                 };
 
                 return new ApiResponseBase<SimulateProcessElementResponse>(response);
