@@ -372,7 +372,7 @@ else
 
             targetFinancialType = result.Data.FinancialType;
             _ = LoadDataAsync();
-            
+
             // Update breadcrumbs now that we know we're in edit mode
             InitializeBreadcrumbs();
         }
@@ -633,6 +633,12 @@ else
     {
         try
         {
+            if(elementMetadata.ElementId <= 0)
+            {
+                Snackbar.Add("Data Point / Element must be saved in first place to be able to create metadata.", Severity.Warning);
+                return;
+            }
+
             var dialogParams = new DialogParameters<ElementMetadataDialogEdit>();
             dialogParams.Add(s => s.Context, new ElementMetadataDialogEdit.ElementMetadataDialogEditContext
             {
