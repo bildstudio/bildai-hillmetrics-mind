@@ -22,21 +22,6 @@
                 fontCache: 'global'
             }
         };
-
-        // Function required by MudBlazor MathJax component
-        window.appendMathJaxScript = function() {
-            if (!document.getElementById('mathjax-script')) {
-                const script = document.createElement('script');
-                script.id = 'mathjax-script';
-                script.src = 'https://polyfill.io/v3/polyfill.min.js?features=es6';
-                script.onload = function() {
-                    const mathJaxScript = document.createElement('script');
-                    mathJaxScript.src = 'https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js';
-                    document.head.appendChild(mathJaxScript);
-                };
-                document.head.appendChild(script);
-            }
-        };
     </script>
 
     <HeadOutlet />

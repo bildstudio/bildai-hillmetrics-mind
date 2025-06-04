@@ -111,9 +111,9 @@
                                     <ChildContent>
                                         <MudText Typo="Typo.body2" Class="mb-3">@dataPoint.Description</MudText>
 
-                                        @if (dataPoint.Elements?.Any() == true)
+                                        @if (dataPoint.Fields?.Any() == true)
                                         {
-                                            <MudTable Items="@dataPoint.Elements" Hover="true" Dense="true" Breakpoint="Breakpoint.Sm">
+                                            <MudTable Items="@dataPoint.Fields" Hover="true" Dense="true" Breakpoint="Breakpoint.Sm">
                                                 <HeaderContent>
                                                     <MudTh>Property Name</MudTh>
                                                     <MudTh>External Name</MudTh>
@@ -123,7 +123,7 @@
                                                 <RowTemplate>
                                                     <MudTd>@context.PropertyName</MudTd>
                                                     <MudTd>@context.ExternalName</MudTd>
-                                                    <MudTd>@context.MappingPrimitiveValue</MudTd>
+                                                    <MudTd>@context.ValueType</MudTd>
                                                     <MudTd>
                                                         @if (context.MetadataByLanguage?.Any() == true)
                                                         {
