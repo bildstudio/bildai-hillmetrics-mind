@@ -1,7 +1,10 @@
 ﻿using HillMetrics.Core.API.Responses;
 using HillMetrics.Core.Contracts;
+using HillMetrics.Core.Flux.Contracts;
+using HillMetrics.Core.Mediator;
 using HillMetrics.Core.Messaging.Notification.Realtime;
 using HillMetrics.Core.Messaging.Services;
+using HillMetrics.Normalized.Domain.Contracts.Market.Cqrs.Price;
 using HillMetrics.Python.API.SDK.Contracts;
 using HillMetrics.Python.API.SDK.Requests.Infront;
 using Microsoft.AspNetCore.Authorization;
@@ -17,10 +20,12 @@ namespace HillMetrics.MIND.API.Controllers
     {
         private readonly IInfrontService _infrontService;
         private readonly ISignalRService _signalRService;
-        public TestController(IInfrontService infrontService, ISignalRService signalRService)
+        private readonly IHMediator _mediator;
+        public TestController(IInfrontService infrontService, ISignalRService signalRService, IHMediator mediator)
         {
             _infrontService = infrontService;
             _signalRService = signalRService;
+            _mediator = mediator;
         }
 
         [HttpPost("python-api/infront")]
@@ -53,6 +58,21 @@ namespace HillMetrics.MIND.API.Controllers
         {
             var notifyEvent = new SignalrPublishEvent(NotificationTopic.Global, new DataValue(request.Data, request.Format));
             await _signalRService.PublishAsync(notifyEvent);
+
+            return Ok();
+        }
+
+        [AllowAnonymous]
+        [HttpGet("testbench")]
+        public async Task<IActionResult> TestBenchs()
+        {
+            var command = new PriceBenchsCommand(1, 1, new DataProcessing(1, 2, new MemoryStream(), Core.Common.ContentType.Pdf, new Dictionary<string, string>()));
+
+            command.AddItem(new BenchsCommandElement() { Currency = "EUR", Date = DateTime.UtcNow });
+            command.AddItem(new BenchsCommandElement() { Currency = "EUR", Date = DateTime.UtcNow });
+            command.AddItem(new BenchsCommandElement() { Currency = "EUR", Date = DateTime.UtcNow });
+            command.AddItem(new BenchsCommandElement() { Currency = "EUR", Date = DateTime.UtcNow });
+            await _mediator.Send(command);
 
             return Ok();
         }

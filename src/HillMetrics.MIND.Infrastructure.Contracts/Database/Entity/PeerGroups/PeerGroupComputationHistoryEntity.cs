@@ -34,7 +34,7 @@ namespace HillMetrics.MIND.Infrastructure.Contracts.Database.Entity.PeerGroups
         public void Completed(IEnumerable<int> financialsIds)
         {
             TotalRecords = 0;
-            if(!financialsIds.IsNullOrEmpty())
+            if (!financialsIds.IsNullOrEmpty())
             {
                 foreach (var financialId in financialsIds)
                 {
@@ -46,8 +46,10 @@ namespace HillMetrics.MIND.Infrastructure.Contracts.Database.Entity.PeerGroups
 
                 TotalRecords = financialsIds.Count();
             }
+            else
+                TotalRecords = 0;
 
-            Status = ComputationStatus.Completed;
+                Status = ComputationStatus.Completed;
             StatusDetails = "Completed";
             ComputedAt = DateTime.UtcNow.AsUtc();
         }

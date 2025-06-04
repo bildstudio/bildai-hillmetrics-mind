@@ -66,6 +66,11 @@ namespace HillMetrics.MIND.Infrastructure.Contracts.Database.Entity.Clients
 
             return clientFluxRule;
         }
+
+        public List<int> GetFluxIdsByPriority()
+        {
+            return FluxPriorities.OrderBy(s => s.Priority).Select(s => s.FluxId).ToList();
+        }
     }
 
     public class ClientFluxRuleConfiguration : IEntityTypeConfiguration<ClientFluxRuleEntity>

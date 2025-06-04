@@ -193,7 +193,6 @@ namespace HillMetrics.MIND.API.Controllers
                 {
                     FinancialIds = request.FinancialIds,
                     FluxId = request.FluxId,
-                    Currency = request.Currency,
                     Dates = request.Dates
                 };
 

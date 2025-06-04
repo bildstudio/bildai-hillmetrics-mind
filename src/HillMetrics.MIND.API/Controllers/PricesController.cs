@@ -21,7 +21,6 @@ namespace HillMetrics.MIND.API.Controllers
         {
             UpdatePriceEntityModel model = new UpdatePriceEntityModel
             {
-                CurrencyCode = request.CurrencyCode,
                 Date = request.Date,
                 FinancialId = request.FinancialId,
                 FluxId = request.FluxId,

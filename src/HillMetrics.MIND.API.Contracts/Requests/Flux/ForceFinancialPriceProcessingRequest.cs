@@ -22,11 +22,6 @@ namespace HillMetrics.MIND.API.Contracts.Requests.Flux
         public int? FluxId { get; set; }
 
         /// <summary>
-        /// Optional currency code (e.g., EUR, USD). If not provided, the currency will be determined from the financial identifier.
-        /// </summary>
-        public string? Currency { get; set; }
-
-        /// <summary>
         /// List of price dates to process
         /// </summary>
         public List<DateTime> Dates { get; set; } = new();

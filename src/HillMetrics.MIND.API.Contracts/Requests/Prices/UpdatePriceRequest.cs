@@ -12,7 +12,6 @@ namespace HillMetrics.MIND.API.Contracts.Requests.Prices
     {
         public required int FinancialId { get; set; }
         public required DateTime Date { get; set; }
-        public required string CurrencyCode { get; set; }
         public required int FluxId { get; set; }
         
         public required Core.Financial.FinancialType FinancialType { get; set; }

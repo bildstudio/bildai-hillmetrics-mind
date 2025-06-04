@@ -30,11 +30,11 @@
                                        SearchCriteriaChanged="@((criteria) => searchRequest.FinancialId = criteria)"
                                        Label="Financial ID" />
             </MudItem>
-            <MudItem xs="12" md="3">
+           @*  <MudItem xs="12" md="3">
                 <MudTextField @bind-Value="searchRequest.CurrencyCode"
                             Label="Currency Code"
                             Variant="Variant.Outlined"/>
-            </MudItem>
+            </MudItem> *@
             <MudItem xs="12" md="3">
                 <MudSelect T="FinancialType" @bind-Value="searchRequest.FinancialType"
                           Label="Financial Type"
@@ -117,7 +117,7 @@
             <MudTh><MudTableSortLabel SortLabel="Id" T="SearchPricesResponse">Financial ID</MudTableSortLabel></MudTh>
             <MudTh><MudTableSortLabel SortLabel="Name" T="SearchPricesResponse">Name</MudTableSortLabel></MudTh>
             <MudTh><MudTableSortLabel SortLabel="Code" T="SearchPricesResponse">Code</MudTableSortLabel></MudTh>
-            <MudTh><MudTableSortLabel SortLabel="CurrencyCode" T="SearchPricesResponse">Currency</MudTableSortLabel></MudTh>
+            @* <MudTh><MudTableSortLabel SortLabel="CurrencyCode" T="SearchPricesResponse">Currency</MudTableSortLabel></MudTh> *@
             <MudTh><MudTableSortLabel SortLabel="Mic" T="SearchPricesResponse">Mic</MudTableSortLabel></MudTh>
             <MudTh><MudTableSortLabel SortLabel="Flux" T="SearchPricesResponse">Flux</MudTableSortLabel></MudTh>
             <MudTh><MudTableSortLabel SortLabel="Date" T="SearchPricesResponse">Date</MudTableSortLabel></MudTh>
@@ -129,7 +129,7 @@
             <MudTd DataLabel="ID" Style="white-space: nowrap;">@context.FinancialId</MudTd>
             <MudTd DataLabel="Name" Style="white-space: nowrap;">@context.Name</MudTd>
             <MudTd DataLabel="Code" Style="white-space: nowrap;">@context.Code (@context.FinancialCodeIdentifier)</MudTd>
-            <MudTd DataLabel="Currency" Style="white-space: nowrap;">@context.CurrencyCode</MudTd>
+            @* <MudTd DataLabel="Currency" Style="white-space: nowrap;">@context.CurrencyCode</MudTd> *@
             <MudTd DataLabel="Mic" Style="white-space: nowrap;">@context.Mic</MudTd>
             <MudTd DataLabel="Flux" Style="white-space: nowrap;">
                 @if (context.FluxId > 0)
@@ -301,7 +301,7 @@
             {
                 FinancialId = price.FinancialId,
                 Date = price.Date,
-                CurrencyCode = price.CurrencyCode,
+                // CurrencyCode = price.CurrencyCode,
                 FluxId = price.FluxId,
                 FinancialType = price.FinancialType,
                 Properties = price.FinancialProperties
