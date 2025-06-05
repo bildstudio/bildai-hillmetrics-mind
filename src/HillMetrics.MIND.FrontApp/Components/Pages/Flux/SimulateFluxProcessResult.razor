@@ -81,12 +81,6 @@
                 <MudCardContent>
                     <MudGrid>
                         <MudItem xs="12" md="3">
-                            <MudPaper Class="pa-4 text-center" Style="background-color: var(--mud-palette-info-lighten);">
-                                <MudText Typo="Typo.h4" Color="Color.Info">@simulationResult.SimulationSummary.FinancialsToCreate</MudText>
-                                <MudText Typo="Typo.subtitle1">Financials to Create</MudText>
-                            </MudPaper>
-                        </MudItem>
-                        <MudItem xs="12" md="3">
                             <MudPaper Class="pa-4 text-center" Style="background-color: var(--mud-palette-success-lighten);">
                                 <MudText Typo="Typo.h4" Color="Color.Success">@simulationResult.SimulationSummary.CommandsToExecute</MudText>
                                 <MudText Typo="Typo.subtitle1">Commands to Execute</MudText>
@@ -451,7 +445,7 @@
                                             @foreach (var command in kvp.Value)
                                             {
                                                 <MudListItem>
-                                                    <MudText Typo="Typo.body2">@command</MudText>
+                                                    <MudText Typo="Typo.body2">@command.CommandName (@string.Join(",", command.Elements))</MudText>
                                                 </MudListItem>
                                             }
                                         </MudList>
@@ -459,19 +453,6 @@
                                 </MudExpansionPanel>
                             </MudExpansionPanels>
                         }
-                    }
-
-                    @if (simulationResult.CommandExecution.PartiallyMatchedCommands.Any())
-                    {
-                        <MudText Typo="Typo.subtitle1" Class="mb-2 mt-4">Partially Matched Commands:</MudText>
-                        <MudList T="string">
-                            @foreach (var command in simulationResult.CommandExecution.PartiallyMatchedCommands)
-                            {
-                                <MudListItem>
-                                    <MudText Typo="Typo.body2" Color="Color.Warning">@command</MudText>
-                                </MudListItem>
-                            }
-                        </MudList>
                     }
                 </MudCardContent>
             </MudCard>

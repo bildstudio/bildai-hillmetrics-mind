@@ -32,7 +32,7 @@ else
 
             <MudText Typo="Typo.subtitle1" Class="mb-3">Elements</MudText>
 
-            @foreach (var element in Mapping.FinancialDataPoint.Elements)
+            @foreach (var element in Mapping.FinancialDataPoint.Elements.OrderBy(e => e.Position ?? int.MaxValue))
             {
                 var elementValue = Mapping.ElementValues.FirstOrDefault(v => v.FinancialDataPointElementId == element.Id);
                 if (elementValue == null)

@@ -65,9 +65,7 @@ namespace HillMetrics.MIND.API.Contracts.Responses.Flux
     public class SimulationSummaryDto
     {
         public ValidationSummaryDto ValidationSummary { get; set; } = new();
-        public int FinancialsToCreate { get; set; }
         public int CommandsToExecute { get; set; }
-        public int PartiallyMatchedCommands { get; set; }
         public int FinancialIdsAffected { get; set; }
         public bool HasValidationErrors { get; set; }
         public bool CanProceedWithProcessing { get; set; }
@@ -90,6 +88,7 @@ namespace HillMetrics.MIND.API.Contracts.Responses.Flux
     /// </summary>
     public class ValidationErrorDto
     {
+        public string RuleName { get; set; } = string.Empty;
         public string DataPoint { get; set; } = string.Empty;
         public string ErrorMessage { get; set; } = string.Empty;
         public string OriginalValue { get; set; } = string.Empty;
@@ -138,6 +137,11 @@ namespace HillMetrics.MIND.API.Contracts.Responses.Flux
     public class RuleResultDto
     {
         /// <summary>
+        /// Gets the name of the rule that was executed
+        /// </summary>
+        public string RuleName { get; set; } = string.Empty;
+
+        /// <summary>
         /// Gets whether the rule was successfully applied
         /// </summary>
         public bool IsSuccess { get; set; }
@@ -177,7 +181,22 @@ namespace HillMetrics.MIND.API.Contracts.Responses.Flux
 
     public class CommandExecutionResponseDto
     {
-        public Dictionary<int, List<string>> ExecutableCommandsByFinancialId { get; set; } = new();
-        public List<string> PartiallyMatchedCommands { get; set; } = new();
+        public Dictionary<int, List<CommandWithElementsDto>> ExecutableCommandsByFinancialId { get; set; } = new();
+    }
+
+    /// <summary>
+    /// Represents a command with its name and associated elements
+    /// </summary>
+    public class CommandWithElementsDto
+    {
+        /// <summary>
+        /// The name/type of the command
+        /// </summary>
+        public string CommandName { get; set; } = string.Empty;
+
+        /// <summary>
+        /// The list of elements/parameters for this command
+        /// </summary>
+        public List<string> Elements { get; set; } = new();
     }
 }
