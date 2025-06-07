@@ -126,6 +126,7 @@ stages:
     - checkout: Batchs
     - checkout: PythonApp
     - checkout: Calculs
+    - checkout: Business
 
     - task: Docker@2
       displayName: Build and push an image to container registry
