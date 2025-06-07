@@ -20,6 +20,7 @@ using Microsoft.AspNetCore.Mvc;
 using HillMetrics.Core.Messaging.Bus;
 using HillMetrics.Core.Workflow;
 using System.Text.Json;
+using System.Reflection;
 using HillMetrics.Normalized.Domain.Contracts.Providing.Flux.Cqrs;
 using HillMetrics.Core.Workflow.Models;
 using HillMetrics.Core.Contracts;
@@ -29,6 +30,8 @@ using HillMetrics.Core.Rules.Abstract;
 using HillMetrics.MIND.API.Contracts.Responses.FluxDataPoints;
 using HillMetrics.MIND.API.Contracts.Requests.FluxDataPoints;
 using HillMetrics.Normalized.Domain.Contracts.FluxDataPoints;
+using HillMetrics.Normalized.Domain.Contracts.Market.Cqrs;
+using HillMetrics.Core;
 
 namespace HillMetrics.MIND.API.Controllers
 {
@@ -468,8 +471,8 @@ namespace HillMetrics.MIND.API.Controllers
         /// <returns>Status indication that the operation has started</returns>
         [HttpPost("{fluxId}/upload-manual")]
         public async Task<ActionResult<ApiResponseBase<ProcessStartedResponse>>> FetchManualFluxAsync(
-            int fluxId, 
-            [FromForm] string fileName, 
+            int fluxId,
+            [FromForm] string fileName,
             IFormFile file)
         {
             try
@@ -526,7 +529,7 @@ namespace HillMetrics.MIND.API.Controllers
                 if (fetchResult.IsSuccess)
                 {
                     logger.LogInformation("Manual flux processing completed successfully for flux {FluxId}", fluxId);
-                    
+
                     // Create a response with the workflow ID for tracking
                     var response = new ProcessStartedResponse
                     {
@@ -541,7 +544,7 @@ namespace HillMetrics.MIND.API.Controllers
                 {
                     logger.LogWarning("Manual flux processing failed for flux {FluxId}: {Errors}",
                         fluxId, string.Join(", ", fetchResult.Errors.Select(e => e.Message)));
-                    
+
                     return new ErrorApiActionResult(fetchResult.Errors.ToApiResult());
                 }
             }
@@ -750,6 +753,7 @@ namespace HillMetrics.MIND.API.Controllers
             }
         }
 
+        #region Simulate Process Element
         /// <summary>
         /// Simulate the processing of a specific flux fetching history
         /// </summary>
@@ -770,13 +774,17 @@ namespace HillMetrics.MIND.API.Controllers
                 if (result.IsFailed)
                     return new ErrorApiActionResult(result.Errors.ToApiResult());
 
+                var extractedData = result.Value.ExtractedData != null ? MapToGlobalExecutorResponseDto(result.Value.ExtractedData) : null;
+                var commandExecution = result.Value.CommandExecution != null ? MapToCommandExecutionResponseDto(result.Value.CommandExecution) : null;
+
                 var response = new SimulateProcessElementResponse
                 {
                     Status = (SimulateProcessElementResponse.SimulationStatus)result.Value.Status,
                     FluxId = result.Value.FluxId,
                     ProcessingTimeMs = result.Value.ProcessingTimeMs,
-                    ExtractedData = result.Value.ExtractedData != null ? MapToGlobalExecutorResponseDto(result.Value.ExtractedData) : null,
-                    CommandExecution = result.Value.CommandExecution != null ? MapToCommandExecutionResponseDto(result.Value.CommandExecution) : null
+                    ExtractedData = extractedData,
+                    CommandExecution = commandExecution,
+                    SimulationSummary = BuildSimulationSummary(extractedData, commandExecution)
                 };
 
                 return new ApiResponseBase<SimulateProcessElementResponse>(response);
@@ -820,6 +828,7 @@ namespace HillMetrics.MIND.API.Controllers
         {
             return new RuleResultDto
             {
+                RuleName = source.RuleName,
                 IsSuccess = source.IsSuccess,
                 ErrorMessage = source.ErrorMessage,
                 ValidationMessages = source.ValidationMessages.Select(vm => new ValidationMessageDto
@@ -840,11 +849,192 @@ namespace HillMetrics.MIND.API.Controllers
             {
                 ExecutableCommandsByFinancialId = source.ExecutableCommandsByFinancialId.ToDictionary(
                     kvp => kvp.Key,
-                    kvp => kvp.Value.Select(cmd => cmd.ToString() ?? string.Empty).ToList()
-                ),
-                PartiallyMatchedCommands = source.PartiallyMatchedCommands.Select(cmd => cmd.ToString() ?? string.Empty).ToList()
+                    kvp => kvp.Value.Select(cmd => new CommandWithElementsDto
+                    {
+                        CommandName = ExtractCommandName(cmd),
+                        Description = ExtractCommandDescription(cmd),
+                        Elements = ExtractCommandElements(cmd)
+                    }).ToList()
+                )
             };
         }
+
+        /// <summary>
+        /// Extracts the command name from a command object
+        /// </summary>
+        private static string ExtractCommandName(IMarketCommand command)
+        {
+            if (command == null)
+                return string.Empty;
+
+            // If command implements IBusinessDescription, use BusinessName
+            if (command is IBusinessDescription businessDescription && !string.IsNullOrWhiteSpace(businessDescription.BusinessName))
+            {
+                return businessDescription.BusinessName;
+            }
+
+            // Fallback to type name
+            var fullTypeName = command.GetType().Name;
+            return fullTypeName;
+        }
+
+        /// <summary>
+        /// Extracts the command description from a command object
+        /// </summary>
+        private static string ExtractCommandDescription(IMarketCommand command)
+        {
+            if (command == null)
+                return string.Empty;
+
+            // If command implements IBusinessDescription, use BusinessDescription
+            if (command is IBusinessDescription businessDescription && !string.IsNullOrWhiteSpace(businessDescription.BusinessDescription))
+            {
+                return businessDescription.BusinessDescription;
+            }
+
+            return string.Empty;
+        }
+
+        /// <summary>
+        /// Extracts the command elements/parameters from a command object
+        /// </summary>
+        private static List<string> ExtractCommandElements(IMarketCommand command)
+        {
+            if (command == null)
+                return new List<string>();
+
+            // Check if it's an AbstractCollectionCommand by looking for Items property
+            var itemsProperty = command.GetType().GetProperty("Items", BindingFlags.Public | BindingFlags.Instance);
+            if (itemsProperty != null)
+            {
+                try
+                {
+                    var itemsValue = itemsProperty.GetValue(command);
+                    if (itemsValue is System.Collections.ICollection collection)
+                    {
+                        return new List<string> { $"[items.Count: {collection.Count}]" };
+                    }
+                }
+                catch
+                {
+                    // If we can't read the Items property, fall back to empty list
+                    return new List<string>();
+                }
+            }
+
+            // For AbstractCommand or other types, return empty list
+            return new List<string>();
+        }
+
+        /// <summary>
+        /// Builds a comprehensive simulation summary from extracted data and command execution results
+        /// </summary>
+        private static SimulationSummaryDto BuildSimulationSummary(GlobalExecutorResponseDto? extractedData, CommandExecutionResponseDto? commandExecution)
+        {
+            var summary = new SimulationSummaryDto();
+
+            // Calculate validation summary
+            if (extractedData != null)
+            {
+                summary.ValidationSummary = CalculateValidationSummary(extractedData);
+                summary.HasValidationErrors = summary.ValidationSummary.ValidationErrors.Any();
+            }
+
+            // Calculate command statistics
+            if (commandExecution != null)
+            {
+                summary.CommandsToExecute = commandExecution.ExecutableCommandsByFinancialId.Values
+                    .SelectMany(commands => commands)
+                    .Count();
+
+                summary.FinancialIdsAffected = commandExecution.ExecutableCommandsByFinancialId.Keys.Count;
+            }
+
+            // Determine if processing can proceed
+            summary.CanProceedWithProcessing = summary.ValidationSummary.SuccessRate >= 80.0 && // At least 80% success rate
+                                             summary.CommandsToExecute > 0 && // Has commands to execute
+                                             !summary.HasValidationErrors; // No critical validation errors
+
+            return summary;
+        }
+
+        /// <summary>
+        /// Calculates validation statistics from extracted data
+        /// </summary>
+        private static ValidationSummaryDto CalculateValidationSummary(GlobalExecutorResponseDto extractedData)
+        {
+            var validationSummary = new ValidationSummaryDto();
+            var allRuleResults = new List<RuleResultDto>();
+
+            // Collect all rule results from all executors
+            foreach (var executor in extractedData.ExecutorResults)
+            {
+                foreach (var row in executor.Rows)
+                {
+                    if (row.RuleResult != null)
+                    {
+                        allRuleResults.Add(row.RuleResult);
+                    }
+                }
+            }
+
+            validationSummary.TotalRulesExecuted = allRuleResults.Count;
+            validationSummary.SuccessfulValidations = allRuleResults.Count(r => r.IsSuccess);
+            validationSummary.FailedValidations = allRuleResults.Count(r => !r.IsSuccess);
+
+            // Calculate success rate
+            if (validationSummary.TotalRulesExecuted > 0)
+            {
+                validationSummary.SuccessRate = (double)validationSummary.SuccessfulValidations / validationSummary.TotalRulesExecuted * 100;
+            }
+
+            // Collect validation errors
+            validationSummary.ValidationErrors = allRuleResults
+                .Where(r => !r.IsSuccess)
+                .Select(r => new ValidationErrorDto
+                {
+                    RuleName = r.RuleName,
+                    ErrorMessage = r.ErrorMessage,
+                    DataPoint = ExtractDataPointFromRuleResult(r),
+                    OriginalValue = r.OriginalData?.ToString() ?? string.Empty
+                })
+                .ToList();
+
+            return validationSummary;
+        }
+
+        /// <summary>
+        /// Extracts a data point identifier from rule result for error reporting
+        /// </summary>
+        private static string ExtractDataPointFromRuleResult(RuleResultDto ruleResult)
+        {
+            // Try to extract meaningful data point information
+            if (ruleResult.OutputValues?.ContainsKey("DataPoint") == true)
+            {
+                return ruleResult.OutputValues["DataPoint"]?.ToString() ?? "Unknown";
+            }
+
+            if (ruleResult.OutputValues?.ContainsKey("Property") == true)
+            {
+                return ruleResult.OutputValues["Property"]?.ToString() ?? "Unknown";
+            }
+
+            // Look for validation messages with property information
+            var propertyMessage = ruleResult.ValidationMessages?.FirstOrDefault(vm => !string.IsNullOrEmpty(vm.Property));
+            if (propertyMessage != null)
+            {
+                return propertyMessage.Property;
+            }
+
+            // Use rule name as fallback if available
+            if (!string.IsNullOrEmpty(ruleResult.RuleName))
+            {
+                return ruleResult.RuleName;
+            }
+
+            return "Unknown DataPoint";
+        }
+        #endregion
         #endregion
 
         #region Processing
@@ -964,245 +1154,6 @@ namespace HillMetrics.MIND.API.Controllers
             }
         }
         #endregion
-
-        //#region Workflow
-
-        ///// <summary>
-        ///// Gets the current state of all active workflow fluxes
-        ///// </summary>
-        //[HttpGet("workflow/active")]
-        //public async Task<ActionResult<ApiResponseBase<List<ActiveFluxDto>>>> GetActiveFluxes(CancellationToken cancellationToken)
-        //{
-        //    try
-        //    {
-        //        var activeFluxes = await workflowService.GetActiveFluxesAsync(cancellationToken);
-
-        //        var result = activeFluxes.Select(flux => new ActiveFluxDto
-        //        {
-        //            FluxId = flux.FluxId,
-        //            FluxName = flux.FluxName,
-        //            Stage = flux.CurrentStage.ToString(),
-        //            Details = flux.Steps.LastOrDefault()?.Description,
-        //            StartTime = flux.StartTime,
-        //            LastUpdateTime = flux.LastUpdateTime,
-        //            DurationMinutes = flux.Duration.TotalMinutes,
-        //            ProgressPercentage = flux.ProgressPercentage
-        //        }).ToList();
-
-        //        return new ApiResponseBase<List<ActiveFluxDto>>(result);
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return new ErrorApiActionResult(new ErrorApiResponse(new Core.API.Exceptions.ApiException($"Error retrieving active fluxes (details : {ex.Message})"), System.Net.HttpStatusCode.InternalServerError));
-        //    }
-        //}
-
-        ///// <summary>
-        ///// Gets the state of recently completed fluxes
-        ///// </summary>
-        //[HttpGet("workflow/completed")]
-        //public async Task<ActionResult<ApiResponseBase<List<CompletedFluxDto>>>> GetCompletedFluxes([FromQuery] int count = 10, CancellationToken cancellationToken = default)
-        //{
-        //    try
-        //    {
-        //        var completedFluxes = await workflowService.GetRecentlyCompletedFluxesAsync(count, cancellationToken);
-
-        //        var result = completedFluxes.Select(flux => new CompletedFluxDto
-        //        {
-        //            FluxId = flux.FluxId,
-        //            FluxName = flux.FluxName,
-        //            Status = flux.IsSuccessful ? "Success" : "Failed",
-        //            Stage = flux.CurrentStage.ToString(),
-        //            Details = flux.Steps.LastOrDefault()?.Description,
-        //            StartTime = flux.StartTime,
-        //            CompletedAt = flux.EndTime,
-        //            DurationMinutes = flux.Duration.TotalMinutes
-        //        }).ToList();
-
-        //        return new ApiResponseBase<List<CompletedFluxDto>>(result);
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return new ErrorApiActionResult(new ErrorApiResponse(new Core.API.Exceptions.ApiException($"Error retrieving completed fluxes (details : {ex.Message})"), System.Net.HttpStatusCode.InternalServerError));
-        //    }
-        //}
-
-        ///// <summary>
-        ///// Gets the details of a specific flux workflow
-        ///// </summary>
-        //[HttpGet("workflow/{fluxId}")]
-        //public async Task<ActionResult<ApiResponseBase<FluxWorkflowDetailsDto>>> GetFluxWorkflowDetails(int fluxId, CancellationToken cancellationToken)
-        //{
-        //    try
-        //    {
-        //        var fluxState = await workflowService.GetFluxStateAsync(fluxId, cancellationToken);
-
-        //        if (fluxState == null)
-        //        {
-        //            return new ErrorApiActionResult(new ErrorApiResponse(new Core.API.Exceptions.ApiException($"Flux {fluxId} not found"), System.Net.HttpStatusCode.NotFound));
-        //        }
-
-        //        var result = new FluxWorkflowDetailsDto
-        //        {
-        //            FluxId = fluxState.FluxId,
-        //            FluxName = fluxState.FluxName,
-        //            CurrentStage = fluxState.CurrentStage.ToString(),
-        //            StageDetails = fluxState.Steps.LastOrDefault()?.Description,
-        //            StartTime = fluxState.StartTime,
-        //            LastUpdateTime = fluxState.LastUpdateTime,
-        //            EndTime = fluxState.EndTime,
-        //            DurationMinutes = fluxState.Duration.TotalMinutes,
-        //            ProgressPercentage = fluxState.ProgressPercentage,
-        //            IsCompleted = fluxState.IsCompleted,
-        //            IsSuccessful = fluxState.IsSuccessful,
-        //            WorkflowId = fluxState.WorkflowId,
-        //            History = MapWorkflowStepsToHistoryEntries(fluxState.Steps, fluxState.StartTime)
-        //        };
-
-        //        return new ApiResponseBase<FluxWorkflowDetailsDto>(result);
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return new ErrorApiActionResult(new ErrorApiResponse(new Core.API.Exceptions.ApiException($"Error retrieving details for flux {fluxId} (details : {ex.Message})"), System.Net.HttpStatusCode.InternalServerError));
-        //    }
-        //}
-
-        ///// <summary>
-        ///// Gets a global summary of flux workflows
-        ///// </summary>
-        //[HttpGet("workflow/summary")]
-        //public async Task<ActionResult<ApiResponseBase<WorkflowSummaryDto>>> GetFluxWorkflowSummary(CancellationToken cancellationToken)
-        //{
-        //    try
-        //    {
-        //        var activeFluxes = await workflowService.GetActiveFluxesAsync(cancellationToken);
-        //        var completedFluxes = await workflowService.GetRecentlyCompletedFluxesAsync(100, cancellationToken);
-
-        //        var summary = new WorkflowSummaryDto
-        //        {
-        //            ActiveFluxCount = activeFluxes.Count,
-        //            RecentlyCompletedCount = completedFluxes.Count,
-        //            SuccessfulCompletions = completedFluxes.Count(f => f.IsSuccessful),
-        //            FailedCompletions = completedFluxes.Count(f => !f.IsSuccessful),
-        //            AverageCompletionTimeMinutes = completedFluxes.Any()
-        //                ? completedFluxes.Average(f => f.Duration.TotalMinutes)
-        //                : 0,
-        //            ByStage = activeFluxes
-        //                .GroupBy(f => f.CurrentStage)
-        //                .Select(g => new StageCountDto
-        //                {
-        //                    Stage = g.Key.ToString(),
-        //                    Count = g.Count()
-        //                })
-        //                .OrderBy(x => x.Stage)
-        //                .ToList()
-        //        };
-
-        //        return new ApiResponseBase<WorkflowSummaryDto>(summary);
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return new ErrorApiActionResult(new ErrorApiResponse(new Core.API.Exceptions.ApiException($"Error retrieving flux workflow summary (details : {ex.Message})"), System.Net.HttpStatusCode.InternalServerError));
-        //    }
-        //}
-
-        ///// <summary>
-        ///// Manually triggers cleanup of historical workflow data
-        ///// </summary>
-        //[HttpPost("workflow/cleanup")]
-        //public async Task<ActionResult<ApiResponseBase<string>>> TriggerWorkflowCleanup([FromQuery] int daysToKeep = 14, CancellationToken cancellationToken = default)
-        //{
-        //    try
-        //    {
-        //        await workflowService.CleanupHistoryAsync(daysToKeep, cancellationToken);
-        //        return new ApiResponseBase<string>($"Cleanup of data older than {daysToKeep} days completed successfully");
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return new ErrorApiActionResult(new ErrorApiResponse(new Core.API.Exceptions.ApiException($"Error during cleanup of historical workflow data (details : {ex.Message})"), System.Net.HttpStatusCode.InternalServerError));
-        //    }
-        //}
-
-        ///// <summary>
-        ///// Gets a workflow by its unique workflow ID
-        ///// </summary>
-        //[HttpGet("workflow/by-id/{workflowId}")]
-        //public async Task<ActionResult<ApiResponseBase<FluxWorkflowDetailsDto>>> GetWorkflowById(Guid workflowId, CancellationToken cancellationToken)
-        //{
-        //    try
-        //    {
-        //        var workflowState = await workflowService.GetWorkflowByIdAsync(workflowId, cancellationToken);
-
-        //        if (workflowState == null)
-        //        {
-        //            return new ErrorApiActionResult(new ErrorApiResponse(
-        //                new Core.API.Exceptions.ApiException($"Workflow with ID {workflowId} not found"),
-        //                System.Net.HttpStatusCode.NotFound));
-        //        }
-
-        //        var result = new FluxWorkflowDetailsDto
-        //        {
-        //            FluxId = workflowState.FluxId,
-        //            FluxName = workflowState.FluxName,
-        //            CurrentStage = workflowState.CurrentStage.ToString(),
-        //            StageDetails = workflowState.Steps.LastOrDefault()?.Description,
-        //            StartTime = workflowState.StartTime,
-        //            LastUpdateTime = workflowState.LastUpdateTime,
-        //            EndTime = workflowState.EndTime,
-        //            DurationMinutes = workflowState.Duration.TotalMinutes,
-        //            ProgressPercentage = workflowState.ProgressPercentage,
-        //            IsCompleted = workflowState.IsCompleted,
-        //            IsSuccessful = workflowState.IsSuccessful,
-        //            WorkflowId = workflowState.WorkflowId,
-        //            History = MapWorkflowStepsToHistoryEntries(workflowState.Steps, workflowState.StartTime)
-        //        };
-
-        //        return new ApiResponseBase<FluxWorkflowDetailsDto>(result);
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return new ErrorApiActionResult(new ErrorApiResponse(
-        //            new Core.API.Exceptions.ApiException($"Error retrieving workflow with ID {workflowId} (details : {ex.Message})"),
-        //            System.Net.HttpStatusCode.InternalServerError));
-        //    }
-        //}
-
-        ///// <summary>
-        ///// Maps workflow steps to a hierarchical structure of history entries
-        ///// </summary>
-        //private List<HistoryEntryDto> MapWorkflowStepsToHistoryEntries(List<WorkflowStepModel> steps, DateTime workflowStartTime)
-        //{
-        //    var result = new List<HistoryEntryDto>();
-
-        //    foreach (var step in steps)
-        //    {
-        //        var historyEntry = new HistoryEntryDto
-        //        {
-        //            Id = step.Id,
-        //            ParentId = step.ParentId,
-        //            Stage = step.Stage.ToString(),
-        //            Description = step.Description,
-        //            Timestamp = step.Timestamp,
-        //            TimeSinceStart = (step.Timestamp - workflowStartTime).TotalMinutes,
-        //            RowsAdded = step.LinesAdded,
-        //            RowsModified = step.LinesModified,
-        //            RowsIgnored = step.LinesIgnored,
-        //            RowsWithErrors = step.LinesWithErrors,
-        //            IsCompleted = step.IsCompleted,
-        //            CompletionTimestamp = step.CompletionTimestamp,
-        //            CompletionDescription = step.CompletionDescription,
-        //            CompletionStage = step.CompletionStage?.ToString(),
-        //            DurationSeconds = step.DurationSeconds,
-        //            Children = MapWorkflowStepsToHistoryEntries(step.Children, workflowStartTime)
-        //        };
-
-        //        result.Add(historyEntry);
-        //    }
-
-        //    return result;
-        //}
-
-        //#endregion
 
         #region FluxDataPointsRealtions
 

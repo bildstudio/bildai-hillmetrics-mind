@@ -21,6 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\..\HillMetrics.Business\src\HillMetrics.Business.API.SDK\HillMetrics.Business.API.SDK.csproj" />
     <ProjectReference Include="..\..\..\HillMetrics.Core\src\HillMetrics.Core.API\HillMetrics.Core.API.csproj" />
     <ProjectReference Include="..\..\..\HillMetrics.Core\src\HillMetrics.Core.Authentication\HillMetrics.Core.Authentication\HillMetrics.Core.Authentication.csproj" />
     <ProjectReference Include="..\..\..\HillMetrics.Core\src\HillMetrics.Core.Flux.Extension\HillMetrics.Core.Flux.Extension.csproj" />

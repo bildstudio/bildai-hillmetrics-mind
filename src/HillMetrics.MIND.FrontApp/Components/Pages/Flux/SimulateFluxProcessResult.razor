@@ -47,21 +47,6 @@
                         <MudText Typo="Typo.h6">Fetching History ID</MudText>
                         <MudText>@FetchingHistoryId</MudText>
                     </MudItem>
-                    <MudItem xs="12" md="4">
-                        <MudText Typo="Typo.h6">Ready for Processing</MudText>
-                        @if (simulationResult.IsReadyForProcessing)
-                        {
-                            <MudChip T="Color" Color="Color.Success" Size="Size.Small" Icon="@Icons.Material.Filled.CheckCircle">
-                                YES - Ready to Process
-                            </MudChip>
-                        }
-                        else
-                        {
-                            <MudChip T="Color" Color="Color.Warning" Size="Size.Small" Icon="@Icons.Material.Filled.Warning">
-                                NOT READY - Issues Found
-                            </MudChip>
-                        }
-                    </MudItem>
                 </MudGrid>
             </MudCardContent>
         </MudCard>
@@ -80,12 +65,6 @@
                 </MudCardHeader>
                 <MudCardContent>
                     <MudGrid>
-                        <MudItem xs="12" md="3">
-                            <MudPaper Class="pa-4 text-center" Style="background-color: var(--mud-palette-info-lighten);">
-                                <MudText Typo="Typo.h4" Color="Color.Info">@simulationResult.SimulationSummary.FinancialsToCreate</MudText>
-                                <MudText Typo="Typo.subtitle1">Financials to Create</MudText>
-                            </MudPaper>
-                        </MudItem>
                         <MudItem xs="12" md="3">
                             <MudPaper Class="pa-4 text-center" Style="background-color: var(--mud-palette-success-lighten);">
                                 <MudText Typo="Typo.h4" Color="Color.Success">@simulationResult.SimulationSummary.CommandsToExecute</MudText>
@@ -451,7 +430,7 @@
                                             @foreach (var command in kvp.Value)
                                             {
                                                 <MudListItem>
-                                                    <MudText Typo="Typo.body2">@command</MudText>
+                                                    <MudText Typo="Typo.body2">@command.CommandName (@string.Join(",", command.Elements))</MudText>
                                                 </MudListItem>
                                             }
                                         </MudList>
@@ -459,19 +438,6 @@
                                 </MudExpansionPanel>
                             </MudExpansionPanels>
                         }
-                    }
-
-                    @if (simulationResult.CommandExecution.PartiallyMatchedCommands.Any())
-                    {
-                        <MudText Typo="Typo.subtitle1" Class="mb-2 mt-4">Partially Matched Commands:</MudText>
-                        <MudList T="string">
-                            @foreach (var command in simulationResult.CommandExecution.PartiallyMatchedCommands)
-                            {
-                                <MudListItem>
-                                    <MudText Typo="Typo.body2" Color="Color.Warning">@command</MudText>
-                                </MudListItem>
-                            }
-                        </MudList>
                     }
                 </MudCardContent>
             </MudCard>
