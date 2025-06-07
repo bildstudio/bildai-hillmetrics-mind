@@ -100,19 +100,19 @@ namespace HillMetrics.MIND.API.Contracts.Responses.Flux
     public class FinancialInstrumentToCreateDto
     {
         public Dictionary<string, object> DataPoints { get; set; } = new();
-        
+
         /// <summary>
         /// Gets a human-readable description of the financial instrument
         /// </summary>
         public string GetDescription()
         {
             var items = new List<string>();
-            
+
             foreach (var kvp in DataPoints)
             {
                 items.Add($"{kvp.Key}: {kvp.Value}");
             }
-            
+
             return string.Join(", ", items);
         }
     }
@@ -193,6 +193,11 @@ namespace HillMetrics.MIND.API.Contracts.Responses.Flux
         /// The name/type of the command
         /// </summary>
         public string CommandName { get; set; } = string.Empty;
+
+        /// <summary>
+        /// The business description of the command
+        /// </summary>
+        public string Description { get; set; } = string.Empty;
 
         /// <summary>
         /// The list of elements/parameters for this command

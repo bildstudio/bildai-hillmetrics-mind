@@ -26,6 +26,8 @@ using HillMetrics.MIND.Infrastructure.Database.Extensions;
 using HillMetrics.MIND.Infrastructure.Database.Database;
 using HillMetrics.MIND.Domain;
 using HillMetrics.Core.Rules;
+using HillMetrics.Business.API.SDK;
+using HillMetrics.Core.Authentication.Keycloak.HttpHandlers;
 
 namespace HillMetrics.MIND.API;
 
@@ -96,6 +98,9 @@ public partial class Program
 
         builder.Services.AddPythonApiServices(builder.Configuration, "mind-api", TimeSpan.FromMinutes(2));
 
+        // Add Business API SDK with authentication
+        var businessApi = builder.Configuration.GetValue<string>("Services:BusinessApi", "https+http://BusinessAPI");
+        builder.Services.AddBusinessApiSDK<PrivateAuthenticationHttpHandler>(businessApi, "MindApi", httpClientTimeout: TimeSpan.FromMinutes(10));
 
         builder.Services.AddHillMetricsAuditedRequestsPreProcessors();
         builder.Services.AddHillMetricsAuditServices(Core.AuditApplicationName.HillMetrics_Mind);

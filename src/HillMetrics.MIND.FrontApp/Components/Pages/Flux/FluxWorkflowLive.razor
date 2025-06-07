@@ -725,11 +725,15 @@
             WorkflowStage.FetchingData => "Fetch data",
             WorkflowStage.Processing => "Process data",
             WorkflowStage.NormalizedDataInserting => "Insertion into Normalized database",
+            WorkflowStage.NormalizedFundCreating => "Create Funds into Normalized database",
+            WorkflowStage.NormalizedProductNameInserting => "Add product name",
+            WorkflowStage.NormalizedProductCodeInserting => "Add product code",
             WorkflowStage.RefinedDataCopying => "Insertion into Refined database",
             WorkflowStage.CalculationReturnStarting => "Calcul Performance",
             WorkflowStage.CalculationRiskStarting => "Calcul Volatility",
             WorkflowStage.CalculationWeeklyReturnStarting => "Calcul Weekly performance",
             WorkflowStage.CalcCurrencyExchangeRateStarting => "Convert currency with exchange rate",
+            WorkflowStage.NormalizedPriceInserting => "",
             WorkflowStage.Failed => "Error",
             _ => stage.ToString()
         };

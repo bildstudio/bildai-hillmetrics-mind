@@ -47,21 +47,6 @@
                         <MudText Typo="Typo.h6">Fetching History ID</MudText>
                         <MudText>@FetchingHistoryId</MudText>
                     </MudItem>
-                    <MudItem xs="12" md="4">
-                        <MudText Typo="Typo.h6">Ready for Processing</MudText>
-                        @if (simulationResult.IsReadyForProcessing)
-                        {
-                            <MudChip T="Color" Color="Color.Success" Size="Size.Small" Icon="@Icons.Material.Filled.CheckCircle">
-                                YES - Ready to Process
-                            </MudChip>
-                        }
-                        else
-                        {
-                            <MudChip T="Color" Color="Color.Warning" Size="Size.Small" Icon="@Icons.Material.Filled.Warning">
-                                NOT READY - Issues Found
-                            </MudChip>
-                        }
-                    </MudItem>
                 </MudGrid>
             </MudCardContent>
         </MudCard>

@@ -30,6 +30,8 @@ using HillMetrics.Core.Rules.Abstract;
 using HillMetrics.MIND.API.Contracts.Responses.FluxDataPoints;
 using HillMetrics.MIND.API.Contracts.Requests.FluxDataPoints;
 using HillMetrics.Normalized.Domain.Contracts.FluxDataPoints;
+using HillMetrics.Normalized.Domain.Contracts.Market.Cqrs;
+using HillMetrics.Core;
 
 namespace HillMetrics.MIND.API.Controllers
 {
@@ -469,8 +471,8 @@ namespace HillMetrics.MIND.API.Controllers
         /// <returns>Status indication that the operation has started</returns>
         [HttpPost("{fluxId}/upload-manual")]
         public async Task<ActionResult<ApiResponseBase<ProcessStartedResponse>>> FetchManualFluxAsync(
-            int fluxId, 
-            [FromForm] string fileName, 
+            int fluxId,
+            [FromForm] string fileName,
             IFormFile file)
         {
             try
@@ -527,7 +529,7 @@ namespace HillMetrics.MIND.API.Controllers
                 if (fetchResult.IsSuccess)
                 {
                     logger.LogInformation("Manual flux processing completed successfully for flux {FluxId}", fluxId);
-                    
+
                     // Create a response with the workflow ID for tracking
                     var response = new ProcessStartedResponse
                     {
@@ -542,7 +544,7 @@ namespace HillMetrics.MIND.API.Controllers
                 {
                     logger.LogWarning("Manual flux processing failed for flux {FluxId}: {Errors}",
                         fluxId, string.Join(", ", fetchResult.Errors.Select(e => e.Message)));
-                    
+
                     return new ErrorApiActionResult(fetchResult.Errors.ToApiResult());
                 }
             }
@@ -850,6 +852,7 @@ namespace HillMetrics.MIND.API.Controllers
                     kvp => kvp.Value.Select(cmd => new CommandWithElementsDto
                     {
                         CommandName = ExtractCommandName(cmd),
+                        Description = ExtractCommandDescription(cmd),
                         Elements = ExtractCommandElements(cmd)
                     }).ToList()
                 )
@@ -859,47 +862,68 @@ namespace HillMetrics.MIND.API.Controllers
         /// <summary>
         /// Extracts the command name from a command object
         /// </summary>
-        private static string ExtractCommandName(object command)
+        private static string ExtractCommandName(IMarketCommand command)
         {
             if (command == null)
                 return string.Empty;
 
-            // Extract the command type name (remove namespace if present)
+            // If command implements IBusinessDescription, use BusinessName
+            if (command is IBusinessDescription businessDescription && !string.IsNullOrWhiteSpace(businessDescription.BusinessName))
+            {
+                return businessDescription.BusinessName;
+            }
+
+            // Fallback to type name
             var fullTypeName = command.GetType().Name;
             return fullTypeName;
         }
 
         /// <summary>
+        /// Extracts the command description from a command object
+        /// </summary>
+        private static string ExtractCommandDescription(IMarketCommand command)
+        {
+            if (command == null)
+                return string.Empty;
+
+            // If command implements IBusinessDescription, use BusinessDescription
+            if (command is IBusinessDescription businessDescription && !string.IsNullOrWhiteSpace(businessDescription.BusinessDescription))
+            {
+                return businessDescription.BusinessDescription;
+            }
+
+            return string.Empty;
+        }
+
+        /// <summary>
         /// Extracts the command elements/parameters from a command object
         /// </summary>
-        private static List<string> ExtractCommandElements(object command)
+        private static List<string> ExtractCommandElements(IMarketCommand command)
         {
             if (command == null)
                 return new List<string>();
 
-            var elements = new List<string>();
-            
-            // Use reflection to get all public properties and their values
-            var properties = command.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance);
-            
-            foreach (var prop in properties)
+            // Check if it's an AbstractCollectionCommand by looking for Items property
+            var itemsProperty = command.GetType().GetProperty("Items", BindingFlags.Public | BindingFlags.Instance);
+            if (itemsProperty != null)
             {
                 try
                 {
-                    var value = prop.GetValue(command);
-                    if (value != null)
+                    var itemsValue = itemsProperty.GetValue(command);
+                    if (itemsValue is System.Collections.ICollection collection)
                     {
-                        elements.Add($"{prop.Name}: {value}");
+                        return new List<string> { $"[items.Count: {collection.Count}]" };
                     }
                 }
                 catch
                 {
-                    // Skip properties that can't be read
-                    continue;
+                    // If we can't read the Items property, fall back to empty list
+                    return new List<string>();
                 }
             }
 
-            return elements;
+            // For AbstractCommand or other types, return empty list
+            return new List<string>();
         }
 
         /// <summary>
