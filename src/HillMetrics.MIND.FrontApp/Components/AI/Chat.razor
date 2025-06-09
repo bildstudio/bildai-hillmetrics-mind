@@ -9,7 +9,7 @@
 @using System.Text.RegularExpressions
 @using MudBlazor
 @inject IChatService ChatService
-@inject IMcpClient McpClient;
+@inject IEnumerable<IMcpClient> McpClients;
 @inject IJSRuntime JSRuntime
 @inject IOptions<FeaturesConfig> FeaturesConfig
 @attribute [StreamRendering(true)]
@@ -250,7 +250,15 @@
     {
         try
         {
-            McpTools = await McpClient.ListToolsAsync();
+            foreach (var mcpClient in McpClients)
+            {
+                var tools = await mcpClient.ListToolsAsync();
+                foreach (var tool in tools)
+                {
+                    McpTools.Add(tool);
+                }
+            }
+
             // By default, all tools are enabled
             EnabledTools = new HashSet<string>(McpTools.Select(t => t.Name));
         }
