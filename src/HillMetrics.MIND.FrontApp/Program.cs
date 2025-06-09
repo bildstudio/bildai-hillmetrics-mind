@@ -88,11 +88,9 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddCascadingAuthenticationState();
 
 builder.Services.AddMcpFinanceClient(builder.Configuration);
-//builder.Services.AddMcpMindClient(builder.Configuration);
+builder.Services.AddMcpMindClient(builder.Configuration);
 
 var app = builder.Build();
-
-//app.MapDefaultEndpoints();
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
