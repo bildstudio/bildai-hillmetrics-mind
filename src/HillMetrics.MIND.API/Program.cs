@@ -28,6 +28,7 @@ using HillMetrics.MIND.Domain;
 using HillMetrics.Core.Rules;
 using HillMetrics.Business.API.SDK;
 using HillMetrics.Core.Authentication.Keycloak.HttpHandlers;
+using HillMetrics.Normalized.Domain.Rules;
 
 namespace HillMetrics.MIND.API;
 
@@ -46,7 +47,7 @@ public partial class Program
 
         builder.Services.AddDomainServices();
         builder.Services.AddFluxWorkflowTracker();
-        builder.Services.AddFinancialRules();
+        builder.Services.AddFinancialRules([typeof(PriceParsingExtendedRule).Assembly]);
 
         builder.Services.AddAutoMapper(typeof(FluxMappingProfile));
         builder.Services.AddAutoMapper(typeof(GicsMappingProfile));

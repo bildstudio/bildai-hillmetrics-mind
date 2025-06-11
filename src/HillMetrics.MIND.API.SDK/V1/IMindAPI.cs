@@ -227,6 +227,16 @@ namespace HillMetrics.MIND.API.SDK.V1
 
         #endregion
 
+        #region Rule Errors
+
+        /// <summary>
+        /// Search for rule errors following the given criteria
+        /// </summary>
+        [Get("/api/v1/flux/rule-errors/search")]
+        Task<CustomMindPagedApiResponseBase<RuleErrorSearchResponse>> SearchRuleErrorsAsync([Query] RuleErrorSearchRequest request);
+
+        #endregion
+
         #region Sources
         /// <summary>
         /// Search for flux sources following the given criteria

@@ -1,0 +1,379 @@
+@page "/flux/rule-errors"
+@using HillMetrics.Core.Financial.DataPoint
+@using HillMetrics.Core.Rules.Abstract
+@using HillMetrics.MIND.API.Contracts.Requests.Flux
+@using HillMetrics.MIND.API.Contracts.Responses.Flux
+@using HillMetrics.Core.Search
+@using HillMetrics.MIND.FrontApp.Components.Shared
+@using HillMetrics.MIND.API.SDK.V1
+@inject IMindAPI MindApi
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject ILogger<SearchRuleError> Logger
+
+@attribute [Authorize]
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudGrid>
+        <MudItem xs="12">
+            <MudText Typo="Typo.h4" Class="mb-4">Rule Errors Search</MudText>
+        </MudItem>
+    </MudGrid>
+
+    <MudCard Class="mb-4">
+        <MudCardContent>
+            <MudForm @ref="form" @bind-IsValid="@isValid">
+                <MudGrid Spacing="1">
+                    <!-- Rule Error ID -->
+                    <MudItem xs="12" md="6">
+                        <SearchCriteriaComponent T="int"
+                                                 SearchCriteria="@idSearchCriteria"
+                                                 SearchCriteriaChanged="@((criteria) => idSearchCriteria = criteria)"
+                                                 Label="Rule Error ID" />
+                    </MudItem>
+
+                    <!-- Flux ID -->
+                    <MudItem xs="12" md="6">
+                        <SearchCriteriaComponent T="int"
+                                                 SearchCriteria="@fluxIdSearchCriteria"
+                                                 SearchCriteriaChanged="@((criteria) => fluxIdSearchCriteria = criteria)"
+                                                 Label="Flux ID" />
+                    </MudItem>
+
+                    <!-- Data Point -->
+                    <MudItem xs="12" md="6">
+                        <MudSelect T="FinancialTechnicalDataPoint?" @bind-Value="searchRequest.DataPoint"
+                                   Label="Data Point" Variant="Variant.Outlined" Dense="true" Margin="Margin.Dense">
+                            <MudSelectItem Value="@((FinancialTechnicalDataPoint?)null)">All</MudSelectItem>
+                            @foreach (var dataPoint in Enum.GetValues<FinancialTechnicalDataPoint>())
+                            {
+                                <MudSelectItem T="FinancialTechnicalDataPoint?" Value="@dataPoint">@dataPoint</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+
+                    <!-- Rule Name -->
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="searchRequest.RuleName"
+                                      Label="Rule Name"
+                                      Variant="Variant.Outlined"
+                                      Placeholder="Search by rule name..."
+                                      Immediate="true"
+                                      DebounceInterval="500"
+                                      OnDebounceIntervalElapsed="Search"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Search" />
+                    </MudItem>
+
+                    <!-- Rule Type -->
+                    <MudItem xs="12" md="6">
+                        <MudSelect T="RuleType?" @bind-Value="searchRequest.RuleType"
+                                   Label="Rule Type" Variant="Variant.Outlined" Dense="true" Margin="Margin.Dense">
+                            <MudSelectItem Value="@((RuleType?)null)">All</MudSelectItem>
+                            @foreach (var ruleType in Enum.GetValues<RuleType>())
+                            {
+                                <MudSelectItem T="RuleType?" Value="@ruleType">@ruleType</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+
+                    <!-- Rule Severity -->
+                    <MudItem xs="12" md="6">
+                        <MudSelect T="RuleSeverity?" @bind-Value="searchRequest.RuleSeverity"
+                                   Label="Rule Severity" Variant="Variant.Outlined" Dense="true" Margin="Margin.Dense">
+                            <MudSelectItem Value="@((RuleSeverity?)null)">All</MudSelectItem>
+                            @foreach (var severity in Enum.GetValues<RuleSeverity>())
+                            {
+                                <MudSelectItem T="RuleSeverity?" Value="@severity">@severity</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+
+                    <!-- Error Message -->
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="searchRequest.ErrorMessage"
+                                      Label="Error Message"
+                                      Variant="Variant.Outlined"
+                                      Placeholder="Search by error message..."
+                                      Immediate="true"
+                                      DebounceInterval="500"
+                                      OnDebounceIntervalElapsed="Search"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Search" />
+                    </MudItem>
+
+                    <!-- Is Processed -->
+                    <MudItem xs="12" md="6">
+                        <MudSelect T="bool?" @bind-Value="searchRequest.IsProcessed"
+                                   Label="Is Processed" Variant="Variant.Outlined" Dense="true" Margin="Margin.Dense">
+                            <MudSelectItem Value="@((bool?)null)">All</MudSelectItem>
+                            <MudSelectItem T="bool?" Value="@true">Processed</MudSelectItem>
+                            <MudSelectItem T="bool?" Value="@false">Not Processed</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+
+                    <!-- Creation Date -->
+                    <MudItem xs="12" md="6">
+                        <SearchCriteriaComponent T="DateTime"
+                                                 SearchCriteria="@creationDateSearchCriteria"
+                                                 SearchCriteriaChanged="@((criteria) => creationDateSearchCriteria = criteria)"
+                                                 Label="Creation Date" />
+                    </MudItem>
+                </MudGrid>
+            </MudForm>
+        </MudCardContent>
+        <MudCardActions>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Search" Size="Size.Small">Search</MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="Reset" Size="Size.Small">Reset</MudButton>
+        </MudCardActions>
+    </MudCard>
+
+    @if (loading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-2" />
+    }
+    else
+    {
+        <MudTable ServerData="@ServerReload"
+                  Hover="true" Bordered="true" Striped="true"
+                  Dense="true" @bind-SelectedItem="selectedItem" T="RuleErrorSearchResponse"
+                  Breakpoint="Breakpoint.Sm">
+            <ToolBarContent>
+                <MudText Typo="Typo.h6" Class="ml-2">Rule Errors List</MudText>
+                <MudSpacer />
+                <MudTextField @bind-Value="searchString" Placeholder="Search" Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium"
+                              Class="mt-0 mb-3" Margin="Margin.Dense" Dense="true"></MudTextField>
+            </ToolBarContent>
+            <HeaderContent>
+                <MudTh>ID</MudTh>
+                <MudTh>Flux</MudTh>
+                <MudTh>Data Point</MudTh>
+                <MudTh>Rule Type</MudTh>
+                <MudTh>Rule Name</MudTh>
+                <MudTh>Severity</MudTh>
+                <MudTh>Error Message</MudTh>
+                <MudTh>Creation Date</MudTh>
+                <MudTh>Status</MudTh>
+                <MudTh>Actions</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="ID">@context.Id</MudTd>
+                <MudTd DataLabel="Flux">
+                    <MudLink Href="@($"/flux/details/{context.FluxId}")">
+                        @context.FluxName
+                    </MudLink>
+                </MudTd>
+                <MudTd DataLabel="Data Point">
+                    <MudChip T="FinancialTechnicalDataPoint" Color="Color.Primary" Size="Size.Small">
+                        @context.DataPoint
+                    </MudChip>
+                </MudTd>
+                <MudTd DataLabel="Rule Type">
+                    <MudChip T="RuleType" Color="GetRuleTypeColor(context.RuleType)" Size="Size.Small">
+                        @context.RuleType
+                    </MudChip>
+                </MudTd>
+                <MudTd DataLabel="Rule Name">
+                    <MudTooltip Text="@context.RuleName">
+                        <span>@(context.RuleName.Length > 30 ? context.RuleName.Substring(0, 30) + "..." : context.RuleName)</span>
+                    </MudTooltip>
+                </MudTd>
+                <MudTd DataLabel="Severity">
+                    <MudChip T="RuleSeverity" Color="GetSeverityColor(context.RuleSeverity)" Size="Size.Small">
+                        @context.RuleSeverity
+                    </MudChip>
+                </MudTd>
+                <MudTd DataLabel="Error Message">
+                    <MudTooltip Text="@context.ErrorMessage">
+                        <span>@(context.ErrorMessage.Length > 50 ? context.ErrorMessage.Substring(0, 50) + "..." : context.ErrorMessage)</span>
+                    </MudTooltip>
+                </MudTd>
+                <MudTd DataLabel="Creation Date">
+                    <MudTooltip Text="@context.CreationDate.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")">
+                        @FormatDateTime(context.CreationDate.ToLocalTime())
+                    </MudTooltip>
+                </MudTd>
+                <MudTd DataLabel="Status">
+                    @if (context.IsProcessed)
+                    {
+                        <MudChip T="Color" Color="Color.Success" Size="Size.Small">
+                            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small" />
+                            Processed
+                        </MudChip>
+                    }
+                    else
+                    {
+                        <MudChip T="Color" Color="Color.Warning" Size="Size.Small">
+                            <MudIcon Icon="@Icons.Material.Filled.Pending" Size="Size.Small" />
+                            Pending
+                        </MudChip>
+                    }
+                </MudTd>
+                <MudTd DataLabel="Actions">
+                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true">
+                        <MudMenuItem OnClick="@(() => ViewDetails(context))">
+                            <MudIcon Icon="@Icons.Material.Filled.Visibility" Class="mr-2" Size="Size.Small" /> View Details
+                        </MudMenuItem>
+                        <MudMenuItem OnClick="@(() => NavigationManager.NavigateTo($"/flux/details/{context.FluxId}"))">
+                            <MudIcon Icon="@Icons.Material.Filled.Link" Class="mr-2" Size="Size.Small" /> View Flux
+                        </MudMenuItem>
+                    </MudMenu>
+                </MudTd>
+            </RowTemplate>
+            <PagerContent>
+                <MudTablePager PageSizeOptions="new int[] { 10, 25, 50, 100 }" />
+            </PagerContent>
+            <NoRecordsContent>
+                <MudAlert Severity="Severity.Info" Class="my-2">No rule errors found matching your search criteria.</MudAlert>
+            </NoRecordsContent>
+        </MudTable>
+    }
+</MudContainer>
+
+@code {
+    private RuleErrorSearchRequest searchRequest = new();
+
+    // SearchCriteria for each field
+    private SearchCriteria<int> idSearchCriteria = new();
+    private SearchCriteria<int> fluxIdSearchCriteria = new();
+    private SearchCriteria<DateTime> creationDateSearchCriteria = new();
+
+    private List<RuleErrorSearchResponse>? ruleErrors;
+    private bool loading = false;
+    private bool isValid = false;
+    private MudForm form;
+    private string searchString = "";
+    private RuleErrorSearchResponse selectedItem = null;
+
+    private TableState tableState;
+
+    private async Task<TableData<RuleErrorSearchResponse>> ServerReload(TableState state, CancellationToken token)
+    {
+        tableState = state;
+        loading = true;
+
+        try
+        {
+            // Apply search criteria
+            ApplySearchCriteria();
+
+            // Configure pagination
+            searchRequest.Pagination = new Pagination(state.PageSize, state.Page + 1);
+
+            var response = await MindApi.SearchRuleErrorsAsync(searchRequest);
+            ruleErrors = response.Data.ToList();
+
+            return new TableData<RuleErrorSearchResponse>
+                {
+                    Items = ruleErrors,
+                    TotalItems = (int)response.TotalRecords
+                };
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error searching rule errors: {ex.Message}", Severity.Error);
+            return new TableData<RuleErrorSearchResponse>
+                {
+                    Items = new List<RuleErrorSearchResponse>(),
+                    TotalItems = 0
+                };
+        }
+        finally
+        {
+            loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void ApplySearchCriteria()
+    {
+        searchRequest.Id = idSearchCriteria.IsSet() ? idSearchCriteria : null;
+        searchRequest.FluxId = fluxIdSearchCriteria.IsSet() ? fluxIdSearchCriteria : null;
+        searchRequest.CreationDate = creationDateSearchCriteria.IsSet() ? creationDateSearchCriteria : null;
+    }
+
+    private async Task Search()
+    {
+        await ServerReload(tableState ?? new TableState { Page = 0, PageSize = 10 }, CancellationToken.None);
+    }
+
+    private async Task Reset()
+    {
+        searchRequest = new RuleErrorSearchRequest();
+        idSearchCriteria = new SearchCriteria<int>();
+        fluxIdSearchCriteria = new SearchCriteria<int>();
+        creationDateSearchCriteria = new SearchCriteria<DateTime>();
+        searchString = "";
+
+        if (tableState != null)
+        {
+            tableState.Page = 0;
+            await ServerReload(tableState, CancellationToken.None);
+        }
+    }
+
+    private async Task ViewDetails(RuleErrorSearchResponse error)
+    {
+        // For now, show a simple dialog with error details
+        var parameters = new DialogParameters
+        {
+            ["Error"] = error
+        };
+
+        await DialogService.ShowMessageBox(
+            "Rule Error Details",
+            $"ID: {error.Id}\n" +
+            $"Flux: {error.FluxName} (ID: {error.FluxId})\n" +
+            $"Data Point: {error.DataPoint}\n" +
+            $"Rule: {error.RuleName}\n" +
+            $"Rule Type: {error.RuleType}\n" +
+            $"Severity: {error.RuleSeverity}\n" +
+            $"Error: {error.ErrorMessage}\n" +
+            $"Value: {error.ErrorValue}\n" +
+            $"Created: {error.CreationDate}\n" +
+            $"Processed: {(error.IsProcessed ? "Yes" : "No")}",
+            "Close");
+    }
+
+    private string FormatDateTime(DateTime dateTime)
+    {
+        var now = DateTime.Now;
+        var diff = now - dateTime;
+
+        if (diff.TotalMinutes < 1)
+            return "Just now";
+        if (diff.TotalHours < 1)
+            return $"{(int)diff.TotalMinutes}m ago";
+        if (diff.TotalDays < 1)
+            return $"{(int)diff.TotalHours}h ago";
+        if (diff.TotalDays < 7)
+            return $"{(int)diff.TotalDays}d ago";
+
+        return dateTime.ToString("MMM dd, HH:mm");
+    }
+
+    private Color GetSeverityColor(RuleSeverity severity)
+    {
+        return severity switch
+        {
+            RuleSeverity.Low => Color.Info,
+            RuleSeverity.Medium => Color.Warning,
+            RuleSeverity.High => Color.Error,
+            RuleSeverity.Critical => Color.Error,
+            _ => Color.Default
+        };
+    }
+
+    private Color GetRuleTypeColor(RuleType ruleType)
+    {
+        return ruleType switch
+        {
+            RuleType.Parsing => Color.Primary,
+            RuleType.Transform => Color.Secondary,
+            RuleType.Validation => Color.Tertiary,
+            _ => Color.Default
+        };
+    }
+}

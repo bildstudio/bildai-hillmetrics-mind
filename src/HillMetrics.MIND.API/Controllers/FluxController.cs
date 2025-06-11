@@ -1155,6 +1155,24 @@ namespace HillMetrics.MIND.API.Controllers
         }
         #endregion
 
+        #region Rule Errors
+        /// <summary>
+        /// Search for rule errors following the given criteria
+        /// </summary>
+        /// <param name="request">The search criterias</param>
+        /// <returns>The rule errors that matched the requests filters</returns>
+        [HttpGet("rule-errors/search")]
+        public async Task<ActionResult<CustomMindPagedApiResponseBase<RuleErrorSearchResponse>>> SearchRuleErrorsAsync([FromQuery] RuleErrorSearchRequest request)
+        {
+            var result = await Mediator.Send(mapper.Map<SearchRuleErrorQuery>(request));
+
+            if (result.IsFailed)
+                return new ErrorApiActionResult(result.Errors.ToApiResult());
+
+            return new CustomMindPagedApiResponseBase<RuleErrorSearchResponse>(mapper.Map<List<RuleErrorSearchResponse>>(result.Value.Results), result.Value.NbTotalRows);
+        }
+        #endregion
+
         #region FluxDataPointsRealtions
 
         [HttpPost("financial-data-point/fluxes/link")]

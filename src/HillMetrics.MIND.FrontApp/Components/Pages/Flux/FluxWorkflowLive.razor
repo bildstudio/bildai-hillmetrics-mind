@@ -47,7 +47,9 @@
             </MudSelect>
         }
 
-        <div>
+        <div class="d-flex align-center gap-2">
+            <MudCheckBox @bind-Value="displayIgnoredElements" Label="Display ignored elements"
+                        Color="Color.Primary" Size="Size.Small" />
             <MudChip T="Color" Size="Size.Small" Color="@(SignalRService.IsConnected ? Color.Success : Color.Error)">
                 @(SignalRService.IsConnected ? "Live Update Active" : "Live Update Inactive")
             </MudChip>
@@ -91,7 +93,7 @@
         @if (WorkflowDetails != null)
         {
             <div class="workflow-diagram">
-                @foreach (var step in rootSteps)
+                @foreach (var step in GetFilteredRootSteps())
                 {
                     @RenderWorkflowDiagram(step, 0)
                 }
@@ -193,7 +195,7 @@
                         <MudStack Row="true" AlignItems="AlignItems.Center">
                             @if (SelectedStep.RowsWithErrors > 0)
                             {
-                                <MudLink Href="@($"/flux/errors?fluxId={FluxId}&actionType={SelectedStep.ActionId}")"
+                                <MudLink Href="@GetErrorLink(SelectedStep)"
                                 Target="_blank"
                                 Underline="Underline.Always">
                                     <MudChip T="Color" Color="Color.Error" Size="Size.Small">@SelectedStep.RowsWithErrors</MudChip>
@@ -225,6 +227,7 @@
     private List<PositionedHistoryEntry> positionedSteps = new();
     private List<HistoryEntryDto> rootSteps = new();
     private bool isStepDetailOpen = false;
+    private bool displayIgnoredElements = true;
 
     private class PositionedHistoryEntry : HistoryEntryDto
     {
@@ -338,6 +341,38 @@
 
         // Utiliser directement la structure d'arbre pour les étapes du workflow
         rootSteps = WorkflowDetails.History.Where(h => h.ParentId == null).ToList();
+    }
+
+    private List<HistoryEntryDto> GetFilteredRootSteps()
+    {
+        if (displayIgnoredElements)
+        {
+            return rootSteps;
+        }
+
+        return rootSteps.Where(step => !IsStepOnlyIgnored(step)).ToList();
+    }
+
+    private bool IsStepOnlyIgnored(HistoryEntryDto step)
+    {
+        // Une étape est considérée comme "seulement ignorée" si :
+        // - Elle a des éléments ignorés ET
+        // - Elle n'a pas d'éléments ajoutés, modifiés ou avec erreurs
+        if (step.RowsIgnored > 0 &&
+            step.RowsAdded == 0 &&
+            step.RowsModified == 0 &&
+            step.RowsWithErrors == 0)
+        {
+            return true;
+        }
+
+        // Si l'étape a des enfants, on vérifie que tous les enfants sont aussi "seulement ignorés"
+        if (step.Children != null && step.Children.Any())
+        {
+            return step.Children.All(child => IsStepOnlyIgnored(child));
+        }
+
+        return false;
     }
 
     private string GetStepStatusClass(WorkflowStage stage, WorkflowStepStatus status = WorkflowStepStatus.InProgress)
@@ -592,7 +627,7 @@
         if (step.RowsWithErrors > 0)
         {
             builder.OpenComponent<MudLink>(132);
-            builder.AddAttribute(133, "Href", $"/flux/errors?fluxId={FluxId}&actionType={step.ActionId}");
+            builder.AddAttribute(133, "Href", GetErrorLink(step));
             builder.AddAttribute(134, "Typo", Typo.caption);
             builder.AddAttribute(135, "Underline", Underline.Always);
             builder.AddAttribute(136, "Class", "detail-item error-link");
@@ -664,53 +699,61 @@
         // Container for child nodes (existing logic)
         if (step.Children != null && step.Children.Any())
         {
-            var childrenCount = step.Children.Count;
+            // Filter children based on displayIgnoredElements setting
+            var filteredChildren = displayIgnoredElements ?
+                step.Children :
+                step.Children.Where(child => !IsStepOnlyIgnored(child)).ToList();
 
-            if (childrenCount == 1)
+            if (filteredChildren.Any())
             {
-                builder.OpenElement(60, "div");
-                builder.AddAttribute(61, "class", "arrow-down");
-                builder.CloseElement(); // arrow-down
+                var childrenCount = filteredChildren.Count;
 
-                builder.OpenElement(62, "div");
-                builder.AddAttribute(63, "class", "node-children single-child");
-                builder.AddContent(64, RenderWorkflowDiagram(step.Children[0], level + 1));
-                builder.CloseElement(); // node-children
-            }
-            else
-            {
-                // For multiple children, create a horizontal layout
-                builder.OpenElement(65, "div");
-                builder.AddAttribute(66, "class", "arrow-down");
-                builder.CloseElement(); // arrow-down
-
-                // Horizontal branch line
-                builder.OpenElement(67, "div");
-                builder.AddAttribute(68, "class", "branch-container");
-                builder.CloseElement(); // branch-container
-
-                // Container for all children with horizontal layout
-                builder.OpenElement(69, "div");
-                builder.AddAttribute(70, "class", "multi-children-container");
-
-                foreach (var child in step.Children)
+                if (childrenCount == 1)
                 {
-                    // Each child in its own column
-                    builder.OpenElement(71, "div");
-                    builder.AddAttribute(72, "class", "child-column");
+                    builder.OpenElement(60, "div");
+                    builder.AddAttribute(61, "class", "arrow-down");
+                    builder.CloseElement(); // arrow-down
 
-                    // Vertical branch line to child
-                    builder.OpenElement(73, "div");
-                    builder.AddAttribute(74, "class", "vertical-branch");
-                    builder.CloseElement(); // vertical-branch
-
-                    // Render the child node
-                    builder.AddContent(75, RenderWorkflowDiagram(child, level + 1));
-
-                    builder.CloseElement(); // child-column
+                    builder.OpenElement(62, "div");
+                    builder.AddAttribute(63, "class", "node-children single-child");
+                    builder.AddContent(64, RenderWorkflowDiagram(filteredChildren[0], level + 1));
+                    builder.CloseElement(); // node-children
                 }
+                else
+                {
+                    // For multiple children, create a horizontal layout
+                    builder.OpenElement(65, "div");
+                    builder.AddAttribute(66, "class", "arrow-down");
+                    builder.CloseElement(); // arrow-down
 
-                builder.CloseElement(); // multi-children-container
+                    // Horizontal branch line
+                    builder.OpenElement(67, "div");
+                    builder.AddAttribute(68, "class", "branch-container");
+                    builder.CloseElement(); // branch-container
+
+                    // Container for all children with horizontal layout
+                    builder.OpenElement(69, "div");
+                    builder.AddAttribute(70, "class", "multi-children-container");
+
+                    foreach (var child in filteredChildren)
+                    {
+                        // Each child in its own column
+                        builder.OpenElement(71, "div");
+                        builder.AddAttribute(72, "class", "child-column");
+
+                        // Vertical branch line to child
+                        builder.OpenElement(73, "div");
+                        builder.AddAttribute(74, "class", "vertical-branch");
+                        builder.CloseElement(); // vertical-branch
+
+                        // Render the child node
+                        builder.AddContent(75, RenderWorkflowDiagram(child, level + 1));
+
+                        builder.CloseElement(); // child-column
+                    }
+
+                    builder.CloseElement(); // multi-children-container
+                }
             }
         }
 
@@ -733,7 +776,7 @@
             WorkflowStage.CalculationRiskStarting => "Calcul Volatility",
             WorkflowStage.CalculationWeeklyReturnStarting => "Calcul Weekly performance",
             WorkflowStage.CalcCurrencyExchangeRateStarting => "Convert currency with exchange rate",
-            WorkflowStage.NormalizedPriceInserting => "",
+            WorkflowStage.NormalizedPriceInserting => "Insert price into Normalized database",
             WorkflowStage.Failed => "Error",
             _ => stage.ToString()
         };
@@ -954,6 +997,42 @@
             WorkflowStepStatus.InProgress => Color.Info,
             _ => Color.Default
         };
+    }
+
+    // Helper method to generate correct error link based on step stage and action ID
+    private string GetErrorLink(HistoryEntryDto step)
+    {
+        var baseUrl = $"/flux/errors?fluxId={FluxId}";
+
+        // Determine action type based on stage
+        var actionType = step.Stage switch
+        {
+            WorkflowStage.FetchingData => "Fetching",
+            WorkflowStage.Processing => "ProcessFlux",
+            _ => "ProcessFlux" // Default fallback
+        };
+
+        baseUrl += $"&actionType={actionType}";
+
+        // Add specific ID based on stage
+        if(step.Stage == WorkflowStage.FetchingData)
+        {
+            var fetchingId = TryGetFetchingId(step.Metadata);
+            if(fetchingId > 0)
+            {
+                baseUrl += $"&fetchingId={fetchingId}";
+            }
+        }
+        else if(step.Stage == WorkflowStage.Processing)
+        {
+            var processingId = TryGetProcessingId(step.Metadata);
+            if(processingId > 0)
+            {
+                baseUrl += $"&processingId={processingId}";
+            }
+        }
+
+        return baseUrl;
     }
 }
 
