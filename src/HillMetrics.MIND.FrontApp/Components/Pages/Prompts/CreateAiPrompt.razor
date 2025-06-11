@@ -1,0 +1,291 @@
+﻿@page "/prompt/create"
+@page "/prompt/edit/{Id:int?}"
+@using HillMetrics.Core.AI
+@using HillMetrics.MIND.API.Contracts.Requests.AiDataset
+@using HillMetrics.MIND.API.Contracts.Requests.AiDataset.DocumentTypes
+@using HillMetrics.MIND.API.Contracts.Requests.AiPrompts
+@using HillMetrics.MIND.API.Contracts.Requests.Languages
+@using HillMetrics.MIND.API.Contracts.Responses.Languages
+@using HillMetrics.MIND.API.SDK
+@using HillMetrics.Normalized.Domain.Contracts.AI.Dataset
+@using HillMetrics.MIND.API.SDK.V1
+@using HillMetrics.Core.Financial
+@using Refit
+@using API.Contracts.Responses.AiPrompts;
+@inject IMindAPI MindApi
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+
+<MudText Typo="Typo.h4" Class="mb-4">@(IsEditMode ? "Edit" : "Create") Prompt</MudText>
+
+@if (isLoading)
+{
+    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+}
+else
+{
+    <MudCard Class="mb-6">
+    <MudCardHeader>
+        <MudText Typo="Typo.h6">Prompt Configuration</MudText>
+    </MudCardHeader>
+
+    <MudCardContent>
+        <MudGrid Spacing="3">
+            <!-- Language -->
+            <MudItem xs="12" md="4">
+                <MudSelect T="int" @bind-Value="_saveRequest.Prompt.LanguageId"
+                           Label="Language" Variant="Variant.Outlined" Dense="true" Margin="Margin.Dense">
+                    <MudSelectItem Value="0">All</MudSelectItem>
+                    @foreach (var language in languages)
+                    {
+                        <MudSelectItem T="int" Value="@language.Id">@language.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+
+            <!-- Task Type -->
+            <MudItem xs="12" md="4">
+                <MudSelect T="PromptTaskType" @bind-Value="_saveRequest.Prompt.TaskType"
+                           Label="Task Type" Variant="Variant.Outlined" Dense="true" Margin="Margin.Dense">
+                    @foreach (var type in Enum.GetValues<PromptTaskType>())
+                    {
+                        <MudSelectItem T="PromptTaskType" Value="@type">@type</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+
+            <!-- Prompt Type -->
+            <MudItem xs="12" md="4">
+                <MudSelect T="PromptType" @bind-Value="_saveRequest.Prompt.Type"
+                           Label="Prompt Type" Variant="Variant.Outlined" Dense="true" Margin="Margin.Dense">
+                    @foreach (var type in Enum.GetValues<PromptType>())
+                    {
+                        <MudSelectItem T="PromptType" Value="@type">@type</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+
+            <!-- Divider -->
+            <MudItem xs="12">
+                <MudDivider Class="my-2" />
+                <MudText Typo="Typo.subtitle1" Class="mt-2">Prompt Contents</MudText>
+            </MudItem>
+
+            @foreach (var content in _saveRequest.Prompt.Contents)
+            {
+                    <MudItem xs="12">
+                        <MudPaper Class="p-4 mb-3 border rounded" Elevation="0">
+                            <MudGrid>
+                                <MudItem xs="12" md="2">
+                                    <MudText Typo="Typo.subtitle2">Type: @content.Type</MudText>
+                                </MudItem>
+
+                                <MudItem xs="12" md="9">
+                                    <MudTextField @bind-Value="content.Content"
+                                                  Label="Content"
+                                                  Lines="5"
+                                                  FullWidth="true"
+                                                  Required="true"
+                                                  RequiredError="Content is required" />
+                                </MudItem>
+
+                                <MudItem xs="12" md="1" Class="d-flex justify-end align-end">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                   Color="Color.Error"
+                                                   OnClick="() => RemoveContent(content)"
+                                                   Size="Size.Medium"
+                                                   AriaLabel="Remove Content" />
+                                </MudItem>
+                            </MudGrid>
+                        </MudPaper>
+                    </MudItem>
+            }
+        </MudGrid>
+    </MudCardContent>
+
+    <MudCardActions Class="px-4 pb-4">
+        <MudGrid Spacing="2" AlignItems="Center">
+            <MudItem xs="12" md="4">
+                <MudSelect T="ContentType?" @bind-Value="selectedContentType"
+                           Label="Add Content Type"
+                           Variant="Variant.Outlined" Dense="true" Margin="Margin.Dense" FullWidth="true">
+                    <MudSelectItem Value="@((ContentType?)null)">Select content type</MudSelectItem>
+                    @foreach (var type in contentTypes)
+                    {
+                        <MudSelectItem T="ContentType?" Value="@type">@type</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+
+            <MudItem xs="12" md="2">
+                <MudButton OnClick="AddNewContent"
+                           Disabled="@(!selectedContentType.HasValue)"
+                           Color="Color.Primary"
+                           Variant="Variant.Filled"
+                           StartIcon="@Icons.Material.Filled.Add"
+                           FullWidth="true">
+                    Add Content
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+    </MudCardActions>
+</MudCard>
+
+
+    <MudDivider Class="my-6" />
+
+    <MudButton OnClick="SavePrompt"
+    Color="Color.Primary"
+    Variant="Variant.Filled"
+    Size="Size.Large"
+    Disabled="@(!CanSave())">
+        @(IsEditMode ? "Update" : "Save") Prompt
+    </MudButton>
+}
+
+@code {
+    [Parameter]
+    public int? Id { get; set; }
+
+    private bool IsEditMode => Id.HasValue;
+
+    private SaveAiPromptRequest _saveRequest = new()
+    {
+        Prompt = new AiPromptDto()
+    };
+    private List<LanguageDto> languages = [];
+    private List<ContentType> contentTypes = Enum.GetValues<ContentType>().ToList();
+    private ContentType? selectedContentType = null;
+
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadLanguagesAsync();
+        if (IsEditMode)
+        {
+            await LoadPrompt();
+        }
+        else
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task LoadLanguagesAsync()
+    {
+
+        try
+        {
+            if (languages.Count == 0)
+            {
+                var languagesResponse = await MindApi.ListLanguagesAsync();
+                languages = languagesResponse.Data.ToList();
+            }
+
+        }
+        catch (ApiException apiEx)
+        {
+            var hillEx = apiEx.ToHillMetricsApiException();
+
+            Snackbar.Add($"Failed to load languages: {hillEx.Errors[0].Message}", Severity.Error);
+
+
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load languages: {ex.Message}", Severity.Error);
+        }
+    }
+
+
+
+    private async Task LoadPrompt()
+    {
+        try
+        {
+            var result = await MindApi.GetAiPromptAsync(Id!.Value);
+
+            _saveRequest = new SaveAiPromptRequest
+            {
+                 Prompt = result.Data
+            };
+
+            contentTypes.RemoveAll(contentType => _saveRequest.Prompt.Contents.Any(s => s.Type == contentType));
+
+        }
+        catch (ApiException apiEx)
+        {
+            var hillEx = apiEx.ToHillMetricsApiException();
+
+            Snackbar.Add($"Error loading data: {hillEx.Errors[0].Message}", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading data: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private bool CanSave()
+    {
+        return _saveRequest.Prompt.LanguageId > 0 && _saveRequest.Prompt.Contents.Count > 0 && _saveRequest.Prompt.Contents.All(s => !string.IsNullOrEmpty(s.Content));
+    }
+
+    private async Task SavePrompt()
+    {
+        try
+        {
+            if (IsEditMode)
+            {
+                var result = await MindApi.UpdateAiPromptAsync(Id!.Value, _saveRequest);
+                Snackbar.Add("Prompt updated successfully", Severity.Success);
+                NavigationManager.NavigateTo("/prompt/search");
+            }
+            else
+            {
+                var result = await MindApi.CreateAiPromptAsync(_saveRequest);
+
+                if (result.Data != null)
+                {
+                    Snackbar.Add("Prompt created successfully", Severity.Success);
+                    NavigationManager.NavigateTo("/prompt/search");
+                }
+                else
+                {
+                    Snackbar.Add("Failed to create prompt", Severity.Error);
+                }
+            }
+        }
+        catch(ApiException apiEx)
+        {
+            var hillEx = apiEx.ToHillMetricsApiException();
+
+            Snackbar.Add($"Error saving Prompt: {hillEx.Errors[0].Message}", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error saving Prompt: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void AddNewContent()
+    {
+        if (!selectedContentType.HasValue)
+            return;
+
+        _saveRequest.Prompt.Contents.Add(new AiPromptContentDto("", selectedContentType.Value));
+        contentTypes.Remove(selectedContentType.Value);
+        selectedContentType = null;
+    }
+    //
+    private void RemoveContent(AiPromptContentDto content)
+    {
+        contentTypes.Add(content.Type);
+        _saveRequest.Prompt.Contents.Remove(content);
+        selectedContentType = null;
+    }
+}
