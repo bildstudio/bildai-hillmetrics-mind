@@ -97,8 +97,8 @@
                                                    Size="Size.Large" 
                                                    Class="mb-2" />
                                 <MudText Typo="Typo.body2">
-                                    Success Rate: @(simulationResult.SimulationSummary.ValidationSummary.SuccessRate.ToString("P2"))
-                                    (@simulationResult.SimulationSummary.ValidationSummary.SuccessfulValidations / @simulationResult.SimulationSummary.ValidationSummary.TotalRulesExecuted)
+                                    Success Rate: @(simulationResult.SimulationSummary.ValidationSummary.SuccessRate.ToString("N2"))%
+                                    (@simulationResult.SimulationSummary.ValidationSummary.SuccessfulValidations.ToString("N0") / @simulationResult.SimulationSummary.ValidationSummary.TotalRulesExecuted.ToString("N0"))
                                 </MudText>
                             </MudItem>
                             <MudItem xs="12" md="6">

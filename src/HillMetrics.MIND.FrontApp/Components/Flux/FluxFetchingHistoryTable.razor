@@ -159,6 +159,9 @@
                 <MudMenuItem OnClick="@(() => SimulateProcess(context.Id))">
                     <MudIcon Icon="@Icons.Material.Filled.Science" Class="mr-2" Size="Size.Small" /> Simulate Process
                 </MudMenuItem>
+                <MudMenuItem OnClick="@(() => NavigateToMapping(context.Id))">
+                    <MudIcon Icon="@Icons.Material.Filled.Link" Class="mr-2" Size="Size.Small" /> Create Mapping
+                </MudMenuItem>
             </MudMenu>
         </MudTd>
     </RowTemplate>
@@ -233,6 +236,11 @@
     private void NavigateToProcessingHistory(int fetchingId)
     {
         NavigationManager.NavigateTo($"/flux/processing-history?fetchingId={fetchingId}");
+    }
+
+    private void NavigateToMapping(int fetchingId)
+    {
+        NavigationManager.NavigateTo($"/file-data-mapping/flux/{fetchingId}");
     }
 
     // Helper methods for icons and colors
