@@ -67,19 +67,19 @@
                     <MudGrid>
                         <MudItem xs="12" md="3">
                             <MudPaper Class="pa-4 text-center" Style="background-color: var(--mud-palette-success-lighten);">
-                                <MudText Typo="Typo.h4" Color="Color.Success">@simulationResult.SimulationSummary.CommandsToExecute</MudText>
+                                <MudText Typo="Typo.h4" Style="color: white;">@simulationResult.SimulationSummary.CommandsToExecute</MudText>
                                 <MudText Typo="Typo.subtitle1">Commands to Execute</MudText>
                             </MudPaper>
                         </MudItem>
                         <MudItem xs="12" md="3">
                             <MudPaper Class="pa-4 text-center" Style="background-color: var(--mud-palette-primary-lighten);">
-                                <MudText Typo="Typo.h4" Color="Color.Primary">@simulationResult.SimulationSummary.FinancialIdsAffected</MudText>
+                                <MudText Typo="Typo.h4" Style="color: white;">@simulationResult.SimulationSummary.FinancialIdsAffected</MudText>
                                 <MudText Typo="Typo.subtitle1">Financial IDs Affected</MudText>
                             </MudPaper>
                         </MudItem>
                         <MudItem xs="12" md="3">
                             <MudPaper Class="pa-4 text-center" Style="@rowValidation(simulationResult)">
-                                <MudText Typo="Typo.h4" Color="@(simulationResult.SimulationSummary.HasValidationErrors ? Color.Error : Color.Success)">
+                                <MudText Typo="Typo.h4" Style="color: white;" Color="@(simulationResult.SimulationSummary.HasValidationErrors ? Color.Error : Color.Success)">
                                     @simulationResult.SimulationSummary.ValidationSummary.FailedValidations
                                 </MudText>
                                 <MudText Typo="Typo.subtitle1">Validation Errors</MudText>
@@ -92,9 +92,9 @@
                         <MudGrid Class="mt-4">
                             <MudItem xs="12" md="6">
                                 <MudText Typo="Typo.subtitle1" Class="mb-2">Validation Statistics</MudText>
-                                <MudProgressLinear Color="Color.Success" 
-                                                   Value="@(simulationResult.SimulationSummary.ValidationSummary.SuccessRate * 100)" 
-                                                   Size="Size.Large" 
+                                <MudProgressLinear Color="Color.Success"
+                                                   Value="@(simulationResult.SimulationSummary.ValidationSummary.SuccessRate * 100)"
+                                                   Size="Size.Large"
                                                    Class="mb-2" />
                                 <MudText Typo="Typo.body2">
                                     Success Rate: @(simulationResult.SimulationSummary.ValidationSummary.SuccessRate.ToString("N2"))%
@@ -118,6 +118,47 @@
                             </MudItem>
                         </MudGrid>
                     }
+                </MudCardContent>
+            </MudCard>
+
+            <!-- Process Button -->
+            <MudCard Class="mb-4">
+                <MudCardContent>
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                        <MudStack Spacing="1">
+                            <MudText Typo="Typo.h6">Ready to Process?</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                Click the button below to start processing this fetching history with the simulated configuration.
+                            </MudText>
+                        </MudStack>
+                        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       Size="Size.Large"
+                                       StartIcon="@Icons.Material.Filled.PlayArrow"
+                                       OnClick="@(() => ProcessFetchingHistory())"
+                                       Disabled="@processing">
+                                @if (processing)
+                                {
+                                    <MudProgressCircular Color="Color.Inherit" Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                    <span>Processing...</span>
+                                }
+                                else
+                                {
+                                    <span>Process</span>
+                                }
+                            </MudButton>
+
+                            @if (workflowId.HasValue && simulationResult != null)
+                            {
+                                <MudTooltip Text="View Workflow Live">
+                                    <MudLink Href="@($"/flux/workflow-live/{simulationResult.FluxId}/{workflowId.Value}")">
+                                        <MudIcon Icon="@Icons.Material.Filled.Timeline" Color="Color.Primary" Size="Size.Large" />
+                                    </MudLink>
+                                </MudTooltip>
+                            }
+                        </MudStack>
+                    </MudStack>
                 </MudCardContent>
             </MudCard>
         }
@@ -199,7 +240,7 @@
                     </CardHeaderContent>
                 </MudCardHeader>
                 <MudCardContent>
-                    <MudDataGrid T="ValidationErrorDto" 
+                    <MudDataGrid T="ValidationErrorDto"
                                  Items="@simulationResult.SimulationSummary.ValidationSummary.ValidationErrors"
                                  Dense="true"
                                  Hover="true"
@@ -232,8 +273,8 @@
                     </CardHeaderContent>
                 </MudCardHeader>
                 <MudCardContent>
-                    <MudGrid Class="mb-3">
-                        <MudItem xs="12" md="6">
+                                        <MudGrid Class="mb-3" AlignItems="Center">
+                        <MudItem xs="12" md="4" Class="d-flex align-center">
                             <MudTextField @bind-Value="searchFilter"
                                           Placeholder="Filter results..."
                                           Adornment="Adornment.Start"
@@ -243,7 +284,32 @@
                                           OnDebounceIntervalElapsed="ApplyFilter"
                                           Clearable="true"
                                           Variant="Variant.Outlined"
-                                          Dense="true" />
+                                          Dense="true"
+                                          Style="width: 100%;" />
+                        </MudItem>
+                        <MudItem xs="12" md="6" Class="d-flex align-center">
+                            <MudSelect T="string"
+                                       Label="Financial Data Points Filter"
+                                       MultiSelection="true"
+                                       Variant="Variant.Outlined"
+                                       Dense="true"
+                                       SelectAllText="All Data Points"
+                                       SelectedValuesChanged="OnDataPointFilterChanged"
+                                       Adornment="Adornment.Start"
+                                       AdornmentIcon="@Icons.Material.Filled.FilterList"
+                                       Style="width: 100%;">
+                                @foreach (var dataPoint in availableDataPoints)
+                                {
+                                    <MudSelectItem T="string" Value="@dataPoint">@dataPoint</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudItem>
+                        <MudItem xs="12" md="2" Class="d-flex align-center">
+                            <MudCheckBox T="bool"
+                                         Label="Unique values only"
+                                         Color="Color.Primary"
+                                         Dense="true"
+                                         ValueChanged="OnUniqueFilterChanged" />
                         </MudItem>
                     </MudGrid>
 
@@ -261,13 +327,22 @@
                                      Class="mud-elevation-1">
 
                             <Columns>
-                                <PropertyColumn Property="x => x.RowIndex" Title="Row #" Sortable="true">
+                                <PropertyColumn Property="x => x.RowIndex" Title="@(showUniqueOnly ? "Count" : "Row #")" Sortable="true">
                                     <CellTemplate>
                                         <div class="d-flex align-center">
-                                            <MudText Typo="Typo.body2">@context.Item.RowIndex</MudText>
-                                            <MudChip Size="Size.Small" Color="Color.Primary" Class="ml-2">
-                                                E@(context.Item.ExecutorIndex + 1)
-                                            </MudChip>
+                                            @if (showUniqueOnly)
+                                            {
+                                                <MudChip Size="Size.Small" Color="Color.Success" Variant="Variant.Filled">
+                                                    x @context.Item.UniqueCount
+                                                </MudChip>
+                                            }
+                                            else
+                                            {
+                                                <MudText Typo="Typo.body2">@context.Item.RowIndex</MudText>
+                                                <MudChip Size="Size.Small" Color="Color.Primary" Class="ml-2">
+                                                    E@(context.Item.ExecutorIndex + 1)
+                                                </MudChip>
+                                            }
                                         </div>
                                     </CellTemplate>
                                 </PropertyColumn>
@@ -407,14 +482,14 @@
                     <CardHeaderContent>
                         <MudText Typo="Typo.h6">
                             <MudIcon Icon="@Icons.Material.Filled.PlayArrow" Class="mr-2" />
-                            Command Execution Results
+                            Actions Execution Results
                         </MudText>
                     </CardHeaderContent>
                 </MudCardHeader>
                 <MudCardContent>
                     @if (simulationResult.CommandExecution.ExecutableCommandsByFinancialId.Any())
                     {
-                        <MudText Typo="Typo.subtitle1" Class="mb-2">Executable Commands by Financial ID:</MudText>
+                        <MudText Typo="Typo.subtitle1" Class="mb-2">Executable actions by product:</MudText>
                         @foreach (var kvp in simulationResult.CommandExecution.ExecutableCommandsByFinancialId)
                         {
                             <MudExpansionPanels>
@@ -422,15 +497,36 @@
                                     <TitleContent>
                                         <div style="display: flex; align-items: center;">
                                             <MudIcon Icon="@Icons.Material.Filled.AccountBalanceWallet" class="mr-3"></MudIcon>
-                                            <MudText>Financial ID: @kvp.Key (@kvp.Value.Count commands)</MudText>
+                                            <MudText>@(kvp.Key == 0 ? "Unknown financial product" : $"Financial ID: {kvp.Key}") (@kvp.Value.Count commands)</MudText>
                                         </div>
                                     </TitleContent>
                                     <ChildContent>
+                                        @{
+                                            var groupedCommands = kvp.Value.GroupBy(c => c.CommandName);
+                                        }
                                         <MudList T="string">
-                                            @foreach (var command in kvp.Value)
+                                            @foreach (var commandGroup in groupedCommands)
                                             {
                                                 <MudListItem>
-                                                    <MudText Typo="Typo.body2">@command.CommandName (@string.Join(",", command.Elements))</MudText>
+                                                    <MudStack Spacing="1">
+                                                        <MudText Typo="Typo.subtitle2" Style="font-weight: 600;">
+                                                            @commandGroup.Key
+                                                            <MudChip Size="Size.Small" Color="Color.Secondary" Class="ml-2">
+                                                                x @commandGroup.Count()
+                                                            </MudChip>
+                                                        </MudText>
+                                                        @* Display elements count for List commands *@
+                                                        @foreach (var command in commandGroup)
+                                                        {
+                                                            @if (command.IsList)
+                                                            {
+                                                                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="ml-4">
+                                                                    • @string.Join(", ", command.Elements) elements to insert
+                                                                </MudText>
+                                                                break; @* Only show once per command group since all commands in group should have same IsList value *@
+                                                            }
+                                                        }
+                                                    </MudStack>
                                                 </MudListItem>
                                             }
                                         </MudList>
@@ -490,6 +586,11 @@
     private bool loading = true;
     private string searchFilter = string.Empty;
     private List<RowData> filteredRows = new();
+    private bool processing = false;
+    private List<string> availableDataPoints = new();
+    private IEnumerable<string> selectedDataPoints = new List<string>();
+    private Guid? workflowId = null;
+    private bool showUniqueOnly = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -506,6 +607,9 @@
             if (response?.Data != null)
             {
                 simulationResult = response.Data;
+
+                // Initialize available data points
+                InitializeDataPointFilter();
 
                 // Initialize filtered rows after loading data
                 ApplyFilter();
@@ -622,6 +726,12 @@
             }
         }
 
+        // Apply data point filter
+        if (selectedDataPoints.Any())
+        {
+            allRows = allRows.Where(rowData => selectedDataPoints.Contains(rowData.FinancialDataPointName)).ToList();
+        }
+
         // Apply search filter
         if (!string.IsNullOrEmpty(searchFilter))
         {
@@ -637,13 +747,108 @@
                 )).ToList();
         }
 
-        filteredRows.AddRange(allRows);
+        // Apply unique filter
+        if (showUniqueOnly)
+        {
+            var uniqueRows = allRows
+                .GroupBy(row => new {
+                    row.FinancialDataPointName,
+                    row.OriginalDataFormatted,
+                    row.ProcessedDataFormatted,
+                    row.IsSuccess,
+                    row.ErrorMessage
+                })
+                .Select(group => {
+                    var firstRow = group.First();
+                    return new RowData
+                    {
+                        Row = firstRow.Row,
+                        ExecutorIndex = firstRow.ExecutorIndex,
+                        RowIndex = firstRow.RowIndex,
+                        HasValidationMessages = firstRow.HasValidationMessages,
+                        ValidationTooltip = firstRow.ValidationTooltip,
+                        FinancialDataPointName = firstRow.FinancialDataPointName,
+                        IsSuccess = firstRow.IsSuccess,
+                        OriginalDataFormatted = firstRow.OriginalDataFormatted,
+                        ProcessedDataFormatted = firstRow.ProcessedDataFormatted,
+                        ErrorMessage = firstRow.ErrorMessage,
+                        UniqueCount = group.Count() // Store count of duplicates
+                    };
+                })
+                .OrderBy(row => row.FinancialDataPointName)
+                .ThenBy(row => row.OriginalDataFormatted)
+                .ToList();
+
+            filteredRows.AddRange(uniqueRows);
+        }
+        else
+        {
+            filteredRows.AddRange(allRows);
+        }
         StateHasChanged();
     }
 
     private string rowValidation(SimulateProcessElementResponse simulationResult)
     {
         return $"background-color: {(simulationResult.SimulationSummary.HasValidationErrors ? "var(--mud-palette-error-lighten)" : "var(--mud-palette-success-lighten)")}";
+    }
+
+    private void InitializeDataPointFilter()
+    {
+        if (simulationResult?.ExtractedData?.ExecutorResults == null) return;
+
+        availableDataPoints = simulationResult.ExtractedData.ExecutorResults
+            .SelectMany(er => er.Rows)
+            .Select(row => row.FinancialTechnicalDataPoint.ToString())
+            .Distinct()
+            .OrderBy(dp => dp)
+            .ToList();
+
+        // Select all by default
+        selectedDataPoints = availableDataPoints;
+    }
+
+    private void OnDataPointFilterChanged(IEnumerable<string> values)
+    {
+        selectedDataPoints = values;
+        ApplyFilter();
+    }
+
+    private void OnUniqueFilterChanged(bool value)
+    {
+        showUniqueOnly = value;
+        ApplyFilter();
+    }
+
+    private async Task ProcessFetchingHistory()
+    {
+        try
+        {
+            if(simulationResult is null)
+                return;
+
+            processing = true;
+
+            // Same logic as in FluxFetchingHistoryTable for processing
+            var response = await MindApi.ForceProcessElementFetchBackgroundAsync(simulationResult.FluxId, FetchingHistoryId);
+
+            // Store the workflow ID for displaying the link
+            if (response?.Data?.WorkflowId != null)
+            {
+                workflowId = response.Data.WorkflowId;
+            }
+
+            Snackbar.Add("Processing started successfully!", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error starting process for FetchingHistoryId: {FetchingHistoryId}", FetchingHistoryId);
+            Snackbar.Add($"Error starting process: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            processing = false;
+        }
     }
 
     public class RowData
@@ -658,6 +863,7 @@
         public string OriginalDataFormatted { get; set; } = string.Empty;
         public string ProcessedDataFormatted { get; set; } = string.Empty;
         public string ErrorMessage { get; set; } = string.Empty;
+        public int UniqueCount { get; set; } = 1;
     }
 }
 
