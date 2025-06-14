@@ -46,7 +46,7 @@
         </MudTd>
         <MudTd DataLabel="Fetching Date">
             <MudTooltip Text="@context.FetchingDate.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")">
-                <div>@FormatDateTime(context.FetchingDate)</div>
+                <div>@FormatDateTime(context.FetchingDate.ToLocalTime())</div>
             </MudTooltip>
         </MudTd>
         <MudTd DataLabel="Content Name">
