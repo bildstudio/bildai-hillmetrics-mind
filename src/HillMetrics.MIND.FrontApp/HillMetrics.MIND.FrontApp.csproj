@@ -17,6 +17,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\HillMetrics.Core\src\HillMetrics.Core.AI\HillMetrics.Core.AI.csproj" />
+    <ProjectReference Include="..\..\..\HillMetrics.Core\src\HillMetrics.Core.API\HillMetrics.Core.API.csproj" />
     <ProjectReference Include="..\..\..\HillMetrics.Core\src\HillMetrics.Core.Authentication\HillMetrics.Core.Authentication\HillMetrics.Core.Authentication.csproj" />
     <ProjectReference Include="..\..\..\HillMetrics.Core\src\HillMetrics.Core.Blazor.AuthModule\HillMetrics.Core.Blazor.AuthModule.csproj" />
     <ProjectReference Include="..\..\..\HillMetrics.Core\src\HillMetrics.Core.Http\HillMetrics.Core.Http.csproj" />
