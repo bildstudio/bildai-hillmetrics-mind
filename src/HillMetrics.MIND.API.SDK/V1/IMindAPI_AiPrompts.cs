@@ -24,6 +24,7 @@ namespace HillMetrics.MIND.API.SDK.V1
         /// </summary>
         /// <param name="languageId"></param>
         /// <param name="taskType"></param>
+        /// <param name="promptType"></param>
         /// <param name="pageNumber"></param>
         /// <param name="pageSize"></param>
         /// <returns></returns>
