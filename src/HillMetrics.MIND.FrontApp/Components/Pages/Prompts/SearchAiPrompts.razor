@@ -164,8 +164,8 @@
             if(languages.Count == 0)
             {
                 var languagesResponse = await MindApi.ListLanguagesAsync();
-            languages = languagesResponse.Data.ToList();
-            languagesDictionary = languages.ToDictionary(s => s.Id, s => s.Name);
+                languages = languagesResponse.Data.ToList();
+                languagesDictionary = languages.ToDictionary(s => s.Id, s => s.Name);
             }
             
         }
@@ -191,7 +191,7 @@
         try
         {
 
-            ListAiPromptsResponse response = await MindApi.SearchAiPromptsAsync(selectedLanguageId, selectedTaskType, selectedPromptType, state.Page, state.PageSize);
+            ListAiPromptsResponse response = await MindApi.SearchAiPromptsAsync(selectedLanguageId, selectedTaskType, selectedPromptType, state.Page + 1, state.PageSize);
 
             return new TableData<AiPromptDto>
             {
@@ -232,7 +232,7 @@
         await ServerReload(tableState ?? new TableState
         {
             Page = 0,
-            PageSize = 50
+            PageSize = 10
         }, CancellationToken.None);
     }
 
