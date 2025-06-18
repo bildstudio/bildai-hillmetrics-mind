@@ -37,8 +37,8 @@ namespace HillMetrics.MIND.API.Controllers
             [FromQuery] int? languageId, 
             [FromQuery] PromptTaskType? taskType, 
             [FromQuery] PromptType? promptType, 
-            [FromQuery] int pageSize = 1, 
-            [FromQuery] int pageNumber = 25)
+            [FromQuery] int pageNumber = 1, 
+            [FromQuery] int pageSize = 25)
         {
             var query = new SearchAiPromptsQuery(languageId, promptType, taskType, Pagination.New(pageNumber, pageSize));
             var result = await Mediator.Send(query);
