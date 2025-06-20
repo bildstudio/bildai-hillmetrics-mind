@@ -8,9 +8,22 @@
             <MudSelect T="KeyCriterion" @bind-Value="Criterion.Key"
                       Label="Key"
                       Variant="Variant.Outlined">
-                @foreach (KeyCriterion key in Enum.GetValues(typeof(KeyCriterion)))
+                @if (Scope == CriterionScope.Email)
                 {
-                    <MudSelectItem Value="@key">@GetKeyDisplayName(key)</MudSelectItem>
+                    <MudSelectItem Value="@KeyCriterion.EmailSender">Email Sender</MudSelectItem>
+                    <MudSelectItem Value="@KeyCriterion.EmailSubject">Email Subject</MudSelectItem>
+                }
+                else if (Scope == CriterionScope.Attachment)
+                {
+                    <MudSelectItem Value="@KeyCriterion.EmailAttachmentName">Attachment Name</MudSelectItem>
+                    <MudSelectItem Value="@KeyCriterion.EmailAttachmentFileType">Attachment File Type</MudSelectItem>
+                }
+                else
+                {
+                    @foreach (KeyCriterion key in Enum.GetValues(typeof(KeyCriterion)))
+                    {
+                        <MudSelectItem Value="@key">@GetKeyDisplayName(key)</MudSelectItem>
+                    }
                 }
             </MudSelect>
         </MudItem>
@@ -50,6 +63,31 @@
     [Parameter]
     public EventCallback<FluxMetadataCriterionDto> OnRemove { get; set; }
     
+    /// <summary>
+    /// The scope of criteria to display (Email or Attachment)
+    /// </summary>
+    [Parameter]
+    public CriterionScope Scope { get; set; } = CriterionScope.Email;
+    
+    protected override void OnParametersSet()
+    {
+        // Ensure the selected criterion is compatible with the current scope
+        if (Scope == CriterionScope.Email && 
+            (Criterion.Key == KeyCriterion.EmailAttachmentName || Criterion.Key == KeyCriterion.EmailAttachmentFileType))
+        {
+            // If we are in the Email scope but an Attachment criterion is selected, reset it
+            Criterion.Key = KeyCriterion.EmailSender;
+            CriterionChanged.InvokeAsync(Criterion);
+        }
+        else if (Scope == CriterionScope.Attachment &&
+                (Criterion.Key == KeyCriterion.EmailSender || Criterion.Key == KeyCriterion.EmailSubject))
+        {
+            // If we are in the Attachment scope but an Email criterion is selected, reset it
+            Criterion.Key = KeyCriterion.EmailAttachmentName;
+            CriterionChanged.InvokeAsync(Criterion);
+        }
+    }
+    
     private async Task OnRemoveClicked()
     {
         await OnRemove.InvokeAsync(Criterion);
@@ -59,10 +97,10 @@
     {
         return key switch
         {
-            KeyCriterion.EmailSender => "EmailSender",
-            KeyCriterion.EmailSubject => "EmailSubject",
-            KeyCriterion.EmailAttachmentName => "EmailAttachmentName",
-            KeyCriterion.EmailAttachmentFileType => "EmailAttachmentFileType",
+            KeyCriterion.EmailSender => "Email Sender",
+            KeyCriterion.EmailSubject => "Email Subject",
+            KeyCriterion.EmailAttachmentName => "Attachment Name",
+            KeyCriterion.EmailAttachmentFileType => "Attachment File Type",
             _ => key.ToString()
         };
     }
@@ -79,4 +117,5 @@
             _ => op.ToString()
         };
     }
+
 } 

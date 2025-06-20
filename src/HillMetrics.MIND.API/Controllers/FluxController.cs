@@ -266,7 +266,7 @@ namespace HillMetrics.MIND.API.Controllers
                             id, existingWorkflowId);
 
                         // Execute the operation with services from the new scope
-                        var command = FetchFluxCommand.CreateFromBackOffice(id, stepId, Task.FromResult(new List<Mail>()));
+                        var command = FetchFluxCommand.CreateFromBackOffice(id, stepId);
                         command.Audit = requestAudit;
 
                         var fetchResult = await scopedMediator.Send(command);
@@ -553,6 +553,22 @@ namespace HillMetrics.MIND.API.Controllers
                         new Core.API.Exceptions.ApiException($"Error processing manual flux upload: {ex.Message}"),
                         System.Net.HttpStatusCode.InternalServerError));
             }
+        }
+
+        /// <summary>
+        /// Fetch emails and process metadata
+        /// </summary>
+        /// <param name="request">Request containing email fetching parameters</param>
+        /// <returns>Result of the email fetching operation</returns>
+        [HttpPost("fetch-emails")]
+        public async Task<ActionResult<ApiResponseBase<FetchEmailMetadataCommandResult>>> FetchEmailsAsync()
+        {
+            var result = await Mediator.Send(FetchEmailMetadataCommand.CreateDefault());
+            
+            if (result.IsFailed)
+                return new ErrorApiActionResult(result.Errors.ToApiResult());
+            
+            return new ApiResponseBase<FetchEmailMetadataCommandResult>(result.Value);
         }
         #endregion
 
