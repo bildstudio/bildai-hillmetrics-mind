@@ -1,0 +1,87 @@
+@page "/flux/mails"
+@using HillMetrics.Core.Common.Email
+@using HillMetrics.MIND.API.SDK
+@using HillMetrics.MIND.API.Contracts.Requests.Flux
+@using HillMetrics.Normalized.Domain.Contracts.Providing.Flux.Cqrs.Collect
+@using System.Text.Json
+@using Microsoft.AspNetCore.Authorization
+@using MudBlazor
+
+@attribute [Authorize]
+@inject ISnackbar Snackbar
+@inject IMindAPI MindApi
+@inject NavigationManager NavigationManager
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudBreadcrumbs Items="_breadcrumbs"></MudBreadcrumbs>
+    
+    <MudText Typo="Typo.h4" Class="mb-4">Email Management</MudText>
+    
+    <MudPaper Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6" Class="mb-3">Email Fetching</MudText>
+        
+        <MudText Typo="Typo.body1" Class="mb-4">
+            Fetch emails from the configured email account. This will retrieve new emails and store them for processing by flux configurations.
+        </MudText>
+        
+        <MudButton 
+            Variant="Variant.Filled" 
+            Color="Color.Primary" 
+            OnClick="FetchMailsAsync" 
+            StartIcon="@Icons.Material.Filled.Refresh"
+            Disabled="@_isLoading">
+            Fetch Mails
+        </MudButton>
+        
+        @if (_isLoading)
+        {
+            <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mt-4" />
+        }
+        </MudPaper>
+</MudContainer>
+
+@code {
+    private List<BreadcrumbItem> _breadcrumbs = new()
+    {
+        new BreadcrumbItem("Home", "/"),
+        new BreadcrumbItem("Flux Management", null),
+        new BreadcrumbItem("Mails", null, true)
+    };
+
+    private bool _isLoading = false;
+    private bool _isLoadingEmails = false;
+    // private List<EmailMetadata>? _emails;
+    private DateTime _lastFetchTime;
+    private FetchEmailMetadataCommandResult? _lastFetchResult;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        
+    }
+
+    private async Task FetchMailsAsync()
+    {
+        try
+        {
+            _isLoading = true;
+
+            // Call the API endpoint to fetch emails
+            var result = await MindApi.FetchEmailMetadataAsync();
+            _lastFetchResult = result.Data;
+            _lastFetchTime = DateTime.Now;
+                
+            Snackbar.Add($"Successfully fetched {result.Data.TotalEmailsFetched} new emails", Severity.Success);
+                
+           
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"An error occurred: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+}

@@ -1,5 +1,6 @@
 ﻿using HillMetrics.Core.Financial;
 using HillMetrics.Core.Financial.DataPoint;
+using HillMetrics.Core.Rules;
 using HillMetrics.MIND.API.Contracts.Requests.AiDataset;
 using HillMetrics.MIND.API.Contracts.Requests.AiDataset.DocumentTypes;
 using HillMetrics.MIND.API.Contracts.Requests.AiDataset.Metadatas;
@@ -21,8 +22,9 @@ using HillMetrics.MIND.API.Contracts.Responses.TradingVenue;
 using HillMetrics.Normalized.Domain.Contracts.AI.Dataset;
 using HillMetrics.Normalized.Domain.Contracts.AI.Dataset.Cqrs.ElementValue;
 using HillMetrics.Normalized.Domain.Contracts.AI.Dataset.Cqrs.FinancialDataPoint;
+using HillMetrics.Normalized.Domain.Contracts.Files;
 using HillMetrics.Normalized.Domain.Contracts.Market.Cqrs.Rule;
-using HillMetrics.Core.Rules;
+using HillMetrics.Normalized.Domain.Contracts.Providing.Flux.Cqrs.Collect;
 using Refit;
 
 namespace HillMetrics.MIND.API.SDK.V1
@@ -776,6 +778,16 @@ namespace HillMetrics.MIND.API.SDK.V1
         /// <returns></returns>
         [Delete("/api/v1/fluxcarac/financial-data-point-element/metadata")]
         Task<DeletedResponse> DeleteElementMetadataAsync([Body] DeleteMetadataRequest request);
+
+        #endregion
+
+        #region "Mails"
+        /// <summary>
+        /// jhj
+        /// </summary>
+        /// <returns></returns>
+        [Post("/api/v1/flux/fetch-emails")]
+        Task<ApiResponseBase<FetchEmailMetadataCommandResult>> FetchEmailMetadataAsync();
 
         #endregion
     }

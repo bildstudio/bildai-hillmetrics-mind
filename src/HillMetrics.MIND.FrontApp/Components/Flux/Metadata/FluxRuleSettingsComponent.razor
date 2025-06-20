@@ -35,8 +35,10 @@
                 
                 @foreach (var criterion in RuleSettings.Criteria)
                 {
-                    <FluxMetadataCriterionComponent Criterion="@criterion" 
-                                                   OnRemove="@RemoveCriterion" />
+                    <FluxMetadataCriterionComponent 
+                        Criterion="@criterion" 
+                        OnRemove="@RemoveCriterion"
+                        Scope="CriterionScope.Email" />
                 }
                 
                 <MudButton Variant="Variant.Outlined" 
@@ -118,7 +120,13 @@
     
     private void AddCriterion()
     {
-        RuleSettings.Criteria.Add(new FluxMetadataCriterionDto());
+        // Créer un nouveau critère avec une clé Email par défaut
+        var newCriterion = new FluxMetadataCriterionDto
+        {
+            Key = KeyCriterion.EmailSender
+        };
+        
+        RuleSettings.Criteria.Add(newCriterion);
         RuleSettingsChanged.InvokeAsync(RuleSettings);
     }
     
