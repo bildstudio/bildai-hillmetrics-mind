@@ -37,13 +37,6 @@
                        Class="align-self-start">
                 Create Flux
             </MudButton>
-            <MudButton Variant="Variant.Filled"
-                       Color="Color.Secondary"
-                       StartIcon="@Icons.Material.Filled.Dashboard"
-                       Href="/flux/workflow-dashboard"
-                       Class="align-self-start">
-                Workflow Dashboard
-            </MudButton>
         </MudItem>
     </MudGrid>
 
@@ -361,7 +354,7 @@
                             <MudIcon Icon="@Icons.Material.Filled.Edit" Class="mr-2" Size="Size.Small" /> Edit
                         </MudMenuItem>
                         <MudMenuItem OnClick="@(() => ForceFetch(context.FluxId))">
-                            <MudIcon Icon="@Icons.Material.Filled.Download" Class="mr-2" Size="Size.Small" /> Force Fetch
+                            <MudIcon Icon="@Icons.Material.Filled.Download" Class="mr-2" Size="Size.Small" /> Fetch
                         </MudMenuItem>
                         <MudMenuItem OnClick="@(() => ForceProcess(context.FluxId))">
                             <MudIcon Icon="@Icons.Material.Filled.PlayArrow" Class="mr-2" Size="Size.Small" /> Force Process all fetching

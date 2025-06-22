@@ -2,6 +2,7 @@
 @page "/property-mapping/edit/{Id:int?}"
 @using HillMetrics.Core.Common
 @using HillMetrics.Core.Financial
+@using HillMetrics.Core.Financial.DataPoint
 @using HillMetrics.MIND.API.Contracts.Requests.AiDataset
 @using HillMetrics.MIND.API.SDK.V1
 @using HillMetrics.Normalized.Domain.Contracts.AI.Dataset
@@ -34,6 +35,19 @@ else
                                RequiredError="Content Type is required"
                                AnchorOrigin="Origin.BottomCenter">
                         @foreach (var type in Enum.GetValues<ContentType>())
+                        {
+                            <MudSelectItem Value="@type">@type</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudSelect T="MappingSourceType"
+                               @bind-Value="propertyType.MappingSourceType"
+                               Label="Mapping Source Type"
+                               Required="true"
+                               RequiredError="Mapping Source Type is required"
+                               AnchorOrigin="Origin.BottomCenter">
+                        @foreach (var type in Enum.GetValues<MappingSourceType>())
                         {
                             <MudSelectItem Value="@type">@type</MudSelectItem>
                         }
@@ -96,7 +110,8 @@ else
                 {
                     Name = data.Name,
                     Description = data.Description,
-                    ContentType = data.ContentType
+                    ContentType = data.ContentType,
+                    MappingSourceType = data.MappingSourceType
                 };
         }
         catch (Exception ex)

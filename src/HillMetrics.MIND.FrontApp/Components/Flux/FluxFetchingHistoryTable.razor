@@ -3,9 +3,13 @@
 @using HillMetrics.Core
 @using HillMetrics.MIND.FrontApp.Components.Pages.Flux
 @using HillMetrics.Normalized.Domain.Contracts.Providing.Flux
+@using HillMetrics.MIND.API.SDK.V1
+@using Microsoft.JSInterop
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
+@inject IMindAPI MindApi
+@inject IJSRuntime JSRuntime
 
 <MudTable ServerData="@ServerReload"
           Hover="true" Bordered="true" Striped="true"
@@ -29,6 +33,7 @@
         <MudTh>Contents</MudTh>
         <MudTh>Processings</MudTh>
         <MudTh>Status</MudTh>
+        <MudTh>Download</MudTh>
         <MudTh>Workflow</MudTh>
         <MudTh>Actions</MudTh>
     </HeaderContent>
@@ -37,18 +42,11 @@
             <MudLink Href="@($"/flux/fetching-details/{context.Id}")">@context.Id</MudLink>
         </MudTd>
         <MudTd DataLabel="Flux ID">
-            @if (ShowFluxId)
-            {
-                <MudLink Href="@($"/flux/details/{context.FluxId}")">@context.FluxId</MudLink>
-            }
-            else
-            {
-                <span>@context.FluxId</span>
-            }
+            <MudLink Href="@($"/flux/details/{context.FluxId}")">@context.FluxId</MudLink>
         </MudTd>
         <MudTd DataLabel="Fetching Date">
             <MudTooltip Text="@context.FetchingDate.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")">
-                <div>@FormatDateTime(context.FetchingDate)</div>
+                <div>@FormatDateTime(context.FetchingDate.ToLocalTime())</div>
             </MudTooltip>
         </MudTd>
         <MudTd DataLabel="Content Name">
@@ -105,6 +103,21 @@
                 <span>-</span>
             }
         </MudTd>
+        <MudTd DataLabel="Download">
+            @if (!string.IsNullOrEmpty(context.RawId))
+            {
+                <MudTooltip Text="Download Raw Content">
+                    <MudIconButton Icon="@Icons.Material.Filled.CloudDownload"
+                                  Color="Color.Primary"
+                                  Size="Size.Small"
+                                  OnClick="@(() => DownloadRawContent(context))" />
+                </MudTooltip>
+            }
+            else
+            {
+                <span>-</span>
+            }
+        </MudTd>
         <MudTd DataLabel="Workflow">
             @if (context.WorkflowId != Guid.Empty)
             {
@@ -141,10 +154,13 @@
                     </MudMenuItem>
                 }
                 <MudMenuItem OnClick="@(() => ForceProcess(context.Id))">
-                    <MudIcon Icon="@Icons.Material.Filled.PlayArrow" Class="mr-2" Size="Size.Small" /> Force Process
+                    <MudIcon Icon="@Icons.Material.Filled.PlayArrow" Class="mr-2" Size="Size.Small" /> Process
                 </MudMenuItem>
                 <MudMenuItem OnClick="@(() => SimulateProcess(context.Id))">
                     <MudIcon Icon="@Icons.Material.Filled.Science" Class="mr-2" Size="Size.Small" /> Simulate Process
+                </MudMenuItem>
+                <MudMenuItem OnClick="@(() => NavigateToMapping(context.Id))">
+                    <MudIcon Icon="@Icons.Material.Filled.Link" Class="mr-2" Size="Size.Small" /> Create Mapping
                 </MudMenuItem>
             </MudMenu>
         </MudTd>
@@ -222,6 +238,11 @@
         NavigationManager.NavigateTo($"/flux/processing-history?fetchingId={fetchingId}");
     }
 
+    private void NavigateToMapping(int fetchingId)
+    {
+        NavigationManager.NavigateTo($"/file-data-mapping/flux/{fetchingId}");
+    }
+
     // Helper methods for icons and colors
     private string GetStatusIcon(StatusProcess status)
     {
@@ -264,5 +285,77 @@
             return $"{(int)diff.TotalDays}d ago";
 
         return dateTime.ToString("MMM dd, HH:mm");
+    }
+
+    private async Task DownloadRawContent(FluxFetchingSearchResponse context)
+    {
+        if (string.IsNullOrEmpty(context.RawId))
+        {
+            Snackbar.Add("Raw content is not available for this item", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            // Utiliser MindApi.GetFile pour récupérer le contenu comme Stream
+            using var stream = await MindApi.GetFile(context.RawId);
+
+            // Convertir le Stream en byte[]
+            using var memoryStream = new MemoryStream();
+            await stream.CopyToAsync(memoryStream);
+            var fileBytes = memoryStream.ToArray();
+
+            // Utiliser JS pour télécharger le fichier
+            await JSRuntime.InvokeVoidAsync("downloadFileFromBytes",
+                Convert.ToBase64String(fileBytes),
+                context.ContentName ?? $"fetching_{context.Id}");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error downloading raw content: {ex.Message}", Severity.Error);
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Ajouter les fonctions JS nécessaires pour le téléchargement
+            await JSRuntime.InvokeVoidAsync("eval", @"
+                // Nouvelle fonction pour télécharger depuis des bytes
+                window.downloadFileFromBytes = function(base64, fileName) {
+                    try {
+                        const byteCharacters = atob(base64);
+                        const byteArrays = [];
+
+                        for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+                            const slice = byteCharacters.slice(offset, offset + 512);
+
+                            const byteNumbers = new Array(slice.length);
+                            for (let i = 0; i < slice.length; i++) {
+                                byteNumbers[i] = slice.charCodeAt(i);
+                            }
+
+                            const byteArray = new Uint8Array(byteNumbers);
+                            byteArrays.push(byteArray);
+                        }
+
+                        const blob = new Blob(byteArrays);
+                        const link = document.createElement('a');
+                        const blobUrl = URL.createObjectURL(blob);
+                        link.href = blobUrl;
+                        link.download = fileName || 'download';
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        URL.revokeObjectURL(blobUrl);
+                    } catch (error) {
+                        console.error('Error downloading file from bytes:', error);
+                    }
+                };
+            ");
+        }
+
+        await base.OnAfterRenderAsync(firstRender);
     }
 }

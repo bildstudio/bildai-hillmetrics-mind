@@ -200,6 +200,11 @@ namespace HillMetrics.MIND.API.Contracts.Responses.Flux
         public string Description { get; set; } = string.Empty;
 
         /// <summary>
+        /// Indicates if this command is a collection command (AbstractCollectionCommand) or not
+        /// </summary>
+        public bool IsList { get; set; }
+
+        /// <summary>
         /// The list of elements/parameters for this command
         /// </summary>
         public List<string> Elements { get; set; } = new();

@@ -229,6 +229,16 @@ namespace HillMetrics.MIND.API.SDK.V1
 
         #endregion
 
+        #region Rule Errors
+
+        /// <summary>
+        /// Search for rule errors following the given criteria
+        /// </summary>
+        [Get("/api/v1/flux/rule-errors/search")]
+        Task<CustomMindPagedApiResponseBase<RuleErrorSearchResponse>> SearchRuleErrorsAsync([Query] RuleErrorSearchRequest request);
+
+        #endregion
+
         #region Sources
         /// <summary>
         /// Search for flux sources following the given criteria
@@ -299,6 +309,14 @@ namespace HillMetrics.MIND.API.SDK.V1
         /// <returns>Stream of the raw content file</returns>
         [Get("/api/v1/raw/{id}")]
         Task<Stream> GetFile(string id);
+
+        /// <summary>
+        /// Get the size of a raw content file
+        /// </summary>
+        /// <param name="id">ID of the raw content in MongoDB</param>
+        /// <returns>File size information</returns>
+        [Get("/api/v1/raw/size/{id}")]
+        Task<dynamic> GetFileSize(string id);
 
         /// <summary>
         /// Download a file from FileMetadataRepository using its string ID
