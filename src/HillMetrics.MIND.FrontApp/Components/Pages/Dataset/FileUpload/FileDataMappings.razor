@@ -38,41 +38,41 @@ else
         <!-- File Information and Preview -->
         <MudItem xs="12" md="6">
             <FileUploadCard IsEditMode="isEditMode"
-            File="uploadedFile"
-            SelectedFile="selectedFile"
-            SelectedFileName="@selectedFileName"
-            SelectedFileSize="@selectedFileSize"
-            SelectedFileContentType="@selectedFileContentType"
-            CustomFileName="@customFileName"
-            FileDifficulty="fileDifficulty"
-            IsUploading="isUploading"
-            DuplicateFileFound="duplicateFileFound"
-            CanUploadFile="CanUploadFile()"
-            OnFileSelected="OnFileChanged"
-            OnFileClear="ClearFile"
-            OnSave="HandleSave" />
+                            File="uploadedFile"
+                            SelectedFile="selectedFile"
+                            SelectedFileName="@selectedFileName"
+                            SelectedFileSize="@selectedFileSize"
+                            SelectedFileContentType="@selectedFileContentType"
+                            CustomFileName="@customFileName"
+                            FileDifficulty="fileDifficulty"
+                            IsUploading="isUploading"
+                            DuplicateFileFound="duplicateFileFound"
+                            CanUploadFile="CanUploadFile()"
+                            OnFileSelected="OnFileChanged"
+                            OnFileClear="ClearFile"
+                            OnSave="HandleSave" />
 
             @if (uploadedFile != null)
             {
                 <FilePreview File="uploadedFile"
-                IsSelectingField="isSelectingField"
-                SelectedFieldName="selectedFieldName"
-                OnCellSelected="OnCellClick"
-                OnCancelFieldSelection="CancelFieldSelection" />
+                             IsSelectingField="isSelectingField"
+                             SelectedFieldName="selectedFieldName"
+                             OnCellSelected="OnCellClick"
+                             OnCancelFieldSelection="CancelFieldSelection" />
             }
         </MudItem>
 
         <!-- Data Mapping Card -->
         <MudItem xs="12" md="6">
             <DataMappingCard IsEditMode="isEditMode"
-            File="uploadedFile"
-            AvailableDataPoints="availableDataPoints"
-            DataMappings="dataMappings"
-            OnAddDataPoint="AddDataPoint"
-            OnRemoveMapping="RemoveDataMapping"
-            OnFieldSelect="SelectField"
-            OnExpandAll="ExpandAllPanels"
-            OnCollapseAll="CollapseAllPanels" />
+                             File="uploadedFile"
+                             AvailableDataPoints="availableDataPoints"
+                             DataMappings="dataMappings"
+                             OnAddDataPoint="AddDataPoint"
+                             OnRemoveMapping="RemoveDataMapping"
+                             OnFieldSelect="SelectField"
+                             OnExpandAll="ExpandAllPanels"
+                             OnCollapseAll="CollapseAllPanels" />
         </MudItem>
 
         <!-- Action Buttons -->
@@ -83,12 +83,12 @@ else
                         @if (dataMappings.Count > 0)
                         {
                             <MudButton OnClick="SaveMappings"
-                            Color="Color.Primary"
-                            Variant="Variant.Filled"
-                            Disabled="isSaving || dataMappings.Count == 0"
-                            StartIcon="@Icons.Material.Filled.Save"
-                            Size="Size.Large"
-                            FullWidth="true">
+                                       Color="Color.Primary"
+                                       Variant="Variant.Filled"
+                                       Disabled="isSaving || dataMappings.Count == 0"
+                                       StartIcon="@Icons.Material.Filled.Save"
+                                       Size="Size.Large"
+                                       FullWidth="true">
                                 @if (isSaving)
                                 {
                                     <MudProgressCircular Class="mr-2" Size="Size.Small" Indeterminate="true" />
@@ -103,11 +103,11 @@ else
                     </MudItem>
                     <MudItem xs="12" md="6">
                         <MudButton OnClick="NavigateBack"
-                        Color="Color.Secondary"
-                        Variant="Variant.Outlined"
-                        StartIcon="@Icons.Material.Filled.ArrowBack"
-                        Size="Size.Large"
-                        FullWidth="true">
+                                   Color="Color.Secondary"
+                                   Variant="Variant.Outlined"
+                                   StartIcon="@Icons.Material.Filled.ArrowBack"
+                                   Size="Size.Large"
+                                   FullWidth="true">
                             Cancel
                         </MudButton>
                     </MudItem>
@@ -151,6 +151,8 @@ else
     private MudExpansionPanels? expansionPanels;
     private string customFileName = string.Empty;
     private string editedFileName = string.Empty;
+
+
 
     private List<FinancialDataPoint> availableDataPoints = new();
     private List<FileDataMapping> dataMappings = new();
@@ -217,8 +219,8 @@ else
                         FluxFetchingContentId = FluxFetchingHistoryContentId.Value,
                         FileName = fetchingContentResponse.Data.ContentName ?? $"Flux_{FluxFetchingHistoryContentId.Value}",
                         ContentType = fetchingContentResponse.Data.ContentType != null
-                                            ? HillMetrics.Core.Common.ContentTypeMapper.GetMimeType(fetchingContentResponse.Data.ContentType.Value)
-                                            : "application/vnd.ms-excel", // Default type if ContentType is null
+                                                ? HillMetrics.Core.Common.ContentTypeMapper.GetMimeType(fetchingContentResponse.Data.ContentType.Value)
+                                                : "application/vnd.ms-excel", // Default type if ContentType is null
                         Difficulty = FileDifficulty.Medium,
                         FinancialType = flux.FinancialType!.Value
                     };
@@ -585,7 +587,7 @@ else
 
                 if (response.Data != null)
                 {
-                    if(response.Data.AlreadyExisted)
+                    if (response.Data.AlreadyExisted)
                     {
 
 
@@ -673,4 +675,6 @@ else
         selectedFieldName = string.Empty;
         selectedFieldCallback = null;
     }
+
+
 }

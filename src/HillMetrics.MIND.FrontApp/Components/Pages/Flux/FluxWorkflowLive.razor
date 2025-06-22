@@ -649,7 +649,7 @@
         builder.OpenElement(150, "div");
         builder.AddAttribute(151, "class", "node-actions");
 
-        if (step.Stage == WorkflowStage.FetchingData)
+        if (step.Stage == WorkflowStage.FetchingData || step.Stage == WorkflowStage.FetchingDataMail)
         {
             var fetchingId = TryGetFetchingId(step.Metadata);
             if (fetchingId > 0)
@@ -766,21 +766,26 @@
     {
         return stage switch
         {
-            WorkflowStage.FetchingData => "Fetch data",
-            WorkflowStage.Processing => "Process data",
-            WorkflowStage.NormalizedDataInserting => "Insertion into Normalized database",
-            WorkflowStage.NormalizedFundCreating => "Create Funds into Normalized database",
-            WorkflowStage.NormalizedCryptocurrencyCreating => "Create Crypto into Normalized database",
-            WorkflowStage.NormalizedForexCreating => "Create Currency pair into Normalized database",
-            WorkflowStage.NormalizedBenchCreating => "Create Bench into Normalized database",
-            WorkflowStage.NormalizedProductNameInserting => "Add product name",
-            WorkflowStage.NormalizedProductCodeInserting => "Add product code",
-            WorkflowStage.RefinedDataCopying => "Insertion into Refined database",
-            WorkflowStage.CalculationReturnStarting => "Calcul Performance",
-            WorkflowStage.CalculationRiskStarting => "Calcul Volatility",
-            WorkflowStage.CalculationWeeklyReturnStarting => "Calcul Weekly performance",
-            WorkflowStage.CalcCurrencyExchangeRateStarting => "Convert currency with exchange rate",
-            WorkflowStage.NormalizedPriceInserting => "Insert price into Normalized database",
+            WorkflowStage.FetchingData => "Fetch Data",
+            WorkflowStage.FetchingDataMail => "Fetch Email",
+            WorkflowStage.Processing => "Process Data",
+            WorkflowStage.NormalizedDataInserting => "Insert Normalized Data",
+            WorkflowStage.NormalizedFundCreating => "Create Funds",
+            WorkflowStage.NormalizedCryptocurrencyCreating => "Create Crypto",
+            WorkflowStage.NormalizedForexCreating => "Create Currency Pairs",
+            WorkflowStage.NormalizedBenchCreating => "Create Benchmarks",
+            WorkflowStage.NormalizedProductNameInserting => "Add Product Names",
+            WorkflowStage.NormalizedProductCodeInserting => "Add Product Codes",
+            WorkflowStage.NormalizedFundCompartment => "Create Fund Compartments",
+            WorkflowStage.NormalizedFundDistributionCountry => "Add Distribution Countries",
+            WorkflowStage.NormalizedFundShare => "Create Fund Shares",
+            WorkflowStage.NormalizedFundUmbrella => "Create Fund Umbrellas",
+            WorkflowStage.RefinedDataCopying => "Insert Refined Data",
+            WorkflowStage.CalculationReturnStarting => "Calculate Performance",
+            WorkflowStage.CalculationRiskStarting => "Calculate Volatility",
+            WorkflowStage.CalculationWeeklyReturnStarting => "Calculate Weekly Performance",
+            WorkflowStage.CalcCurrencyExchangeRateStarting => "Convert Currency",
+            WorkflowStage.NormalizedPriceInserting => "Insert Prices",
             WorkflowStage.Failed => "Error",
             _ => stage.ToString()
         };

@@ -1,0 +1,81 @@
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.h6" Class="mb-4">CSV Delimiter Configuration</MudText>
+
+        <MudRadioGroup @bind-Value="selectedDelimiter" T="string">
+            <MudRadio Value="@(",")" Color="Color.Primary">
+                <MudText>Comma (,)</MudText>
+            </MudRadio>
+            <MudRadio Value="@(";")" Color="Color.Primary">
+                <MudText>Semicolon (;)</MudText>
+            </MudRadio>
+            <MudRadio Value="@("\t")" Color="Color.Primary">
+                <MudText>Tab (\t)</MudText>
+            </MudRadio>
+            <MudRadio Value="@("|")" Color="Color.Primary">
+                <MudText>Pipe (|)</MudText>
+            </MudRadio>
+        </MudRadioGroup>
+
+        @if (selectedDelimiter == "custom")
+        {
+            <MudTextField @bind-Value="customDelimiter"
+                         Label="Custom Delimiter"
+                         Variant="Variant.Outlined"
+                         Class="mt-3"
+                         MaxLength="1"
+                         HelperText="Enter a single character" />
+        }
+
+        <MudAlert Severity="Severity.Info" Class="mt-3">
+            The selected delimiter will be used to parse the CSV file preview.
+        </MudAlert>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Apply" Disabled="@(!IsValid())">
+            Apply
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    public MudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public string CurrentDelimiter { get; set; } = ",";
+
+    private string selectedDelimiter = ",";
+    private string customDelimiter = "";
+
+    protected override void OnInitialized()
+    {
+        // Initialize based on current delimiter
+        if (CurrentDelimiter == "," || CurrentDelimiter == ";" || CurrentDelimiter == "\t" || CurrentDelimiter == "|")
+        {
+            selectedDelimiter = CurrentDelimiter;
+        }
+        else
+        {
+            selectedDelimiter = "custom";
+            customDelimiter = CurrentDelimiter;
+        }
+    }
+
+    private bool IsValid()
+    {
+        if (selectedDelimiter == "custom")
+        {
+            return !string.IsNullOrEmpty(customDelimiter) && customDelimiter.Length == 1;
+        }
+        return true;
+    }
+
+    private void Apply()
+    {
+        var delimiter = selectedDelimiter == "custom" ? customDelimiter : selectedDelimiter;
+        MudDialog.Close(DialogResult.Ok(delimiter));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

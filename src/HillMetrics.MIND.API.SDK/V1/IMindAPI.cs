@@ -311,6 +311,14 @@ namespace HillMetrics.MIND.API.SDK.V1
         Task<Stream> GetFile(string id);
 
         /// <summary>
+        /// Get the size of a raw content file
+        /// </summary>
+        /// <param name="id">ID of the raw content in MongoDB</param>
+        /// <returns>File size information</returns>
+        [Get("/api/v1/raw/size/{id}")]
+        Task<dynamic> GetFileSize(string id);
+
+        /// <summary>
         /// Download a file from FileMetadataRepository using its string ID
         /// </summary>
         /// <param name="id">File metadata string ID</param>
