@@ -869,6 +869,7 @@ namespace HillMetrics.MIND.API.Controllers
                     {
                         CommandName = ExtractCommandName(cmd),
                         Description = ExtractCommandDescription(cmd),
+                        IsList = IsCollectionCommand(cmd),
                         Elements = ExtractCommandElements(cmd)
                     }).ToList()
                 )
@@ -909,6 +910,42 @@ namespace HillMetrics.MIND.API.Controllers
             }
 
             return string.Empty;
+        }
+
+        /// <summary>
+        /// Determines if a command is a collection command (inherits from AbstractCollectionCommand)
+        /// </summary>
+        private static bool IsCollectionCommand(IMarketCommand command)
+        {
+            if (command == null)
+                return false;
+
+            // Check if the command type has AbstractCollectionCommand in its inheritance hierarchy
+            var commandType = command.GetType();
+
+            // Check if the type or any of its base types is a generic type with AbstractCollectionCommand as the generic type definition
+            while (commandType != null && commandType != typeof(object))
+            {
+                if (commandType.IsGenericType)
+                {
+                    var genericTypeDef = commandType.GetGenericTypeDefinition();
+                    if (genericTypeDef.Name.StartsWith("AbstractCollectionCommand"))
+                    {
+                        return true;
+                    }
+                }
+
+                // Check if the base type name contains AbstractCollectionCommand
+                if (commandType.Name.Contains("AbstractCollectionCommand") ||
+                    (commandType.BaseType != null && commandType.BaseType.Name.Contains("AbstractCollectionCommand")))
+                {
+                    return true;
+                }
+
+                commandType = commandType.BaseType;
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -1168,6 +1205,24 @@ namespace HillMetrics.MIND.API.Controllers
                     new Core.API.Exceptions.ApiException($"Error deleting flux errors: {ex.Message}"),
                     System.Net.HttpStatusCode.InternalServerError));
             }
+        }
+        #endregion
+
+        #region Rule Errors
+        /// <summary>
+        /// Search for rule errors following the given criteria
+        /// </summary>
+        /// <param name="request">The search criterias</param>
+        /// <returns>The rule errors that matched the requests filters</returns>
+        [HttpGet("rule-errors/search")]
+        public async Task<ActionResult<CustomMindPagedApiResponseBase<RuleErrorSearchResponse>>> SearchRuleErrorsAsync([FromQuery] RuleErrorSearchRequest request)
+        {
+            var result = await Mediator.Send(mapper.Map<SearchRuleErrorQuery>(request));
+
+            if (result.IsFailed)
+                return new ErrorApiActionResult(result.Errors.ToApiResult());
+
+            return new CustomMindPagedApiResponseBase<RuleErrorSearchResponse>(mapper.Map<List<RuleErrorSearchResponse>>(result.Value.Results), result.Value.NbTotalRows);
         }
         #endregion
 

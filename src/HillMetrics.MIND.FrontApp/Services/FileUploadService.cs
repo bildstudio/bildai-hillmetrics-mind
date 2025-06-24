@@ -217,5 +217,61 @@ namespace HillMetrics.MIND.FrontApp.Services
                 return null;
             }
         }
+
+        /// <summary>
+        /// Gets the size of a file without downloading the full content.
+        /// </summary>
+        /// <param name="fileUploadId">The ID of the file to check.</param>
+        /// <returns>The file size in bytes, or null if not found or error.</returns>
+        public async Task<long?> GetFileSizeAsync(int fileUploadId)
+        {
+            try
+            {
+                var response = await _mindApi.GetFileUploadAsync(fileUploadId);
+                var fileUpload = response.Data;
+
+                if (fileUpload == null)
+                {
+                    _logger.LogError("File upload not found for ID: {FileUploadId}", fileUploadId);
+                    return null;
+                }
+
+                if (fileUpload.FluxFetchingContentId.HasValue)
+                {
+                    // Si le fichier vient d'un FluxFetching, utiliser l'API GetFileSize
+                    var fpcResponse = await _mindApi.GetFetchingContentAsync(fileUpload.FluxFetchingContentId.Value);
+
+                    if (!string.IsNullOrEmpty(fpcResponse.Data.RawId))
+                    {
+                        try
+                        {
+                            var sizeResponse = await _mindApi.GetFileSize(fpcResponse.Data.RawId);
+                            var sizeInfo = System.Text.Json.JsonSerializer.Deserialize<dynamic>(sizeResponse.ToString());
+                            return sizeInfo.GetProperty("sizeInBytes").GetInt64();
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Could not get file size for raw ID: {RawId}", fpcResponse.Data.RawId);
+                            return null;
+                        }
+                    }
+                }
+                else if (fileUpload.FileMetadataId.HasValue)
+                {
+                    // Pour FileMetadata, on pourrait utiliser FileSize si disponible sur l'objet FileUpload
+                    // Ou implémenter une méthode GetStoredFileSize dans l'API
+                    _logger.LogInformation("Getting size for FileMetadata with ID: {FileMetadataId}", fileUpload.FileMetadataId.Value);
+                    // Pour l'instant, retourner null pour forcer le téléchargement si nécessaire
+                    return fileUpload.FileSize > 0 ? fileUpload.FileSize : null;
+                }
+
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting file size for {FileId}", fileUploadId);
+                return null;
+            }
+        }
     }
 }

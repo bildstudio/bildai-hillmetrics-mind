@@ -42,14 +42,14 @@
         </MudTd>
         <MudTd DataLabel="Start Date">
             <MudTooltip Text="@context.ProcessingDateStart.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")">
-                <div>@FormatDateTime(context.ProcessingDateStart)</div>
+                <div>@FormatDateTime(context.ProcessingDateStart.ToLocalTime())</div>
             </MudTooltip>
         </MudTd>
         <MudTd DataLabel="End Date">
             @if (context.ProcessingDateEnd.HasValue)
             {
                 <MudTooltip Text="@context.ProcessingDateEnd.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")">
-                    <div>@FormatDateTime(context.ProcessingDateEnd.Value)</div>
+                    <div>@FormatDateTime(context.ProcessingDateEnd.Value.ToLocalTime())</div>
                 </MudTooltip>
             }
             else

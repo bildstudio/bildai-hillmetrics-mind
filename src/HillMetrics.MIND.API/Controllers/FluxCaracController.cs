@@ -633,7 +633,8 @@ public class FluxCaracController(IHMediator mediator, IMapper mapper, ILogger<Fl
             {
                 Name = request.Name,
                 Description = request.Description,
-                ContentType = request.ContentType
+                ContentType = request.ContentType,
+                MappingSourceType = request.MappingSourceType
             }
         };
 
@@ -663,7 +664,8 @@ public class FluxCaracController(IHMediator mediator, IMapper mapper, ILogger<Fl
                 Id = id,
                 Name = request.Name,
                 Description = request.Description,
-                ContentType = request.ContentType
+                ContentType = request.ContentType,
+                MappingSourceType = request.MappingSourceType
             }
         };
 

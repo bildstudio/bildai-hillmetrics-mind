@@ -232,9 +232,9 @@
                 </MudTd>
                 <MudTd DataLabel="IP Address">@context.IpAddress</MudTd>
                 <MudTd DataLabel="Created At">
-                    <MudTooltip Text="@context.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")">
+                    <MudTooltip Text="@context.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")">
                         <div style="cursor: pointer;">
-                            @FormatDateTime(context.CreatedAt)
+                            @FormatDateTime(context.CreatedAt.ToLocalTime())
                         </div>
                     </MudTooltip>
                 </MudTd>
@@ -263,7 +263,7 @@
 </MudContainer>
 
 @code {
-    private AuditSearchRequest searchRequest = new() { Pagination = Pagination.Default };
+    private AuditSearchRequest searchRequest = new() { Pagination = new Pagination(100, 1) };
     private List<AuditSearchResponse>? auditLogs;
     private bool loading = false;
     private bool isValid = false;
@@ -274,8 +274,6 @@
 
     protected override async Task OnInitializedAsync()
     {
-        // Initialize with default pagination
-        searchRequest.Pagination = new Pagination(10, 1);
     }
 
     private async Task<TableData<AuditSearchResponse>> ServerReload(TableState state, CancellationToken token)
