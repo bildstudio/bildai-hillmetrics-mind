@@ -245,12 +245,27 @@
                                  Dense="true"
                                  Hover="true"
                                  Striped="true"
-                                 Height="300px"
-                                 FixedHeader="true">
+                                 Virtualize="true"
+                                 Height="400px"
+                                 FixedHeader="true"
+                                 Bordered="true"
+                                 Class="mud-elevation-1">
                         <Columns>
-                            <PropertyColumn Property="x => x.DataPoint" Title="Data Point" />
-                            <PropertyColumn Property="x => x.OriginalValue" Title="Original Value" />
-                            <PropertyColumn Property="x => x.ErrorMessage" Title="Error Message" />
+                            <PropertyColumn Property="x => x.DataPoint" Title="Data Point" Sortable="true" />
+                            <PropertyColumn Property="x => x.OriginalValue" Title="Original Value" Sortable="true">
+                                <CellTemplate>
+                                    <div class="text-truncate" style="max-width: 200px;" title="@context.Item.OriginalValue">
+                                        @context.Item.OriginalValue
+                                    </div>
+                                </CellTemplate>
+                            </PropertyColumn>
+                            <PropertyColumn Property="x => x.ErrorMessage" Title="Error Message" Sortable="true">
+                                <CellTemplate>
+                                    <div class="text-truncate" style="max-width: 300px;" title="@context.Item.ErrorMessage">
+                                        @context.Item.ErrorMessage
+                                    </div>
+                                </CellTemplate>
+                            </PropertyColumn>
                         </Columns>
                     </MudDataGrid>
                 </MudCardContent>
@@ -281,7 +296,7 @@
                                           AdornmentIcon="@Icons.Material.Filled.Search"
                                           Immediate="true"
                                           DebounceInterval="300"
-                                          OnDebounceIntervalElapsed="ApplyFilter"
+                                          OnDebounceIntervalElapsed="@((string filter) => ApplyFilter())"
                                           Clearable="true"
                                           Variant="Variant.Outlined"
                                           Dense="true"
@@ -310,6 +325,13 @@
                                          Color="Color.Primary"
                                          Dense="true"
                                          ValueChanged="OnUniqueFilterChanged" />
+                        </MudItem>
+                        <MudItem xs="12" md="2" Class="d-flex align-center">
+                            <MudCheckBox T="bool"
+                                         Label="Rows in error"
+                                         Color="Color.Error"
+                                         Dense="true"
+                                         ValueChanged="OnErrorFilterChanged" />
                         </MudItem>
                     </MudGrid>
 
@@ -484,56 +506,136 @@
                             <MudIcon Icon="@Icons.Material.Filled.PlayArrow" Class="mr-2" />
                             Actions Execution Results
                         </MudText>
+                        <MudText Typo="Typo.body2" Class="mt-2">
+                            Total: @GetTotalCommandsCount() commands across @simulationResult.CommandExecution.ExecutableCommandsByFinancialId.Count financial product(s)
+                        </MudText>
                     </CardHeaderContent>
                 </MudCardHeader>
                 <MudCardContent>
-                    @if (simulationResult.CommandExecution.ExecutableCommandsByFinancialId.Any())
+                    @if (commandExecutionRows.Any())
                     {
-                        <MudText Typo="Typo.subtitle1" Class="mb-2">Executable actions by product:</MudText>
-                        @foreach (var kvp in simulationResult.CommandExecution.ExecutableCommandsByFinancialId)
-                        {
-                            <MudExpansionPanels>
-                                <MudExpansionPanel>
-                                    <TitleContent>
-                                        <div style="display: flex; align-items: center;">
-                                            <MudIcon Icon="@Icons.Material.Filled.AccountBalanceWallet" class="mr-3"></MudIcon>
-                                            <MudText>@(kvp.Key == 0 ? "Unknown financial product" : $"Financial ID: {kvp.Key}") (@kvp.Value.Count commands)</MudText>
-                                        </div>
-                                    </TitleContent>
-                                    <ChildContent>
-                                        @{
-                                            var groupedCommands = kvp.Value.GroupBy(c => c.CommandName);
+                        <MudGrid Class="mb-3" AlignItems="Center">
+                            <MudItem xs="12" md="6" Class="d-flex align-center">
+                                <MudTextField @bind-Value="commandSearchFilter"
+                                              Placeholder="Filter by command name..."
+                                              Adornment="Adornment.Start"
+                                              AdornmentIcon="@Icons.Material.Filled.Search"
+                                              Immediate="true"
+                                              DebounceInterval="300"
+                                              OnDebounceIntervalElapsed="@((string filter) => ApplyCommandFilter())"
+                                              Clearable="true"
+                                              Variant="Variant.Outlined"
+                                              Dense="true"
+                                              Style="width: 100%;" />
+                            </MudItem>
+                            <MudItem xs="12" md="6" Class="d-flex align-center">
+                                <MudCheckBox T="bool"
+                                             Label="Unique commands only"
+                                             Color="Color.Primary"
+                                             Dense="true"
+                                             ValueChanged="OnCommandUniqueFilterChanged" />
+                            </MudItem>
+                        </MudGrid>
+
+                        <MudDataGrid T="CommandExecutionRowData"
+                                     Items="@filteredCommandRows"
+                                     Dense="true"
+                                     Hover="true"
+                                     Striped="true"
+                                     Virtualize="true"
+                                     Height="500px"
+                                     FixedHeader="true"
+                                     Bordered="true"
+                                     Class="mud-elevation-1">
+                            <Columns>
+                                <PropertyColumn Property="x => x.FinancialIdDisplay" Title="@(showCommandUniqueOnly ? "Count" : "Financial ID")" Sortable="true">
+                                    <CellTemplate>
+                                        @if (showCommandUniqueOnly)
+                                        {
+                                            <MudChip Size="Size.Small" Color="Color.Success" Variant="Variant.Filled">
+                                                x @context.Item.UniqueCount
+                                            </MudChip>
                                         }
-                                        <MudList T="string">
-                                            @foreach (var commandGroup in groupedCommands)
-                                            {
-                                                <MudListItem>
-                                                    <MudStack Spacing="1">
-                                                        <MudText Typo="Typo.subtitle2" Style="font-weight: 600;">
-                                                            @commandGroup.Key
-                                                            <MudChip Size="Size.Small" Color="Color.Secondary" Class="ml-2">
-                                                                x @commandGroup.Count()
-                                                            </MudChip>
-                                                        </MudText>
-                                                        @* Display elements count for List commands *@
-                                                        @foreach (var command in commandGroup)
-                                                        {
-                                                            @if (command.IsList)
-                                                            {
-                                                                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="ml-4">
-                                                                    • @string.Join(", ", command.Elements) elements to insert
-                                                                </MudText>
-                                                                break; @* Only show once per command group since all commands in group should have same IsList value *@
-                                                            }
-                                                        }
-                                                    </MudStack>
-                                                </MudListItem>
-                                            }
-                                        </MudList>
-                                    </ChildContent>
-                                </MudExpansionPanel>
-                            </MudExpansionPanels>
-                        }
+                                        else
+                                        {
+                                            <MudChip Size="Size.Small" Color="Color.Primary" Variant="Variant.Filled">
+                                                @context.Item.FinancialIdDisplay
+                                            </MudChip>
+                                        }
+                                    </CellTemplate>
+                                </PropertyColumn>
+                                <PropertyColumn Property="x => x.CommandName" Title="Command" Sortable="true">
+                                    <CellTemplate>
+                                        <MudChip Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined">
+                                            @context.Item.CommandName
+                                        </MudChip>
+                                    </CellTemplate>
+                                </PropertyColumn>
+                                <PropertyColumn Property="x => x.CommandCount" Title="Count" Sortable="true">
+                                    <CellTemplate>
+                                        <MudChip Size="Size.Small" Color="Color.Secondary" Variant="Variant.Filled">
+                                            x @context.Item.CommandCount
+                                        </MudChip>
+                                    </CellTemplate>
+                                </PropertyColumn>
+                                <PropertyColumn Property="x => x.IsList" Title="Type" Sortable="true">
+                                    <CellTemplate>
+                                        @if (context.Item.IsList)
+                                        {
+                                            <MudChip Size="Size.Small" Color="Color.Success" Variant="Variant.Outlined">
+                                                List
+                                            </MudChip>
+                                        }
+                                        else
+                                        {
+                                            <MudChip Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">
+                                                Single
+                                            </MudChip>
+                                        }
+                                    </CellTemplate>
+                                </PropertyColumn>
+                                <PropertyColumn Property="x => x.ElementsCount" Title="Elements" Sortable="true">
+                                    <CellTemplate>
+                                        @if (context.Item.IsList && context.Item.ElementsCount > 0)
+                                        {
+                                            <MudText Typo="Typo.body2">@context.Item.ElementsCount elements</MudText>
+                                        }
+                                        else
+                                        {
+                                            <MudText Typo="Typo.body2" Color="Color.Secondary">-</MudText>
+                                        }
+                                    </CellTemplate>
+                                </PropertyColumn>
+                                <PropertyColumn Property="x => x.ElementsPreview" Title="Elements Preview" Sortable="false">
+                                    <CellTemplate>
+                                        @if (!string.IsNullOrEmpty(context.Item.ElementsPreview))
+                                        {
+                                            <MudTooltip Text="@context.Item.ElementsPreview">
+                                                <div class="text-truncate" style="max-width: 250px;">
+                                                    @context.Item.ElementsPreview
+                                                </div>
+                                            </MudTooltip>
+                                        }
+                                        else
+                                        {
+                                            <MudText Typo="Typo.body2" Color="Color.Secondary">-</MudText>
+                                        }
+                                    </CellTemplate>
+                                </PropertyColumn>
+                            </Columns>
+                        </MudDataGrid>
+
+                        <div class="mt-2">
+                            <MudText Typo="Typo.caption">
+                                Showing @filteredCommandRows.Count of @commandExecutionRows.Count commands
+                            </MudText>
+                        </div>
+                    }
+                    else
+                    {
+                        <MudAlert Severity="Severity.Info" Class="my-4">
+                            No executable commands found.
+                        </MudAlert>
                     }
                 </MudCardContent>
             </MudCard>
@@ -591,6 +693,11 @@
     private IEnumerable<string> selectedDataPoints = new List<string>();
     private Guid? workflowId = null;
     private bool showUniqueOnly = false;
+    private bool showErrorsOnly = false;
+    private string commandSearchFilter = string.Empty;
+    private List<CommandExecutionRowData> commandExecutionRows = new();
+    private List<CommandExecutionRowData> filteredCommandRows = new();
+    private bool showCommandUniqueOnly = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -613,6 +720,9 @@
 
                 // Initialize filtered rows after loading data
                 ApplyFilter();
+
+                // Initialize command execution data
+                InitializeCommandExecutionData();
 
                 if (simulationResult.Status != SimulateProcessElementResponse.SimulationStatus.Success &&
                     simulationResult.Status != SimulateProcessElementResponse.SimulationStatus.PartialSuccess)
@@ -690,6 +800,11 @@
         return simulationResult?.ExtractedData?.ExecutorResults.Sum(er => er.Rows.Count) ?? 0;
     }
 
+    private int GetTotalCommandsCount()
+    {
+        return simulationResult?.CommandExecution?.ExecutableCommandsByFinancialId.Sum(kvp => kvp.Value.Count) ?? 0;
+    }
+
     private void ApplyFilter()
     {
         filteredRows.Clear();
@@ -745,6 +860,12 @@
                     rowData.ProcessedDataFormatted.ToLower().Contains(term) ||
                     rowData.ErrorMessage.ToLower().Contains(term)
                 )).ToList();
+        }
+
+        // Apply error filter
+        if (showErrorsOnly)
+        {
+            allRows = allRows.Where(rowData => !string.IsNullOrEmpty(rowData.ErrorMessage)).ToList();
         }
 
         // Apply unique filter
@@ -820,6 +941,47 @@
         ApplyFilter();
     }
 
+    private void OnErrorFilterChanged(bool value)
+    {
+        showErrorsOnly = value;
+        ApplyFilter();
+    }
+
+    private void InitializeCommandExecutionData()
+    {
+        commandExecutionRows.Clear();
+
+        if (simulationResult?.CommandExecution?.ExecutableCommandsByFinancialId == null)
+            return;
+
+        foreach (var kvp in simulationResult.CommandExecution.ExecutableCommandsByFinancialId)
+        {
+            var financialIdDisplay = kvp.Key == 0 ? "Unknown" : kvp.Key.ToString();
+
+            var groupedCommands = kvp.Value.GroupBy(c => c.CommandName);
+            
+            foreach (var commandGroup in groupedCommands)
+            {
+                var firstCommand = commandGroup.First();
+                var elementsPreview = firstCommand.IsList && firstCommand.Elements?.Any() == true
+                    ? string.Join(", ", firstCommand.Elements.Take(3)) + (firstCommand.Elements.Count > 3 ? "..." : "")
+                    : string.Empty;
+
+                commandExecutionRows.Add(new CommandExecutionRowData
+                {
+                    FinancialIdDisplay = financialIdDisplay,
+                    CommandName = commandGroup.Key,
+                    CommandCount = commandGroup.Count(),
+                    IsList = firstCommand.IsList,
+                    ElementsCount = firstCommand.Elements?.Count ?? 0,
+                    ElementsPreview = elementsPreview
+                });
+            }
+        }
+
+        ApplyCommandFilter();
+    }
+
     private async Task ProcessFetchingHistory()
     {
         try
@@ -851,6 +1013,71 @@
         }
     }
 
+    private void ApplyCommandFilter()
+    {
+        ApplyCommandFilter(commandSearchFilter);
+    }
+
+    private void ApplyCommandFilter(string filter)
+    {
+        filteredCommandRows.Clear();
+
+        var rowsToFilter = commandExecutionRows.AsEnumerable();
+
+        // Apply search filter (focus on command name)
+        if (!string.IsNullOrEmpty(filter))
+        {
+            var searchTerms = filter.Split(new[] { ' ', ',' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(t => t.Trim().ToLower()).ToList();
+
+            rowsToFilter = rowsToFilter.Where(row =>
+                searchTerms.All(term =>
+                    row.CommandName.ToLower().Contains(term)
+                ));
+        }
+
+        // Apply unique filter
+        if (showCommandUniqueOnly)
+        {
+            var uniqueCommands = rowsToFilter
+                .GroupBy(row => new {
+                    row.CommandName,
+                    row.IsList,
+                    row.ElementsCount,
+                    row.ElementsPreview
+                })
+                .Select(group => {
+                    var firstRow = group.First();
+                    return new CommandExecutionRowData
+                    {
+                        FinancialIdDisplay = firstRow.FinancialIdDisplay,
+                        CommandName = firstRow.CommandName,
+                        CommandCount = firstRow.CommandCount,
+                        IsList = firstRow.IsList,
+                        ElementsCount = firstRow.ElementsCount,
+                        ElementsPreview = firstRow.ElementsPreview,
+                        UniqueCount = group.Count() // Store count of duplicates
+                    };
+                })
+                .OrderBy(row => row.CommandName)
+                .ToList();
+
+            filteredCommandRows.AddRange(uniqueCommands);
+        }
+        else
+        {
+            filteredCommandRows.AddRange(rowsToFilter);
+        }
+        
+        StateHasChanged();
+    }
+
+    private void OnCommandUniqueFilterChanged(bool value)
+    {
+        showCommandUniqueOnly = value;
+        ApplyCommandFilter();
+    }
+
     public class RowData
     {
         public dynamic Row { get; set; }
@@ -863,6 +1090,17 @@
         public string OriginalDataFormatted { get; set; } = string.Empty;
         public string ProcessedDataFormatted { get; set; } = string.Empty;
         public string ErrorMessage { get; set; } = string.Empty;
+        public int UniqueCount { get; set; } = 1;
+    }
+
+    public class CommandExecutionRowData
+    {
+        public string FinancialIdDisplay { get; set; }
+        public string CommandName { get; set; }
+        public int CommandCount { get; set; }
+        public bool IsList { get; set; }
+        public int ElementsCount { get; set; }
+        public string ElementsPreview { get; set; }
         public int UniqueCount { get; set; } = 1;
     }
 }

@@ -1,0 +1,378 @@
+@page "/email/search"
+@using HillMetrics.MIND.API.Contracts.Requests.Email
+@using HillMetrics.MIND.API.Contracts.Responses.Email
+@using HillMetrics.Core.Search
+@using HillMetrics.MIND.FrontApp.Services
+@using HillMetrics.MIND.FrontApp.Components.Shared
+@using HillMetrics.MIND.API.SDK.V1
+@inject IMindAPI MindApi
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject ILogger<SearchMailMetadata> Logger
+
+@attribute [Authorize]
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudCard Class="mb-4">
+        <MudCardContent>
+            <MudForm @ref="form" @bind-IsValid="@isValid">
+                <MudGrid Spacing="1">
+                    <!-- Email Basic Fields -->
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="searchRequest.EmailId"
+                                      Label="Email ID"
+                                      Variant="Variant.Outlined"
+                                      Placeholder="Search by email ID..."
+                                      Immediate="true"
+                                      DebounceInterval="500"
+                                      OnDebounceIntervalElapsed="Search"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Search" />
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="searchRequest.Subject"
+                                      Label="Subject"
+                                      Variant="Variant.Outlined"
+                                      Placeholder="Search by subject..."
+                                      Immediate="true"
+                                      DebounceInterval="500"
+                                      OnDebounceIntervalElapsed="Search"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Subject" />
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="searchRequest.FromAddress"
+                                      Label="From Address"
+                                      Variant="Variant.Outlined"
+                                      Placeholder="Search by sender..."
+                                      Immediate="true"
+                                      DebounceInterval="500"
+                                      OnDebounceIntervalElapsed="Search"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.PersonSearch" />
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="searchRequest.ToAddress"
+                                      Label="To Address"
+                                      Variant="Variant.Outlined"
+                                      Placeholder="Search by recipient..."
+                                      Immediate="true"
+                                      DebounceInterval="500"
+                                      OnDebounceIntervalElapsed="Search"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.PersonSearch" />
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="searchRequest.Folder"
+                                      Label="Folder"
+                                      Variant="Variant.Outlined"
+                                      Placeholder="Search by folder..."
+                                      Immediate="true"
+                                      DebounceInterval="500"
+                                      OnDebounceIntervalElapsed="Search"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Folder" />
+                    </MudItem>
+
+                    <!-- Has Attachments Filter -->
+                    <MudItem xs="12" md="6">
+                        <MudSelect T="bool?" @bind-Value="searchRequest.HasAttachments"
+                                   Label="Has Attachments" Variant="Variant.Outlined" Dense="true" Margin="Margin.Dense">
+                            <MudSelectItem Value="@((bool?)null)">All</MudSelectItem>
+                            <MudSelectItem T="bool?" Value="true">With Attachments</MudSelectItem>
+                            <MudSelectItem T="bool?" Value="false">Without Attachments</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+
+                    <!-- Processed Filter -->
+                    <MudItem xs="12" md="6">
+                        <MudSelect T="bool?" @bind-Value="searchRequest.IsProcessed"
+                                   Label="Processed ?" Variant="Variant.Outlined" Dense="true" Margin="Margin.Dense">
+                            <MudSelectItem Value="@((bool?)null)">All</MudSelectItem>
+                            <MudSelectItem T="bool?" Value="true">Processed by Flux</MudSelectItem>
+                            <MudSelectItem T="bool?" Value="false">Not Processed</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+
+                    <!-- Attachment Name Filter -->
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="searchRequest.AttachmentName"
+                                      Label="Attachment Name"
+                                      Variant="Variant.Outlined"
+                                      Placeholder="Search by attachment name..."
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Attachment" />
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="searchRequest.AttachmentContentType"
+                                      Label="Attachment Content Type"
+                                      Variant="Variant.Outlined"
+                                      Placeholder="e.g., Csv, Xlsx, Pdf..."
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Description" />
+                    </MudItem>
+                </MudGrid>
+            </MudForm>
+        </MudCardContent>
+        <MudCardActions>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Search" Size="Size.Small">Search</MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="Reset" Size="Size.Small">Reset</MudButton>
+        </MudCardActions>
+    </MudCard>
+
+    @if (loading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-2" />
+    }
+    else
+    {
+        <MudTable ServerData="@ServerReload"
+                  Hover="true" Bordered="true" Striped="true"
+                  Dense="true" @bind-SelectedItem="selectedItem" T="EmailMetadataResponse"
+                  Breakpoint="Breakpoint.Sm" RowsPerPage="10">
+            <ToolBarContent>
+                <MudText Typo="Typo.h6" Class="ml-2">Email List</MudText>
+                <MudSpacer />
+                <MudTextField @bind-Value="searchString" Placeholder="Search" Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium"
+                              Class="mt-0 mb-3" Margin="Margin.Dense" Dense="true"></MudTextField>
+            </ToolBarContent>
+            <HeaderContent>
+                <MudTh>ID</MudTh>
+                <MudTh>Subject</MudTh>
+                <MudTh>From</MudTh>
+                <MudTh>To</MudTh>
+                <MudTh>Received</MudTh>
+                <MudTh>Folder</MudTh>
+                <MudTh>Attachments</MudTh>
+                <MudTh>Flux Fetching</MudTh>
+                <MudTh>Actions</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="ID">@context.Id</MudTd>
+                <MudTd DataLabel="Subject">
+                    <MudTooltip Text="@(context.Subject ?? "No subject")">
+                        <MudText Style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                            @(context.Subject ?? "No subject")
+                        </MudText>
+                    </MudTooltip>
+                </MudTd>
+                <MudTd DataLabel="From">
+                    <MudTooltip Text="@(context.FromAddress ?? "Unknown")">
+                        <MudText Style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                            @(context.FromAddress ?? "Unknown")
+                        </MudText>
+                    </MudTooltip>
+                </MudTd>
+                <MudTd DataLabel="To">
+                    <MudTooltip Text="@(context.ToAddress ?? "Unknown")">
+                        <MudText Style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                            @(context.ToAddress ?? "Unknown")
+                        </MudText>
+                    </MudTooltip>
+                </MudTd>
+                <MudTd DataLabel="Received">
+                    @if (context.ReceivedDateTime.HasValue)
+                    {
+                        <MudTooltip Text="@context.ReceivedDateTime.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")">
+                            @FormatDateTime(context.ReceivedDateTime.Value.ToLocalTime())
+                        </MudTooltip>
+                    }
+                    else
+                    {
+                        <span>-</span>
+                    }
+                </MudTd>
+                <MudTd DataLabel="Folder">
+                    <MudChip T="string" Color="Color.Info" Size="Size.Small">
+                        @(context.Folder ?? "Unknown")
+                    </MudChip>
+                </MudTd>
+                <MudTd DataLabel="Attachments">
+                    @if (context.HasAttachments)
+                    {
+                        <MudBadge Content="@context.AttachmentCount" Color="Color.Primary" Overlap="true" Max="99" Dot="false">
+                            <MudIcon Icon="@Icons.Material.Filled.Attachment" Color="Color.Primary" />
+                        </MudBadge>
+                        @if (context.Attachments.Any(a => a.IsProcessed))
+                        {
+                            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small" Class="ml-1" Title="Some attachments processed" />
+                        }
+                    }
+                    else
+                    {
+                        <MudText>No attachments</MudText>
+                    }
+                </MudTd>
+                <MudTd DataLabel="Flux Fetching">
+                    @{
+                        var processedAttachments = context.Attachments.Where(a => a.IsProcessed && a.FetchingHistoryId.HasValue).ToList();
+                    }
+                    @if (processedAttachments.Any())
+                    {
+                        <div class="d-flex flex-column gap-1">
+                            @foreach (var attachment in processedAttachments.Take(3))
+                            {
+                                <MudChip T="string" 
+                                         Color="Color.Success" 
+                                         Size="Size.Small" 
+                                         OnClick="@(() => NavigationManager.NavigateTo($"/flux/fetching-details/{attachment.FetchingHistoryId}"))"
+                                         Style="cursor: pointer;">
+                                    #@attachment.FetchingHistoryId
+                                </MudChip>
+                            }
+                            @if (processedAttachments.Count > 3)
+                            {
+                                <MudText Typo="Typo.caption" Class="text-center">+@(processedAttachments.Count - 3) more</MudText>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.caption" Class="text-muted">Not processed</MudText>
+                    }
+                </MudTd>
+                <MudTd DataLabel="Actions">
+                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true">
+                        <MudMenuItem OnClick="@(() => ViewDetails(context.Id))">
+                            <MudIcon Icon="@Icons.Material.Filled.Visibility" Class="mr-2" Size="Size.Small" /> View Details
+                        </MudMenuItem>
+                        @if (context.HasAttachments)
+                        {
+                            <MudMenuItem OnClick="@(() => ViewAttachments(context))">
+                                <MudIcon Icon="@Icons.Material.Filled.Attachment" Class="mr-2" Size="Size.Small" /> View Attachments
+                            </MudMenuItem>
+                        }
+                    </MudMenu>
+                </MudTd>
+            </RowTemplate>
+            <PagerContent>
+                <MudTablePager PageSizeOptions="new int[] { 10, 25, 50, 100 }" />
+            </PagerContent>
+            <NoRecordsContent>
+                <MudAlert Severity="Severity.Info" Class="my-2">No emails found matching your search criteria.</MudAlert>
+            </NoRecordsContent>
+        </MudTable>
+    }
+</MudContainer>
+
+@code {
+    private EmailMetadataSearchRequest searchRequest = new();
+
+    private List<EmailMetadataResponse>? emails;
+    private bool loading = false;
+    private bool isValid = false;
+    private MudForm form;
+    private string searchString = "";
+    private EmailMetadataResponse selectedItem = null;
+
+    private TableState tableState;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Initial load can be performed here if needed
+    }
+
+    private async Task<TableData<EmailMetadataResponse>> ServerReload(TableState state, CancellationToken token)
+    {
+        tableState = state;
+        loading = true;
+
+        try
+        {
+            // Configure pagination
+            searchRequest.Pagination = new HillMetrics.Core.Search.Pagination(state.PageSize, state.Page + 1);
+
+            var response = await MindApi.SearchEmailMetadataAsync(searchRequest);
+            emails = response.Data.ToList();
+
+            return new TableData<EmailMetadataResponse>
+                {
+                    Items = emails,
+                    TotalItems = (int)response.TotalRecords
+                };
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error searching emails: {ex.Message}", Severity.Error);
+            return new TableData<EmailMetadataResponse>
+                {
+                    Items = new List<EmailMetadataResponse>(),
+                    TotalItems = 0
+                };
+        }
+        finally
+        {
+            loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task Search()
+    {
+        // Use current state to reload data
+        await ServerReload(tableState ?? new TableState
+            {
+                Page = 0,
+                PageSize = 100
+            }, CancellationToken.None);
+    }
+
+    private async Task Reset()
+    {
+        searchRequest = new EmailMetadataSearchRequest();
+        searchString = "";
+
+        if (tableState != null)
+        {
+            tableState.Page = 0;
+            await ServerReload(tableState, CancellationToken.None);
+        }
+    }
+
+    private void ViewDetails(int id)
+    {
+        NavigationManager.NavigateTo($"/email/details/{id}");
+    }
+
+    private async Task ViewAttachments(EmailMetadataResponse email)
+    {
+        var parameters = new DialogParameters
+        {
+            ["Email"] = email
+        };
+
+        Snackbar.Add($"Viewing attachments for: {email.Subject ?? "No subject"}", Severity.Info);
+    }
+
+    // Helper methods for formatting
+    private string FormatDateTime(DateTime dateTime)
+    {
+        var now = DateTime.Now;
+        var diff = now - dateTime;
+
+        if (diff.TotalMinutes < 1)
+            return "Just now";
+        if (diff.TotalHours < 1)
+            return $"{(int)diff.TotalMinutes}m ago";
+        if (diff.TotalDays < 1)
+            return $"{(int)diff.TotalHours}h ago";
+        if (diff.TotalDays < 7)
+            return $"{(int)diff.TotalDays}d ago";
+
+        return dateTime.ToString("MMM dd, HH:mm");
+    }
+}
+
+@* Simple dialog component for viewing attachments *@
+<style>
+    .workflow-active-row {
+        background-color: rgba(33, 150, 243, 0.1) !important;
+    }
+</style> 

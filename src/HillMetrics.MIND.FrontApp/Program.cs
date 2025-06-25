@@ -66,6 +66,17 @@ builder.Services.AddHillMetricsBlazorMindCookieAuth(builder.Configuration, mindA
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
+// Configure Blazor Server for long-running operations
+builder.Services.AddServerSideBlazor(options =>
+{
+    // Increase circuit timeout to 10 minutes for long-running operations
+    options.DetailedErrors = builder.Environment.IsDevelopment();
+    options.DisconnectedCircuitRetentionPeriod = TimeSpan.FromMinutes(10);
+    options.DisconnectedCircuitMaxRetained = 100;
+    options.JSInteropDefaultCallTimeout = TimeSpan.FromMinutes(5);
+    options.MaxBufferedUnacknowledgedRenderBatches = 50;
+});
+
 builder.Services.AddRazorPages();
 
 // Ajouter services MudBlazor
