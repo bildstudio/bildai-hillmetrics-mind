@@ -1,0 +1,353 @@
+@page "/flux/orchestrator/jobs"
+@using HillMetrics.MIND.FrontApp.Services
+@using HillMetrics.Core.API.Responses
+@inject IMindAPI MindApi
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject IJSRuntime JSRuntime
+
+@attribute [Authorize]
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="py-4">
+    <MudPaper Elevation="3" Class="pa-4">
+        <div class="d-flex justify-space-between align-center mb-4">
+            <div>
+                <MudText Typo="Typo.h4" Class="mb-2">Flux Orchestrator Jobs Management</MudText>
+                <MudText Typo="Typo.body1" Color="Color.Dark" Class="opacity-75">
+                    Control the state of background jobs that handle flux operations
+                </MudText>
+            </div>
+            <div class="d-flex gap-2">
+                <MudButton StartIcon="Icons.Material.Filled.Refresh"
+                           Color="Color.Primary"
+                           Variant="Variant.Outlined"
+                           OnClick="RefreshJobStates"
+                           Size="Size.Small"
+                           Disabled="loading">
+                    Refresh
+                </MudButton>
+                <MudButton StartIcon="@(allJobsEnabled ? Icons.Material.Filled.Stop : Icons.Material.Filled.PlayArrow)"
+                           Color="@(allJobsEnabled ? Color.Error : Color.Success)"
+                           Variant="Variant.Filled"
+                           OnClick="ToggleAllJobs"
+                           Size="Size.Small"
+                           Disabled="loading">
+                    @(allJobsEnabled ? "Stop All Jobs" : "Start All Jobs")
+                </MudButton>
+            </div>
+        </div>
+
+        @if (loading)
+        {
+            <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+        }
+        else if (jobStates.Any())
+        {
+            <MudGrid>
+                <!-- EmailFetcherJob -->
+                <MudItem xs="12" md="4">
+                    <MudCard Elevation="2" Class="h-100">
+                        <MudCardHeader>
+                            <CardHeaderContent>
+                                <div class="d-flex align-center gap-2">
+                                    <MudIcon Icon="Icons.Material.Filled.Email" Color="Color.Info" />
+                                    <MudText Typo="Typo.h6">Email Fetcher Job</MudText>
+                                </div>
+                            </CardHeaderContent>
+                            <CardHeaderActions>
+                                <MudSwitch T="bool" 
+                                          Color="Color.Success"
+                                          Value="@GetJobState("EmailFetcherJob")"
+                                          ValueChanged="@(enabled => ToggleJob("EmailFetcherJob", enabled))"
+                                          Disabled="@jobToggling.Contains("EmailFetcherJob")" />
+                            </CardHeaderActions>
+                        </MudCardHeader>
+                        <MudCardContent>
+                            <MudText Typo="Typo.body2" Class="mb-3">
+                                Responsible for fetching emails from the mail server and storing their metadata in the database.
+                            </MudText>
+                            <div class="d-flex align-center gap-2">
+                                <MudIcon Icon="@(GetJobState("EmailFetcherJob") ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Cancel)"
+                                        Color="@(GetJobState("EmailFetcherJob") ? Color.Success : Color.Error)"
+                                        Size="Size.Small" />
+                                <MudText Typo="Typo.caption" 
+                                        Color="@(GetJobState("EmailFetcherJob") ? Color.Success : Color.Error)">
+                                    @(GetJobState("EmailFetcherJob") ? "ENABLED" : "DISABLED")
+                                </MudText>
+                            </div>
+                            @if (jobToggling.Contains("EmailFetcherJob"))
+                            {
+                                <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mt-2" />
+                            }
+                        </MudCardContent>
+                    </MudCard>
+                </MudItem>
+
+                <!-- FetchDataFluxesJob -->
+                <MudItem xs="12" md="4">
+                    <MudCard Elevation="2" Class="h-100">
+                        <MudCardHeader>
+                            <CardHeaderContent>
+                                <div class="d-flex align-center gap-2">
+                                    <MudIcon Icon="Icons.Material.Filled.Download" Color="Color.Warning" />
+                                    <MudText Typo="Typo.h6">Data Fetch Job</MudText>
+                                </div>
+                            </CardHeaderContent>
+                            <CardHeaderActions>
+                                <MudSwitch T="bool" 
+                                          Color="Color.Success"
+                                          Value="@GetJobState("FetchDataFluxesJob")"
+                                          ValueChanged="@(enabled => ToggleJob("FetchDataFluxesJob", enabled))"
+                                          Disabled="@jobToggling.Contains("FetchDataFluxesJob")" />
+                            </CardHeaderActions>
+                        </MudCardHeader>
+                        <MudCardContent>
+                            <MudText Typo="Typo.body2" Class="mb-3">
+                                Determines which fluxes need data fetching and triggers the fetching process for available fluxes.
+                            </MudText>
+                            <div class="d-flex align-center gap-2">
+                                <MudIcon Icon="@(GetJobState("FetchDataFluxesJob") ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Cancel)"
+                                        Color="@(GetJobState("FetchDataFluxesJob") ? Color.Success : Color.Error)"
+                                        Size="Size.Small" />
+                                <MudText Typo="Typo.caption" 
+                                        Color="@(GetJobState("FetchDataFluxesJob") ? Color.Success : Color.Error)">
+                                    @(GetJobState("FetchDataFluxesJob") ? "ENABLED" : "DISABLED")
+                                </MudText>
+                            </div>
+                            @if (jobToggling.Contains("FetchDataFluxesJob"))
+                            {
+                                <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mt-2" />
+                            }
+                        </MudCardContent>
+                    </MudCard>
+                </MudItem>
+
+                <!-- ProcessFluxesJob -->
+                <MudItem xs="12" md="4">
+                    <MudCard Elevation="2" Class="h-100">
+                        <MudCardHeader>
+                            <CardHeaderContent>
+                                <div class="d-flex align-center gap-2">
+                                    <MudIcon Icon="Icons.Material.Filled.Settings" Color="Color.Secondary" />
+                                    <MudText Typo="Typo.h6">Process Fluxes Job</MudText>
+                                </div>
+                            </CardHeaderContent>
+                            <CardHeaderActions>
+                                <MudSwitch T="bool" 
+                                          Color="Color.Success"
+                                          Value="@GetJobState("ProcessFluxesJob")"
+                                          ValueChanged="@(enabled => ToggleJob("ProcessFluxesJob", enabled))"
+                                          Disabled="@jobToggling.Contains("ProcessFluxesJob")" />
+                            </CardHeaderActions>
+                        </MudCardHeader>
+                        <MudCardContent>
+                            <MudText Typo="Typo.body2" Class="mb-3">
+                                Processes fetched flux data, applying business rules and transformations to extract financial information.
+                            </MudText>
+                            <div class="d-flex align-center gap-2">
+                                <MudIcon Icon="@(GetJobState("ProcessFluxesJob") ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Cancel)"
+                                        Color="@(GetJobState("ProcessFluxesJob") ? Color.Success : Color.Error)"
+                                        Size="Size.Small" />
+                                <MudText Typo="Typo.caption" 
+                                        Color="@(GetJobState("ProcessFluxesJob") ? Color.Success : Color.Error)">
+                                    @(GetJobState("ProcessFluxesJob") ? "ENABLED" : "DISABLED")
+                                </MudText>
+                            </div>
+                            @if (jobToggling.Contains("ProcessFluxesJob"))
+                            {
+                                <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mt-2" />
+                            }
+                        </MudCardContent>
+                    </MudCard>
+                </MudItem>
+            </MudGrid>
+
+            <!-- System Information -->
+            <MudCard Elevation="1" Class="mt-4">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <div class="d-flex align-center gap-2">
+                            <MudIcon Icon="Icons.Material.Filled.Info" Color="Color.Info" />
+                            <MudText Typo="Typo.h6">System Information</MudText>
+                        </div>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudGrid>
+                        <MudItem xs="12" md="4">
+                            <MudText Typo="Typo.subtitle2" Class="mb-1">Overall Status</MudText>
+                            <div class="d-flex align-center gap-2">
+                                <MudIcon Icon="@(allJobsEnabled ? Icons.Material.Filled.CheckCircle : (anyJobEnabled ? Icons.Material.Filled.Warning : Icons.Material.Filled.Cancel))"
+                                        Color="@(allJobsEnabled ? Color.Success : (anyJobEnabled ? Color.Warning : Color.Error))"
+                                        Size="Size.Small" />
+                                <MudText Typo="Typo.body2">
+                                    @if (allJobsEnabled)
+                                    {
+                                        <span>All jobs are running</span>
+                                    }
+                                    else if (anyJobEnabled)
+                                    {
+                                        <span>Some jobs are stopped</span>
+                                    }
+                                    else
+                                    {
+                                        <span>All jobs are stopped</span>
+                                    }
+                                </MudText>
+                            </div>
+                        </MudItem>
+                        <MudItem xs="12" md="4">
+                            <MudText Typo="Typo.subtitle2" Class="mb-1">Active Jobs</MudText>
+                            <MudText Typo="Typo.body2">@enabledJobsCount / @totalJobsCount jobs enabled</MudText>
+                        </MudItem>
+                        <MudItem xs="12" md="4">
+                            <MudText Typo="Typo.subtitle2" Class="mb-1">Last Updated</MudText>
+                            <MudText Typo="Typo.body2">@lastUpdated.ToString("HH:mm:ss")</MudText>
+                        </MudItem>
+                    </MudGrid>
+                </MudCardContent>
+            </MudCard>
+
+            <!-- Warning Alert -->
+            @if (!allJobsEnabled)
+            {
+                <MudAlert Severity="Severity.Warning" Class="mt-4">
+                    <MudText>
+                        <strong>Warning:</strong> Some or all orchestrator jobs are disabled. 
+                        This may affect automatic flux processing and data fetching operations.
+                        Enable the required jobs to ensure proper system functionality.
+                    </MudText>
+                </MudAlert>
+            }
+        }
+        else if (!loading)
+        {
+            <MudAlert Severity="Severity.Error" Class="mt-4">
+                <MudText>
+                    <strong>Error:</strong> Could not load job states. Please try refreshing the page.
+                </MudText>
+            </MudAlert>
+        }
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private Dictionary<string, bool> jobStates = new();
+    private HashSet<string> jobToggling = new();
+    private bool loading = true;
+    private DateTime lastUpdated = DateTime.Now;
+
+    private bool allJobsEnabled => jobStates.Values.All(x => x);
+    private bool anyJobEnabled => jobStates.Values.Any(x => x);
+    private int enabledJobsCount => jobStates.Values.Count(x => x);
+    private int totalJobsCount => jobStates.Count;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadJobStates();
+    }
+
+    private async Task LoadJobStates()
+    {
+        try
+        {
+            loading = true;
+            var response = await MindApi.GetJobStatesAsync();
+            jobStates = response.Data ?? new Dictionary<string, bool>();
+            lastUpdated = DateTime.Now;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading job states: {ex.Message}", Severity.Error);
+            jobStates = new Dictionary<string, bool>();
+        }
+        finally
+        {
+            loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task RefreshJobStates()
+    {
+        await LoadJobStates();
+        Snackbar.Add("Job states refreshed", Severity.Success);
+    }
+
+    private bool GetJobState(string jobName)
+    {
+        return jobStates.ContainsKey(jobName) && jobStates[jobName];
+    }
+
+    private async Task ToggleJob(string jobName, bool enabled)
+    {
+        try
+        {
+            jobToggling.Add(jobName);
+            StateHasChanged();
+
+            var response = await MindApi.SetSingleJobStateAsync(jobName, enabled);
+            
+            if (response?.Data != null)
+            {
+                jobStates = response.Data;
+                lastUpdated = DateTime.Now;
+                Snackbar.Add($"{jobName} has been {(enabled ? "enabled" : "disabled")}", 
+                    enabled ? Severity.Success : Severity.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error toggling {jobName}: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            jobToggling.Remove(jobName);
+            StateHasChanged();
+        }
+    }
+
+    private async Task ToggleAllJobs()
+    {
+        var enable = !allJobsEnabled;
+        var confirmMessage = enable 
+            ? "Are you sure you want to start all orchestrator jobs?" 
+            : "Are you sure you want to stop all orchestrator jobs? This will prevent automatic flux processing.";
+
+        var dialog = DialogService.Show<MudMessageBox>("Confirm Action", new DialogParameters
+        {
+            ["Message"] = confirmMessage,
+            ["YesText"] = enable ? "Start All" : "Stop All",
+            ["NoText"] = "Cancel"
+        });
+
+        var result = await dialog.Result;
+        if (result.Canceled) return;
+
+        try
+        {
+            loading = true;
+            StateHasChanged();
+
+            var newStates = jobStates.ToDictionary(kvp => kvp.Key, kvp => enable);
+            var response = await MindApi.SetJobStatesAsync(newStates);
+            
+            if (response?.Data != null)
+            {
+                jobStates = response.Data;
+                lastUpdated = DateTime.Now;
+                Snackbar.Add($"All jobs have been {(enable ? "enabled" : "disabled")}", 
+                    enable ? Severity.Success : Severity.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error updating all job states: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            loading = false;
+            StateHasChanged();
+        }
+    }
+} 
