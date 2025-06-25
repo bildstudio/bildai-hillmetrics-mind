@@ -13,6 +13,7 @@ using HillMetrics.Normalized.Domain.Contracts.Providing.Flux.Cqrs.Create;
 using HillMetrics.Normalized.Domain.Contracts.Providing.Flux.Cqrs.DataPointIdentification;
 using HillMetrics.Normalized.Domain.Contracts.Providing.Flux.Cqrs.Get;
 using HillMetrics.Normalized.Domain.Contracts.Providing.Flux.Cqrs.Process;
+using HillMetrics.Normalized.Domain.Contracts.Providing.FluxOrchestrator.Cqrs;
 using MassTransit;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -1223,6 +1224,92 @@ namespace HillMetrics.MIND.API.Controllers
                 return new ErrorApiActionResult(result.Errors.ToApiResult());
 
             return new CustomMindPagedApiResponseBase<RuleErrorSearchResponse>(mapper.Map<List<RuleErrorSearchResponse>>(result.Value.Results), result.Value.NbTotalRows);
+        }
+        #endregion
+
+        #region FluxOrchestrator
+        /// <summary>
+        /// Get the current state of all flux orchestrator jobs
+        /// </summary>
+        /// <returns>Dictionary with job names and their enabled/disabled states</returns>
+        [HttpGet("orchestrator/jobs/states")]
+        public async Task<ActionResult<ApiResponseBase<Dictionary<string, bool>>>> GetJobStatesAsync()
+        {
+            try
+            {
+                var result = await Mediator.Send(ManageJobStatesCommand.GetAll());
+
+                if (result.IsFailed)
+                    return new ErrorApiActionResult(result.Errors.ToApiResult());
+
+                return new ApiResponseBase<Dictionary<string, bool>>(result.Value);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error getting flux orchestrator job states");
+                return new ErrorApiActionResult(new ErrorApiResponse(
+                    new Core.API.Exceptions.ApiException($"Error getting job states: {ex.Message}"),
+                    System.Net.HttpStatusCode.InternalServerError));
+            }
+        }
+
+        /// <summary>
+        /// Update the state of flux orchestrator jobs
+        /// </summary>
+        /// <param name="jobStates">Dictionary with job names and their desired enabled/disabled states</param>
+        /// <returns>Updated job states</returns>
+        [HttpPost("orchestrator/jobs/states")]
+        public async Task<ActionResult<ApiResponseBase<Dictionary<string, bool>>>> SetJobStatesAsync([FromBody] Dictionary<string, bool> jobStates)
+        {
+            try
+            {
+                if (jobStates == null || jobStates.Count == 0)
+                    return BadRequest("Job states cannot be null or empty");
+
+                var result = await Mediator.Send(ManageJobStatesCommand.SetStates(jobStates));
+
+                if (result.IsFailed)
+                    return new ErrorApiActionResult(result.Errors.ToApiResult());
+
+                return new ApiResponseBase<Dictionary<string, bool>>(result.Value);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error setting flux orchestrator job states");
+                return new ErrorApiActionResult(new ErrorApiResponse(
+                    new Core.API.Exceptions.ApiException($"Error setting job states: {ex.Message}"),
+                    System.Net.HttpStatusCode.InternalServerError));
+            }
+        }
+
+        /// <summary>
+        /// Enable or disable a specific flux orchestrator job
+        /// </summary>
+        /// <param name="jobName">Name of the job to toggle</param>
+        /// <param name="isEnabled">Whether the job should be enabled or disabled</param>
+        /// <returns>Updated job states</returns>
+        [HttpPut("orchestrator/jobs/{jobName}/state")]
+        public async Task<ActionResult<ApiResponseBase<Dictionary<string, bool>>>> SetSingleJobStateAsync(string jobName, [FromBody] bool isEnabled)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(jobName))
+                    return BadRequest("Job name cannot be null or empty");
+
+                var result = await Mediator.Send(ManageJobStatesCommand.SetSingleState(jobName, isEnabled));
+
+                if (result.IsFailed)
+                    return new ErrorApiActionResult(result.Errors.ToApiResult());
+
+                return new ApiResponseBase<Dictionary<string, bool>>(result.Value);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error setting single flux orchestrator job state for {JobName}", jobName);
+                return new ErrorApiActionResult(new ErrorApiResponse(
+                    new Core.API.Exceptions.ApiException($"Error setting job state: {ex.Message}"),
+                    System.Net.HttpStatusCode.InternalServerError));
+            }
         }
         #endregion
 

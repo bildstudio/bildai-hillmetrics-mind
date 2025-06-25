@@ -799,6 +799,32 @@ namespace HillMetrics.MIND.API.SDK.V1
 
         #endregion
 
+        #region FluxOrchestrator
+        /// <summary>
+        /// Get the current state of all flux orchestrator jobs
+        /// </summary>
+        /// <returns>Dictionary with job names and their enabled/disabled states</returns>
+        [Get("/api/v1/flux/orchestrator/jobs/states")]
+        Task<ApiResponseBase<Dictionary<string, bool>>> GetJobStatesAsync();
+
+        /// <summary>
+        /// Update the state of flux orchestrator jobs
+        /// </summary>
+        /// <param name="jobStates">Dictionary with job names and their desired enabled/disabled states</param>
+        /// <returns>Updated job states</returns>
+        [Post("/api/v1/flux/orchestrator/jobs/states")]
+        Task<ApiResponseBase<Dictionary<string, bool>>> SetJobStatesAsync([Body] Dictionary<string, bool> jobStates);
+
+        /// <summary>
+        /// Enable or disable a specific flux orchestrator job
+        /// </summary>
+        /// <param name="jobName">Name of the job to toggle</param>
+        /// <param name="isEnabled">Whether the job should be enabled or disabled</param>
+        /// <returns>Updated job states</returns>
+        [Put("/api/v1/flux/orchestrator/jobs/{jobName}/state")]
+        Task<ApiResponseBase<Dictionary<string, bool>>> SetSingleJobStateAsync(string jobName, [Body] bool isEnabled);
+        #endregion
+
         #region "Mails"
         /// <summary>
         /// jhj
