@@ -182,7 +182,7 @@
         <MudTable ServerData="@ServerReload"
                   Hover="true" Bordered="true" Striped="true"
                   Dense="true" @bind-SelectedItem="selectedItem" T="FluxSearchResponse"
-                  Breakpoint="Breakpoint.Sm" RowClassFunc="SelectedRowClassFunc">
+                  Breakpoint="Breakpoint.Sm" RowClassFunc="SelectedRowClassFunc" RowsPerPage="100">
             <ToolBarContent>
                 <MudText Typo="Typo.h6" Class="ml-2">Flux List</MudText>
                 <MudSpacer />
