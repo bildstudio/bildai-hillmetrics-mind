@@ -20,18 +20,6 @@
                 <MudGrid Spacing="1">
                     <!-- Email Basic Fields -->
                     <MudItem xs="12" md="6">
-                        <MudTextField @bind-Value="searchRequest.EmailId"
-                                      Label="Email ID"
-                                      Variant="Variant.Outlined"
-                                      Placeholder="Search by email ID..."
-                                      Immediate="true"
-                                      DebounceInterval="500"
-                                      OnDebounceIntervalElapsed="Search"
-                                      Adornment="Adornment.Start"
-                                      AdornmentIcon="@Icons.Material.Filled.Search" />
-                    </MudItem>
-
-                    <MudItem xs="12" md="6">
                         <MudTextField @bind-Value="searchRequest.Subject"
                                       Label="Subject"
                                       Variant="Variant.Outlined"
@@ -48,18 +36,6 @@
                                       Label="From Address"
                                       Variant="Variant.Outlined"
                                       Placeholder="Search by sender..."
-                                      Immediate="true"
-                                      DebounceInterval="500"
-                                      OnDebounceIntervalElapsed="Search"
-                                      Adornment="Adornment.Start"
-                                      AdornmentIcon="@Icons.Material.Filled.PersonSearch" />
-                    </MudItem>
-
-                    <MudItem xs="12" md="6">
-                        <MudTextField @bind-Value="searchRequest.ToAddress"
-                                      Label="To Address"
-                                      Variant="Variant.Outlined"
-                                      Placeholder="Search by recipient..."
                                       Immediate="true"
                                       DebounceInterval="500"
                                       OnDebounceIntervalElapsed="Search"
@@ -134,28 +110,28 @@
     {
         <MudTable ServerData="@ServerReload"
                   Hover="true" Bordered="true" Striped="true"
-                  Dense="true" @bind-SelectedItem="selectedItem" T="EmailMetadataResponse"
-                  Breakpoint="Breakpoint.Sm" RowsPerPage="10">
+                  Dense="true" @bind-SelectedItem="selectedItem" T="AttachmentDisplayItem"
+                  Breakpoint="Breakpoint.Sm" SortLabel="Subject" Sortable="true" RowsPerPage="100">
             <ToolBarContent>
-                <MudText Typo="Typo.h6" Class="ml-2">Email List</MudText>
+                <MudText Typo="Typo.h6" Class="ml-2">Email Attachments</MudText>
                 <MudSpacer />
                 <MudTextField @bind-Value="searchString" Placeholder="Search" Adornment="Adornment.Start"
                               AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium"
                               Class="mt-0 mb-3" Margin="Margin.Dense" Dense="true"></MudTextField>
             </ToolBarContent>
             <HeaderContent>
-                <MudTh>ID</MudTh>
-                <MudTh>Subject</MudTh>
-                <MudTh>From</MudTh>
-                <MudTh>To</MudTh>
-                <MudTh>Received</MudTh>
-                <MudTh>Folder</MudTh>
-                <MudTh>Attachments</MudTh>
-                <MudTh>Flux Fetching</MudTh>
+                <MudTh><MudTableSortLabel SortLabel="Subject" T="AttachmentDisplayItem">Subject</MudTableSortLabel></MudTh>
+                <MudTh><MudTableSortLabel SortLabel="FromAddress" T="AttachmentDisplayItem">From</MudTableSortLabel></MudTh>
+                <MudTh><MudTableSortLabel SortLabel="ReceivedDateTime" T="AttachmentDisplayItem">Received</MudTableSortLabel></MudTh>
+                <MudTh><MudTableSortLabel SortLabel="Folder" T="AttachmentDisplayItem">Folder</MudTableSortLabel></MudTh>
+                <MudTh><MudTableSortLabel SortLabel="AttachmentName" T="AttachmentDisplayItem">Attachment Name</MudTableSortLabel></MudTh>
+                <MudTh><MudTableSortLabel SortLabel="ContentType" T="AttachmentDisplayItem">Content Type</MudTableSortLabel></MudTh>
+                <MudTh><MudTableSortLabel SortLabel="Size" T="AttachmentDisplayItem">Size</MudTableSortLabel></MudTh>
+                <MudTh><MudTableSortLabel SortLabel="IsProcessed" T="AttachmentDisplayItem">Processed</MudTableSortLabel></MudTh>
+                <MudTh><MudTableSortLabel SortLabel="FetchingHistoryId" T="AttachmentDisplayItem">Flux Fetching</MudTableSortLabel></MudTh>
                 <MudTh>Actions</MudTh>
             </HeaderContent>
             <RowTemplate>
-                <MudTd DataLabel="ID">@context.Id</MudTd>
                 <MudTd DataLabel="Subject">
                     <MudTooltip Text="@(context.Subject ?? "No subject")">
                         <MudText Style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
@@ -167,13 +143,6 @@
                     <MudTooltip Text="@(context.FromAddress ?? "Unknown")">
                         <MudText Style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                             @(context.FromAddress ?? "Unknown")
-                        </MudText>
-                    </MudTooltip>
-                </MudTd>
-                <MudTd DataLabel="To">
-                    <MudTooltip Text="@(context.ToAddress ?? "Unknown")">
-                        <MudText Style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                            @(context.ToAddress ?? "Unknown")
                         </MudText>
                     </MudTooltip>
                 </MudTd>
@@ -194,44 +163,47 @@
                         @(context.Folder ?? "Unknown")
                     </MudChip>
                 </MudTd>
-                <MudTd DataLabel="Attachments">
-                    @if (context.HasAttachments)
+                <MudTd DataLabel="Attachment Name">
+                    <MudTooltip Text="@(context.AttachmentName ?? "Unknown")">
+                        <MudText Style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                            @(context.AttachmentName ?? "Unknown")
+                        </MudText>
+                    </MudTooltip>
+                </MudTd>
+                <MudTd DataLabel="Content Type">
+                    <MudChip T="string" Color="Color.Secondary" Size="Size.Small">
+                        @context.ContentType
+                    </MudChip>
+                </MudTd>
+                <MudTd DataLabel="Size">
+                    @FormatFileSize(context.Size)
+                </MudTd>
+                <MudTd DataLabel="Processed">
+                    @if (context.IsProcessed)
                     {
-                        <MudBadge Content="@context.AttachmentCount" Color="Color.Primary" Overlap="true" Max="99" Dot="false">
-                            <MudIcon Icon="@Icons.Material.Filled.Attachment" Color="Color.Primary" />
-                        </MudBadge>
-                        @if (context.Attachments.Any(a => a.IsProcessed))
+                        <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small" Title="Processed" />
+                        @if (context.ProcessedAt.HasValue)
                         {
-                            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small" Class="ml-1" Title="Some attachments processed" />
+                            <MudText Typo="Typo.caption" Class="ml-1">
+                                @FormatDateTime(context.ProcessedAt.Value.ToLocalTime())
+                            </MudText>
                         }
                     }
                     else
                     {
-                        <MudText>No attachments</MudText>
+                        <MudIcon Icon="@Icons.Material.Filled.Pending" Color="Color.Warning" Size="Size.Small" Title="Not processed" />
                     }
                 </MudTd>
                 <MudTd DataLabel="Flux Fetching">
-                    @{
-                        var processedAttachments = context.Attachments.Where(a => a.IsProcessed && a.FetchingHistoryId.HasValue).ToList();
-                    }
-                    @if (processedAttachments.Any())
+                    @if (context.IsProcessed && context.FetchingHistoryId.HasValue)
                     {
-                        <div class="d-flex flex-column gap-1">
-                            @foreach (var attachment in processedAttachments.Take(3))
-                            {
-                                <MudChip T="string" 
-                                         Color="Color.Success" 
-                                         Size="Size.Small" 
-                                         OnClick="@(() => NavigationManager.NavigateTo($"/flux/fetching-details/{attachment.FetchingHistoryId}"))"
-                                         Style="cursor: pointer;">
-                                    #@attachment.FetchingHistoryId
-                                </MudChip>
-                            }
-                            @if (processedAttachments.Count > 3)
-                            {
-                                <MudText Typo="Typo.caption" Class="text-center">+@(processedAttachments.Count - 3) more</MudText>
-                            }
-                        </div>
+                        <MudChip T="string" 
+                                 Color="Color.Success" 
+                                 Size="Size.Small" 
+                                 OnClick="@(() => NavigationManager.NavigateTo($"/flux/fetching-details/{context.FetchingHistoryId}"))"
+                                 Style="cursor: pointer;">
+                            #@context.FetchingHistoryId
+                        </MudChip>
                     }
                     else
                     {
@@ -240,15 +212,12 @@
                 </MudTd>
                 <MudTd DataLabel="Actions">
                     <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true">
-                        <MudMenuItem OnClick="@(() => ViewDetails(context.Id))">
-                            <MudIcon Icon="@Icons.Material.Filled.Visibility" Class="mr-2" Size="Size.Small" /> View Details
+                        <MudMenuItem OnClick="@(() => ViewEmailDetails(context.EmailMetadataId))">
+                            <MudIcon Icon="@Icons.Material.Filled.Email" Class="mr-2" Size="Size.Small" /> View Email
                         </MudMenuItem>
-                        @if (context.HasAttachments)
-                        {
-                            <MudMenuItem OnClick="@(() => ViewAttachments(context))">
-                                <MudIcon Icon="@Icons.Material.Filled.Attachment" Class="mr-2" Size="Size.Small" /> View Attachments
-                            </MudMenuItem>
-                        }
+                        <MudMenuItem OnClick="@(() => ViewAttachmentDetails(context))">
+                            <MudIcon Icon="@Icons.Material.Filled.Attachment" Class="mr-2" Size="Size.Small" /> View Attachment
+                        </MudMenuItem>
                     </MudMenu>
                 </MudTd>
             </RowTemplate>
@@ -256,7 +225,7 @@
                 <MudTablePager PageSizeOptions="new int[] { 10, 25, 50, 100 }" />
             </PagerContent>
             <NoRecordsContent>
-                <MudAlert Severity="Severity.Info" Class="my-2">No emails found matching your search criteria.</MudAlert>
+                <MudAlert Severity="Severity.Info" Class="my-2">No attachments found matching your search criteria.</MudAlert>
             </NoRecordsContent>
         </MudTable>
     }
@@ -265,21 +234,42 @@
 @code {
     private EmailMetadataSearchRequest searchRequest = new();
 
-    private List<EmailMetadataResponse>? emails;
+    private List<AttachmentDisplayItem>? attachments;
     private bool loading = false;
     private bool isValid = false;
     private MudForm form;
     private string searchString = "";
-    private EmailMetadataResponse selectedItem = null;
+    private AttachmentDisplayItem selectedItem = null;
 
     private TableState tableState;
+
+    public class AttachmentDisplayItem
+    {
+        public int EmailMetadataId { get; set; }
+        public string EmailId { get; set; } = string.Empty;
+        public string? Subject { get; set; }
+        public string? FromAddress { get; set; }
+        public DateTime? ReceivedDateTime { get; set; }
+        public string? Folder { get; set; }
+
+        // Attachment properties
+        public int AttachmentId { get; set; }
+        public string AttachmentUniqueId { get; set; } = string.Empty;
+        public string? AttachmentName { get; set; }
+        public string ContentType { get; set; } = string.Empty;
+        public string? MimeContentType { get; set; }
+        public long Size { get; set; }
+        public bool IsProcessed { get; set; }
+        public DateTime? ProcessedAt { get; set; }
+        public int? FetchingHistoryId { get; set; }
+    }
 
     protected override async Task OnInitializedAsync()
     {
         // Initial load can be performed here if needed
     }
 
-    private async Task<TableData<EmailMetadataResponse>> ServerReload(TableState state, CancellationToken token)
+    private async Task<TableData<AttachmentDisplayItem>> ServerReload(TableState state, CancellationToken token)
     {
         tableState = state;
         loading = true;
@@ -290,20 +280,48 @@
             searchRequest.Pagination = new HillMetrics.Core.Search.Pagination(state.PageSize, state.Page + 1);
 
             var response = await MindApi.SearchEmailMetadataAsync(searchRequest);
-            emails = response.Data.ToList();
 
-            return new TableData<EmailMetadataResponse>
+            // Transform emails to flat attachment list
+            var flatAttachments = response.Data
+                .Where(email => email.HasAttachments && email.Attachments.Any())
+                .SelectMany(email => email.Attachments.Select(attachment => new AttachmentDisplayItem
                 {
-                    Items = emails,
-                    TotalItems = (int)response.TotalRecords
+                    EmailMetadataId = email.Id,
+                    EmailId = email.EmailId,
+                    Subject = email.Subject,
+                    FromAddress = email.FromAddress,
+                    ReceivedDateTime = email.ReceivedDateTime,
+                    Folder = email.Folder,
+
+                    AttachmentId = attachment.Id,
+                    AttachmentUniqueId = attachment.AttachmentId,
+                    AttachmentName = attachment.Name,
+                    ContentType = attachment.ContentType,
+                    MimeContentType = attachment.MimeContentType,
+                    Size = attachment.Size,
+                    IsProcessed = attachment.IsProcessed,
+                    ProcessedAt = attachment.ProcessedAt,
+                    FetchingHistoryId = attachment.FetchingHistoryId
+                }))
+                .ToList();
+
+            // Apply sorting
+            flatAttachments = ApplySort(flatAttachments, state.SortLabel, state.SortDirection == MudBlazor.SortDirection.Ascending ? Core.Search.SortDirection.Asc : Core.Search.SortDirection.Desc);
+
+            attachments = flatAttachments;
+
+            return new TableData<AttachmentDisplayItem>
+                {
+                    Items = flatAttachments,
+                    TotalItems = flatAttachments.Count
                 };
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Error searching emails: {ex.Message}", Severity.Error);
-            return new TableData<EmailMetadataResponse>
+            Snackbar.Add($"Error searching attachments: {ex.Message}", Severity.Error);
+            return new TableData<AttachmentDisplayItem>
                 {
-                    Items = new List<EmailMetadataResponse>(),
+                    Items = new List<AttachmentDisplayItem>(),
                     TotalItems = 0
                 };
         }
@@ -336,19 +354,60 @@
         }
     }
 
-    private void ViewDetails(int id)
+    private void ViewEmailDetails(int emailId)
     {
-        NavigationManager.NavigateTo($"/email/details/{id}");
+        NavigationManager.NavigateTo($"/email/details/{emailId}");
     }
 
-    private async Task ViewAttachments(EmailMetadataResponse email)
+    private async Task ViewAttachmentDetails(AttachmentDisplayItem attachment)
     {
         var parameters = new DialogParameters
         {
-            ["Email"] = email
+            ["Attachment"] = attachment
         };
 
-        Snackbar.Add($"Viewing attachments for: {email.Subject ?? "No subject"}", Severity.Info);
+        Snackbar.Add($"Viewing attachment: {attachment.AttachmentName ?? "Unknown"}", Severity.Info);
+    }
+
+    // Helper method for sorting
+    private List<AttachmentDisplayItem> ApplySort(List<AttachmentDisplayItem> items, string sortLabel, Core.Search.SortDirection sortDirection)
+    {
+        if (string.IsNullOrEmpty(sortLabel))
+            return items;
+
+        var sortedQuery = sortLabel switch
+        {
+            "Subject" => sortDirection == Core.Search.SortDirection.Asc 
+                ? items.OrderBy(x => x.Subject ?? string.Empty) 
+                : items.OrderByDescending(x => x.Subject ?? string.Empty),
+            "FromAddress" => sortDirection == Core.Search.SortDirection.Asc
+                ? items.OrderBy(x => x.FromAddress ?? string.Empty) 
+                : items.OrderByDescending(x => x.FromAddress ?? string.Empty),
+            "ReceivedDateTime" => sortDirection == Core.Search.SortDirection.Asc
+                ? items.OrderBy(x => x.ReceivedDateTime ?? DateTime.MinValue) 
+                : items.OrderByDescending(x => x.ReceivedDateTime ?? DateTime.MinValue),
+            "Folder" => sortDirection == Core.Search.SortDirection.Asc
+                ? items.OrderBy(x => x.Folder ?? string.Empty) 
+                : items.OrderByDescending(x => x.Folder ?? string.Empty),
+            "AttachmentName" => sortDirection == Core.Search.SortDirection.Asc
+                ? items.OrderBy(x => x.AttachmentName ?? string.Empty) 
+                : items.OrderByDescending(x => x.AttachmentName ?? string.Empty),
+            "ContentType" => sortDirection == Core.Search.SortDirection.Asc
+                ? items.OrderBy(x => x.ContentType) 
+                : items.OrderByDescending(x => x.ContentType),
+            "Size" => sortDirection == Core.Search.SortDirection.Asc
+                ? items.OrderBy(x => x.Size) 
+                : items.OrderByDescending(x => x.Size),
+            "IsProcessed" => sortDirection == Core.Search.SortDirection.Asc
+                ? items.OrderBy(x => x.IsProcessed) 
+                : items.OrderByDescending(x => x.IsProcessed),
+            "FetchingHistoryId" => sortDirection == Core.Search.SortDirection.Asc
+                ? items.OrderBy(x => x.FetchingHistoryId ?? int.MaxValue) 
+                : items.OrderByDescending(x => x.FetchingHistoryId ?? int.MinValue),
+            _ => items.AsEnumerable()
+        };
+
+        return sortedQuery.ToList();
     }
 
     // Helper methods for formatting
@@ -367,6 +426,19 @@
             return $"{(int)diff.TotalDays}d ago";
 
         return dateTime.ToString("MMM dd, HH:mm");
+    }
+
+    private string FormatFileSize(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB", "TB" };
+        double len = bytes;
+        int order = 0;
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len = len / 1024;
+        }
+        return $"{len:0.##} {sizes[order]}";
     }
 }
 

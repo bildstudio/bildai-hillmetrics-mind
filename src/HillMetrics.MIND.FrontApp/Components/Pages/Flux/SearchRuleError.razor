@@ -138,7 +138,7 @@
         <MudTable ServerData="@ServerReload"
                   Hover="true" Bordered="true" Striped="true"
                   Dense="true" @bind-SelectedItem="selectedItem" T="RuleErrorSearchResponse"
-                  Breakpoint="Breakpoint.Sm">
+                  Breakpoint="Breakpoint.Sm" RowsPerPage="100">
             <ToolBarContent>
                 <MudText Typo="Typo.h6" Class="ml-2">Rule Errors List</MudText>
                 <MudSpacer />

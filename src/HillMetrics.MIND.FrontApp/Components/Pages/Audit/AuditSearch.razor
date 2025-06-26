@@ -177,7 +177,7 @@
         <MudTable ServerData="@ServerReload"
                   Hover="true" Bordered="true" Striped="true"
                   Dense="true" @bind-SelectedItem="selectedItem" T="AuditSearchResponse"
-                  Breakpoint="Breakpoint.Sm" RowClassFunc="SelectedRowClassFunc">
+                  Breakpoint="Breakpoint.Sm" RowClassFunc="SelectedRowClassFunc" RowsPerPage="100">
             <ToolBarContent>
                 <MudText Typo="Typo.h6" Class="ml-2">Audit Logs</MudText>
                 <MudSpacer />
