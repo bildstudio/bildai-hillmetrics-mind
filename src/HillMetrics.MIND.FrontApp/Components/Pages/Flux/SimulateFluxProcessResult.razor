@@ -22,6 +22,9 @@
     @if (loading)
     {
         <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-2" />
+        <MudText Typo="Typo.body2" Align="Align.Center" Class="my-2">
+            @loadingMessage
+        </MudText>
     }
     else if (simulationResult != null)
     {
@@ -199,75 +202,43 @@
                     </CardHeaderContent>
                 </MudCardHeader>
                 <MudCardContent>
-                    @foreach (var (financial, index) in simulationResult.FinancialsToCreate.Select((f, i) => (f, i + 1)))
+                    @if (financialInstrumentRows.Any())
                     {
-                        <MudExpansionPanels>
-                            <MudExpansionPanel>
-                                <TitleContent>
-                                    <div style="display: flex; align-items: center;">
-                                        <MudIcon Icon="@Icons.Material.Filled.Add" class="mr-3" Color="Color.Success"></MudIcon>
-                                        <MudText>Financial Instrument #@index</MudText>
-                                    </div>
-                                </TitleContent>
-                                <ChildContent>
-                                    <MudGrid>
-                                        @foreach (var kvp in financial.DataPoints)
-                                        {
-                                            <MudItem xs="12" md="6">
-                                                <MudText Typo="Typo.subtitle2">@kvp.Key:</MudText>
-                                                <MudText Typo="Typo.body2" Class="ml-2">@kvp.Value</MudText>
-                                            </MudItem>
-                                        }
-                                    </MudGrid>
-                                </ChildContent>
-                            </MudExpansionPanel>
-                        </MudExpansionPanels>
+                        <MudDataGrid T="FinancialInstrumentRowData"
+                                     Items="@financialInstrumentRows"
+                                     Dense="true"
+                                     Hover="true"
+                                     Striped="true"
+                                     Virtualize="true"
+                                     Height="400px"
+                                     FixedHeader="true"
+                                     Bordered="true"
+                                     Class="mud-elevation-1">
+                            <Columns>
+                                <PropertyColumn Property="x => x.InstrumentIndex" Title="Instrument #" Sortable="true">
+                                    <CellTemplate>
+                                        <MudChip Size="Size.Small" Color="Color.Success" Variant="Variant.Filled">
+                                            #@context.Item.InstrumentIndex
+                                        </MudChip>
+                                    </CellTemplate>
+                                </PropertyColumn>
+                                <PropertyColumn Property="x => x.DataPointKey" Title="Data Point" Sortable="true" />
+                                <PropertyColumn Property="x => x.DataPointValue" Title="Value" Sortable="true">
+                                    <CellTemplate>
+                                        <div class="text-truncate" style="max-width: 300px;" title="@context.Item.DataPointValue">
+                                            @context.Item.DataPointValue
+                                        </div>
+                                    </CellTemplate>
+                                </PropertyColumn>
+                            </Columns>
+                        </MudDataGrid>
                     }
-                </MudCardContent>
-            </MudCard>
-        }
-
-        @if (simulationResult.SimulationSummary?.ValidationSummary.ValidationErrors.Any() == true)
-        {
-            <!-- Validation Errors Detail -->
-            <MudCard Class="mb-4">
-                <MudCardHeader>
-                    <CardHeaderContent>
-                        <MudText Typo="Typo.h6" Color="Color.Error">
-                            <MudIcon Icon="@Icons.Material.Filled.Error" Class="mr-2" />
-                            Validation Errors (@simulationResult.SimulationSummary.ValidationSummary.ValidationErrors.Count)
-                        </MudText>
-                    </CardHeaderContent>
-                </MudCardHeader>
-                <MudCardContent>
-                    <MudDataGrid T="ValidationErrorDto"
-                                 Items="@simulationResult.SimulationSummary.ValidationSummary.ValidationErrors"
-                                 Dense="true"
-                                 Hover="true"
-                                 Striped="true"
-                                 Virtualize="true"
-                                 Height="400px"
-                                 FixedHeader="true"
-                                 Bordered="true"
-                                 Class="mud-elevation-1">
-                        <Columns>
-                            <PropertyColumn Property="x => x.DataPoint" Title="Data Point" Sortable="true" />
-                            <PropertyColumn Property="x => x.OriginalValue" Title="Original Value" Sortable="true">
-                                <CellTemplate>
-                                    <div class="text-truncate" style="max-width: 200px;" title="@context.Item.OriginalValue">
-                                        @context.Item.OriginalValue
-                                    </div>
-                                </CellTemplate>
-                            </PropertyColumn>
-                            <PropertyColumn Property="x => x.ErrorMessage" Title="Error Message" Sortable="true">
-                                <CellTemplate>
-                                    <div class="text-truncate" style="max-width: 300px;" title="@context.Item.ErrorMessage">
-                                        @context.Item.ErrorMessage
-                                    </div>
-                                </CellTemplate>
-                            </PropertyColumn>
-                        </Columns>
-                    </MudDataGrid>
+                    else
+                    {
+                        <MudAlert Severity="Severity.Info" Class="my-4">
+                            No financial instruments to create.
+                        </MudAlert>
+                    }
                 </MudCardContent>
             </MudCard>
         }
@@ -346,7 +317,10 @@
                                      Height="600px"
                                      FixedHeader="true"
                                      Bordered="true"
-                                     Class="mud-elevation-1">
+                                     Class="mud-elevation-1"
+                                     SortMode="SortMode.Multiple"
+                                     Filterable="false"
+                                     QuickFilter="@_quickFilter">
 
                             <Columns>
                                 <PropertyColumn Property="x => x.RowIndex" Title="@(showUniqueOnly ? "Count" : "Row #")" Sortable="true">
@@ -688,6 +662,7 @@
     private bool loading = true;
     private string searchFilter = string.Empty;
     private List<RowData> filteredRows = new();
+    private List<RowData>? allProcessedRows; // Cache for pre-processed data
     private bool processing = false;
     private List<string> availableDataPoints = new();
     private IEnumerable<string> selectedDataPoints = new List<string>();
@@ -698,6 +673,25 @@
     private List<CommandExecutionRowData> commandExecutionRows = new();
     private List<CommandExecutionRowData> filteredCommandRows = new();
     private bool showCommandUniqueOnly = false;
+    private List<FinancialInstrumentRowData> financialInstrumentRows = new();
+    private string loadingMessage = "Loading simulation results...";
+
+    // Quick filter for DataGrid performance
+    private Func<RowData, bool> _quickFilter => x =>
+    {
+        if (string.IsNullOrWhiteSpace(searchFilter))
+            return true;
+
+        var searchTerms = searchFilter.Split(new[] { ' ', ',' }, StringSplitOptions.RemoveEmptyEntries)
+            .Select(t => t.Trim().ToLower()).ToList();
+
+        return searchTerms.All(term =>
+            x.FinancialDataPointName.ToLower().Contains(term) ||
+            x.OriginalDataFormatted.ToLower().Contains(term) ||
+            x.ProcessedDataFormatted.ToLower().Contains(term) ||
+            x.ErrorMessage.ToLower().Contains(term)
+        );
+    };
 
     protected override async Task OnInitializedAsync()
     {
@@ -709,11 +703,23 @@
         try
         {
             loading = true;
+            loadingMessage = "Loading simulation results...";
+            StateHasChanged();
+            
             var response = await MindApi.SimulateProcessElementAsync(FetchingHistoryId);
 
             if (response?.Data != null)
             {
                 simulationResult = response.Data;
+
+                loadingMessage = "Processing data...";
+                StateHasChanged();
+
+                // Pre-process all data once
+                await PreprocessAllData();
+
+                loadingMessage = "Initializing filters...";
+                StateHasChanged();
 
                 // Initialize available data points
                 InitializeDataPointFilter();
@@ -721,8 +727,14 @@
                 // Initialize filtered rows after loading data
                 ApplyFilter();
 
+                loadingMessage = "Finalizing...";
+                StateHasChanged();
+
                 // Initialize command execution data
                 InitializeCommandExecutionData();
+
+                // Initialize financial instruments data
+                InitializeFinancialInstrumentData();
 
                 if (simulationResult.Status != SimulateProcessElementResponse.SimulationStatus.Success &&
                     simulationResult.Status != SimulateProcessElementResponse.SimulationStatus.PartialSuccess)
@@ -807,71 +819,33 @@
 
     private void ApplyFilter()
     {
-        filteredRows.Clear();
-
-        if (simulationResult?.ExtractedData?.ExecutorResults == null)
-            return;
-
-        var allRows = new List<RowData>();
-        int globalRowIndex = 1;
-
-        foreach (var (executorResult, executorIndex) in simulationResult.ExtractedData.ExecutorResults.Select((er, i) => (er, i)))
+        // Use pre-processed data instead of reprocessing every time
+        var sourceRows = allProcessedRows;
+        if (sourceRows == null || !sourceRows.Any())
         {
-            foreach (var row in executorResult.Rows)
-            {
-                var hasValidationMessages = row.RuleResult.ValidationMessages?.Any() == true;
-                var validationTooltip = hasValidationMessages ?
-                    string.Join("\n", row.RuleResult.ValidationMessages.Select(vm => $"[{vm.Level}] {vm.Message}")) :
-                    string.Empty;
-
-                allRows.Add(new RowData
-                    {
-                        Row = row,
-                        ExecutorIndex = executorIndex,
-                        RowIndex = globalRowIndex,
-                        HasValidationMessages = hasValidationMessages,
-                        ValidationTooltip = validationTooltip,
-                        FinancialDataPointName = row.FinancialTechnicalDataPoint.ToString(),
-                        IsSuccess = row.RuleResult.IsSuccess,
-                        OriginalDataFormatted = FormatData(row.RuleResult.OriginalData),
-                        ProcessedDataFormatted = FormatData(row.RuleResult.ProcessedData),
-                        ErrorMessage = row.RuleResult.ErrorMessage ?? string.Empty
-                    });
-                globalRowIndex++;
-            }
+            filteredRows = new List<RowData>();
+            return;
         }
+
+        var filtered = sourceRows.AsEnumerable();
 
         // Apply data point filter
         if (selectedDataPoints.Any())
         {
-            allRows = allRows.Where(rowData => selectedDataPoints.Contains(rowData.FinancialDataPointName)).ToList();
-        }
-
-        // Apply search filter
-        if (!string.IsNullOrEmpty(searchFilter))
-        {
-            var searchTerms = searchFilter.Split(new[] { ' ', ',' }, StringSplitOptions.RemoveEmptyEntries)
-                .Select(t => t.Trim().ToLower()).ToList();
-
-            allRows = allRows.Where(rowData =>
-                searchTerms.All(term =>
-                    rowData.FinancialDataPointName.ToLower().Contains(term) ||
-                    rowData.OriginalDataFormatted.ToLower().Contains(term) ||
-                    rowData.ProcessedDataFormatted.ToLower().Contains(term) ||
-                    rowData.ErrorMessage.ToLower().Contains(term)
-                )).ToList();
+            var selectedSet = selectedDataPoints.ToHashSet(); // Use HashSet for O(1) lookups
+            filtered = filtered.Where(rowData => selectedSet.Contains(rowData.FinancialDataPointName));
         }
 
         // Apply error filter
         if (showErrorsOnly)
         {
-            allRows = allRows.Where(rowData => !string.IsNullOrEmpty(rowData.ErrorMessage)).ToList();
+            filtered = filtered.Where(rowData => !string.IsNullOrEmpty(rowData.ErrorMessage));
         }
 
         // Apply unique filter
         if (showUniqueOnly)
         {
-            var uniqueRows = allRows
+            var uniqueRows = filtered
                 .GroupBy(row => new {
                     row.FinancialDataPointName,
                     row.OriginalDataFormatted,
@@ -897,15 +871,16 @@
                     };
                 })
                 .OrderBy(row => row.FinancialDataPointName)
-                .ThenBy(row => row.OriginalDataFormatted)
-                .ToList();
+                .ThenBy(row => row.OriginalDataFormatted);
 
-            filteredRows.AddRange(uniqueRows);
+            filteredRows = uniqueRows.ToList();
         }
         else
         {
-            filteredRows.AddRange(allRows);
+            filteredRows = filtered.ToList();
         }
+        
+        // Note: Search filter is now handled by QuickFilter for better performance
         StateHasChanged();
     }
 
@@ -932,19 +907,25 @@
     private void OnDataPointFilterChanged(IEnumerable<string> values)
     {
         selectedDataPoints = values;
-        ApplyFilter();
+        _ = Task.Run(() => InvokeAsync(() => {
+            ApplyFilter();
+        }));
     }
 
     private void OnUniqueFilterChanged(bool value)
     {
         showUniqueOnly = value;
-        ApplyFilter();
+        _ = Task.Run(() => InvokeAsync(() => {
+            ApplyFilter();
+        }));
     }
 
     private void OnErrorFilterChanged(bool value)
     {
         showErrorsOnly = value;
-        ApplyFilter();
+        _ = Task.Run(() => InvokeAsync(() => {
+            ApplyFilter();
+        }));
     }
 
     private void InitializeCommandExecutionData()
@@ -1102,6 +1083,77 @@
         public int ElementsCount { get; set; }
         public string ElementsPreview { get; set; }
         public int UniqueCount { get; set; } = 1;
+    }
+
+    public class FinancialInstrumentRowData
+    {
+        public int InstrumentIndex { get; set; }
+        public string DataPointKey { get; set; } = string.Empty;
+        public string DataPointValue { get; set; } = string.Empty;
+    }
+
+    private async Task PreprocessAllData()
+    {
+        await Task.Run(() =>
+        {
+            if (simulationResult?.ExtractedData?.ExecutorResults == null)
+            {
+                allProcessedRows = new List<RowData>();
+                return;
+            }
+
+            var processedRows = new List<RowData>();
+            int globalRowIndex = 1;
+
+            foreach (var (executorResult, executorIndex) in simulationResult.ExtractedData.ExecutorResults.Select((er, i) => (er, i)))
+            {
+                foreach (var row in executorResult.Rows)
+                {
+                    var hasValidationMessages = row.RuleResult.ValidationMessages?.Any() == true;
+                    var validationTooltip = hasValidationMessages ?
+                        string.Join("\n", row.RuleResult.ValidationMessages.Select(vm => $"[{vm.Level}] {vm.Message}")) :
+                        string.Empty;
+
+                    processedRows.Add(new RowData
+                    {
+                        Row = row,
+                        ExecutorIndex = executorIndex,
+                        RowIndex = globalRowIndex,
+                        HasValidationMessages = hasValidationMessages,
+                        ValidationTooltip = validationTooltip,
+                        FinancialDataPointName = row.FinancialTechnicalDataPoint.ToString(),
+                        IsSuccess = row.RuleResult.IsSuccess,
+                        OriginalDataFormatted = FormatData(row.RuleResult.OriginalData),
+                        ProcessedDataFormatted = FormatData(row.RuleResult.ProcessedData),
+                        ErrorMessage = row.RuleResult.ErrorMessage ?? string.Empty
+                    });
+                    globalRowIndex++;
+                }
+            }
+
+            allProcessedRows = processedRows;
+        });
+    }
+
+    private void InitializeFinancialInstrumentData()
+    {
+        financialInstrumentRows.Clear();
+
+        if (simulationResult?.FinancialsToCreate == null)
+            return;
+
+        foreach (var (financial, index) in simulationResult.FinancialsToCreate.Select((f, i) => (f, i + 1)))
+        {
+            foreach (var kvp in financial.DataPoints)
+            {
+                financialInstrumentRows.Add(new FinancialInstrumentRowData
+                {
+                    InstrumentIndex = index,
+                    DataPointKey = kvp.Key,
+                    DataPointValue = kvp.Value?.ToString() ?? string.Empty
+                });
+            }
+        }
     }
 }
 

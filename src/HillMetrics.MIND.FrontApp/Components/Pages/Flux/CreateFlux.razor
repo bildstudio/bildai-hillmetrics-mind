@@ -228,7 +228,7 @@
                             Cancel
                         </MudButton>
                         <MudButton Variant="Variant.Filled" Color="Color.Primary"
-                        OnClick="SubmitForm" Disabled="@(!success || processing)">
+                        OnClick="SubmitForm" Disabled="@(processing)">
                             @(FluxId.HasValue ? "Update" : "Create")
                             @if (processing)
                             {
