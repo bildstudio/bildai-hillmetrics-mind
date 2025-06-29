@@ -464,14 +464,14 @@ namespace HillMetrics.MIND.API.Controllers
         }
 
         /// <summary>
-        /// Upload and process a file for a manual flux
+        /// Upload and process a file manually for any flux type
         /// </summary>
         /// <param name="fluxId">The flux identifier</param>
         /// <param name="fileName">The name of the uploaded file</param>
         /// <param name="file">The uploaded file</param>
         /// <returns>Status indication that the operation has started</returns>
         [HttpPost("{fluxId}/upload-manual")]
-        public async Task<ActionResult<ApiResponseBase<ProcessStartedResponse>>> FetchManualFluxAsync(
+        public async Task<ActionResult<ApiResponseBase<ProcessStartedResponse>>> UploadManualContentAsync(
             int fluxId,
             [FromForm] string fileName,
             IFormFile file)
@@ -491,7 +491,7 @@ namespace HillMetrics.MIND.API.Controllers
                     fileName = file.FileName;
                 }
 
-                // Get flux details to verify it's manual
+                // Get flux details
                 var fluxResult = await Mediator.Send(new FluxQuery() { FluxId = fluxId });
                 if (fluxResult.IsFailed)
                 {
@@ -499,10 +499,6 @@ namespace HillMetrics.MIND.API.Controllers
                 }
 
                 var flux = fluxResult.Value.Flux;
-                if (flux.FluxType != FluxType.Manual)
-                {
-                    return BadRequest("This flux is not a manual flux");
-                }
 
                 // Convert IFormFile to Stream
                 using var fileStream = file.OpenReadStream();
@@ -518,8 +514,8 @@ namespace HillMetrics.MIND.API.Controllers
                 // Store in context for subsequent background operations
                 WorkflowContext.SetCurrentWorkflowId(fluxId, existingWorkflowId);
 
-                logger.LogInformation("Starting manual flux processing for flux {FluxId} with workflow {WorkflowId}",
-                    fluxId, existingWorkflowId);
+                logger.LogInformation("Starting manual content processing for flux {FluxId} (type: {FluxType}) with workflow {WorkflowId}",
+                    fluxId, flux.FluxType, existingWorkflowId);
 
                 // Create command with manual content
                 var command = FetchFluxCommand.CreateManual(fluxId, stepId, memoryStream, fileName);
@@ -529,12 +525,12 @@ namespace HillMetrics.MIND.API.Controllers
 
                 if (fetchResult.IsSuccess)
                 {
-                    logger.LogInformation("Manual flux processing completed successfully for flux {FluxId}", fluxId);
+                    logger.LogInformation("Manual content processing completed successfully for flux {FluxId} (type: {FluxType})", fluxId, flux.FluxType);
 
                     // Create a response with the workflow ID for tracking
                     var response = new ProcessStartedResponse
                     {
-                        Message = $"Manual flux upload operation completed successfully for flux {fluxId}.",
+                        Message = $"Manual content upload operation completed successfully for flux {fluxId}.",
                         FluxId = fluxId,
                         WorkflowId = existingWorkflowId
                     };
@@ -543,18 +539,18 @@ namespace HillMetrics.MIND.API.Controllers
                 }
                 else
                 {
-                    logger.LogWarning("Manual flux processing failed for flux {FluxId}: {Errors}",
-                        fluxId, string.Join(", ", fetchResult.Errors.Select(e => e.Message)));
+                    logger.LogWarning("Manual content processing failed for flux {FluxId} (type: {FluxType}): {Errors}",
+                        fluxId, flux.FluxType, string.Join(", ", fetchResult.Errors.Select(e => e.Message)));
 
                     return new ErrorApiActionResult(fetchResult.Errors.ToApiResult());
                 }
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Error processing manual flux upload for flux {FluxId}", fluxId);
+                logger.LogError(ex, "Error processing manual content upload for flux {FluxId}", fluxId);
                 return new ErrorApiActionResult(
                     new ErrorApiResponse(
-                        new Core.API.Exceptions.ApiException($"Error processing manual flux upload: {ex.Message}"),
+                        new Core.API.Exceptions.ApiException($"Error processing manual content upload: {ex.Message}"),
                         System.Net.HttpStatusCode.InternalServerError));
             }
         }
