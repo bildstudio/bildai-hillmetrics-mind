@@ -11,6 +11,7 @@
 @using HillMetrics.MIND.FrontApp.Services
 @using HillMetrics.Core.Time.Trigger
 @using HillMetrics.Normalized.Domain.Contracts.Providing.Flux
+@using HillMetrics.Core.Flux.Contracts
 @using System.Text.Json
 @inject IMindAPI MindApi
 @inject NavigationManager NavigationManager
@@ -219,6 +220,60 @@
                             }
                         </MudItem>
                     }
+
+                    <!-- Available Custom Metadata for Custom Fetching Flux -->
+                    @if (availableMetadata != null && availableMetadata.Any())
+                    {
+                        <MudItem xs="12">
+                            <MudCard Elevation="0" Outlined="true">
+                                <MudCardHeader>
+                                    <CardHeaderContent>
+                                        <MudText Typo="Typo.h6">Available Custom Metadata</MudText>
+                                        <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                            This flux supports custom metadata parameters that can be configured.
+                                        </MudText>
+                                    </CardHeaderContent>
+                                </MudCardHeader>
+                                <MudCardContent>
+                                    @foreach (var metadata in availableMetadata)
+                                    {
+                                        <MudGrid Class="mb-3">
+                                            <MudItem xs="12" md="3">
+                                                <MudText Typo="Typo.subtitle2" Color="Color.Primary">
+                                                    @metadata.Key
+                                                    @if (metadata.Value.IsRequired)
+                                                    {
+                                                        <MudText Typo="Typo.caption" Color="Color.Error" Style="display: inline;">*</MudText>
+                                                    }
+                                                </MudText>
+                                            </MudItem>
+                                            <MudItem xs="12" md="2">
+                                                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Secondary">
+                                                    @GetFriendlyTypeName(metadata.Value.Type)
+                                                </MudChip>
+                                            </MudItem>
+                                            <MudItem xs="12" md="4">
+                                                <MudText Typo="Typo.body2">@metadata.Value.Description</MudText>
+                                            </MudItem>
+                                            <MudItem xs="12" md="3">
+                                                @if (!string.IsNullOrEmpty(metadata.Value.DefaultValue))
+                                                {
+                                                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                        Default: @metadata.Value.DefaultValue
+                                                    </MudText>
+                                                }
+                                                else if (!metadata.Value.IsRequired)
+                                                {
+                                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Optional</MudText>
+                                                }
+                                            </MudItem>
+                                        </MudGrid>
+                                        <MudDivider Class="my-2" />
+                                    }
+                                </MudCardContent>
+                            </MudCard>
+                        </MudItem>
+                    }
                 </MudGrid>
 
                 <MudGrid Class="mt-4">
@@ -262,6 +317,7 @@
     private bool loading = true;
     private MudForm form;
     private List<SourceSearchDto> sources = new();
+    private IReadOnlyDictionary<string, FluxMetadataDefinition>? availableMetadata;
 
     private FluxValidator validator = new();
 
@@ -314,6 +370,9 @@
                 fluxRequest.FluxState = response.FluxState;
                 canHaveConcurrencyMultiFetching = response.CanHaveConcurrencyMultiFetching;
                 fluxRequest.CanHaveConcurrencyMultiFetching = response.CanHaveConcurrencyMultiFetching;
+                
+                // Load available metadata if this is a custom flux
+                availableMetadata = response.AvailableMetadata;
 
                 // Map trigger periods
                 if (response.FetchTriggerPeriod != null)
@@ -869,5 +928,21 @@
         {
             Snackbar.Add($"Error exporting to JSON: {ex.Message}", Severity.Error);
         }
+    }
+
+    private string GetFriendlyTypeName(Type type)
+    {
+        if (type == typeof(string)) return "Text";
+        if (type == typeof(int) || type == typeof(int?)) return "Number";
+        if (type == typeof(long) || type == typeof(long?)) return "Number (Long)";
+        if (type == typeof(double) || type == typeof(double?)) return "Decimal";
+        if (type == typeof(bool) || type == typeof(bool?)) return "Boolean";
+        if (type == typeof(DateTime) || type == typeof(DateTime?)) return "Date";
+        if (type == typeof(TimeSpan) || type == typeof(TimeSpan?)) return "Time";
+        if (type == typeof(Uri)) return "URL";
+        if (type == typeof(string[])) return "Text Array";
+        if (type == typeof(List<string>)) return "Text List";
+        
+        return type.Name;
     }
 }

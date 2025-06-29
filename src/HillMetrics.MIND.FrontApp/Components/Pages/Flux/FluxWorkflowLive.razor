@@ -472,12 +472,15 @@
                               step.Status == WorkflowStepStatus.Failed ? "node-failed" : "node-inprogress";
 
         string nodePositionClass = level == 0 ? "node-center" : "";
+        
+        // Add opacity class for steps that only have ignored elements
+        var opacityClass = IsStepOnlyIgnored(step) ? "node-only-ignored" : "";
 
         builder.OpenElement(0, "div");
         builder.AddAttribute(1, "class", $"workflow-node-container {nodePositionClass}");
 
         builder.OpenElement(2, "div");
-        builder.AddAttribute(3, "class", $"workflow-node {statusClass} {completionClass}");
+        builder.AddAttribute(3, "class", $"workflow-node {statusClass} {completionClass} {opacityClass}");
         builder.AddAttribute(4, "onclick", EventCallback.Factory.Create<MouseEventArgs>(this, () => SelectStep(step)));
         builder.AddAttribute(5, "id", $"node-{step.Id}");
 
@@ -594,25 +597,37 @@
             builder.CloseElement(); // span duration
         }
 
-        // Rows Added
+        // Rows Added (Link to Audit)
         if (step.RowsAdded > 0)
         {
-            builder.OpenElement(117, "span");
-            builder.AddAttribute(118, "class", "detail-item success");
-            builder.AddAttribute(121, "title", $"{step.RowsAdded} records added");
-            builder.AddMarkupContent(119, "<i class='mud-icon-root mud-icon-default mud-icon-size-small mr-1'><svg viewBox='0 0 24 24' style='width: 1em; height: 1em;'><path d='M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z' fill='currentColor'></path></svg></i>");
-            builder.AddContent(120, $"{step.RowsAdded}");
-            builder.CloseElement(); // span added
+            builder.OpenComponent<MudLink>(117);
+            builder.AddAttribute(118, "Href", $"/audit/flux/{step.Id}/Created");
+            builder.AddAttribute(119, "Typo", Typo.caption);
+            builder.AddAttribute(120, "Underline", Underline.Always);
+            builder.AddAttribute(121, "Class", "detail-item success audit-link");
+            builder.AddAttribute(122, "title", $"{step.RowsAdded} records added (click to view audit logs)");
+            builder.AddAttribute(123, "ChildContent", (RenderFragment)((linkBuilder) =>
+            {
+                linkBuilder.AddMarkupContent(124, "<i class='mud-icon-root mud-icon-default mud-icon-size-small mr-1'><svg viewBox='0 0 24 24' style='width: 1em; height: 1em;'><path d='M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z' fill='currentColor'></path></svg></i>");
+                linkBuilder.AddContent(125, $"{step.RowsAdded}");
+            }));
+            builder.CloseComponent(); // MudLink added
         }
-        // Rows Modified
+        // Rows Modified (Link to Audit)
         if (step.RowsModified > 0)
         {
-            builder.OpenElement(122, "span");
-            builder.AddAttribute(123, "class", "detail-item info");
-            builder.AddAttribute(126, "title", $"{step.RowsModified} records modified/updated");
-            builder.AddMarkupContent(124, "<i class='mud-icon-root mud-icon-default mud-icon-size-small mr-1'><svg viewBox='0 0 24 24' style='width: 1em; height: 1em;'><path d='M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z' fill='currentColor'></path></svg></i>");
-            builder.AddContent(125, $"{step.RowsModified}");
-            builder.CloseElement(); // span modified
+            builder.OpenComponent<MudLink>(126);
+            builder.AddAttribute(127, "Href", $"/audit/flux/{step.Id}/Updated");
+            builder.AddAttribute(128, "Typo", Typo.caption);
+            builder.AddAttribute(129, "Underline", Underline.Always);
+            builder.AddAttribute(130, "Class", "detail-item info audit-link");
+            builder.AddAttribute(131, "title", $"{step.RowsModified} records modified/updated (click to view audit logs)");
+            builder.AddAttribute(132, "ChildContent", (RenderFragment)((linkBuilder) =>
+            {
+                linkBuilder.AddMarkupContent(133, "<i class='mud-icon-root mud-icon-default mud-icon-size-small mr-1'><svg viewBox='0 0 24 24' style='width: 1em; height: 1em;'><path d='M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z' fill='currentColor'></path></svg></i>");
+                linkBuilder.AddContent(134, $"{step.RowsModified}");
+            }));
+            builder.CloseComponent(); // MudLink modified
         }
         // Rows Ignored
         if (step.RowsIgnored > 0)
@@ -1008,40 +1023,10 @@
         };
     }
 
-    // Helper method to generate correct error link based on step stage and action ID
+    // Helper method to generate error link to audit logs for the workflow step
     private string GetErrorLink(HistoryEntryDto step)
     {
-        var baseUrl = $"/flux/errors?fluxId={FluxId}";
-
-        // Determine action type based on stage
-        var actionType = step.Stage switch
-        {
-            WorkflowStage.FetchingData => "Fetching",
-            WorkflowStage.Processing => "ProcessFlux",
-            _ => "ProcessFlux" // Default fallback
-        };
-
-        baseUrl += $"&actionType={actionType}";
-
-        // Add specific ID based on stage
-        if(step.Stage == WorkflowStage.FetchingData)
-        {
-            var fetchingId = TryGetFetchingId(step.Metadata);
-            if(fetchingId > 0)
-            {
-                baseUrl += $"&fetchingId={fetchingId}";
-            }
-        }
-        else if(step.Stage == WorkflowStage.Processing)
-        {
-            var processingId = TryGetProcessingId(step.Metadata);
-            if(processingId > 0)
-            {
-                baseUrl += $"&processingId={processingId}";
-            }
-        }
-
-        return baseUrl;
+        return $"/audit/flux/{step.Id}/Error";
     }
 }
 
@@ -1394,5 +1379,35 @@
 
     .node-failed-time {
         color: #d32f2f; /* Darker red for the failed timestamp */
+    }
+
+    /* Audit link styles */
+    .audit-link {
+        cursor: pointer;
+        text-decoration: none;
+        transition: opacity 0.2s ease;
+    }
+
+    .audit-link:hover {
+        opacity: 0.8;
+        text-decoration: underline;
+    }
+
+    .audit-link.success {
+        color: #4CAF50;
+    }
+
+    .audit-link.info {
+        color: #2196F3;
+    }
+
+    /* Opacity for steps with only ignored elements */
+    .node-only-ignored {
+        opacity: 0.7;
+        transition: opacity 0.3s ease;
+    }
+
+    .node-only-ignored:hover {
+        opacity: 1;
     }
 </style>

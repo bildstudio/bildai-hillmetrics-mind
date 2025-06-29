@@ -2,6 +2,7 @@ using HillMetrics.Core.Financial;
 using HillMetrics.Core.Time.Trigger;
 using HillMetrics.MIND.API.Contracts.Responses.Source;
 using HillMetrics.Normalized.Domain.Contracts.Providing.Flux;
+using HillMetrics.Core.Flux.Contracts;
 using System;
 using System.Collections.Generic;
 
@@ -35,6 +36,7 @@ public class FluxResponseWrapper
 
     public bool HasCustomFetching { get; set; }
     public bool HasCustomProcessing { get; set; }
+    public IReadOnlyDictionary<string, FluxMetadataDefinition>? AvailableMetadata { get; set; }
 
     public FluxResponseWrapper() { }
     
@@ -57,6 +59,7 @@ public class FluxResponseWrapper
         FinancialDataPoints = response.FinancialDataPoints;
         HasCustomFetching = response.HasCustomFetching;
         HasCustomProcessing = response.HasCustomProcessing;
+        AvailableMetadata = response.AvailableMetadata;
 
         // Copy metadata to the appropriate concrete property
         if (response.FluxMetadata != null)
