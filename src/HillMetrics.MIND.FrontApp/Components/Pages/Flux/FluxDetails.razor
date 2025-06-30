@@ -54,6 +54,9 @@
                         <MudButton OnClick="@ForceProcess" Disabled="@(loading || flux.FluxState != FluxState.Active)">
                             <MudIcon Icon="@Icons.Material.Filled.PlayArrow" Class="mr-2" /> Force Process all fetching
                         </MudButton>
+                        <MudButton OnClick="@(() => NavigationManager.NavigateTo($"/flux/upload/{FluxId}"))" Disabled="@loading">
+                            <MudIcon Icon="@Icons.Material.Filled.CloudUpload" Class="mr-2" /> Upload Manual Content
+                        </MudButton>
                         <MudButton OnClick="@ShowMetadataDialog">
                             <MudIcon Icon="@Icons.Material.Filled.Info" Class="mr-2" /> Metadata
                         </MudButton>
@@ -370,33 +373,6 @@
                                 {
                                     <MudItem xs="12">
                                         <FluxMetadataDictionaryComponent MetadataDictionary="@flux.DownloadMetadata.Metadata" ReadOnly="true" />
-                                    </MudItem>
-                                }
-                            </MudGrid>
-                        </MudCardContent>
-                    </MudCard>
-                }
-                @if (flux.ManualMetadata != null && flux.FluxType == FluxType.Manual)
-                {
-                    <MudCard Elevation="3" Class="mb-4">
-                        <MudCardHeader>
-                            <CardHeaderContent>
-                                <MudText Typo="Typo.h6">Manual Flux Configuration</MudText>
-                            </CardHeaderContent>
-                            <CardHeaderActions>
-                                <MudIcon Icon="@Icons.Material.Filled.TouchApp" Color="Color.Primary" />
-                            </CardHeaderActions>
-                        </MudCardHeader>
-                        <MudCardContent>
-                            <MudGrid>
-                                <MudItem xs="6">
-                                    <MudField Label="Content Type" Variant="Variant.Outlined">@flux.ManualMetadata.ContentType</MudField>
-                                </MudItem>
-
-                                @if (flux.ManualMetadata.Metadata != null && flux.ManualMetadata.Metadata.Count > 0)
-                                {
-                                    <MudItem xs="12">
-                                        <FluxMetadataDictionaryComponent MetadataDictionary="@flux.ManualMetadata.Metadata" ReadOnly="true" />
                                     </MudItem>
                                 }
                             </MudGrid>
@@ -968,12 +944,6 @@
             parameters.Add("Metadata", flux.FileLocationMetadata.Metadata);
             parameters.Add("Title", "SFTP Flux Metadata");
             await DialogService.ShowAsync<FluxMetadataViewDialog>("SFTP Flux Metadata", parameters, options);
-        }
-        else if (flux.FluxType == FluxType.Manual && flux.ManualMetadata?.Metadata != null)
-        {
-            parameters.Add("Metadata", flux.ManualMetadata.Metadata);
-            parameters.Add("Title", "Manual Flux Metadata");
-            await DialogService.ShowAsync<FluxMetadataViewDialog>("Manual Flux Metadata", parameters, options);
         }
         else
         {
