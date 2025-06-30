@@ -1,0 +1,20 @@
+﻿@inject NavigationManager NavigationManager
+
+<MudItem xs="12" md="12">
+        <MudButton 
+                   Color="Color.Info"
+                   Variant="Variant.Text"
+                   StartIcon="@Icons.Material.Filled.ArrowLeft"
+               OnClick="() => Redirect()">
+            Back to list
+        </MudButton>
+    </MudItem>
+
+@code {
+    [Parameter]
+    public string ReturnUrl { get; set; } = string.Empty;
+    private void Redirect()
+    {
+        NavigationManager.NavigateTo(ReturnUrl);
+    }
+}

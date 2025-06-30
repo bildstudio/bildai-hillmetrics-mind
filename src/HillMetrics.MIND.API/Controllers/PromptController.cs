@@ -32,8 +32,23 @@ namespace HillMetrics.MIND.API.Controllers
 
         }
 
+        [HttpGet("{languageId}/{promptTaskType}")]
+        public async Task<ActionResult<ListAiPromptsResponse>> ListAsync(
+            [FromRoute] int languageId,
+            [FromRoute] PromptTaskType promptTaskType)
+        {
+            var query = new ListDistinctAiPromptsQuery(languageId, promptTaskType);
+            var result = await Mediator.Send(query);
+            if (result.IsFailed)
+                return new ErrorApiActionResult(result.Errors.ToApiResult());
+
+            List<AiPromptDto> dtos = [.. result.Value.Select(s => s.FromDomain())];
+
+            return new ListAiPromptsResponse(dtos);
+        }
+
         [HttpGet("search")]
-        public async Task<ActionResult<ListAiPromptsResponse>> SearchPromptsAsync(
+        public async Task<ActionResult<ListAiPromptsPagedResponse>> SearchPromptsAsync(
             [FromQuery] int? languageId, 
             [FromQuery] PromptTaskType? taskType, 
             [FromQuery] PromptType? promptType, 
@@ -47,7 +62,22 @@ namespace HillMetrics.MIND.API.Controllers
 
             List<AiPromptDto> dtos = [.. result.Value.Data.Select(s => s.FromDomain())];
 
-            return new ListAiPromptsResponse(dtos, result.Value.TotalRecords);
+            return new ListAiPromptsPagedResponse(dtos, result.Value.TotalRecords);
+        }
+
+        [HttpGet("search/grouped")]
+        public async Task<ActionResult<ListAiPromptsResponse>> SearchGroupedPromptsAsync(
+            [FromQuery] int? languageId,
+            [FromQuery] PromptTaskType? taskType)
+        {
+            var query = new SearchDistinctAiPromptsQuery(languageId, taskType);
+            var result = await Mediator.Send(query);
+            if (result.IsFailed)
+                return new ErrorApiActionResult(result.Errors.ToApiResult());
+
+            List<AiPromptDto> dtos = [.. result.Value.Select(s => s.FromDomain())];
+
+            return new ListAiPromptsResponse(dtos);
         }
 
         [HttpPost]
@@ -96,6 +126,19 @@ namespace HillMetrics.MIND.API.Controllers
         public async Task<ActionResult<DeletedResponse>> DeleteAsync([FromRoute]int id)
         {
             var command = new DeleteAiPromptCommand(id);
+            var result = await Mediator.Send(command);
+            if (result.IsFailed)
+                return new ErrorApiActionResult(result.Errors.ToApiResult());
+
+            return new DeletedResponse("Ai prompt deleted.");
+        }
+
+        [HttpDelete("{languageId}/{promptTaskType}")]
+        public async Task<ActionResult<DeletedResponse>> DeleteByLanguageAndTaskTypeAsync(
+            [FromRoute] int languageId,
+            [FromRoute] PromptTaskType promptTaskType)
+        {
+            var command = new DeleteAiPromptCommand(languageId, promptTaskType);
             var result = await Mediator.Send(command);
             if (result.IsFailed)
                 return new ErrorApiActionResult(result.Errors.ToApiResult());
