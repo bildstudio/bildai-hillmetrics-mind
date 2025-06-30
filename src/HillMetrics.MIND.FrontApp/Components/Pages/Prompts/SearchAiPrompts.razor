@@ -22,15 +22,6 @@
         <MudItem xs="6">
             <MudText Typo="Typo.h4" Class="mb-4">Prompts</MudText>
         </MudItem>
-        <MudItem xs="6" Class="d-flex justify-end">
-            <MudButton Variant="Variant.Filled"
-                       Color="Color.Primary"
-                       StartIcon="@Icons.Material.Filled.Add"
-                       Href="/prompt/create"
-                       Class="align-self-start">
-                Create a new Prompt
-            </MudButton>
-        </MudItem>
     </MudGrid>
 
     @if (loading)
@@ -39,35 +30,101 @@
     }
     else
     {
-         <MudCard Class="mb-4">
-        <MudCardContent>
-            <MudForm @ref="form" @bind-IsValid="@isValid">
-                <MudGrid Spacing="1">
-                    <!-- Language -->
-                    <MudItem xs="12" md="4">
-                        <MudSelect T="int?" @bind-Value="selectedLanguageId"
-                                   Label="Language" Variant="Variant.Outlined" Dense="true" Margin="Margin.Dense">
-                            <MudSelectItem Value="@((int?)null)">All</MudSelectItem>
-                            @foreach (var language in languages)
-                            {
-                                <MudSelectItem T="int?" Value="@language.Id">@language.Name</MudSelectItem>
-                            }
-                        </MudSelect>
-                    </MudItem>
+        <!-- Create Prompt Section -->
+        <MudCard Class="mb-4">
+            <MudCardHeader>
+                <MudText Typo="Typo.h6" Class="pl-2">Create New Prompt</MudText>
+            </MudCardHeader>
 
-                    <!-- PromptTaskType -->
-                    <MudItem xs="12" md="4">
-                        <MudSelect T="PromptTaskType?" @bind-Value="selectedTaskType"
-                                   Label="Task Type" Variant="Variant.Outlined" Dense="true" Margin="Margin.Dense">
-                            <MudSelectItem Value="@((PromptTaskType?)null)">All</MudSelectItem>
-                            @foreach (var type in Enum.GetValues<PromptTaskType>())
-                            {
-                                <MudSelectItem T="PromptTaskType?" Value="@type">@type</MudSelectItem>
-                            }
-                        </MudSelect>
-                    </MudItem>
+            <MudCardContent>
+                <MudForm @ref="form" @bind-IsValid="@isValid">
+                    <MudGrid Spacing="3" AlignItems="Center">
 
-                    <!-- PromptType -->
+                        <!-- Language Selector -->
+                        <MudItem xs="12" md="4">
+                            <MudSelect T="int?" @bind-Value="createPromptInput.LanguageId"
+                                       Label="Select Language"
+                                       Variant="Variant.Outlined"
+                                       Dense="true"
+                                       Margin="Margin.Dense"
+                                       FullWidth="true">
+                                <MudSelectItem Value="@((int?)null)">All</MudSelectItem>
+                                @foreach (var language in languages)
+                                {
+                                    <MudSelectItem T="int?" Value="@language.Id">@language.Name</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudItem>
+
+                        <!-- Task Type Selector -->
+                        <MudItem xs="12" md="4">
+                            <MudSelect T="PromptTaskType?" @bind-Value="createPromptInput.PromptTaskType"
+                                       Label="Select Task Type"
+                                       Variant="Variant.Outlined"
+                                       Dense="true"
+                                       Margin="Margin.Dense"
+                                       Disabled="@(!createPromptInput.LanguageId.HasValue)"
+                                       FullWidth="true">
+                                <MudSelectItem Value="@((PromptTaskType?)null)">All</MudSelectItem>
+                                @foreach (var type in Enum.GetValues<PromptTaskType>()
+                                                            .Where(taskType => !existingLanguagesByTaskTypeList.Any(s =>
+                                                            s.LanguageId == createPromptInput.LanguageId && s.PromptTaskType == taskType)))
+                                {
+                                    <MudSelectItem T="PromptTaskType?" Value="@type">@type</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudItem>
+
+                        <!-- Create Button -->
+                        <MudItem xs="12" md="4" Class="d-flex justify-end">
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       StartIcon="@Icons.Material.Filled.Add"
+                                       OnClick="CreateNewPrompt"
+                                       Disabled="@(CreatePromptDisabled())"
+                                       Class="mt-md-4 mt-2">
+                                Create Prompt
+                            </MudButton>
+                        </MudItem>
+                    </MudGrid>
+                </MudForm>
+            </MudCardContent>
+        </MudCard>
+
+
+
+        <MudCard Class="mb-4">
+            <MudCardHeader>
+                <MudText Typo="Typo.h6" Class="pl-2">Search prompts</MudText>
+            </MudCardHeader>
+            <MudCardContent>
+                <MudForm @ref="form" @bind-IsValid="@isValid">
+                    <MudGrid Spacing="1">
+                        <!-- Language -->
+                        <MudItem xs="12" md="4">
+                            <MudSelect T="int?" @bind-Value="selectedLanguageId"
+                                       Label="Language" Variant="Variant.Outlined" Dense="true" Margin="Margin.Dense">
+                                <MudSelectItem Value="@((int?)null)">All</MudSelectItem>
+                                @foreach (var language in languages)
+                                {
+                                    <MudSelectItem T="int?" Value="@language.Id">@language.Name</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudItem>
+
+                        <!-- PromptTaskType -->
+                        <MudItem xs="12" md="4">
+                            <MudSelect T="PromptTaskType?" @bind-Value="selectedTaskType"
+                                       Label="Task Type" Variant="Variant.Outlined" Dense="true" Margin="Margin.Dense">
+                                <MudSelectItem Value="@((PromptTaskType?)null)">All</MudSelectItem>
+                                @foreach (var type in Enum.GetValues<PromptTaskType>())
+                                {
+                                    <MudSelectItem T="PromptTaskType?" Value="@type">@type</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudItem>
+
+                        @* <!-- PromptType -->
                     <MudItem xs="12" md="4">
                         <MudSelect T="PromptType?" @bind-Value="selectedPromptType"
                                    Label="Type" Variant="Variant.Outlined" Dense="true" Margin="Margin.Dense">
@@ -77,15 +134,15 @@
                                 <MudSelectItem T="PromptType?" Value="@type">@type</MudSelectItem>
                             }
                         </MudSelect>
-                    </MudItem>
-                </MudGrid>
-            </MudForm>
-        </MudCardContent>
-        <MudCardActions>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Search" Size="Size.Small">Search</MudButton>
-            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="Reset" Size="Size.Small">Reset</MudButton>
-        </MudCardActions>
-    </MudCard>
+                    </MudItem> *@
+                    </MudGrid>
+                </MudForm>
+            </MudCardContent>
+            <MudCardActions>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Search" Size="Size.Small">Search</MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="Reset" Size="Size.Small">Reset</MudButton>
+            </MudCardActions>
+        </MudCard>
 
         <MudTable ServerData="@ServerReload"
                   Hover="true" Bordered="true" Striped="true"
@@ -96,7 +153,7 @@
             <ToolBarContent>
                 <MudText Typo="Typo.h6" Class="ml-2">Prompts List</MudText>
                 <MudSpacer />
-@*                 <MudTextField @bind-Value="searchString" Placeholder="Search"
+                @*                 <MudTextField @bind-Value="searchString" Placeholder="Search"
                               Adornment="Adornment.Start"
                               AdornmentIcon="@Icons.Material.Filled.Search"
                               IconSize="Size.Medium"
@@ -105,29 +162,29 @@
             <HeaderContent>
                 <MudTh><MudTableSortLabel SortLabel="Id" T="AiPromptDto">ID</MudTableSortLabel></MudTh>
                 <MudTh><MudTableSortLabel SortLabel="TaskType" T="AiPromptDto">TaskType</MudTableSortLabel></MudTh>
-                <MudTh><MudTableSortLabel SortLabel="Type" T="AiPromptDto">Type</MudTableSortLabel></MudTh>
+                @* <MudTh><MudTableSortLabel SortLabel="Type" T="AiPromptDto">Type</MudTableSortLabel></MudTh> *@
                 <MudTh><MudTableSortLabel SortLabel="Type" T="AiPromptDto">Language</MudTableSortLabel></MudTh>
                 <MudTh>Actions</MudTh>
             </HeaderContent>
             <RowTemplate>
                 <MudTd DataLabel="ID">@context.Id</MudTd>
                 <MudTd DataLabel="TaskType">@context.TaskType</MudTd>
-                <MudTd DataLabel="Type">@context.Type</MudTd>
+                @* <MudTd DataLabel="Type">@context.Type</MudTd> *@
                 <MudTd DataLabel="Language">@(languagesDictionary[context.LanguageId])</MudTd>
-                
+
                 <MudTd DataLabel="Actions">
                     <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true">
-                        <MudMenuItem OnClick="@(() => EditPrompt(context.Id))">
+                        <MudMenuItem OnClick="@(() => EditPrompt(context))">
                             <MudIcon Icon="@Icons.Material.Filled.Edit" Class="mr-2" Size="Size.Small" /> Edit
                         </MudMenuItem>
-                        <MudMenuItem OnClick="@(() => DeletePrompt(context.Id))">
+                        <MudMenuItem OnClick="@(() => DeletePrompt(context))">
                             <MudIcon Icon="@Icons.Material.Filled.Delete" Class="mr-2" Size="Size.Small" Color="Color.Error" /> Delete
                         </MudMenuItem>
                     </MudMenu>
                 </MudTd>
             </RowTemplate>
             <PagerContent>
-                <MudTablePager PageSizeOptions="new int[] { 10, 25, 50, 100 }" />
+                <MudTablePager PageSizeOptions="new int[] { 50, 100 }" />
             </PagerContent>
             <NoRecordsContent>
                 <MudAlert Severity="Severity.Info" Class="my-2">No prompts found matching your search criteria.</MudAlert>
@@ -147,13 +204,23 @@
     private int? selectedLanguageId = null;
     private PromptTaskType? selectedTaskType = null;
     private PromptType? selectedPromptType = null;
+    private List<AiPromptDto> _existingAiPrompts = [];
+
+    PromptInput createPromptInput = new();
+
+    class PromptInput
+    {
+        public int? LanguageId { get; set; }
+        public PromptTaskType? PromptTaskType { get; set; }
+    }
+
     private List<LanguageDto> languages = [];
     private Dictionary<int, string> languagesDictionary = new Dictionary<int, string>();
+    private List<PromptInput> existingLanguagesByTaskTypeList = new List<PromptInput>();
 
     protected override async Task OnInitializedAsync()
     {
         await LoadLanguagesAsync();
-        //await Search();
     }
 
     private async Task LoadLanguagesAsync()
@@ -161,13 +228,13 @@
 
         try
         {
-            if(languages.Count == 0)
+            if (languages.Count == 0)
             {
                 var languagesResponse = await MindApi.ListLanguagesAsync();
                 languages = languagesResponse.Data.ToList();
                 languagesDictionary = languages.ToDictionary(s => s.Id, s => s.Name);
             }
-            
+
         }
         catch (ApiException apiEx)
         {
@@ -190,13 +257,20 @@
 
         try
         {
+            ListAiPromptsResponse response = await MindApi.SearchAiPromptsGroupedAsync(selectedLanguageId, selectedTaskType);
 
-            ListAiPromptsResponse response = await MindApi.SearchAiPromptsAsync(selectedLanguageId, selectedTaskType, selectedPromptType, state.Page + 1, state.PageSize);
+            _existingAiPrompts = response.Data;
+
+            existingLanguagesByTaskTypeList = _existingAiPrompts.Select(s => new PromptInput
+            {
+                LanguageId = s.LanguageId,
+                PromptTaskType = s.TaskType
+            }).ToList();
 
             return new TableData<AiPromptDto>
             {
-                Items = response.Data,
-                TotalItems = (int)response.TotalRecords
+                Items = _existingAiPrompts,
+                TotalItems = _existingAiPrompts.Count
             };
         }
         catch (ApiException apiEx)
@@ -232,7 +306,7 @@
         await ServerReload(tableState ?? new TableState
         {
             Page = 0,
-            PageSize = 10
+            PageSize = 50
         }, CancellationToken.None);
     }
 
@@ -249,16 +323,16 @@
         }
     }
 
-    private void EditPrompt(int id)
+    private void EditPrompt(AiPromptDto aiPrompt)
     {
-        NavigationManager.NavigateTo($"/prompt/edit/{id}");
+        NavigationManager.NavigateTo($"/prompt/edit/{aiPrompt.LanguageId}/{aiPrompt.TaskType}/false");
     }
 
-    private async Task DeletePrompt(int id)
+    private async Task DeletePrompt(AiPromptDto aiPrompt)
     {
         var dialog = await DialogService.ShowMessageBox(
             "Confirm Deletion",
-            "Are you sure you want to delete this prompt? This action cannot be undone.",
+            "Are you sure you want to delete this prompt? This action cannot be undone and all content will be removed.",
             yesText: "Delete",
             cancelText: "Cancel"
         );
@@ -267,7 +341,7 @@
         {
             try
             {
-                var result = await MindApi.DeleteAiPromptAsync(id);
+                var result = await MindApi.DeleteAiPromptByLanguageAndTaskTypeAsync(aiPrompt.LanguageId, aiPrompt.TaskType);
                 if (!string.IsNullOrEmpty(result?.Message))
                 {
                     Snackbar.Add(result.Message, Severity.Success);
@@ -286,5 +360,28 @@
                 Snackbar.Add($"Error deleting prompt: {ex.Message}", Severity.Error);
             }
         }
+    }
+
+    private void CreateNewPrompt()
+    {
+        if (createPromptInput == null || !createPromptInput.LanguageId.HasValue || !createPromptInput.PromptTaskType.HasValue)
+            return;
+
+        if (existingLanguagesByTaskTypeList.Any(s => s.LanguageId == createPromptInput.LanguageId.Value && s.PromptTaskType == createPromptInput.PromptTaskType.Value))
+        {
+            Snackbar.Add("There is an existing prompt for selected language and taskType.", Severity.Error);
+            return;
+        }
+
+        NavigationManager.NavigateTo($"/prompt/edit/{createPromptInput.LanguageId}/{createPromptInput.PromptTaskType}/true", true);
+
+    }
+
+    private bool CreatePromptDisabled()
+    {
+        if (createPromptInput == null || !createPromptInput.LanguageId.HasValue || !createPromptInput.PromptTaskType.HasValue)
+            return true;
+
+        return false;
     }
 }

@@ -19,6 +19,25 @@ namespace HillMetrics.MIND.API.SDK.V1
         [Get("/api/v1/prompt/{id}")]
         Task<GetAiPromptResponse> GetAiPromptAsync(int id);
 
+
+        /// <summary>
+        /// List Ai prompts distinct by language and taskType
+        /// </summary>
+        /// <param name="languageId"></param>
+        /// <param name="promptTaskType"></param>
+        /// <returns></returns>
+        [Get("/api/v1/prompt/{languageId}/{promptTaskType}")]
+        Task<ListAiPromptsResponse> ListAiPromptAsync(int languageId, PromptTaskType promptTaskType);
+
+        /// <summary>
+        /// Search AI Prompts grouped by language and prompt task type
+        /// </summary>
+        /// <param name="languageId"></param>
+        /// <param name="promptTaskType"></param>
+        /// <returns></returns>
+        [Get("/api/v1/prompt/search/grouped")]
+        Task<ListAiPromptsResponse> SearchAiPromptsGroupedAsync(int? languageId, PromptTaskType? promptTaskType);
+
         /// <summary>
         /// Search AI Prompts
         /// </summary>
@@ -29,7 +48,7 @@ namespace HillMetrics.MIND.API.SDK.V1
         /// <param name="pageSize"></param>
         /// <returns></returns>
         [Get("/api/v1/prompt/search")]
-        Task<ListAiPromptsResponse> SearchAiPromptsAsync([Query] int? languageId, [Query] PromptTaskType? taskType, [Query] PromptType? promptType, [Query] int pageNumber = 1, [Query] int pageSize = 25);
+        Task<ListAiPromptsPagedResponse> SearchAiPromptsAsync([Query] int? languageId, [Query] PromptTaskType? taskType, [Query] PromptType? promptType, [Query] int pageNumber = 1, [Query] int pageSize = 25);
 
 
         /// <summary>
@@ -56,6 +75,15 @@ namespace HillMetrics.MIND.API.SDK.V1
         /// <returns></returns>
         [Delete("/api/v1/prompt/{id}")]
         Task<DeletedResponse> DeleteAiPromptAsync(int id);
-    }                                                
+        
+        /// <summary>
+        /// Delete AI prompt by language and taskType
+        /// </summary>
+        /// <param name="languageId"></param>
+        /// <param name="promptTaskType"></param>
+        /// <returns></returns>
+        [Delete("/api/v1/prompt/{languageId}/{promptTaskType}")]
+        Task<DeletedResponse> DeleteAiPromptByLanguageAndTaskTypeAsync(int languageId, PromptTaskType promptTaskType);
+    }
 }                                                    
                                                      
