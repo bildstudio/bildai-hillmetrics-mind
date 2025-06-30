@@ -144,7 +144,8 @@
                             </MudItem>
                             <MudItem xs="6" md="4">
                                 <MudField Label="Fetching Status" Variant="Variant.Outlined">
-                                    @if (flux.FluxIdentificationHistory.Count > 0)
+                                    @if (flux.FluxIdentificationHistory.Count > 0 && 
+                                         flux.FluxIdentificationHistory[^1].IdentificationContentHistories?.Count > 0)
                                     {
                                         <MudTooltip Text="@flux.FluxIdentificationHistory[^1].IdentificationContentHistories[^1].IdentifiedAt.ToString()">
                                             <MudIcon Icon="@GetStatusIcon(flux.FluxIdentificationHistory[^1].IdentificationContentHistories[^1].ContentStatus)"

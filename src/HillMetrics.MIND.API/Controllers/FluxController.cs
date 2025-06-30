@@ -77,8 +77,7 @@ namespace HillMetrics.MIND.API.Controllers
                 return new ErrorApiActionResult(result.Errors.ToApiResult());
 
             // Create a concrete wrapper for the response
-            var wrapper = new FluxResponseWrapper(mapper.Map<FluxResponse>(result.Value.Flux));
-
+            var wrapper = new FluxResponseWrapper(mapper.Map<FluxResponse>(result.Value));
             return wrapper;
         }
 

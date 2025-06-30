@@ -41,12 +41,12 @@
                                                Label="New Flux ID" />
                     </MudItem>
 
-                    <!-- Element ID -->
+                    <!-- Entity ID -->
                     <MudItem xs="12" md="4">
                         <SearchCriteriaComponent T="int"
-                                               SearchCriteria="@elementIdSearchCriteria"
-                                               SearchCriteriaChanged="@((criteria) => elementIdSearchCriteria = criteria)"
-                                               Label="Element ID" />
+                                               SearchCriteria="@entityIdSearchCriteria"
+                                               SearchCriteriaChanged="@((criteria) => entityIdSearchCriteria = criteria)"
+                                               Label="Entity ID" />
                     </MudItem>
 
                     <!-- Workflow Step ID -->
@@ -139,12 +139,12 @@
                                       AdornmentIcon="@Icons.Material.Filled.Build" />
                     </MudItem>
 
-                    <!-- Element Type -->
+                    <!-- Entity Type -->
                     <MudItem xs="12" md="6">
-                        <MudTextField @bind-Value="searchRequest.ElementType"
-                                      Label="Element Type"
+                        <MudTextField @bind-Value="searchRequest.EntityType"
+                                      Label="Entity Type"
                                       Variant="Variant.Outlined"
-                                      Placeholder="Element type..."
+                                      Placeholder="Entity type..."
                                       Immediate="true"
                                       DebounceInterval="500"
                                       OnDebounceIntervalElapsed="Search"
@@ -217,7 +217,9 @@
         <MudTable ServerData="@ServerReload"
                   Hover="true" Bordered="true" Striped="true"
                   Dense="true" @bind-SelectedItem="selectedItem" T="AuditFluxSearchResponse"
-                  Breakpoint="Breakpoint.Sm" RowClassFunc="SelectedRowClassFunc" RowsPerPage="50">
+                  Breakpoint="Breakpoint.Sm" RowClassFunc="SelectedRowClassFunc" RowsPerPage="50"
+                  Style="font-size: 0.75rem;"
+                  Class="compact-table">
             <ToolBarContent>
                 <MudText Typo="Typo.h6" Class="ml-2">Flux Change Logs</MudText>
                 <MudSpacer />
@@ -226,103 +228,107 @@
                               Class="mt-0 mb-3" Margin="Margin.Dense"></MudTextField>
             </ToolBarContent>
             <HeaderContent>
-                <MudTh>ID</MudTh>
-                <MudTh>Operation</MudTh>
-                <MudTh>Entity</MudTh>
-                <MudTh>Flux IDs</MudTh>
-                <MudTh>Element ID</MudTh>
-                <MudTh>Workflow Step</MudTh>
-                <MudTh>Database</MudTh>
-                <MudTh>Property</MudTh>
-                <MudTh>Values</MudTh>
-                <MudTh>Caller</MudTh>
-                <MudTh>Operation Time</MudTh>
-                <MudTh>Actions</MudTh>
+                <MudTh Style="width: 60px; font-size: 0.7rem;">ID</MudTh>
+                <MudTh Style="width: 80px; font-size: 0.7rem;">Operation</MudTh>
+                <MudTh Style="width: 120px; font-size: 0.7rem;">Entity</MudTh>
+                <MudTh Style="width: 100px; font-size: 0.7rem;">Flux IDs</MudTh>
+                <MudTh Style="width: 80px; font-size: 0.7rem;">Entity ID</MudTh>
+                <MudTh Style="width: 80px; font-size: 0.7rem;">Workflow</MudTh>
+                <MudTh Style="width: 80px; font-size: 0.7rem;">Database</MudTh>
+                <MudTh Style="width: 100px; font-size: 0.7rem;">Property</MudTh>
+                <MudTh Style="width: 300px; font-size: 0.7rem;">Values</MudTh>
+                <MudTh Style="width: 120px; font-size: 0.7rem;">Caller</MudTh>
+                <MudTh Style="width: 120px; font-size: 0.7rem;">Time</MudTh>
+                <MudTh Style="width: 80px; font-size: 0.7rem;">Actions</MudTh>
             </HeaderContent>
             <RowTemplate>
-                <MudTd DataLabel="ID">@context.Id</MudTd>
-                <MudTd DataLabel="Operation">
-                    <MudChip T="string" Color="GetOperationTypeColor(context.OperationType)" Size="Size.Small">
+                <MudTd DataLabel="ID" Style="padding: 4px 8px; font-size: 0.7rem;">
+                    <MudText Typo="Typo.caption">@context.Id</MudText>
+                </MudTd>
+                <MudTd DataLabel="Operation" Style="padding: 4px 8px;">
+                    <MudChip T="string" Color="GetOperationTypeColor(context.OperationType)" Size="Size.Small" Style="font-size: 0.65rem; height: 20px;">
                         @context.OperationType
                     </MudChip>
                 </MudTd>
-                <MudTd DataLabel="Entity">
-                    <MudText Style="max-width: 150px; overflow: hidden; text-overflow: ellipsis;">
+                <MudTd DataLabel="Entity" Style="padding: 4px 8px;">
+                    <MudText Typo="Typo.caption" Style="font-size: 0.7rem; max-width: 120px; overflow: hidden; text-overflow: ellipsis; line-height: 1.2;">
                         @context.EntityName
                     </MudText>
                 </MudTd>
-                <MudTd DataLabel="Flux IDs">
-                    <MudStack Spacing="1">
-                        <MudText Typo="Typo.caption">@($"Prev: {context.PreviousFluxId}")</MudText>
-                        <MudText Typo="Typo.caption">@($"New: {context.NewFluxId}")</MudText>
-                    </MudStack>
+                <MudTd DataLabel="Flux IDs" Style="padding: 4px 8px;">
+                    <div style="line-height: 1;">
+                        <div style="font-size: 0.65rem; margin-bottom: 1px;">@($"P: {context.PreviousFluxId}")</div>
+                        <div style="font-size: 0.65rem;">@($"N: {context.NewFluxId}")</div>
+                    </div>
                 </MudTd>
-                <MudTd DataLabel="Element ID">
-                    @(context.ElementId?.ToString() ?? "-")
+                <MudTd DataLabel="Entity ID" Style="padding: 4px 8px; font-size: 0.7rem;">
+                    <MudText Typo="Typo.caption">@(context.EntityId?.ToString() ?? "-")</MudText>
                 </MudTd>
-                <MudTd DataLabel="Workflow Step">
-                    @(context.WorkflowStepId?.ToString() ?? "-")
+                <MudTd DataLabel="Workflow" Style="padding: 4px 8px; font-size: 0.7rem;">
+                    <MudText Typo="Typo.caption">@(context.WorkflowStepId?.ToString() ?? "-")</MudText>
                 </MudTd>
-                <MudTd DataLabel="Database">
-                    <MudText Style="max-width: 100px; overflow: hidden; text-overflow: ellipsis;">
+                <MudTd DataLabel="Database" Style="padding: 4px 8px;">
+                    <MudText Typo="Typo.caption" Style="font-size: 0.7rem; max-width: 80px; overflow: hidden; text-overflow: ellipsis;">
                         @(context.DatabaseName ?? "-")
                     </MudText>
                 </MudTd>
-                <MudTd DataLabel="Property">
-                    @(context.PropertyName ?? "-")
+                <MudTd DataLabel="Property" Style="padding: 4px 8px;">
+                    <MudText Typo="Typo.caption" Style="font-size: 0.7rem; max-width: 100px; overflow: hidden; text-overflow: ellipsis;">
+                        @(context.PropertyName ?? "-")
+                    </MudText>
                 </MudTd>
-                <MudTd DataLabel="Values">
+                <MudTd DataLabel="Values" Style="padding: 4px 8px; max-width: 300px;">
                     <MudTooltip Text="@($"Previous: {context.PreviousValue}\nNew: {context.NewValue}")">
-                        <div style="cursor: pointer; max-width: 120px;">
-                            <MudText Typo="Typo.caption" Style="overflow: hidden; text-overflow: ellipsis;">
-                                @($"Prev: {GetTruncatedValue(context.PreviousValue)}")
-                            </MudText>
-                            <MudText Typo="Typo.caption" Style="overflow: hidden; text-overflow: ellipsis;">
-                                @($"New: {GetTruncatedValue(context.NewValue)}")
-                            </MudText>
+                        <div style="cursor: pointer; font-size: 0.65rem; line-height: 1.1;">
+                            <div style="margin-bottom: 2px; color: #d32f2f; background-color: #ffebee; padding: 1px 4px; border-radius: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                <strong>Prev:</strong> @GetTruncatedValue(context.PreviousValue, 60)
+                            </div>
+                            <div style="color: #388e3c; background-color: #e8f5e8; padding: 1px 4px; border-radius: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                <strong>New:</strong> @GetTruncatedValue(context.NewValue, 60)
+                            </div>
                         </div>
                     </MudTooltip>
                 </MudTd>
-                <MudTd DataLabel="Caller">
+                <MudTd DataLabel="Caller" Style="padding: 4px 8px;">
                     <MudTooltip Text="@($"{context.CallerClass}.{context.CallerMethod}")">
-                        <div style="cursor: pointer; max-width: 100px;">
-                            <MudText Typo="Typo.caption" Style="overflow: hidden; text-overflow: ellipsis;">
+                        <div style="cursor: pointer; font-size: 0.65rem; line-height: 1.1;">
+                            <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 1px;">
                                 @GetShortClassName(context.CallerClass)
-                            </MudText>
-                            <MudText Typo="Typo.caption" Style="overflow: hidden; text-overflow: ellipsis;">
+                            </div>
+                            <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #666;">
                                 @context.CallerMethod
-                            </MudText>
+                            </div>
                         </div>
                     </MudTooltip>
                 </MudTd>
-                <MudTd DataLabel="Operation Time">
+                <MudTd DataLabel="Time" Style="padding: 4px 8px;">
                     <MudTooltip Text="@context.OperationTime.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")">
-                        <div style="cursor: pointer;">
+                        <div style="cursor: pointer; font-size: 0.65rem;">
                             @FormatDateTime(context.OperationTime.ToLocalTime())
                         </div>
                     </MudTooltip>
                 </MudTd>
-                <MudTd DataLabel="Actions">
+                <MudTd DataLabel="Actions" Style="padding: 4px 8px;">
                     <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true">
-                        <MudMenuItem OnClick="@(() => ViewDetails(context))">
-                            <MudIcon Icon="@Icons.Material.Filled.Visibility" Class="mr-2" Size="Size.Small" /> View Details
+                        <MudMenuItem OnClick="@(() => ViewDetails(context))" Style="font-size: 0.75rem; padding: 8px 12px;">
+                            <MudIcon Icon="@Icons.Material.Filled.Visibility" Class="mr-1" Size="Size.Small" /> Details
                         </MudMenuItem>
-                        @if (context.ElementId.HasValue)
+                        @if (context.EntityId.HasValue)
                         {
-                            <MudMenuItem OnClick="@(() => SearchByElement(context.ElementId.Value))">
-                                <MudIcon Icon="@Icons.Material.Filled.Link" Class="mr-2" Size="Size.Small" /> Related Changes
+                            <MudMenuItem OnClick="@(() => SearchByEntity(context.EntityId.Value))" Style="font-size: 0.75rem; padding: 8px 12px;">
+                                <MudIcon Icon="@Icons.Material.Filled.Link" Class="mr-1" Size="Size.Small" /> Related
                             </MudMenuItem>
                         }
                         @if (context.NewFluxId > 0)
                         {
-                            <MudMenuItem OnClick="@(() => SearchByFlux(context.NewFluxId!.Value))">
-                                <MudIcon Icon="@Icons.Material.Filled.AccountTree" Class="mr-2" Size="Size.Small" /> Flux History
+                            <MudMenuItem OnClick="@(() => SearchByFlux(context.NewFluxId!.Value))" Style="font-size: 0.75rem; padding: 8px 12px;">
+                                <MudIcon Icon="@Icons.Material.Filled.AccountTree" Class="mr-1" Size="Size.Small" /> Flux
                             </MudMenuItem>
                         }
                         @if (context.WorkflowStepId.HasValue)
                         {
-                            <MudMenuItem OnClick="@(() => SearchByWorkflowStep(context.WorkflowStepId.Value))">
-                                <MudIcon Icon="@Icons.Material.Filled.Timeline" Class="mr-2" Size="Size.Small" /> Workflow Step Changes
+                            <MudMenuItem OnClick="@(() => SearchByWorkflowStep(context.WorkflowStepId.Value))" Style="font-size: 0.75rem; padding: 8px 12px;">
+                                <MudIcon Icon="@Icons.Material.Filled.Timeline" Class="mr-1" Size="Size.Small" /> Workflow
                             </MudMenuItem>
                         }
                     </MudMenu>
@@ -354,7 +360,7 @@
     // SearchCriteria for each field
     private SearchCriteria<int> previousFluxIdSearchCriteria = new();
     private SearchCriteria<int> newFluxIdSearchCriteria = new();
-    private SearchCriteria<int> elementIdSearchCriteria = new();
+    private SearchCriteria<int> entityIdSearchCriteria = new();
     private SearchCriteria<int> workflowStepIdSearchCriteria = new();
     private SearchCriteria<DateTime> operationTimeSearchCriteria = new();
 
@@ -420,7 +426,7 @@
         // Apply SearchCriteria filters
         searchRequest.PreviousFluxId = previousFluxIdSearchCriteria.IsSet() ? previousFluxIdSearchCriteria : null;
         searchRequest.NewFluxId = newFluxIdSearchCriteria.IsSet() ? newFluxIdSearchCriteria : null;
-        searchRequest.ElementId = elementIdSearchCriteria.IsSet() ? elementIdSearchCriteria : null;
+        searchRequest.EntityId = entityIdSearchCriteria.IsSet() ? entityIdSearchCriteria : null;
         searchRequest.WorkflowStepId = workflowStepIdSearchCriteria.IsSet() ? workflowStepIdSearchCriteria : null;
         searchRequest.OperationTime = operationTimeSearchCriteria.IsSet() ? operationTimeSearchCriteria : null;
 
@@ -443,7 +449,7 @@
         searchRequest = new AuditFluxSearchRequest { Pagination = new Pagination(50, 1) };
         previousFluxIdSearchCriteria = new SearchCriteria<int>();
         newFluxIdSearchCriteria = new SearchCriteria<int>();
-        elementIdSearchCriteria = new SearchCriteria<int>();
+        entityIdSearchCriteria = new SearchCriteria<int>();
         workflowStepIdSearchCriteria = new SearchCriteria<int>();
         operationTimeSearchCriteria = new SearchCriteria<DateTime>();
         searchString = "";
@@ -463,12 +469,12 @@
         var dialog = await DialogService.ShowAsync<AuditFluxDetailsDialog>("Flux Change Details", parameters);
     }
 
-    private async Task SearchByElement(int elementId)
+    private async Task SearchByEntity(int entityId)
     {
         searchRequest = new AuditFluxSearchRequest { Pagination = new Pagination(50, 1) };
         previousFluxIdSearchCriteria = new SearchCriteria<int>();
         newFluxIdSearchCriteria = new SearchCriteria<int>();
-        elementIdSearchCriteria = new SearchCriteria<int> { Operator = Operator.Equal, Value = elementId };
+        entityIdSearchCriteria = new SearchCriteria<int> { Operator = Operator.Equal, Value = entityId };
         workflowStepIdSearchCriteria = new SearchCriteria<int>();
         operationTimeSearchCriteria = new SearchCriteria<DateTime>();
         await Search();
@@ -479,7 +485,7 @@
         searchRequest = new AuditFluxSearchRequest { Pagination = new Pagination(50, 1) };
         previousFluxIdSearchCriteria = new SearchCriteria<int>();
         newFluxIdSearchCriteria = new SearchCriteria<int> { Operator = Operator.Equal, Value = fluxId };
-        elementIdSearchCriteria = new SearchCriteria<int>();
+        entityIdSearchCriteria = new SearchCriteria<int>();
         workflowStepIdSearchCriteria = new SearchCriteria<int>();
         operationTimeSearchCriteria = new SearchCriteria<DateTime>();
         await Search();
@@ -490,7 +496,7 @@
         searchRequest = new AuditFluxSearchRequest { Pagination = new Pagination(50, 1) };
         previousFluxIdSearchCriteria = new SearchCriteria<int>();
         newFluxIdSearchCriteria = new SearchCriteria<int>();
-        elementIdSearchCriteria = new SearchCriteria<int>();
+        entityIdSearchCriteria = new SearchCriteria<int>();
         workflowStepIdSearchCriteria = new SearchCriteria<int> { Operator = Operator.Equal, Value = workflowStepId };
         operationTimeSearchCriteria = new SearchCriteria<DateTime>();
         await Search();
@@ -554,7 +560,7 @@
             auditLog.CallerClass.Contains(searchString, StringComparison.OrdinalIgnoreCase) ||
             auditLog.CallerMethod.Contains(searchString, StringComparison.OrdinalIgnoreCase) ||
             (auditLog.PropertyName?.Contains(searchString, StringComparison.OrdinalIgnoreCase) ?? false) ||
-            (auditLog.ElementType?.Contains(searchString, StringComparison.OrdinalIgnoreCase) ?? false) ||
+            (auditLog.EntityType?.Contains(searchString, StringComparison.OrdinalIgnoreCase) ?? false) ||
             auditLog.Reason.Contains(searchString, StringComparison.OrdinalIgnoreCase);
     }
 

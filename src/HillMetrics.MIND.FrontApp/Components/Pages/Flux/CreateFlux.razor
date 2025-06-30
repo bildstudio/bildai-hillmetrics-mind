@@ -892,19 +892,19 @@
         }
     }
 
-    private string GetFriendlyTypeName(Type type)
+    private string GetFriendlyTypeName(string type)
     {
-        if (type == typeof(string)) return "Text";
-        if (type == typeof(int) || type == typeof(int?)) return "Number";
-        if (type == typeof(long) || type == typeof(long?)) return "Number (Long)";
-        if (type == typeof(double) || type == typeof(double?)) return "Decimal";
-        if (type == typeof(bool) || type == typeof(bool?)) return "Boolean";
-        if (type == typeof(DateTime) || type == typeof(DateTime?)) return "Date";
-        if (type == typeof(TimeSpan) || type == typeof(TimeSpan?)) return "Time";
-        if (type == typeof(Uri)) return "URL";
-        if (type == typeof(string[])) return "Text Array";
-        if (type == typeof(List<string>)) return "Text List";
+        if (type == typeof(string).Name) return "Text";
+        if (type == typeof(int).Name || type == typeof(int?).Name) return "Number";
+        if (type == typeof(long).Name || type == typeof(long?).Name) return "Number (Long)";
+        if (type == typeof(double).Name || type == typeof(double?).Name) return "Decimal";
+        if (type == typeof(bool).Name || type == typeof(bool?).Name) return "Boolean";
+        if (type == typeof(DateTime).Name || type == typeof(DateTime?).Name) return "Date";
+        if (type == typeof(TimeSpan).Name || type == typeof(TimeSpan?).Name) return "Time";
+        if (type == typeof(Uri).Name) return "URL";
+        if (type == typeof(string[]).Name) return "Text Array";
+        if (type == typeof(List<string>).Name) return "Text List";
         
-        return type.Name;
+        return type;
     }
 }

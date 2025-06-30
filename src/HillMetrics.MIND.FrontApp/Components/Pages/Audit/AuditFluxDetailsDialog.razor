@@ -3,7 +3,7 @@
 
 <MudDialog>
     <DialogContent>
-        <MudContainer Style="max-height: 80vh; overflow-y: auto;">
+        <MudContainer Style="max-height: 85vh; overflow-y: auto; max-width: 1400px;">
             @if (AuditFluxLog != null)
             {
                 <MudGrid Spacing="2">
@@ -37,17 +37,31 @@
                                     @AuditFluxLog.EntityName
                                 </MudField>
 
-                                @if (AuditFluxLog.ElementId.HasValue)
+                                @if (AuditFluxLog.EntityId.HasValue)
                                 {
-                                    <MudField Label="Element ID" Variant="Variant.Outlined" Class="mb-2">
-                                        @AuditFluxLog.ElementId.Value
+                                    <MudField Label="Entity ID" Variant="Variant.Outlined" Class="mb-2">
+                                        @AuditFluxLog.EntityId.Value
                                     </MudField>
                                 }
 
-                                @if (!string.IsNullOrEmpty(AuditFluxLog.ElementType))
+                                @if (!string.IsNullOrEmpty(AuditFluxLog.EntityType))
                                 {
-                                    <MudField Label="Element Type" Variant="Variant.Outlined" Class="mb-2">
-                                        @AuditFluxLog.ElementType
+                                    <MudField Label="Entity Type" Variant="Variant.Outlined" Class="mb-2">
+                                        @AuditFluxLog.EntityType
+                                    </MudField>
+                                }
+
+                                @if (AuditFluxLog.WorkflowStepId.HasValue)
+                                {
+                                    <MudField Label="Workflow Step ID" Variant="Variant.Outlined" Class="mb-2">
+                                        @AuditFluxLog.WorkflowStepId.Value
+                                    </MudField>
+                                }
+
+                                @if (!string.IsNullOrEmpty(AuditFluxLog.DatabaseName))
+                                {
+                                    <MudField Label="Database Name" Variant="Variant.Outlined" Class="mb-2">
+                                        @AuditFluxLog.DatabaseName
                                     </MudField>
                                 }
 
@@ -93,19 +107,19 @@
                                 <MudText Typo="Typo.h6" Class="mb-3">Value Changes</MudText>
                                 
                                 <MudGrid>
-                                    <MudItem xs="12" md="6">
+                                    <MudItem xs="12">
                                         <MudTextField Label="Previous Value"
                                                       Value="@AuditFluxLog.PreviousValue"
                                                       Variant="Variant.Outlined"
-                                                      Lines="3"
+                                                      Lines="6"
                                                       ReadOnly="true"
-                                                      Class="mb-2" />
+                                                      Class="mb-3" />
                                     </MudItem>
-                                    <MudItem xs="12" md="6">
+                                    <MudItem xs="12">
                                         <MudTextField Label="New Value"
                                                       Value="@AuditFluxLog.NewValue"
                                                       Variant="Variant.Outlined"
-                                                      Lines="3"
+                                                      Lines="6"
                                                       ReadOnly="true"
                                                       Class="mb-2" />
                                     </MudItem>
@@ -191,7 +205,7 @@
     </DialogContent>
     <DialogActions>
         <MudButton Color="Color.Secondary" OnClick="Cancel">Close</MudButton>
-        @if (AuditFluxLog?.ElementId.HasValue == true)
+        @if (AuditFluxLog?.EntityId.HasValue == true)
         {
             <MudButton Color="Color.Primary" OnClick="ViewRelatedChanges">
                 View Related Changes
@@ -209,11 +223,11 @@
 
     private void ViewRelatedChanges()
     {
-        if (AuditFluxLog?.ElementId.HasValue == true)
+        if (AuditFluxLog?.EntityId.HasValue == true)
         {
             // You can implement navigation to related changes here
-            // For example, pass the ElementId back to the parent component
-            MudDialog.Close(DialogResult.Ok(AuditFluxLog.ElementId.Value));
+            // For example, pass the EntityId back to the parent component
+            MudDialog.Close(DialogResult.Ok(AuditFluxLog.EntityId.Value));
         }
     }
 
