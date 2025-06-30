@@ -51,24 +51,14 @@
                                     </MudField>
                                 }
 
-                                @if (AuditFluxLog.WorkflowStepId.HasValue)
-                                {
                                     <MudField Label="Workflow Step ID" Variant="Variant.Outlined" Class="mb-2">
-                                        @AuditFluxLog.WorkflowStepId.Value
+                                        @AuditFluxLog.WorkflowStepId
                                     </MudField>
-                                }
 
                                 @if (!string.IsNullOrEmpty(AuditFluxLog.DatabaseName))
                                 {
                                     <MudField Label="Database Name" Variant="Variant.Outlined" Class="mb-2">
                                         @AuditFluxLog.DatabaseName
-                                    </MudField>
-                                }
-
-                                @if (!string.IsNullOrEmpty(AuditFluxLog.PropertyName))
-                                {
-                                    <MudField Label="Property Name" Variant="Variant.Outlined" Class="mb-2">
-                                        @AuditFluxLog.PropertyName
                                     </MudField>
                                 }
                             </MudCardContent>

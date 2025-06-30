@@ -126,18 +126,7 @@
                                       AdornmentIcon="@Icons.Material.Filled.Functions" />
                     </MudItem>
 
-                    <!-- Property Name -->
-                    <MudItem xs="12" md="6">
-                        <MudTextField @bind-Value="searchRequest.PropertyName"
-                                      Label="Property Name"
-                                      Variant="Variant.Outlined"
-                                      Placeholder="Property changed..."
-                                      Immediate="true"
-                                      DebounceInterval="500"
-                                      OnDebounceIntervalElapsed="Search"
-                                      Adornment="Adornment.Start"
-                                      AdornmentIcon="@Icons.Material.Filled.Build" />
-                    </MudItem>
+
 
                     <!-- Entity Type -->
                     <MudItem xs="12" md="6">
@@ -235,7 +224,6 @@
                 <MudTh Style="width: 80px; font-size: 0.7rem;">Entity ID</MudTh>
                 <MudTh Style="width: 80px; font-size: 0.7rem;">Workflow</MudTh>
                 <MudTh Style="width: 80px; font-size: 0.7rem;">Database</MudTh>
-                <MudTh Style="width: 100px; font-size: 0.7rem;">Property</MudTh>
                 <MudTh Style="width: 300px; font-size: 0.7rem;">Values</MudTh>
                 <MudTh Style="width: 120px; font-size: 0.7rem;">Caller</MudTh>
                 <MudTh Style="width: 120px; font-size: 0.7rem;">Time</MudTh>
@@ -265,23 +253,18 @@
                     <MudText Typo="Typo.caption">@(context.EntityId?.ToString() ?? "-")</MudText>
                 </MudTd>
                 <MudTd DataLabel="Workflow" Style="padding: 4px 8px; font-size: 0.7rem;">
-                    <MudText Typo="Typo.caption">@(context.WorkflowStepId?.ToString() ?? "-")</MudText>
+                    <MudText Typo="Typo.caption">@(context.WorkflowStepId.ToString() ?? "-")</MudText>
                 </MudTd>
                 <MudTd DataLabel="Database" Style="padding: 4px 8px;">
                     <MudText Typo="Typo.caption" Style="font-size: 0.7rem; max-width: 80px; overflow: hidden; text-overflow: ellipsis;">
                         @(context.DatabaseName ?? "-")
                     </MudText>
                 </MudTd>
-                <MudTd DataLabel="Property" Style="padding: 4px 8px;">
-                    <MudText Typo="Typo.caption" Style="font-size: 0.7rem; max-width: 100px; overflow: hidden; text-overflow: ellipsis;">
-                        @(context.PropertyName ?? "-")
-                    </MudText>
-                </MudTd>
                 <MudTd DataLabel="Values" Style="padding: 4px 8px; max-width: 300px;">
                     <MudTooltip Text="@($"Previous: {context.PreviousValue}\nNew: {context.NewValue}")">
                         <div style="cursor: pointer; font-size: 0.65rem; line-height: 1.1;">
                             <div style="margin-bottom: 2px; color: #d32f2f; background-color: #ffebee; padding: 1px 4px; border-radius: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                                <strong>Prev:</strong> @GetTruncatedValue(context.PreviousValue, 60)
+                                <strong>Prev:</strong> @GetTruncatedValue(context.PreviousValue ?? "", 60)
                             </div>
                             <div style="color: #388e3c; background-color: #e8f5e8; padding: 1px 4px; border-radius: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                                 <strong>New:</strong> @GetTruncatedValue(context.NewValue, 60)
@@ -325,12 +308,9 @@
                                 <MudIcon Icon="@Icons.Material.Filled.AccountTree" Class="mr-1" Size="Size.Small" /> Flux
                             </MudMenuItem>
                         }
-                        @if (context.WorkflowStepId.HasValue)
-                        {
-                            <MudMenuItem OnClick="@(() => SearchByWorkflowStep(context.WorkflowStepId.Value))" Style="font-size: 0.75rem; padding: 8px 12px;">
+                            <MudMenuItem OnClick="@(() => SearchByWorkflowStep(context.WorkflowStepId))" Style="font-size: 0.75rem; padding: 8px 12px;">
                                 <MudIcon Icon="@Icons.Material.Filled.Timeline" Class="mr-1" Size="Size.Small" /> Workflow
                             </MudMenuItem>
-                        }
                     </MudMenu>
                 </MudTd>
             </RowTemplate>
@@ -559,7 +539,6 @@
             auditLog.EntityName.Contains(searchString, StringComparison.OrdinalIgnoreCase) ||
             auditLog.CallerClass.Contains(searchString, StringComparison.OrdinalIgnoreCase) ||
             auditLog.CallerMethod.Contains(searchString, StringComparison.OrdinalIgnoreCase) ||
-            (auditLog.PropertyName?.Contains(searchString, StringComparison.OrdinalIgnoreCase) ?? false) ||
             (auditLog.EntityType?.Contains(searchString, StringComparison.OrdinalIgnoreCase) ?? false) ||
             auditLog.Reason.Contains(searchString, StringComparison.OrdinalIgnoreCase);
     }
