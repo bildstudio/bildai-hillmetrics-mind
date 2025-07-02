@@ -156,14 +156,6 @@
             {
                 flux = response;
 
-                // Verify it's a manual flux
-                if (flux.FluxType != FluxType.Manual)
-                {
-                    Snackbar.Add("This flux is not a manual flux.", Severity.Error);
-                    NavigationManager.NavigateTo("/flux/search");
-                    return;
-                }
-
                 // Get expected content type from metadata
                 if (flux.ManualMetadata != null)
                 {

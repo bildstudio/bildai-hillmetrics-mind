@@ -112,7 +112,7 @@
     private List<FinancialDataPoint> FilteredDataPoints => File == null
         ? new List<FinancialDataPoint>()
         : AvailableDataPoints
-            .Where(dp => dp.FinancialType == File.FinancialType)
+            .Where(dp => dp.FinancialType == File.FinancialType || dp.FinancialType == FinancialType.Undefined)
             .ToList();
 
     protected override void OnParametersSet()

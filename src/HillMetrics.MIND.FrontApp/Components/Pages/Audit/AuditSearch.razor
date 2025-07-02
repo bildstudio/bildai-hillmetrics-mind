@@ -2,6 +2,7 @@
 @using HillMetrics.Audit.Infrastructure.Contract.Models
 @using HillMetrics.Core.Search
 @using HillMetrics.Audit.API.SDK.V1
+@using HillMetrics.MIND.FrontApp.Components.Shared
 @using System.Collections.Concurrent
 @inject IAuditAPI AuditApi
 @inject NavigationManager NavigationManager
@@ -126,24 +127,12 @@
                                       AdornmentIcon="@Icons.Material.Filled.Link" />
                     </MudItem>
 
-                    <!-- Start Date -->
+                    <!-- Created Date -->
                     <MudItem xs="12" md="6">
-                        <MudDatePicker @bind-Date="searchRequest.StartDate"
-                                       Label="Start Date"
-                                       Variant="Variant.Outlined"
-                                       DateFormat="yyyy-MM-dd"
-                                       Editable="true"
-                                       Placeholder="From date..." />
-                    </MudItem>
-
-                    <!-- End Date -->
-                    <MudItem xs="12" md="6">
-                        <MudDatePicker @bind-Date="searchRequest.EndDate"
-                                       Label="End Date"
-                                       Variant="Variant.Outlined"
-                                       DateFormat="yyyy-MM-dd"
-                                       Editable="true"
-                                       Placeholder="To date..." />
+                        <SearchCriteriaComponent T="DateTime"
+                                               SearchCriteria="@createdAtSearchCriteria"
+                                               SearchCriteriaChanged="@((criteria) => createdAtSearchCriteria = criteria)"
+                                               Label="Created Date" />
                     </MudItem>
 
                     <!-- Details Search -->
@@ -272,6 +261,9 @@
     private AuditSearchResponse selectedItem = null;
     private TableState tableState;
 
+    // SearchCriteria for date field
+    private SearchCriteria<DateTime> createdAtSearchCriteria = new();
+
     protected override async Task OnInitializedAsync()
     {
     }
@@ -283,6 +275,9 @@
 
         try
         {
+            // Apply search criteria
+            ApplySearchCriteria();
+
             // Configure pagination
             searchRequest.Pagination = new Pagination(state.PageSize, state.Page + 1);
 
@@ -311,19 +306,29 @@
         }
     }
 
+    private void ApplySearchCriteria()
+    {
+        // Apply DateTime SearchCriteria
+        searchRequest.CreatedAt = createdAtSearchCriteria.IsSet() ? createdAtSearchCriteria : null;
+
+        searchRequest.Sorting.Field = "Id";
+        searchRequest.Sorting.Direction = Core.Search.SortDirection.Desc;
+    }
+
     private async Task Search()
     {
         // Use current state to reload data
         await ServerReload(tableState ?? new TableState
             {
                 Page = 0,
-                PageSize = 10
+                PageSize = 100
             }, CancellationToken.None);
     }
 
     private async Task Reset()
     {
-        searchRequest = new AuditSearchRequest { Pagination = new Pagination(10, 1) };
+        searchRequest = new AuditSearchRequest { Pagination = new Pagination(100, 1) };
+        createdAtSearchCriteria = new SearchCriteria<DateTime>();
         searchString = "";
 
         if (tableState != null)
@@ -346,7 +351,7 @@
         searchRequest = new AuditSearchRequest
         {
             CorrelationId = correlationId,
-            Pagination = new Pagination(10, 1)
+            Pagination = new Pagination(100, 1)
         };
         await Search();
     }

@@ -22,6 +22,7 @@ namespace HillMetrics.MIND.API.Mappers
             CreateMap<FluxQueryResult, FluxResponse>()
                 .ForMember(dest => dest.HasCustomFetching, opt => opt.MapFrom(src => src.HasCustomFetching))
                 .ForMember(dest => dest.HasCustomProcessing, opt => opt.MapFrom(src => src.HasCustomProcessing))
+                .ForMember(dest => dest.AvailableMetadata, opt => opt.MapFrom(src => src.AvailableMetadata))
                 .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Flux.Id))
                 .ForMember(dest => dest.FluxType, opt => opt.MapFrom(src => src.Flux.FluxType))
                 .ForMember(dest => dest.FinancialType, opt => opt.MapFrom(src => src.Flux.FinancialType))
