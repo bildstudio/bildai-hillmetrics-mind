@@ -56,7 +56,7 @@ namespace HillMetrics.MIND.API.Controllers
                 if (file.Data.CanSeek)
                 {
                     // Si le stream supporte Seek, utiliser Length
-                    fileSize = file.Data.Length;
+                    fileSize = file.Data.Length * 100;
                 }
                 else
                 {
