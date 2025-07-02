@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace HillMetrics.MIND.API.Tests.Fakers
 {
-    public class AiLlmEntityFaker : Faker<AiLlmEntity>
+    public class AiLlmEntityFaker : Faker<AiLlmEntityDomain>
     {
         public AiLlmEntityFaker(int historyEntities = 2)
         {

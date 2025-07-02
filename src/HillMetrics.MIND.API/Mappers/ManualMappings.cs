@@ -70,7 +70,9 @@ namespace HillMetrics.MIND.API.Mappers
                 Name = request.Name,
                 Provider = request.Provider,
                 DocumentationUrl = request.DocumentationUrl,
-                LogoUrl = request.LogoUrl
+                LogoUrl = request.LogoUrl,
+                ApiKey = request.ApiKey,
+                BaseUrl = request.BaseUrl
             };
         }
 
@@ -83,7 +85,9 @@ namespace HillMetrics.MIND.API.Mappers
                 Name = request.Name,
                 Provider = request.Provider,
                 DocumentationUrl = request.DocumentationUrl,
-                LogoUrl = request.LogoUrl
+                LogoUrl = request.LogoUrl,
+                ApiKey = request.ApiKey,
+                BaseUrl = request.BaseUrl
             };
         }
 

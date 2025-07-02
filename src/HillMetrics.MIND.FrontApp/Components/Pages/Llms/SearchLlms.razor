@@ -1,0 +1,218 @@
+@page "/llms/search"
+@using HillMetrics.Core.Search
+@using HillMetrics.Core.Financial
+@using HillMetrics.MIND.API.Contracts.Responses.Llm
+@using HillMetrics.MIND.API.SDK
+@using HillMetrics.MIND.API.SDK.V1
+@using Refit
+@inject IMindAPI MindApi
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudGrid>
+        <MudItem xs="6">
+            <MudText Typo="Typo.h4" Class="mb-4">LLM models</MudText>
+        </MudItem>
+        <MudItem xs="6" Class="d-flex justify-end">
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       Href="/llms/create"
+                       Class="align-self-start">
+                Create New LLM
+            </MudButton>
+        </MudItem>
+    </MudGrid>
+
+    @if (loading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-2" />
+    }
+    else
+    {
+        <MudTable ServerData="@ServerReload"
+                  Hover="true" Bordered="true" Striped="true"
+                  Dense="true" @bind-SelectedItem="selectedItem"
+                  T="AiLlmEntityDto"
+                  Breakpoint="Breakpoint.Sm"
+                  @ref="_table">
+            <ToolBarContent>
+                @* <MudText Typo="Typo.h6" Class="ml-2">Llm List</MudText>
+                <MudSpacer /> *@
+                @* <MudTextField @bind-Value="searchString" Placeholder="Search"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              IconSize="Size.Medium"
+                              Class="mt-0 mb-3" Margin="Margin.Dense" Dense="true" /> *@
+            </ToolBarContent>
+            <HeaderContent>
+                <MudTh><MudTableSortLabel SortLabel="Id" T="AiLlmEntityDto">ID</MudTableSortLabel></MudTh>
+                <MudTh><MudTableSortLabel SortLabel="Name" T="AiLlmEntityDto">Name</MudTableSortLabel></MudTh>
+                <MudTh><MudTableSortLabel SortLabel="Provider" T="AiLlmEntityDto">Provider</MudTableSortLabel></MudTh>
+                <MudTh><MudTableSortLabel SortLabel="BaseUrl" T="AiLlmEntityDto">BaseUrl</MudTableSortLabel></MudTh>
+                <MudTh><MudTableSortLabel SortLabel="IsActive" T="AiLlmEntityDto">IsActive</MudTableSortLabel></MudTh>
+                <MudTh>Actions</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="ID">@context.Id</MudTd>
+                <MudTd DataLabel="Name">@context.Name</MudTd>
+                <MudTd DataLabel="Provider">@context.Provider</MudTd>
+                <MudTd DataLabel="BaseUrl">@context.BaseUrl</MudTd>
+                <MudTd DataLabel="Active">
+                    <MudIcon Icon="@GetStatusIcon(context.IsActive)"
+                             Color="@GetStatusColor(context.IsActive)" />
+
+                </MudTd>
+                <MudTd DataLabel="Actions">
+                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true">
+                        <MudMenuItem OnClick="@(() => EditLlm(context.Id))">
+                            <MudIcon Icon="@Icons.Material.Filled.Edit" Class="mr-2" Size="Size.Small" /> Edit
+                        </MudMenuItem>
+                        <MudMenuItem OnClick="@(() => DeleteLlm(context.Id))">
+                            <MudIcon Icon="@Icons.Material.Filled.Delete" Class="mr-2" Size="Size.Small" Color="Color.Error" /> Delete
+                        </MudMenuItem>
+                    </MudMenu>
+                </MudTd>
+            </RowTemplate>
+            <PagerContent>
+                <MudTablePager PageSizeOptions="new int[] { 10, 25, 50, 100 }" />
+            </PagerContent>
+            <NoRecordsContent>
+                <MudAlert Severity="Severity.Info" Class="my-2">No llms found matching your search criteria.</MudAlert>
+            </NoRecordsContent>
+        </MudTable>
+    }
+</MudContainer>
+
+@code {
+    private bool loading = false;
+    private bool isValid = false;
+    private MudForm form;
+    private AiLlmEntityDto selectedItem = null;
+    private TableState tableState;
+    private string searchString = "";
+    MudTable<AiLlmEntityDto> _table;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Search();
+    }
+
+    private async Task<TableData<AiLlmEntityDto>> ServerReload(TableState state, CancellationToken token)
+    {
+        tableState = state;
+        loading = true;
+
+        try
+        {
+            ListLlmsResponse response = await MindApi.SearchLlmModelsAsync(null, token);
+
+            return new TableData<AiLlmEntityDto>
+            {
+                Items = response.Data,
+                TotalItems = response.Data.Count
+            };
+        }
+        catch (ApiException apiEx)
+        {
+            var hillEx = apiEx.ToHillMetricsApiException();
+
+            Snackbar.Add($"Error searching llms: {hillEx.Errors[0].Message}", Severity.Error);
+
+            return new TableData<AiLlmEntityDto>
+            {
+                Items = new List<AiLlmEntityDto>(),
+                TotalItems = 0
+            };
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error searching llms: {ex.Message}", Severity.Error);
+            return new TableData<AiLlmEntityDto>
+            {
+                Items = new List<AiLlmEntityDto>(),
+                TotalItems = 0
+            };
+        }
+        finally
+        {
+            loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task Search()
+    {
+        await ServerReload(tableState ?? new TableState
+        {
+            Page = 0,
+            PageSize = 50
+        }, CancellationToken.None);
+    }
+
+    private async Task Reset()
+    {
+        if (tableState != null)
+        {
+            tableState.Page = 0;
+            await ServerReload(tableState, CancellationToken.None);
+        }
+    }
+
+    private void EditLlm(int id)
+    {
+        NavigationManager.NavigateTo($"/llms/edit/{id}");
+    }
+
+    private async Task DeleteLlm(int id)
+    {
+        var dialog = await DialogService.ShowMessageBox(
+            "Confirm Deletion",
+            "Are you sure you want to delete this LLM? This action cannot be undone.",
+            yesText: "Delete",
+            cancelText: "Cancel"
+        );
+
+        if (dialog == true)
+        {
+            try
+            {
+                var result = await MindApi.DeleteLlmModelAsync(id);
+                if (!string.IsNullOrEmpty(result?.Message))
+                {
+                    Snackbar.Add(result.Message, Severity.Success);
+                    if (_table != null)
+                        await _table.ReloadServerData();
+                }
+            }
+            catch (ApiException apiEx)
+            {
+                var hillEx = apiEx.ToHillMetricsApiException();
+
+                Snackbar.Add($"Error loading data: {hillEx.Errors[0].Message}", Severity.Error);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error deleting llm: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private string GetStatusIcon(bool isActive)
+    {
+        if (isActive)
+            return Icons.Material.Filled.CheckCircle;
+
+        return Icons.Material.Filled.Cancel;
+    }
+
+    private Color GetStatusColor(bool isActive)
+    {
+        if (isActive)
+            return Color.Success;
+
+        return Color.Error;
+    }
+}

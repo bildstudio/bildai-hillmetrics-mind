@@ -1,4 +1,5 @@
 ﻿using HillMetrics.Core.AI;
+using HillMetrics.Normalized.Domain.Contracts.AI;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -33,6 +34,8 @@ namespace HillMetrics.MIND.API.Contracts.Responses.Llm
         /// URL to the logo of the AI model
         /// </summary>
         public string? LogoUrl { get; set; }
+        public string? ApiKey { get; set; }
+        public string BaseUrl { get; set; } = string.Empty;
 
         /// <summary>
         /// Indicates if the model is currently active
@@ -40,5 +43,6 @@ namespace HillMetrics.MIND.API.Contracts.Responses.Llm
         public bool IsActive { get; set; }
 
         public List<AiLlmHistoryEntityDto>? History { get; set; } = new List<AiLlmHistoryEntityDto>();
+        public List<AiLlmTaskTypeSettings> TaskTypeSettings { get; set; } = new List<AiLlmTaskTypeSettings>();
     }
 }

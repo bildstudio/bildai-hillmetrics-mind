@@ -78,14 +78,18 @@
             </MudNav>
 
             <MudNav>
-                @if (FeaturesConfig.Value.AiChat.Enabled)
-                {
-                    <MudNavGroup Title="AI Tools" Icon="@Icons.Material.Filled.SmartToy" Expanded="true">
+                
+                <MudNavGroup Title="AI" Icon="@Icons.Material.Filled.SmartToy" Expanded="true">
+                    @if (FeaturesConfig.Value.AiChat.Enabled)
+                    {
                         <MudNavLink Href="/ai/chat" Icon="@Icons.Material.Filled.Chat">
                             AI Chat
                         </MudNavLink>
-                    </MudNavGroup>
-                }
+                    }
+                    <MudNavLink Href="/llms/search" Icon="@Icons.Material.Filled.FindInPage">
+                        Models
+                    </MudNavLink>
+                </MudNavGroup>
                 <MudNavGroup Title="Audit" Icon="@Icons.Material.Filled.ManageSearch" Expanded="true">
                     <MudNavLink Href="/audit/search" Icon="@Icons.Material.Filled.FindInPage">
                         Audit

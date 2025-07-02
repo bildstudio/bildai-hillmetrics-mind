@@ -1,0 +1,345 @@
+﻿@page "/llms/create"
+@page "/llms/edit/{Id:int?}"
+@using HillMetrics.Core.AI
+@using HillMetrics.MIND.API.Contracts.Requests.Llm
+@using HillMetrics.MIND.API.SDK
+@using HillMetrics.MIND.API.SDK.V1
+@using HillMetrics.Core.Financial
+@using Refit
+@inject IMindAPI MindApi
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+
+<MudText Typo="Typo.h4" Class="mb-4">@(IsEditMode ? "Edit" : "Create") Llm</MudText>
+<BackToComponent ReturnUrl="/llms/search"></BackToComponent>
+@if (isLoading)
+{
+    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+}
+else
+{
+    <MudCard Class="mb-6">
+        <MudCardContent>
+            <MudText Typo="Typo.h6" Class="mb-4">Configuration</MudText>
+            <MudGrid>
+                <!-- Name -->
+                <MudItem xs="12" md="6" lg="4">
+                    <MudTextField @bind-Value="_saveRequest.Name"
+                                  Label="Name"
+                                  Required="true"
+                                  RequiredError="Name is required"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  FullWidth="true" />
+                </MudItem>
+
+                <!-- Provider -->
+                <MudItem xs="12" md="6" lg="4">
+                    <MudTextField @bind-Value="_saveRequest.Provider"
+                                  Label="Provider"
+                                  Required="true"
+                                  RequiredError="Provider is required"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  FullWidth="true" />
+                </MudItem>
+
+                <!-- Base URL -->
+                <MudItem xs="12" md="6" lg="4">
+                    <MudTextField @bind-Value="_saveRequest.BaseUrl"
+                                  Label="Base URL"
+                                  Required="true"
+                                  RequiredError="Base URL is required"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  FullWidth="true" />
+                </MudItem>
+
+                <!-- Logo URL -->
+                <MudItem xs="12" md="6" lg="4">
+                    <MudTextField @bind-Value="_saveRequest.LogoUrl"
+                                  Label="Logo URL"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  FullWidth="true" />
+                </MudItem>
+
+                <!-- API Key -->
+                <MudItem xs="12" md="6" lg="4">
+                    <MudTextField @bind-Value="_saveRequest.ApiKey"
+                                  Label="API Key"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  FullWidth="true" />
+                </MudItem>
+            </MudGrid>
+        </MudCardContent>
+    </MudCard>
+
+    <MudDivider Class="my-6" />
+
+    <MudButton OnClick="SaveLlm"
+               Color="Color.Primary"
+               Variant="Variant.Filled"
+               Size="Size.Large"
+               Disabled="@(!CanSave())">
+        @(IsEditMode ? "Update" : "Save") Llm
+    </MudButton>
+
+    <MudDivider Class="my-6" />
+
+
+    @* Task types settings *@
+    @if (IsEditMode)
+    {
+        <MudCard Class="mb-6">
+        <MudCardHeader>
+            <MudGrid AlignItems="Center">
+                <!-- Dropdown Filter -->
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="PromptTaskType?" @bind-Value="_selectedPromptTaskType"
+                               Label="Select Task Type to add"
+                               Variant="Variant.Outlined"
+                               Margin="Margin.Dense"
+                               Dense="true"
+                               FullWidth="true">
+                        <MudSelectItem Value="@((PromptTaskType?)null)">All</MudSelectItem>
+                        @foreach (var type in promptTaskTypes.Where(s => !_saveTaskTypeSettingsRequest.TaskTypeSettings.Any(x => s == x.PromptTaskType)))
+                        {
+                            <MudSelectItem T="PromptTaskType?" Value="@type">@type</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+
+                <!-- Add Button -->
+                <MudItem xs="12" sm="6" Class="d-flex justify-end">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="AddTaskTypeSetting" Disabled=@(!_selectedPromptTaskType.HasValue)>
+                        <MudIcon Icon="@Icons.Material.Filled.Add" Class="mr-1" />
+                        Add Task Type Setting
+                    </MudButton>
+                </MudItem>
+            </MudGrid>
+        </MudCardHeader>
+
+        <MudCardContent>
+            <MudText Typo="Typo.h6" Class="mb-4">Task Type Settings</MudText>
+
+            @for (int i = 0; i < _saveTaskTypeSettingsRequest.TaskTypeSettings.Count; i++)
+            {
+                var taskTypeSetting = _saveTaskTypeSettingsRequest.TaskTypeSettings[i];
+
+                <MudPaper Class="p-4 mb-4" Elevation="1">
+                    <MudText Typo="Typo.h6" Class="mb-4">@taskTypeSetting.PromptTaskType</MudText>
+                    <MudGrid Gutter="Size.Medium">
+                        <MudItem xs="12" md="6" lg="3">
+                            <MudTextField @bind-Value="taskTypeSetting.Temperature"
+                                          Label="Temperature"
+                                          Variant="Variant.Outlined"
+                                          Margin="Margin.Dense"
+                                          FullWidth="true" />
+                        </MudItem>
+
+                        <MudItem xs="12" md="6" lg="3">
+                            <MudTextField @bind-Value="taskTypeSetting.MaxRetries"
+                                          Label="Max Retries"
+                                          Variant="Variant.Outlined"
+                                          Margin="Margin.Dense"
+                                          FullWidth="true" />
+                        </MudItem>
+
+                        <MudItem xs="12" md="6" lg="3">
+                            <MudTextField @bind-Value="taskTypeSetting.ContextWindow"
+                                          Label="Context Window"
+                                          Variant="Variant.Outlined"
+                                          Margin="Margin.Dense"
+                                          FullWidth="true" />
+                        </MudItem>
+
+                        <MudItem xs="12" md="6" lg="3">
+                            <MudTextField @bind-Value="taskTypeSetting.MaxTokens"
+                                          Label="Max Tokens"
+                                          Variant="Variant.Outlined"
+                                          Margin="Margin.Dense"
+                                          FullWidth="true" />
+                        </MudItem>
+
+                        <MudItem xs="12" Class="d-flex justify-end">
+                            <MudButton Variant="Variant.Outlined" Color="Color.Error" OnClick="@(() => RemoveTaskTypeSetting(taskTypeSetting))">
+                                <MudIcon Icon="@Icons.Material.Filled.Delete" Class="mr-1" />
+                                Delete
+                            </MudButton>
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+            }
+        </MudCardContent>
+        <!-- Footer with Save button -->
+        <MudCardActions Class="d-flex justify-end p-4">
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       OnClick="SaveTaskTypeSettings"
+                       Disabled="@(_saveTaskTypeSettingsRequest.TaskTypeSettings == null || _saveTaskTypeSettingsRequest.TaskTypeSettings.Count == 0)">
+                <MudIcon Icon="@Icons.Material.Filled.Save" Class="mr-1" />
+                Save Settings
+            </MudButton>
+        </MudCardActions>
+    </MudCard>        
+    }
+
+
+
+    
+}
+
+@code {
+    [Parameter]
+    public int? Id { get; set; }
+
+    private bool IsEditMode => Id.HasValue;
+    private List<PromptTaskType> promptTaskTypes = Enum.GetValues<PromptTaskType>().ToList();
+    private PromptTaskType? _selectedPromptTaskType = null;
+    private UpdateLlmRequest _saveRequest = new()
+    {
+        Name = "",
+        Provider = "OpenAi"
+    };
+
+    private SaveTaskTypeSettingsRequest _saveTaskTypeSettingsRequest = new();
+
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (IsEditMode)
+        {
+            await LoadLlm();
+        }
+        else
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task LoadLlm()
+    {
+        try
+        {
+            var result = await MindApi.GetLlmModelAsync(Id!.Value);
+
+            _saveRequest = new UpdateLlmRequest
+            {
+                Name = result.Data.Name,
+                Provider = result.Data.Provider,
+                ApiKey = result.Data.ApiKey,
+                DocumentationUrl = result.Data.DocumentationUrl,
+                HostProvider = result.Data.HostProvider,
+                LogoUrl = result.Data.LogoUrl
+            };
+
+            _saveTaskTypeSettingsRequest.TaskTypeSettings = result.Data.TaskTypeSettings ?? [];
+        }
+        catch (ApiException apiEx)
+        {
+            var hillEx = apiEx.ToHillMetricsApiException();
+
+            Snackbar.Add($"Error loading data: {hillEx.Errors[0].Message}", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading data: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private bool CanSave()
+    {
+        if (string.IsNullOrWhiteSpace(_saveRequest.Name) || string.IsNullOrWhiteSpace(_saveRequest.Provider) || string.IsNullOrWhiteSpace(_saveRequest.BaseUrl))
+            return false;
+
+        return true;
+    }
+
+    private async Task SaveLlm()
+    {
+        try
+        {
+            if (IsEditMode)
+            {
+                var result = await MindApi.UpdateLlmModelAsync(Id!.Value, _saveRequest);
+                Snackbar.Add("Llm updated successfully", Severity.Success);
+                NavigationManager.NavigateTo("/llms/search");
+            }
+            else
+            {
+                var result = await MindApi.CreateLlmModelAsync(_saveRequest);
+
+                if (result.Data != null)
+                {
+                    Snackbar.Add("Llm created successfully", Severity.Success);
+                    NavigationManager.NavigateTo("/llms/search");
+                }
+                else
+                {
+                    Snackbar.Add("Failed to create llm", Severity.Error);
+                }
+            }
+        }
+        catch (ApiException apiEx)
+        {
+            var hillEx = apiEx.ToHillMetricsApiException();
+
+            Snackbar.Add($"Error saving llm: {hillEx.Errors[0].Message}", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error saving llm: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void RemoveTaskTypeSetting(Normalized.Domain.Contracts.AI.AiLlmTaskTypeSettings setting)
+    {
+        _saveTaskTypeSettingsRequest.TaskTypeSettings.Remove(setting);
+    }
+
+
+    private void AddTaskTypeSetting()
+    {
+        if (!_selectedPromptTaskType.HasValue)
+            return;
+
+        _saveTaskTypeSettingsRequest.TaskTypeSettings.Add(new Normalized.Domain.Contracts.AI.AiLlmTaskTypeSettings
+        {
+
+            PromptTaskType = _selectedPromptTaskType.Value
+        });
+        _selectedPromptTaskType = null;
+    }
+
+    private async Task SaveTaskTypeSettings()
+    {
+        try
+        {
+            if (_saveTaskTypeSettingsRequest.TaskTypeSettings == null || _saveTaskTypeSettingsRequest.TaskTypeSettings.Count == 0)
+                return;
+
+            if (IsEditMode)
+            {
+                await MindApi.SaveTaskTypeSettingsAsync(Id!.Value, _saveTaskTypeSettingsRequest);
+                NavigationManager.NavigateTo(NavigationManager.Uri, forceLoad: true);
+            }
+        }
+        catch (ApiException apiEx)
+        {
+            var hillEx = apiEx.ToHillMetricsApiException();
+
+            Snackbar.Add($"Error saving llm: {hillEx.Errors[0].Message}", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error saving llm: {ex.Message}", Severity.Error);
+        }
+    }
+}
