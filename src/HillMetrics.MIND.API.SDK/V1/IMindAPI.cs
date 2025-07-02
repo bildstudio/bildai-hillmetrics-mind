@@ -280,6 +280,14 @@ namespace HillMetrics.MIND.API.SDK.V1
         Task<ApiResponseBase<FluxWorkflowDetailsDto>> GetFluxWorkflowDetailsAsync(int fluxId);
 
         /// <summary>
+        /// Gets the workflow ID associated with a specific workflow step
+        /// </summary>
+        /// <param name="stepId">The workflow step ID</param>
+        /// <returns>The workflow ID associated with the step</returns>
+        [Get("/api/v1/workflow/step/{stepId}/workflow-id")]
+        Task<ApiResponseBase<Guid>> GetWorkflowIdByStepIdAsync(int stepId);
+
+        /// <summary>
         /// Gets a workflow by its unique workflow ID
         /// </summary>
         /// <param name="workflowId">The unique identifier of the workflow</param>

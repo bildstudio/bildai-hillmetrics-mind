@@ -1,5 +1,6 @@
 @page "/flux/workflow-live/{FluxId:int}"
 @page "/flux/workflow-live/{FluxId:int}/{WorkflowId:guid}"
+@page "/flux/workflow-live/step/{WorkflowStepId:int}"
 @using HillMetrics.Core.Blazor.AuthModule.Services
 @using HillMetrics.Core.Monitoring.Workflow
 @using HillMetrics.Core.Workflow
@@ -12,6 +13,7 @@
 @using Microsoft.Extensions.Options
 @using HillMetrics.Core.Authentication.Contracts
 @using System.Text.Json
+@using System.Threading
 @using HillMetrics.MIND.FrontApp.Services
 @inject IOptions<ServicesSettings> ServiceOptions
 @inject IMindAPI MindApi
@@ -218,6 +220,7 @@
 
     [Parameter] public int FluxId { get; set; }
     [Parameter] public Guid? WorkflowId { get; set; }
+    [Parameter] public int? WorkflowStepId { get; set; }
 
     private ElementReference canvasRef;
     private FluxWorkflowDetailsDto? WorkflowDetails { get; set; }
@@ -228,6 +231,8 @@
     private List<HistoryEntryDto> rootSteps = new();
     private bool isStepDetailOpen = false;
     private bool displayIgnoredElements = true;
+    private int? highlightedStepId = null;
+    private Dictionary<int, bool> hiddenSteps = new(); // Track which steps are hidden
 
     private class PositionedHistoryEntry : HistoryEntryDto
     {
@@ -260,7 +265,38 @@
 
     protected override async Task OnInitializedAsync()
     {
-        selectedWorkflowId = WorkflowId;
+        // If WorkflowStepId is provided, get the WorkflowId and FluxId from it
+        if (WorkflowStepId.HasValue)
+        {
+            try
+            {
+                var workflowIdResponse = await MindApi.GetWorkflowIdByStepIdAsync(WorkflowStepId.Value);
+                if (workflowIdResponse?.Data != null)
+                {
+                    WorkflowId = workflowIdResponse.Data;
+                    selectedWorkflowId = WorkflowId;
+                    
+                    // Get the workflow details to extract FluxId
+                    var workflowDetails = await MindApi.GetWorkflowByIdAsync(WorkflowId.Value);
+                    if (workflowDetails?.Data != null)
+                    {
+                        FluxId = workflowDetails.Data.FluxId;
+                        
+                        // Set the step to highlight
+                        highlightedStepId = WorkflowStepId.Value;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error getting workflow from step {WorkflowStepId}", WorkflowStepId.Value);
+                Snackbar.Add($"Error loading workflow from step: {ex.Message}", Severity.Error);
+            }
+        }
+        else
+        {
+            selectedWorkflowId = WorkflowId;
+        }
 
         // Subscribe to connection status changes to update UI
         SignalRService.ConnectionStatusChanged += HandleConnectionStatusChanged;
@@ -402,10 +438,30 @@
 
     private void SelectStep(HistoryEntryDto step)
     {
+        // Ne plus ouvrir la popup, juste sélectionner la step
         SelectedStep = step;
-        isStepDetailOpen = true;
         StateHasChanged();
     }
+
+    private void ToggleStepVisibility(HistoryEntryDto step)
+    {
+        if (hiddenSteps.ContainsKey(step.Id))
+        {
+            hiddenSteps[step.Id] = !hiddenSteps[step.Id];
+        }
+        else
+        {
+            hiddenSteps[step.Id] = true; // Hide the step
+        }
+        StateHasChanged();
+    }
+
+    private bool IsStepHidden(HistoryEntryDto step)
+    {
+        return hiddenSteps.ContainsKey(step.Id) && hiddenSteps[step.Id];
+    }
+
+
 
     private async Task OnWorkflowSelectionChanged(Guid? workflowId)
     {
@@ -441,7 +497,8 @@
         {
             await SignalRService.UnsubscribeAsync("workflow", HandleWorkflowUpdate);
         }
-         GC.SuppressFinalize(this); // Standard practice
+
+        GC.SuppressFinalize(this); // Standard practice
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -475,12 +532,18 @@
         
         // Add opacity class for steps that only have ignored elements
         var opacityClass = IsStepOnlyIgnored(step) ? "node-only-ignored" : "";
+        
+        // Add blinking class if this step should be highlighted
+        var blinkClass = (highlightedStepId.HasValue && step.Id == highlightedStepId.Value) ? "node-highlight-blink" : "";
+        
+        // Add hidden class for steps that are manually hidden
+        var hiddenClass = IsStepHidden(step) ? "node-hidden" : "";
 
         builder.OpenElement(0, "div");
         builder.AddAttribute(1, "class", $"workflow-node-container {nodePositionClass}");
 
         builder.OpenElement(2, "div");
-        builder.AddAttribute(3, "class", $"workflow-node {statusClass} {completionClass} {opacityClass}");
+        builder.AddAttribute(3, "class", $"workflow-node {statusClass} {completionClass} {opacityClass} {blinkClass} {hiddenClass}");
         builder.AddAttribute(4, "onclick", EventCallback.Factory.Create<MouseEventArgs>(this, () => SelectStep(step)));
         builder.AddAttribute(5, "id", $"node-{step.Id}");
 
@@ -537,6 +600,20 @@
         builder.AddAttribute(16, "class", "node-title");
         builder.AddContent(17, GetWorkflowStageDisplayName(step.Stage));
         builder.CloseElement(); // node-title
+        
+        // Add visibility toggle button (eye icon)
+        builder.OpenElement(18, "div");
+        builder.AddAttribute(19, "class", "node-visibility-toggle");
+        builder.OpenComponent<MudIconButton>(20);
+        builder.AddAttribute(21, "Icon", IsStepHidden(step) ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility);
+        builder.AddAttribute(22, "Size", Size.Small);
+        builder.AddAttribute(23, "Color", Color.Secondary);
+        builder.AddAttribute(24, "OnClick", EventCallback.Factory.Create<MouseEventArgs>(this, (e) => { ToggleStepVisibility(step); }));
+        builder.AddAttribute(25, "Title", IsStepHidden(step) ? "Show step children" : "Hide step children");
+        builder.AddAttribute(26, "Class", "visibility-toggle-btn");
+        builder.CloseComponent(); // MudIconButton
+        builder.CloseElement(); // node-visibility-toggle
+        
         builder.CloseElement(); // node-header
 
         // --- Node Body (Description + Completion Time) ---
@@ -669,6 +746,16 @@
             var fetchingId = TryGetFetchingId(step.Metadata);
             if (fetchingId > 0)
             {
+                // Download/Fetching Details Button (icon only)
+                builder.OpenComponent<MudIconButton>(160);
+                builder.AddAttribute(161, "Icon", Icons.Material.Filled.CloudDownload);
+                builder.AddAttribute(162, "Color", Color.Info);
+                builder.AddAttribute(163, "Size", Size.Small);
+                builder.AddAttribute(164, "OnClick", EventCallback.Factory.Create<MouseEventArgs>(this, () => NavigationManager.NavigateTo($"/flux/fetching-details/{fetchingId}")));
+                builder.AddAttribute(165, "Title", "View Fetching Details & Download");
+                builder.AddAttribute(166, "Class", "mr-1");
+                builder.CloseComponent(); // MudIconButton Download/Fetching Details
+
                 // Fetching Details Button (icon only)
                 builder.OpenComponent<MudIconButton>(164);
                 builder.AddAttribute(165, "Icon", Icons.Material.Filled.Info);
@@ -713,7 +800,7 @@
         builder.CloseElement(); // workflow-node
 
         // Container for child nodes (existing logic)
-        if (step.Children != null && step.Children.Any())
+        if (step.Children != null && step.Children.Any() && !IsStepHidden(step))
         {
             // Filter children based on displayIgnoredElements setting
             var filteredChildren = displayIgnoredElements ?
@@ -1095,12 +1182,30 @@
         display: flex;
         align-items: center;
         margin-bottom: 6px;
+        width: 100%;
+        position: relative;
     }
 
         .node-header i {
             margin-right: 8px; /* Space after icon */
             flex-shrink: 0; /* Prevent icon from shrinking */
         }
+
+    .node-visibility-toggle {
+        position: absolute;
+        right: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        display: flex;
+        align-items: center;
+    }
+
+    .visibility-toggle-btn {
+        padding: 2px !important;
+        min-width: unset !important;
+        width: 24px !important;
+        height: 24px !important;
+    }
 
     .node-title {
         font-weight: 600; /* Semibold */
@@ -1109,6 +1214,7 @@
         flex-grow: 1; /* Allow title to take space */
         line-height: 1.2; /* Adjust line height */
         margin-bottom: 0; /* Remove margin if header handles spacing */
+        padding-right: 30px; /* Leave space for the visibility toggle button */
     }
 
     .node-body {
@@ -1409,5 +1515,52 @@
 
     .node-only-ignored:hover {
         opacity: 1;
+    }
+
+    /* Styles for manually hidden steps */
+    .node-hidden {
+        opacity: 0.4;
+        filter: grayscale(0.7);
+        background-color: #f0f0f0 !important;
+        border-color: #ccc !important;
+        transition: all 0.3s ease;
+    }
+
+    .node-hidden:hover {
+        opacity: 0.7;
+        filter: grayscale(0.3);
+    }
+
+    .node-hidden .node-title {
+        color: #666 !important;
+    }
+
+    .node-hidden .detail-item {
+        opacity: 0.6;
+    }
+
+    /* Effet de clignotement pour la step mise en évidence */
+    .node-highlight-blink {
+        animation: highlightBlink 3s ease-in-out;
+        border: 2px solid #ff9800 !important;
+        box-shadow: 0 0 15px rgba(255, 152, 0, 0.6) !important;
+    }
+
+    @@keyframes highlightBlink {
+        0%, 100% {
+            background-color: rgba(255, 152, 0, 0.1);
+            transform: scale(1);
+            box-shadow: 0 0 15px rgba(255, 152, 0, 0.6);
+        }
+        16.67%, 50%, 83.33% {
+            background-color: rgba(255, 152, 0, 0.4);
+            transform: scale(1.08);
+            box-shadow: 0 0 25px rgba(255, 152, 0, 0.8);
+        }
+        33.33%, 66.67% {
+            background-color: rgba(255, 152, 0, 0.15);
+            transform: scale(1.02);
+            box-shadow: 0 0 10px rgba(255, 152, 0, 0.5);
+        }
     }
 </style>

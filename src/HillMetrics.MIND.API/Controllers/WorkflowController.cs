@@ -195,6 +195,36 @@ namespace HillMetrics.MIND.API.Controllers
         }
 
         /// <summary>
+        /// Gets the workflow ID associated with a specific workflow step
+        /// </summary>
+        [HttpGet("step/{stepId}/workflow-id")]
+        public async Task<ActionResult<ApiResponseBase<Guid>>> GetWorkflowIdByStepId(int stepId, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var workflowStep = await _workflowService.GetWorkflowStepAsync(stepId, cancellationToken);
+                
+                if (workflowStep == null)
+                {
+                    return new ErrorApiActionResult(new ErrorApiResponse(
+                        new Core.API.Exceptions.ApiException($"Workflow step with ID {stepId} not found"),
+                        System.Net.HttpStatusCode.NotFound));
+                }
+
+                var workflowId = await _workflowService.GetWorkflowFromStepAsync(stepId);
+                
+                return new ApiResponseBase<Guid>(workflowId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting workflow ID for step {StepId}", stepId);
+                return new ErrorApiActionResult(new ErrorApiResponse(
+                    new Core.API.Exceptions.ApiException($"Error getting workflow ID for step {stepId}"),
+                    System.Net.HttpStatusCode.InternalServerError));
+            }
+        }
+
+        /// <summary>
         /// Gets a workflow by its unique workflow ID
         /// </summary>
         [HttpGet("by-id/{workflowId}")]

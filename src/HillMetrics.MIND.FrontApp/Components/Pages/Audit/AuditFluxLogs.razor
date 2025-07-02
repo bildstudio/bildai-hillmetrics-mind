@@ -219,9 +219,10 @@
             <HeaderContent>
                 <MudTh Style="width: 60px; font-size: 0.7rem;">ID</MudTh>
                 <MudTh Style="width: 80px; font-size: 0.7rem;">Operation</MudTh>
-                <MudTh Style="width: 120px; font-size: 0.7rem;">Entity</MudTh>
                 <MudTh Style="width: 100px; font-size: 0.7rem;">Flux IDs</MudTh>
+                <MudTh Style="width: 120px; font-size: 0.7rem;">Entity</MudTh>
                 <MudTh Style="width: 80px; font-size: 0.7rem;">Entity ID</MudTh>
+                <MudTh Style="width: 80px; font-size: 0.7rem;">Entity Type</MudTh>
                 <MudTh Style="width: 80px; font-size: 0.7rem;">Workflow</MudTh>
                 <MudTh Style="width: 80px; font-size: 0.7rem;">Database</MudTh>
                 <MudTh Style="width: 300px; font-size: 0.7rem;">Values</MudTh>
@@ -238,22 +239,60 @@
                         @context.OperationType
                     </MudChip>
                 </MudTd>
+                <MudTd DataLabel="Flux IDs" Style="padding: 4px 8px;">
+                    <div style="line-height: 1;">
+                        <div style="font-size: 0.65rem; margin-bottom: 1px;">
+                            Prev: 
+                            @if (context.PreviousFluxId.HasValue && context.PreviousFluxId.Value > 0)
+                            {
+                                <MudLink Href="@($"/flux/details/{context.PreviousFluxId.Value}")" Underline="Underline.Always" Typo="Typo.caption">
+                                    @context.PreviousFluxId.Value
+                                </MudLink>
+                            }
+                            else
+                            {
+                                <span>-</span>
+                            }
+                        </div>
+                        <div style="font-size: 0.65rem;">
+                            New: 
+                            @if (context.NewFluxId.HasValue && context.NewFluxId.Value > 0)
+                            {
+                                <MudLink Href="@($"/flux/details/{context.NewFluxId.Value}")" Underline="Underline.Always" Typo="Typo.caption">
+                                    @context.NewFluxId.Value
+                                </MudLink>
+                            }
+                            else
+                            {
+                                <span>-</span>
+                            }
+                        </div>
+                    </div>
+                </MudTd>
                 <MudTd DataLabel="Entity" Style="padding: 4px 8px;">
                     <MudText Typo="Typo.caption" Style="font-size: 0.7rem; max-width: 120px; overflow: hidden; text-overflow: ellipsis; line-height: 1.2;">
                         @context.EntityName
                     </MudText>
                 </MudTd>
-                <MudTd DataLabel="Flux IDs" Style="padding: 4px 8px;">
-                    <div style="line-height: 1;">
-                        <div style="font-size: 0.65rem; margin-bottom: 1px;">@($"P: {context.PreviousFluxId}")</div>
-                        <div style="font-size: 0.65rem;">@($"N: {context.NewFluxId}")</div>
-                    </div>
-                </MudTd>
                 <MudTd DataLabel="Entity ID" Style="padding: 4px 8px; font-size: 0.7rem;">
                     <MudText Typo="Typo.caption">@(context.EntityId?.ToString() ?? "-")</MudText>
                 </MudTd>
+                <MudTd DataLabel="Entity" Style="padding: 4px 8px;">
+                    <MudText Typo="Typo.caption" Style="font-size: 0.7rem; max-width: 120px; overflow: hidden; text-overflow: ellipsis; line-height: 1.2;">
+                        @context.EntityType
+                    </MudText>
+                </MudTd>
                 <MudTd DataLabel="Workflow" Style="padding: 4px 8px; font-size: 0.7rem;">
-                    <MudText Typo="Typo.caption">@(context.WorkflowStepId.ToString() ?? "-")</MudText>
+                    @if (context.WorkflowStepId > 0)
+                    {
+                        <MudLink Href="@($"/flux/workflow-live/step/{context.WorkflowStepId}")" Underline="Underline.Always" Typo="Typo.caption">
+                            @context.WorkflowStepId
+                        </MudLink>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.caption">-</MudText>
+                    }
                 </MudTd>
                 <MudTd DataLabel="Database" Style="padding: 4px 8px;">
                     <MudText Typo="Typo.caption" Style="font-size: 0.7rem; max-width: 80px; overflow: hidden; text-overflow: ellipsis;">
@@ -309,7 +348,10 @@
                             </MudMenuItem>
                         }
                             <MudMenuItem OnClick="@(() => SearchByWorkflowStep(context.WorkflowStepId))" Style="font-size: 0.75rem; padding: 8px 12px;">
-                                <MudIcon Icon="@Icons.Material.Filled.Timeline" Class="mr-1" Size="Size.Small" /> Workflow
+                                <MudIcon Icon="@Icons.Material.Filled.Timeline" Class="mr-1" Size="Size.Small" /> Workflow Steps
+                            </MudMenuItem>
+                            <MudMenuItem OnClick="@(() => NavigationManager.NavigateTo($"/flux/workflow-live/step/{context.WorkflowStepId}"))" Style="font-size: 0.75rem; padding: 8px 12px;">
+                                <MudIcon Icon="@Icons.Material.Filled.PlayCircle" Class="mr-1" Size="Size.Small" /> Workflow Live
                             </MudMenuItem>
                     </MudMenu>
                 </MudTd>
