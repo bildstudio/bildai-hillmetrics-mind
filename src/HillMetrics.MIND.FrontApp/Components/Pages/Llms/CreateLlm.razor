@@ -233,7 +233,8 @@ else
                 ApiKey = result.Data.ApiKey,
                 DocumentationUrl = result.Data.DocumentationUrl,
                 HostProvider = result.Data.HostProvider,
-                LogoUrl = result.Data.LogoUrl
+                LogoUrl = result.Data.LogoUrl,
+                BaseUrl = result.Data.BaseUrl
             };
 
             _saveTaskTypeSettingsRequest.TaskTypeSettings = result.Data.TaskTypeSettings ?? [];
