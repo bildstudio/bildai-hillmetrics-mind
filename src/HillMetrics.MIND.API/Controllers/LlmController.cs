@@ -1,7 +1,6 @@
 ﻿using AutoMapper;
 using FluentResults;
 using HillMetrics.Core.API.Responses;
-using HillMetrics.Core.Contracts;
 using HillMetrics.Core.Mediator;
 using HillMetrics.MIND.API.Contracts.Requests.Llm;
 using HillMetrics.MIND.API.Contracts.Responses.Common;
@@ -12,8 +11,6 @@ using HillMetrics.Normalized.Domain.Contracts.AI;
 using HillMetrics.Normalized.Domain.Contracts.AI.Commands;
 using HillMetrics.Normalized.Domain.Contracts.AI.Models;
 using HillMetrics.Normalized.Domain.Contracts.AI.Queries;
-using MediatR;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace HillMetrics.MIND.API.Controllers
@@ -28,21 +25,35 @@ namespace HillMetrics.MIND.API.Controllers
         }
 
         [HttpGet(InternalRoutes.Llm.Get)]
-        public async Task<ActionResult<ListLlmsResponse>> GetAsync([FromQuery] bool? active)
+        public async Task<ActionResult<GetLlmResponse>> GetModelsAsync([FromRoute] int id)
+        {
+            GetAiLlmEntityQuery query = new GetAiLlmEntityQuery(id);
+            Result<AiLlmEntityDomain> result = await Mediator.Send(query);
+
+            if (result.IsFailed)
+                return new ErrorApiActionResult(result.Errors.ToApiResult());
+
+            AiLlmEntityDto item = _mapper.Map<AiLlmEntityDto>(result.Value);
+
+            return new GetLlmResponse(item);
+        }
+
+        [HttpGet(InternalRoutes.Llm.Search)]
+        public async Task<ActionResult<ListLlmsResponse>> SearchModelsAsync([FromQuery] bool? active)
         {
             ListAiLlmEntityQuery query = new ListAiLlmEntityQuery(active);
-            Result<List<AiLlmEntity>> result = await Mediator.Send(query);
+            Result<List<AiLlmEntityDomain>> result = await Mediator.Send(query);
 
             if (result.IsFailed)
                 return new ErrorApiActionResult(result.Errors.ToApiResult());
 
             List<AiLlmEntityDto> items = _mapper.Map<List<AiLlmEntityDto>>(result.Value);
 
-            return new ListLlmsResponse(items, items.Count);
+            return new ListLlmsResponse(items);
         }
 
         [HttpPost(InternalRoutes.Llm.Create)]
-        public async Task<ActionResult<GetLlmResponse>> CreateAsync([FromBody] CreateLlmRequest request)
+        public async Task<ActionResult<GetLlmResponse>> CreateModelAsync([FromBody] CreateLlmRequest request)
         {
             var model = request.ToSaveAiLlmModel();
             var command = new CreateAiLlmModelCommand(model);
@@ -57,7 +68,7 @@ namespace HillMetrics.MIND.API.Controllers
         }
 
         [HttpPut(InternalRoutes.Llm.Update)]
-        public async Task<ActionResult<GetLlmResponse>> UpdateAsync(
+        public async Task<ActionResult<GetLlmResponse>> UpdateModelAsync(
             [FromRoute] int id, 
             [FromBody] UpdateLlmRequest request
             )
@@ -76,7 +87,7 @@ namespace HillMetrics.MIND.API.Controllers
         }
 
         [HttpDelete(InternalRoutes.Llm.Delete)]
-        public async Task<ActionResult<DeletedResponse>> DeleteAsync([FromRoute] int id)
+        public async Task<ActionResult<DeletedResponse>> DeleteModelAsync([FromRoute] int id)
         {
             var command = new DeleteAiLlmModelCommand(id);
             var result = await Mediator.Send(command);
@@ -87,10 +98,22 @@ namespace HillMetrics.MIND.API.Controllers
             return new DeletedResponse($"Llm with id: {id}, deleted");
         }
 
+        [HttpPut(InternalRoutes.Llm.UpdateTaskTypeSettings)]
+        public async Task<ActionResult<GetLlmTaskTypeSettingsResponse>> UpdateTaskTypeSettingsAsync([FromRoute] int id, [FromBody] SaveTaskTypeSettingsRequest request)
+        {
+            var command = new SaveAiLlmModelTaskTypeSettingsCommand(id, request.TaskTypeSettings);
+            var result = await Mediator.Send(command);
+
+            if (result.IsFailed)
+                return new ErrorApiActionResult(result.Errors.ToApiResult());
+
+            return new GetLlmTaskTypeSettingsResponse(result.Value);
+        }
+
         //PROMPTS
         //get
         [HttpGet(InternalRoutes.Llm.Prompts.Get)]
-        public async Task<ActionResult<GetPromptResponse>> GetAsync([FromRoute]int promptId)
+        public async Task<ActionResult<GetPromptResponse>> GetPrompAsync([FromRoute]int promptId)
         {
             var query = new GetAiModelPromptQuery(promptId);
             var result = await Mediator.Send(query);
@@ -103,7 +126,7 @@ namespace HillMetrics.MIND.API.Controllers
 
         //create
         [HttpPost(InternalRoutes.Llm.Prompts.Create)]
-        public async Task<ActionResult<GetPromptResponse>> CreateAsync(
+        public async Task<ActionResult<GetPromptResponse>> CreatePromptAsync(
             [FromForm] CreatePromptRequest request
             )
         {
@@ -120,7 +143,7 @@ namespace HillMetrics.MIND.API.Controllers
 
         //update
         [HttpPut(InternalRoutes.Llm.Prompts.Update)]
-        public async Task<ActionResult<GetPromptResponse>> UpdateAsync(
+        public async Task<ActionResult<GetPromptResponse>> UpdatePromptAsync(
             [FromRoute] int promptId, 
             [FromForm] UpdatePromptRequest request)
         {
@@ -151,7 +174,7 @@ namespace HillMetrics.MIND.API.Controllers
 
         //search
         [HttpGet(InternalRoutes.Llm.Prompts.Search)]
-        public async Task<ActionResult<ListPromptsResponse>> SearchAsync(PromptSearchRequest request)
+        public async Task<ActionResult<ListPromptsResponse>> SearchPromptsAsync(PromptSearchRequest request)
         {
             var model = _mapper.Map<AiModelPromptSearch>(request);
             var query = new SearchPromptsQuery(model);

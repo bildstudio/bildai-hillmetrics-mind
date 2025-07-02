@@ -12,7 +12,7 @@ namespace HillMetrics.MIND.API.Mappers
     {
         public LlmMappingProfile()
         {
-            CreateMap<AiLlmEntity, AiLlmEntityDto>(MemberList.Destination);
+            CreateMap<AiLlmEntityDomain, AiLlmEntityDto>(MemberList.Destination);
 
             CreateMap<AiLlmHistoryEntity, AiLlmHistoryEntityDto>(MemberList.Destination);
             

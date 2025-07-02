@@ -51,7 +51,7 @@ namespace HillMetrics.MIND.Infrastructure.AI
 
                 //try to build IllmService
 
-                AiLlmEntity? llmModel = await _aiModelRepository.GetModelByIdAsync(llmId, cancellationToken);
+                AiLlmEntityDomain? llmModel = await _aiModelRepository.GetModelByIdAsync(llmId, cancellationToken);
                 if (llmModel == null)
                     return Result.Fail(new NotFoundError($"Llm model with id: '{llmId}' not found"));
                 

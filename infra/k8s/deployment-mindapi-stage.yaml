@@ -93,6 +93,8 @@ spec:
       objectName: services-pythonapi
     - key: ConnectionStrings__ProvisioningDb
       objectName: connectionstrings-provisioningdb
+    - key: Cryptography__SymmetricKey
+      objectName: cryptography-symmetrickey
     secretName: mindapi-env
     type: Opaque
   parameters:
@@ -151,5 +153,8 @@ spec:
           objectType: secret
         - |
           objectName: connectionstrings-provisioningdb
+          objectType: secret
+        - |
+          objectName: cryptography-symmetrickey
           objectType: secret
     tenantId: 47650b84-ae6e-4206-82af-ebe7b3243aa2

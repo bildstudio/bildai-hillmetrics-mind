@@ -35,10 +35,12 @@
 
         public static class Llm
         {
-            public const string Get = "llm/models/search";
+            public const string Search = "llm/models/search";
             public const string Create = "llm/models";
+            public const string Get = "llm/models/{id}";
             public const string Update = "llm/models/{id}";
             public const string Delete = "llm/models/{id}";
+            public const string UpdateTaskTypeSettings = "llm/models/{id}/task-type-settings";
 
             public static class DataExtract
             {
