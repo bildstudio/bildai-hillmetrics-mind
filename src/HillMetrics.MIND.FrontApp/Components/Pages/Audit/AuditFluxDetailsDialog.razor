@@ -1,0 +1,253 @@
+@using HillMetrics.Audit.Infrastructure.Contract.Models
+@using System.Text.Json
+
+<MudDialog>
+    <DialogContent>
+        <MudContainer Style="max-height: 85vh; overflow-y: auto; max-width: 1400px;">
+            @if (AuditFluxLog != null)
+            {
+                <MudGrid Spacing="2">
+                    <!-- Header Information -->
+                    <MudItem xs="12">
+                        <MudCard Elevation="1">
+                            <MudCardContent>
+                                <MudGrid>
+                                    <MudItem xs="6">
+                                        <MudText Typo="Typo.subtitle2" Class="mb-2">Operation</MudText>
+                                        <MudChip T="string" Color="GetOperationTypeColor(AuditFluxLog.OperationType)" Size="Size.Medium">
+                                            @AuditFluxLog.OperationType
+                                        </MudChip>
+                                    </MudItem>
+                                    <MudItem xs="6">
+                                        <MudText Typo="Typo.subtitle2" Class="mb-2">Operation Time</MudText>
+                                        <MudText Typo="Typo.body2">@AuditFluxLog.OperationTime.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</MudText>
+                                    </MudItem>
+                                </MudGrid>
+                            </MudCardContent>
+                        </MudCard>
+                    </MudItem>
+
+                    <!-- Entity Information -->
+                    <MudItem xs="12" md="6">
+                        <MudCard Elevation="1">
+                            <MudCardContent>
+                                <MudText Typo="Typo.h6" Class="mb-3">Entity Information</MudText>
+                                
+                                <MudField Label="Entity Name" Variant="Variant.Outlined" Class="mb-2">
+                                    @AuditFluxLog.EntityName
+                                </MudField>
+
+                                @if (AuditFluxLog.EntityId.HasValue)
+                                {
+                                    <MudField Label="Entity ID" Variant="Variant.Outlined" Class="mb-2">
+                                        @AuditFluxLog.EntityId.Value
+                                    </MudField>
+                                }
+
+                                @if (!string.IsNullOrEmpty(AuditFluxLog.EntityType))
+                                {
+                                    <MudField Label="Entity Type" Variant="Variant.Outlined" Class="mb-2">
+                                        @AuditFluxLog.EntityType
+                                    </MudField>
+                                }
+
+                                    <MudField Label="Workflow Step ID" Variant="Variant.Outlined" Class="mb-2">
+                                        @AuditFluxLog.WorkflowStepId
+                                    </MudField>
+
+                                @if (!string.IsNullOrEmpty(AuditFluxLog.DatabaseName))
+                                {
+                                    <MudField Label="Database Name" Variant="Variant.Outlined" Class="mb-2">
+                                        @AuditFluxLog.DatabaseName
+                                    </MudField>
+                                }
+                            </MudCardContent>
+                        </MudCard>
+                    </MudItem>
+
+                    <!-- Flux Information -->
+                    <MudItem xs="12" md="6">
+                        <MudCard Elevation="1">
+                            <MudCardContent>
+                                <MudText Typo="Typo.h6" Class="mb-3">Flux Information</MudText>
+                                
+                                <MudField Label="Previous Flux ID" Variant="Variant.Outlined" Class="mb-2">
+                                    @AuditFluxLog.PreviousFluxId
+                                </MudField>
+
+                                <MudField Label="New Flux ID" Variant="Variant.Outlined" Class="mb-2">
+                                    @AuditFluxLog.NewFluxId
+                                </MudField>
+
+                                <MudField Label="Previous Processing Content ID" Variant="Variant.Outlined" Class="mb-2">
+                                    @AuditFluxLog.PreviousProcessingContentId
+                                </MudField>
+
+                                <MudField Label="New Processing Content ID" Variant="Variant.Outlined" Class="mb-2">
+                                    @AuditFluxLog.NewProcessingContentId
+                                </MudField>
+                            </MudCardContent>
+                        </MudCard>
+                    </MudItem>
+
+                    <!-- Value Changes -->
+                    <MudItem xs="12">
+                        <MudCard Elevation="1">
+                            <MudCardContent>
+                                <MudText Typo="Typo.h6" Class="mb-3">Value Changes</MudText>
+                                
+                                <MudGrid>
+                                    <MudItem xs="12">
+                                        <MudTextField Label="Previous Value"
+                                                      Value="@AuditFluxLog.PreviousValue"
+                                                      Variant="Variant.Outlined"
+                                                      Lines="6"
+                                                      ReadOnly="true"
+                                                      Class="mb-3" />
+                                    </MudItem>
+                                    <MudItem xs="12">
+                                        <MudTextField Label="New Value"
+                                                      Value="@AuditFluxLog.NewValue"
+                                                      Variant="Variant.Outlined"
+                                                      Lines="6"
+                                                      ReadOnly="true"
+                                                      Class="mb-2" />
+                                    </MudItem>
+                                </MudGrid>
+                            </MudCardContent>
+                        </MudCard>
+                    </MudItem>
+
+                    <!-- Caller Information -->
+                    <MudItem xs="12" md="6">
+                        <MudCard Elevation="1">
+                            <MudCardContent>
+                                <MudText Typo="Typo.h6" Class="mb-3">Caller Information</MudText>
+                                
+                                <MudField Label="Caller Class" Variant="Variant.Outlined" Class="mb-2">
+                                    @AuditFluxLog.CallerClass
+                                </MudField>
+
+                                <MudField Label="Caller Method" Variant="Variant.Outlined" Class="mb-2">
+                                    @AuditFluxLog.CallerMethod
+                                </MudField>
+                            </MudCardContent>
+                        </MudCard>
+                    </MudItem>
+
+                    <!-- Reason -->
+                    <MudItem xs="12" md="6">
+                        <MudCard Elevation="1">
+                            <MudCardContent>
+                                <MudText Typo="Typo.h6" Class="mb-3">Reason</MudText>
+                                
+                                <MudTextField Label="Reason"
+                                              Value="@AuditFluxLog.Reason"
+                                              Variant="Variant.Outlined"
+                                              Lines="4"
+                                              ReadOnly="true" />
+                            </MudCardContent>
+                        </MudCard>
+                    </MudItem>
+
+                    <!-- Additional Properties -->
+                    @if (!string.IsNullOrEmpty(AuditFluxLog.AdditionalProperties))
+                    {
+                        <MudItem xs="12">
+                            <MudCard Elevation="1">
+                                <MudCardContent>
+                                    <MudText Typo="Typo.h6" Class="mb-3">Additional Properties</MudText>
+                                    
+                                    <MudTextField Label="Additional Properties (JSON)"
+                                                  Value="@FormatJson(AuditFluxLog.AdditionalProperties)"
+                                                  Variant="Variant.Outlined"
+                                                  Lines="6"
+                                                  ReadOnly="true" />
+                                </MudCardContent>
+                            </MudCard>
+                        </MudItem>
+                    }
+
+                    <!-- Stack Trace -->
+                    @if (!string.IsNullOrEmpty(AuditFluxLog.StackTrace))
+                    {
+                        <MudItem xs="12">
+                            <MudCard Elevation="1">
+                                <MudCardContent>
+                                    <MudText Typo="Typo.h6" Class="mb-3">Stack Trace</MudText>
+                                    
+                                    <MudTextField Label="Stack Trace"
+                                                  Value="@AuditFluxLog.StackTrace"
+                                                  Variant="Variant.Outlined"
+                                                  Lines="8"
+                                                  ReadOnly="true" />
+                                </MudCardContent>
+                            </MudCard>
+                        </MudItem>
+                    }
+                </MudGrid>
+            }
+            else
+            {
+                <MudAlert Severity="Severity.Warning">No flux log details available.</MudAlert>
+            }
+        </MudContainer>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Color="Color.Secondary" OnClick="Cancel">Close</MudButton>
+        @if (AuditFluxLog?.EntityId.HasValue == true)
+        {
+            <MudButton Color="Color.Primary" OnClick="ViewRelatedChanges">
+                View Related Changes
+            </MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public AuditFluxSearchResponse? AuditFluxLog { get; set; }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void ViewRelatedChanges()
+    {
+        if (AuditFluxLog?.EntityId.HasValue == true)
+        {
+            // You can implement navigation to related changes here
+            // For example, pass the EntityId back to the parent component
+            MudDialog.Close(DialogResult.Ok(AuditFluxLog.EntityId.Value));
+        }
+    }
+
+    private Color GetOperationTypeColor(string operationType)
+    {
+        return operationType.ToLower() switch
+        {
+            "created" => Color.Success,
+            "updated" => Color.Info,
+            "error" => Color.Error,
+            _ => Color.Default
+        };
+    }
+
+    private string FormatJson(string jsonString)
+    {
+        if (string.IsNullOrEmpty(jsonString))
+            return string.Empty;
+
+        try
+        {
+            var jsonElement = JsonSerializer.Deserialize<JsonElement>(jsonString);
+            return JsonSerializer.Serialize(jsonElement, new JsonSerializerOptions
+            {
+                WriteIndented = true
+            });
+        }
+        catch
+        {
+            return jsonString; // Return original if parsing fails
+        }
+    }
+} 

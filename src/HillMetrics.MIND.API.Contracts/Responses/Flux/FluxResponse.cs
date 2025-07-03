@@ -13,6 +13,7 @@ using HillMetrics.Core.Workflow;
 using HillMetrics.MIND.API.Contracts.Responses.AiDataset;
 using HillMetrics.Normalized.Domain.Contracts.AI.Dataset;
 using HillMetrics.Core.Financial.DataPoint;
+using HillMetrics.Core.Flux.Contracts;
 
 namespace HillMetrics.MIND.API.Contracts.Responses.Flux
 {
@@ -36,6 +37,7 @@ namespace HillMetrics.MIND.API.Contracts.Responses.Flux
         public List<FluxFinancialDataPointDto> FinancialDataPoints { get; set; } = new();
         public bool HasCustomFetching { get; set; }
         public bool HasCustomProcessing { get; set; }
+        public IReadOnlyDictionary<string, FluxMetadataDefinition>? AvailableMetadata { get; set; }
     }
 
     public class TriggerPeriodDto
