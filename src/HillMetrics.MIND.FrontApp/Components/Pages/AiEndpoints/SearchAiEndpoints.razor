@@ -1,0 +1,203 @@
+@page "/ai-endpoints/search"
+@using HillMetrics.Core.Search
+@using HillMetrics.Core.Financial
+@using HillMetrics.MIND.API.Contracts.Responses.AiEndpoints
+@using HillMetrics.MIND.API.Contracts.Responses.Llm
+@using HillMetrics.MIND.API.SDK
+@using HillMetrics.MIND.API.SDK.V1
+@using HillMetrics.Normalized.Domain.Contracts.AI.Endpoints
+@using Refit
+@inject IMindAPI MindApi
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudGrid>
+        <MudItem xs="6">
+            <MudText Typo="Typo.h4" Class="mb-4">Ai Endpoints</MudText>
+        </MudItem>
+        <MudItem xs="6" Class="d-flex justify-end">
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       Href="/ai-endpoints/create"
+                       Class="align-self-start">
+                Create New AI Endpoint
+            </MudButton>
+        </MudItem>
+    </MudGrid>
+
+    @if (loading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-2" />
+    }
+    else
+    {
+        <MudTable ServerData="@ServerReload"
+                  Hover="true" Bordered="true" Striped="true"
+                  Dense="true" @bind-SelectedItem="selectedItem"
+                  T="AiEndpoint"
+                  Breakpoint="Breakpoint.Sm"
+                  @ref="_table">
+            <ToolBarContent>
+                @* <MudText Typo="Typo.h6" Class="ml-2">Llm List</MudText>
+                <MudSpacer /> *@
+                @* <MudTextField @bind-Value="searchString" Placeholder="Search"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              IconSize="Size.Medium"
+                              Class="mt-0 mb-3" Margin="Margin.Dense" Dense="true" /> *@
+            </ToolBarContent>
+            <HeaderContent>
+                <MudTh><MudTableSortLabel SortLabel="Id" T="AiEndpoint">ID</MudTableSortLabel></MudTh>
+                <MudTh><MudTableSortLabel SortLabel="Name" T="AiEndpoint">Name</MudTableSortLabel></MudTh>
+                <MudTh><MudTableSortLabel SortLabel="Url" T="AiEndpoint">Url</MudTableSortLabel></MudTh>
+                <MudTh><MudTableSortLabel SortLabel="Description" T="AiEndpoint">Description</MudTableSortLabel></MudTh>
+                <MudTh><MudTableSortLabel SortLabel="TaskTypes" T="AiEndpoint">TaskTypes</MudTableSortLabel></MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="ID">@context.Id</MudTd>
+                <MudTd DataLabel="Name">@context.Name</MudTd>
+                <MudTd DataLabel="Url">@context.Url</MudTd>
+                <MudTd DataLabel="Description">@context.Description</MudTd>
+                <MudTd DataLabel="TaskTypes">@(string.Join('|', context.TaskTypes))</MudTd>
+                <MudTd DataLabel="Actions">
+                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true">
+                        <MudMenuItem OnClick="@(() => EditAiEndpoint(context.Id))">
+                            <MudIcon Icon="@Icons.Material.Filled.Edit" Class="mr-2" Size="Size.Small" /> Edit
+                        </MudMenuItem>
+                        <MudMenuItem OnClick="@(() => DeleteAiEndpoint(context.Id))">
+                            <MudIcon Icon="@Icons.Material.Filled.Delete" Class="mr-2" Size="Size.Small" Color="Color.Error" /> Delete
+                        </MudMenuItem>
+                    </MudMenu>
+                </MudTd>
+            </RowTemplate>
+            <PagerContent>
+                <MudTablePager PageSizeOptions="new int[] { 10, 25, 50, 100 }" />
+            </PagerContent>
+            <NoRecordsContent>
+                <MudAlert Severity="Severity.Info" Class="my-2">No AI endpoints found matching your search criteria.</MudAlert>
+            </NoRecordsContent>
+        </MudTable>
+    }
+</MudContainer>
+
+@code {
+    private bool loading = false;
+    private bool isValid = false;
+    private MudForm form;
+    private AiEndpoint selectedItem = null;
+    private TableState tableState;
+    private string searchString = "";
+    MudTable<AiEndpoint> _table;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Search();
+    }
+
+    private async Task<TableData<AiEndpoint>> ServerReload(TableState state, CancellationToken token)
+    {
+        tableState = state;
+        loading = true;
+
+        try
+        {
+            ListAiEndpointsResponse response = await MindApi.SearchAiEndpointsAsync(
+                null, 
+                pageNumber: tableState.Page + 1,
+                pageSize: tableState.PageSize,
+                token);
+
+            return new TableData<AiEndpoint>
+            {
+                Items = response.Data,
+                TotalItems = (int)response.TotalRecords
+            };
+        }
+        catch (ApiException apiEx)
+        {
+            var hillEx = apiEx.ToHillMetricsApiException();
+
+            Snackbar.Add($"Error searching ai endpoints: {hillEx.Errors[0].Message}", Severity.Error);
+
+            return new TableData<AiEndpoint>
+            {
+                Items = new List<AiEndpoint>(),
+                TotalItems = 0
+            };
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error searching ai endpoints: {ex.Message}", Severity.Error);
+            return new TableData<AiEndpoint>
+            {
+                Items = new List<AiEndpoint>(),
+                TotalItems = 0
+            };
+        }
+        finally
+        {
+            loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task Search()
+    {
+        await ServerReload(tableState ?? new TableState
+        {
+            Page = 0,
+            PageSize = 25
+        }, CancellationToken.None);
+    }
+
+    private async Task Reset()
+    {
+        if (tableState != null)
+        {
+            tableState.Page = 0;
+            await ServerReload(tableState, CancellationToken.None);
+        }
+    }
+
+    private void EditAiEndpoint(int id)
+    {
+        NavigationManager.NavigateTo($"/ai-endpoints/edit/{id}");
+    }
+
+    private async Task DeleteAiEndpoint(int id)
+    {
+        var dialog = await DialogService.ShowMessageBox(
+            "Confirm Deletion",
+            "Are you sure you want to delete this Ai endpoint? This action cannot be undone.",
+            yesText: "Delete",
+            cancelText: "Cancel"
+        );
+
+        if (dialog == true)
+        {
+            try
+            {
+                var result = await MindApi.DeleteAiEndpointAsync(id);
+                if (!string.IsNullOrEmpty(result?.Message))
+                {
+                    Snackbar.Add(result.Message, Severity.Success);
+                    if (_table != null)
+                        await _table.ReloadServerData();
+                }
+            }
+            catch (ApiException apiEx)
+            {
+                var hillEx = apiEx.ToHillMetricsApiException();
+
+                Snackbar.Add($"Error loading data: {hillEx.Errors[0].Message}", Severity.Error);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error deleting llm: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+}
