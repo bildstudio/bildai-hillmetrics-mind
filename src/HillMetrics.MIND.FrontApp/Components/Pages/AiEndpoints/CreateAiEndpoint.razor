@@ -1,0 +1,246 @@
+﻿@page "/ai-endpoints/create"
+@page "/ai-endpoints/edit/{Id:int?}"
+@using HillMetrics.Core.AI
+@using HillMetrics.MIND.API.Contracts.Requests.AiEndpoints
+@using HillMetrics.MIND.API.Contracts.Requests.Llm
+@using HillMetrics.MIND.API.SDK
+@using HillMetrics.MIND.API.SDK.V1
+@using HillMetrics.Core.Financial
+@using Refit
+@using System.Text.Json
+@inject IMindAPI MindApi
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+
+<MudText Typo="Typo.h4" Class="mb-4">@(IsEditMode ? "Edit" : "Create") AI Endpoint</MudText>
+<BackToComponent ReturnUrl="/ai-endpoints/search"></BackToComponent>
+@if (isLoading)
+{
+    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+}
+else
+{
+    <MudCard Class="mb-6">
+        <MudCardContent>
+            <MudText Typo="Typo.h6" Class="mb-4">Base data</MudText>
+            <MudGrid>
+                <!-- Url -->
+                <MudItem xs="12" md="6" lg="4">
+                    <MudTextField @bind-Value="_saveRequest.Endpoint.Url"
+                                  Label="Url"
+                                  Required="true"
+                                  RequiredError="Url is required"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  FullWidth="true" />
+                </MudItem>
+
+                <!-- Name -->
+                <MudItem xs="12" md="6" lg="4">
+                    <MudTextField @bind-Value="_saveRequest.Endpoint.Name"
+                                  Label="Name"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  FullWidth="true" />
+                </MudItem>
+
+                <!-- Description -->
+                <MudItem xs="12" md="6" lg="4">
+                    <MudTextField @bind-Value="_saveRequest.Endpoint.Description"
+                                  Label="Description"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  FullWidth="true" />
+                </MudItem>
+            </MudGrid>
+        </MudCardContent>
+    </MudCard>
+
+    <MudDivider Class="my-6" />
+
+    //task types
+    <MudCard Class="mb-6">
+        <MudCardContent>
+            <MudText Typo="Typo.h6" Class="mb-4">Task Types</MudText>
+
+            <MudPaper Class="pa-4">
+                <MudGrid>
+                    @foreach (var taskType in promptTaskTypes)
+                    {
+                        <MudItem >
+                            <MudCheckBox T="bool" Label="@taskType.ToString()"
+                                     Value="_saveRequest.Endpoint.TaskTypes.Contains(taskType)"
+                                     ValueChanged="@(isChecked => OnTaskTypeChanged(isChecked, taskType))" />
+                        </MudItem>
+                    }
+                    
+                </MudGrid>
+
+                <MudDivider Class="my-4" />
+            </MudPaper>
+        </MudCardContent>
+    </MudCard>
+    //settings
+    <MudCard Class="mb-6">
+        <MudCardContent>
+            <MudText Typo="Typo.h6" Class="mb-4">Settings</MudText>
+
+            <MudPaper Class="pa-4">
+                <MudGrid>
+                    <MudItem xs="12">
+
+                        <MudTextField @bind-Value="_saveRequest.Endpoint.Settings"
+                                      Label="JSON Input"
+                                      Lines="20"
+                                      Margin="Margin.Normal"
+                                      Immediate="true"
+                                      Class="w-100"
+                                      OnBlur="ValidateJson"
+                                      Text="@_saveRequest.Endpoint.Settings"
+                                      Placeholder="{ }"
+                                      Variant="Variant.Filled" />
+
+                        <MudText Color="@_jsonColor">@_jsonMessage</MudText>
+
+                    </MudItem>
+                </MudGrid>
+
+                <MudDivider Class="my-4" />
+            </MudPaper>
+        </MudCardContent>
+    </MudCard>
+
+    <MudButton OnClick="SaveLlm"
+               Color="Color.Primary"
+               Variant="Variant.Filled"
+               Size="Size.Large"
+               Disabled="@(!CanSave())">
+        @(IsEditMode ? "Update" : "Save") Ai Endpoint
+    </MudButton>
+
+    <MudDivider Class="my-6" />
+}
+
+@code {
+    [Parameter]
+    public int? Id { get; set; }
+
+    private bool IsEditMode => Id.HasValue;
+    private readonly List<PromptTaskType> promptTaskTypes = Enum.GetValues<PromptTaskType>().ToList();
+    private PromptTaskType? _selectedPromptTaskType = null;
+    private readonly SaveAiEndpointRequest _saveRequest = new()
+    {
+        Endpoint = new Normalized.Domain.Contracts.AI.Endpoints.AiEndpoint()
+        {
+            Url = ""
+        }
+    };
+
+    private bool isLoading = true;
+    private string _jsonMessage = "";
+    private Color _jsonColor = Color.Default;
+
+    private void OnTaskTypeChanged(bool isChecked, PromptTaskType taskType)
+    {
+        if (isChecked)
+            _saveRequest.Endpoint.TaskTypes.Add(taskType);
+        else
+            _saveRequest.Endpoint.TaskTypes.Remove(taskType);
+    }
+
+    private void ValidateJson()
+    {
+        try
+        {
+            var parsed = JsonSerializer.Deserialize<JsonElement>(_saveRequest.Endpoint.Settings);
+            _jsonMessage = "Valid JSON.";
+            _jsonColor = Color.Success;
+        }
+        catch (Exception ex)
+        {
+            _jsonMessage = $"Invalid JSON: {ex.Message}";
+            _jsonColor = Color.Error;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (IsEditMode)
+        {
+            await LoadAiEndpoint();
+        }
+        else
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task LoadAiEndpoint()
+    {
+        try
+        {
+            var result = await MindApi.GetAiEndpointAsync(Id!.Value);
+
+            _saveRequest.Endpoint = result.Data;
+        }
+        catch (ApiException apiEx)
+        {
+            var hillEx = apiEx.ToHillMetricsApiException();
+
+            Snackbar.Add($"Error loading data: {hillEx.Errors[0].Message}", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading data: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private bool CanSave()
+    {
+        if (string.IsNullOrWhiteSpace(_saveRequest.Endpoint.Url) || _saveRequest.Endpoint.TaskTypes.Count == 0 || _jsonColor == Color.Error)
+            return false;
+
+        return true;
+    }
+
+    private async Task SaveLlm()
+    {
+        try
+        {
+            if (IsEditMode)
+            {
+                var result = await MindApi.UpdateAiEndpointAsync(Id!.Value, _saveRequest);
+                Snackbar.Add("Ai endpoint updated successfully.", Severity.Success);
+                NavigationManager.NavigateTo(NavigationManager.Uri, true);
+            }
+            else
+            {
+                var result = await MindApi.CreateAiEndpointAsync(_saveRequest);
+
+                if (result.Data != null)
+                {
+                    Snackbar.Add("Ai endpoint created successfully.", Severity.Success);
+                    NavigationManager.NavigateTo($"/ai-endpoints/edit/{result.Data.Id}", true);
+                }
+                else
+                {
+                    Snackbar.Add("Failed to create Ai endpoint.", Severity.Error);
+                }
+            }
+        }
+        catch (ApiException apiEx)
+        {
+            var hillEx = apiEx.ToHillMetricsApiException();
+
+            Snackbar.Add($"Error saving Ai endpoint: {hillEx.Errors[0].Message}", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error saving Ai endpoint: {ex.Message}", Severity.Error);
+        }
+    }
+}
